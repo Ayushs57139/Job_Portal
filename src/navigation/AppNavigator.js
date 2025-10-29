@@ -24,7 +24,44 @@ import PostJobScreen from '../screens/Jobs/PostJobScreen';
 import UserDashboardScreen from '../screens/Dashboard/UserDashboardScreen';
 import CompanyDashboardScreen from '../screens/Dashboard/CompanyDashboardScreen';
 import ConsultancyDashboardScreen from '../screens/Dashboard/ConsultancyDashboardScreen';
-import AdminDashboardScreen from '../screens/Dashboard/AdminDashboardScreen';
+
+// Admin Screens
+import AdminDashboardScreen from '../screens/Admin/AdminDashboardScreen';
+import AdminUsersScreen from '../screens/Admin/AdminUsersScreen';
+import AdminJobsScreen from '../screens/Admin/AdminJobsScreen';
+import AdminApplicationsScreen from '../screens/Admin/AdminApplicationsScreen';
+import AdminRoleManagementScreen from '../screens/Admin/AdminRoleManagementScreen';
+import AdminTeamLimitsScreen from '../screens/Admin/AdminTeamLimitsScreen';
+import AdminBlogsScreen from '../screens/Admin/AdminBlogsScreen';
+import AdminVerificationScreen from '../screens/Admin/AdminVerificationScreen';
+import AdminKYCScreen from '../screens/Admin/AdminKYCScreen';
+import AdminSalesEnquiryScreen from '../screens/Admin/AdminSalesEnquiryScreen';
+import AdminAnalyticsScreen from '../screens/Admin/AdminAnalyticsScreen';
+import AdminSettingsScreen from '../screens/Admin/AdminSettingsScreen';
+import AdminEmailTemplatesScreen from '../screens/Admin/AdminEmailTemplatesScreen';
+import AdminSMTPSettingsScreen from '../screens/Admin/AdminSMTPSettingsScreen';
+import AdminEmailLogsScreen from '../screens/Admin/AdminEmailLogsScreen';
+import AdminSocialUpdatesScreen from '../screens/Admin/AdminSocialUpdatesScreen';
+import AdminPackageManagementScreen from '../screens/Admin/AdminPackageManagementScreen';
+import AdminAdvertisementManagementScreen from '../screens/Admin/AdminAdvertisementManagementScreen';
+import AdminLiveChatSupportScreen from '../screens/Admin/AdminLiveChatSupportScreen';
+import AdminResumeSearchScreen from '../screens/Admin/AdminResumeSearchScreen';
+import AdminResumeManagementScreen from '../screens/Admin/AdminResumeManagementScreen';
+import AdminJobAlertsScreen from '../screens/Admin/AdminJobAlertsScreen';
+import AdminHomepageScreen from '../screens/Admin/AdminHomepageScreen';
+import AdminFreejobwalaChatScreen from '../screens/Admin/AdminFreejobwalaChatScreen';
+import AdminLogoManagementScreen from '../screens/Admin/AdminLogoManagementScreen';
+import AdminPostJobScreen from '../screens/Admin/AdminPostJobScreen';
+
+// Admin Master Data Screens
+import AdminJobTitlesScreen from '../screens/Admin/MasterData/AdminJobTitlesScreen';
+import AdminKeySkillsScreen from '../screens/Admin/MasterData/AdminKeySkillsScreen';
+import AdminIndustriesScreen from '../screens/Admin/MasterData/AdminIndustriesScreen';
+import AdminDepartmentsScreen from '../screens/Admin/MasterData/AdminDepartmentsScreen';
+import AdminCoursesScreen from '../screens/Admin/MasterData/AdminCoursesScreen';
+import AdminSpecializationsScreen from '../screens/Admin/MasterData/AdminSpecializationsScreen';
+import AdminEducationFieldsScreen from '../screens/Admin/MasterData/AdminEducationFieldsScreen';
+import AdminLocationsScreen from '../screens/Admin/MasterData/AdminLocationsScreen';
 
 // Profile Screens
 import UserProfileScreen from '../screens/Profile/UserProfileScreen';
@@ -218,10 +255,179 @@ const AppNavigator = () => {
           component={ConsultancyDashboardScreen}
           options={{ title: 'Consultancy Dashboard' }}
         />
+        
+        {/* Admin Screens */}
         <Stack.Screen 
           name="AdminDashboard" 
           component={AdminDashboardScreen}
           options={{ title: 'Admin Dashboard' }}
+        />
+        <Stack.Screen 
+          name="AdminUsers" 
+          component={AdminUsersScreen}
+          options={{ title: 'Users Management' }}
+        />
+        <Stack.Screen 
+          name="AdminJobs" 
+          component={AdminJobsScreen}
+          options={{ title: 'Jobs Management' }}
+        />
+        <Stack.Screen 
+          name="AdminApplications" 
+          component={AdminApplicationsScreen}
+          options={{ title: 'Applications Management' }}
+        />
+        <Stack.Screen 
+          name="AdminRoleManagement" 
+          component={AdminRoleManagementScreen}
+          options={{ title: 'Role Management' }}
+        />
+        <Stack.Screen 
+          name="AdminTeamLimits" 
+          component={AdminTeamLimitsScreen}
+          options={{ title: 'Team Limits' }}
+        />
+        <Stack.Screen 
+          name="AdminBlogs" 
+          component={AdminBlogsScreen}
+          options={{ title: 'Blogs Management' }}
+        />
+        <Stack.Screen 
+          name="AdminVerification" 
+          component={AdminVerificationScreen}
+          options={{ title: 'Verification' }}
+        />
+        <Stack.Screen 
+          name="AdminKYC" 
+          component={AdminKYCScreen}
+          options={{ title: 'KYC Management' }}
+        />
+        <Stack.Screen 
+          name="AdminSalesEnquiry" 
+          component={AdminSalesEnquiryScreen}
+          options={{ title: 'Sales Enquiry' }}
+        />
+        <Stack.Screen 
+          name="AdminAnalytics" 
+          component={AdminAnalyticsScreen}
+          options={{ title: 'Analytics' }}
+        />
+        <Stack.Screen 
+          name="AdminSettings" 
+          component={AdminSettingsScreen}
+          options={{ title: 'Settings' }}
+        />
+        <Stack.Screen 
+          name="AdminEmailTemplates" 
+          component={AdminEmailTemplatesScreen}
+          options={{ title: 'Email Templates' }}
+        />
+        <Stack.Screen 
+          name="AdminSMTPSettings" 
+          component={AdminSMTPSettingsScreen}
+          options={{ title: 'SMTP Settings' }}
+        />
+        <Stack.Screen 
+          name="AdminEmailLogs" 
+          component={AdminEmailLogsScreen}
+          options={{ title: 'Email Logs' }}
+        />
+        <Stack.Screen 
+          name="AdminSocialUpdates" 
+          component={AdminSocialUpdatesScreen}
+          options={{ title: 'Social Updates' }}
+        />
+        <Stack.Screen 
+          name="AdminPackageManagement" 
+          component={AdminPackageManagementScreen}
+          options={{ title: 'Package Management' }}
+        />
+        <Stack.Screen 
+          name="AdminAdvertisementManagement" 
+          component={AdminAdvertisementManagementScreen}
+          options={{ title: 'Advertisement Management' }}
+        />
+        <Stack.Screen 
+          name="AdminLiveChatSupport" 
+          component={AdminLiveChatSupportScreen}
+          options={{ title: 'Live Chat Support' }}
+        />
+        <Stack.Screen 
+          name="AdminResumeSearch" 
+          component={AdminResumeSearchScreen}
+          options={{ title: 'Resume Search' }}
+        />
+        <Stack.Screen 
+          name="AdminResumeManagement" 
+          component={AdminResumeManagementScreen}
+          options={{ title: 'Resume Management' }}
+        />
+        <Stack.Screen 
+          name="AdminJobAlerts" 
+          component={AdminJobAlertsScreen}
+          options={{ title: 'Job Alerts' }}
+        />
+        <Stack.Screen 
+          name="AdminHomepage" 
+          component={AdminHomepageScreen}
+          options={{ title: 'Homepage Management' }}
+        />
+        <Stack.Screen 
+          name="AdminFreejobwalaChat" 
+          component={AdminFreejobwalaChatScreen}
+          options={{ title: 'Freejobwala Chat' }}
+        />
+        <Stack.Screen 
+          name="AdminLogoManagement" 
+          component={AdminLogoManagementScreen}
+          options={{ title: 'Logo Management' }}
+        />
+        <Stack.Screen 
+          name="AdminPostJob" 
+          component={AdminPostJobScreen}
+          options={{ title: 'Post Job' }}
+        />
+        
+        {/* Admin Master Data Screens */}
+        <Stack.Screen 
+          name="AdminJobTitles" 
+          component={AdminJobTitlesScreen}
+          options={{ title: 'Job Titles' }}
+        />
+        <Stack.Screen 
+          name="AdminKeySkills" 
+          component={AdminKeySkillsScreen}
+          options={{ title: 'Key Skills' }}
+        />
+        <Stack.Screen 
+          name="AdminIndustries" 
+          component={AdminIndustriesScreen}
+          options={{ title: 'Industries' }}
+        />
+        <Stack.Screen 
+          name="AdminDepartments" 
+          component={AdminDepartmentsScreen}
+          options={{ title: 'Departments' }}
+        />
+        <Stack.Screen 
+          name="AdminCourses" 
+          component={AdminCoursesScreen}
+          options={{ title: 'Courses' }}
+        />
+        <Stack.Screen 
+          name="AdminSpecializations" 
+          component={AdminSpecializationsScreen}
+          options={{ title: 'Specializations' }}
+        />
+        <Stack.Screen 
+          name="AdminEducationFields" 
+          component={AdminEducationFieldsScreen}
+          options={{ title: 'Education Fields' }}
+        />
+        <Stack.Screen 
+          name="AdminLocations" 
+          component={AdminLocationsScreen}
+          options={{ title: 'Locations' }}
         />
         
         {/* Profile Screens */}

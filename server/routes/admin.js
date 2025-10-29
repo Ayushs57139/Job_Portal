@@ -107,6 +107,35 @@ router.get('/dashboard', async (req, res) => {
   }
 });
 
+// @route   GET /api/admin/users/count
+// @desc    Get total user count
+// @access  Private (Admin)
+router.get('/users/count', async (req, res) => {
+  try {
+    const count = await User.countDocuments();
+    res.json({ count });
+  } catch (error) {
+    console.error('User count error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   GET /api/admin/users/recent
+// @desc    Get recent users
+// @access  Private (Admin)
+router.get('/users/recent', async (req, res) => {
+  try {
+    const users = await User.find()
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .select('name email role isActive createdAt');
+    res.json({ users });
+  } catch (error) {
+    console.error('Recent users error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // @route   GET /api/admin/users
 // @desc    Get all users with pagination and filters
 // @access  Private (Admin)
@@ -457,6 +486,20 @@ router.get('/role-management/permissions', requirePermission('canManageUsers'), 
   }
 });
 
+// @route   GET /api/admin/jobs/count
+// @desc    Get job counts
+// @access  Private (Admin)
+router.get('/jobs/count', async (req, res) => {
+  try {
+    const total = await Job.countDocuments();
+    const active = await Job.countDocuments({ status: 'ACTIVE' });
+    res.json({ total, active });
+  } catch (error) {
+    console.error('Job count error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // @route   GET /api/admin/jobs
 // @desc    Get all jobs with admin filters
 // @access  Private (Admin)
@@ -564,6 +607,19 @@ router.delete('/jobs/:id', requirePermission('canManageJobs'), async (req, res) 
     res.json({ message: 'Job deleted successfully' });
   } catch (error) {
     console.error('Delete job error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   GET /api/admin/applications/count
+// @desc    Get application count
+// @access  Private (Admin)
+router.get('/applications/count', async (req, res) => {
+  try {
+    const count = await Application.countDocuments();
+    res.json({ count });
+  } catch (error) {
+    console.error('Application count error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -2828,6 +2884,408 @@ router.post('/send-employer-welcome', requirePermission('canManageUsers'), [
       message: 'Server error',
       error: error.message 
     });
+  }
+});
+
+// ==================== MASTER DATA MANAGEMENT ROUTES ====================
+
+// Import master data models
+const JobTitle = require('../models/JobTitle');
+const KeySkill = require('../models/KeySkill');
+const Industry = require('../models/Industry');
+const Department = require('../models/Department');
+const Course = require('../models/Course');
+const Specialization = require('../models/Specialization');
+const Education = require('../models/Education');
+const Location = require('../models/Location');
+
+// Job Titles Routes
+router.get('/job-titles', async (req, res) => {
+  try {
+    const jobTitles = await JobTitle.find().sort({ name: 1 });
+    res.json({ jobTitles });
+  } catch (error) {
+    console.error('Get job titles error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.post('/job-titles', async (req, res) => {
+  try {
+    const jobTitle = new JobTitle(req.body);
+    await jobTitle.save();
+    res.status(201).json({ jobTitle });
+  } catch (error) {
+    console.error('Create job title error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.put('/job-titles/:id', async (req, res) => {
+  try {
+    const jobTitle = await JobTitle.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json({ jobTitle });
+  } catch (error) {
+    console.error('Update job title error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.delete('/job-titles/:id', async (req, res) => {
+  try {
+    await JobTitle.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Job title deleted' });
+  } catch (error) {
+    console.error('Delete job title error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Key Skills Routes
+router.get('/key-skills', async (req, res) => {
+  try {
+    const keySkills = await KeySkill.find().sort({ name: 1 });
+    res.json({ keySkills });
+  } catch (error) {
+    console.error('Get key skills error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.post('/key-skills', async (req, res) => {
+  try {
+    const keySkill = new KeySkill(req.body);
+    await keySkill.save();
+    res.status(201).json({ keySkill });
+  } catch (error) {
+    console.error('Create key skill error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.put('/key-skills/:id', async (req, res) => {
+  try {
+    const keySkill = await KeySkill.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json({ keySkill });
+  } catch (error) {
+    console.error('Update key skill error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.delete('/key-skills/:id', async (req, res) => {
+  try {
+    await KeySkill.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Key skill deleted' });
+  } catch (error) {
+    console.error('Delete key skill error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Industries Routes
+router.get('/industries', async (req, res) => {
+  try {
+    const industries = await Industry.find().sort({ name: 1 });
+    res.json({ industries });
+  } catch (error) {
+    console.error('Get industries error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.post('/industries', async (req, res) => {
+  try {
+    const industry = new Industry(req.body);
+    await industry.save();
+    res.status(201).json({ industry });
+  } catch (error) {
+    console.error('Create industry error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.put('/industries/:id', async (req, res) => {
+  try {
+    const industry = await Industry.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json({ industry });
+  } catch (error) {
+    console.error('Update industry error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.delete('/industries/:id', async (req, res) => {
+  try {
+    await Industry.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Industry deleted' });
+  } catch (error) {
+    console.error('Delete industry error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Departments Routes
+router.get('/departments', async (req, res) => {
+  try {
+    const departments = await Department.find().sort({ name: 1 });
+    res.json({ departments });
+  } catch (error) {
+    console.error('Get departments error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.post('/departments', async (req, res) => {
+  try {
+    const department = new Department(req.body);
+    await department.save();
+    res.status(201).json({ department });
+  } catch (error) {
+    console.error('Create department error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.put('/departments/:id', async (req, res) => {
+  try {
+    const department = await Department.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json({ department });
+  } catch (error) {
+    console.error('Update department error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.delete('/departments/:id', async (req, res) => {
+  try {
+    await Department.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Department deleted' });
+  } catch (error) {
+    console.error('Delete department error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Courses Routes
+router.get('/courses', async (req, res) => {
+  try {
+    const courses = await Course.find().sort({ name: 1 });
+    res.json({ courses });
+  } catch (error) {
+    console.error('Get courses error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.post('/courses', async (req, res) => {
+  try {
+    const course = new Course(req.body);
+    await course.save();
+    res.status(201).json({ course });
+  } catch (error) {
+    console.error('Create course error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.put('/courses/:id', async (req, res) => {
+  try {
+    const course = await Course.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json({ course });
+  } catch (error) {
+    console.error('Update course error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.delete('/courses/:id', async (req, res) => {
+  try {
+    await Course.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Course deleted' });
+  } catch (error) {
+    console.error('Delete course error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Specializations Routes
+router.get('/specializations', async (req, res) => {
+  try {
+    const specializations = await Specialization.find().sort({ name: 1 });
+    res.json({ specializations });
+  } catch (error) {
+    console.error('Get specializations error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.post('/specializations', async (req, res) => {
+  try {
+    const specialization = new Specialization(req.body);
+    await specialization.save();
+    res.status(201).json({ specialization });
+  } catch (error) {
+    console.error('Create specialization error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.put('/specializations/:id', async (req, res) => {
+  try {
+    const specialization = await Specialization.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json({ specialization });
+  } catch (error) {
+    console.error('Update specialization error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.delete('/specializations/:id', async (req, res) => {
+  try {
+    await Specialization.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Specialization deleted' });
+  } catch (error) {
+    console.error('Delete specialization error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Education Routes
+router.get('/education', async (req, res) => {
+  try {
+    const education = await Education.find().sort({ name: 1 });
+    res.json({ education });
+  } catch (error) {
+    console.error('Get education error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.post('/education', async (req, res) => {
+  try {
+    const education = new Education(req.body);
+    await education.save();
+    res.status(201).json({ education });
+  } catch (error) {
+    console.error('Create education error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.put('/education/:id', async (req, res) => {
+  try {
+    const education = await Education.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json({ education });
+  } catch (error) {
+    console.error('Update education error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.delete('/education/:id', async (req, res) => {
+  try {
+    await Education.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Education deleted' });
+  } catch (error) {
+    console.error('Delete education error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Locations Routes
+router.get('/locations', async (req, res) => {
+  try {
+    const locations = await Location.find().sort({ name: 1 });
+    res.json({ locations });
+  } catch (error) {
+    console.error('Get locations error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.post('/locations', async (req, res) => {
+  try {
+    const location = new Location(req.body);
+    await location.save();
+    res.status(201).json({ location });
+  } catch (error) {
+    console.error('Create location error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.put('/locations/:id', async (req, res) => {
+  try {
+    const location = await Location.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json({ location });
+  } catch (error) {
+    console.error('Update location error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.delete('/locations/:id', async (req, res) => {
+  try {
+    await Location.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Location deleted' });
+  } catch (error) {
+    console.error('Delete location error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Team Limits Routes
+router.get('/team-limits', async (req, res) => {
+  try {
+    const teamLimits = await User.find({ role: 'EMPLOYER' })
+      .select('name email teamLimit currentMembers')
+      .sort({ createdAt: -1 });
+    res.json({ teamLimits });
+  } catch (error) {
+    console.error('Get team limits error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Verifications Routes
+router.get('/verifications', async (req, res) => {
+  try {
+    const verifications = await User.find({ verificationStatus: { $exists: true } })
+      .select('name email verificationStatus verificationType createdAt')
+      .sort({ createdAt: -1 });
+    res.json({ verifications });
+  } catch (error) {
+    console.error('Get verifications error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.patch('/verifications/:id/approve', async (req, res) => {
+  try {
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      { verificationStatus: 'APPROVED', isVerified: true },
+      { new: true }
+    );
+    res.json({ user });
+  } catch (error) {
+    console.error('Approve verification error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.patch('/verifications/:id/reject', async (req, res) => {
+  try {
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      { verificationStatus: 'REJECTED', isVerified: false },
+      { new: true }
+    );
+    res.json({ user });
+  } catch (error) {
+    console.error('Reject verification error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 });
 

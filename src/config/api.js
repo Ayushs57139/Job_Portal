@@ -531,5 +531,10 @@ class JobWalaAPI {
   }
 }
 
-export default new JobWalaAPI();
+const apiInstance = new JobWalaAPI();
+
+// Export both the API instance and the base URL for direct use
+export default apiInstance;
+export const API_URL = API_BASE_URL;
+export const api = apiInstance;
 

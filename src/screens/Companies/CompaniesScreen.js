@@ -27,38 +27,59 @@ const CompaniesScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIndustry, setSelectedIndustry] = useState('all');
-
-  const industries = [
-    { id: 'all', label: 'All Industries', icon: 'business-outline' },
-    { id: 'tech', label: 'Technology', icon: 'laptop-outline' },
-    { id: 'finance', label: 'Finance', icon: 'cash-outline' },
-    { id: 'healthcare', label: 'Healthcare', icon: 'medkit-outline' },
-    { id: 'education', label: 'Education', icon: 'school-outline' },
-  ];
+  const [industries, setIndustries] = useState([
+    { id: 'all', label: 'All Industries', icon: 'business-outline' }
+  ]);
+  const [showIndustryDropdown, setShowIndustryDropdown] = useState(false);
 
   useEffect(() => {
     loadCompanies();
+    loadIndustries();
   }, []);
 
-  const loadCompanies = async () => {
+  const loadIndustries = async () => {
+    try {
+      const response = await api.request('/industries');
+      if (response.success && response.data) {
+        const formattedIndustries = [
+          { id: 'all', label: 'All Industries', icon: 'business-outline' },
+          ...response.data.map((industry) => ({
+            id: industry.name,
+            label: industry.name,
+            icon: 'business-outline'
+          }))
+        ];
+        setIndustries(formattedIndustries);
+      }
+    } catch (error) {
+      console.error('Error loading industries:', error);
+      // Keep default industries if fetch fails
+    }
+  };
+
+  const loadCompanies = async (industryOverride = null) => {
     try {
       const filters = {};
       if (searchQuery) filters.search = searchQuery;
+      
+      const industryToUse = industryOverride !== null ? industryOverride : selectedIndustry;
+      if (industryToUse && industryToUse !== 'all') {
+        filters.industry = industryToUse;
+      }
 
       const response = await api.getCompanies(filters);
       const companiesData = response.companies || [];
       
-      // Add sample data for better display
-      const companiesWithData = companiesData.map((company, index) => ({
+      // Add rating for better display
+      const companiesWithData = companiesData.map((company) => ({
         ...company,
-        openPositions: Math.floor(Math.random() * 10) + 1,
         rating: (3.5 + Math.random() * 1.5).toFixed(1),
-        employees: ['10-50', '50-200', '200-500', '500+'][Math.floor(Math.random() * 4)],
       }));
       
       setCompanies(companiesWithData);
     } catch (error) {
       console.error('Error loading companies:', error);
+      setCompanies([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -120,9 +141,18 @@ const CompaniesScreen = () => {
             </View>
 
             <View style={styles.dropdownWrapper}>
-              <TouchableOpacity style={styles.dropdown}>
-                <Text style={styles.dropdownText}>{selectedIndustry === 'all' ? 'All Industries' : selectedIndustry}</Text>
-                <Ionicons name="chevron-down" size={20} color={colors.text} />
+              <TouchableOpacity 
+                style={styles.dropdown}
+                onPress={() => setShowIndustryDropdown(!showIndustryDropdown)}
+              >
+                <Text style={styles.dropdownText}>
+                  {industries.find(ind => ind.id === selectedIndustry)?.label || 'All Industries'}
+                </Text>
+                <Ionicons 
+                  name={showIndustryDropdown ? "chevron-up" : "chevron-down"} 
+                  size={20} 
+                  color={colors.text} 
+                />
               </TouchableOpacity>
             </View>
 
@@ -139,6 +169,56 @@ const CompaniesScreen = () => {
             </View>
           )}
         </View>
+
+        {/* Dropdown Menu - Positioned Outside */}
+        {showIndustryDropdown && (
+          <View style={styles.dropdownMenuContainer}>
+            <TouchableOpacity 
+              style={styles.dropdownOverlay}
+              activeOpacity={1}
+              onPress={() => setShowIndustryDropdown(false)}
+            />
+            <View style={styles.dropdownMenuAbsolute}>
+              <ScrollView 
+                style={styles.dropdownScroll}
+                showsVerticalScrollIndicator={true}
+                bounces={false}
+              >
+                {industries.map((industry) => (
+                  <TouchableOpacity
+                    key={industry.id}
+                    style={[
+                      styles.dropdownItem,
+                      selectedIndustry === industry.id && styles.dropdownItemSelected
+                    ]}
+                    onPress={() => {
+                      setSelectedIndustry(industry.id);
+                      setShowIndustryDropdown(false);
+                      setLoading(true);
+                      // Trigger search with new industry immediately
+                      loadCompanies(industry.id);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons 
+                      name={industry.icon} 
+                      size={18} 
+                      color={selectedIndustry === industry.id ? '#6366F1' : colors.text} 
+                    />
+                    <Text 
+                      style={[
+                        styles.dropdownItemText,
+                        selectedIndustry === industry.id && styles.dropdownItemTextSelected
+                      ]}
+                    >
+                      {industry.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          </View>
+        )}
 
         {/* Companies Grid */}
         {!loading && companies.length > 0 ? (
@@ -247,6 +327,59 @@ const styles = StyleSheet.create({
   dropdownText: {
     fontSize: 15,
     color: colors.text,
+    flex: 1,
+  },
+  dropdownMenuContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 9999,
+  },
+  dropdownOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  dropdownMenuAbsolute: {
+    position: 'absolute',
+    top: isWeb ? 220 : 200,
+    left: spacing.lg,
+    right: spacing.lg,
+    backgroundColor: colors.cardBackground,
+    borderRadius: borderRadius.md,
+    maxHeight: isWeb ? 400 : 300,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.lg,
+    elevation: 10,
+  },
+  dropdownScroll: {
+    maxHeight: isWeb ? 400 : 300,
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    gap: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderLight,
+  },
+  dropdownItemSelected: {
+    backgroundColor: '#E0E7FF',
+  },
+  dropdownItemText: {
+    fontSize: 15,
+    color: colors.text,
+  },
+  dropdownItemTextSelected: {
+    color: '#6366F1',
+    fontWeight: '600',
   },
   searchButton: {
     flexDirection: 'row',

@@ -1,137 +1,147 @@
-import React, { useState } from 'react';
-import { View, ScrollView, StyleSheet, Alert } from 'react-native';
-import { colors, spacing } from '../../styles/theme';
+import React from 'react';
+import { View, StyleSheet, Alert } from 'react-native';
+import { colors } from '../../styles/theme';
 import Header from '../../components/Header';
-import Input from '../../components/Input';
-import Button from '../../components/Button';
+import MultiStepJobPostForm from '../../components/MultiStepJobPostForm';
 import api from '../../config/api';
 
 const PostJobScreen = ({ navigation }) => {
-  const [formData, setFormData] = useState({
-    jobTitle: '',
-    companyName: '',
-    location: '',
-    experienceRequired: '',
-    salaryMin: '',
-    salaryMax: '',
-    description: '',
-    requirements: '',
-  });
-  const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState({});
-
-  const handlePostJob = async () => {
-    const newErrors = {};
-    if (!formData.jobTitle.trim()) newErrors.jobTitle = 'Job title is required';
-    if (!formData.companyName.trim()) newErrors.companyName = 'Company name is required';
-    if (!formData.location.trim()) newErrors.location = 'Location is required';
-    if (!formData.description.trim()) newErrors.description = 'Description is required';
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
-    }
-
-    setLoading(true);
+  const handleSubmit = async (formData) => {
     try {
-      await api.createJob(formData);
-      Alert.alert('Success', 'Job posted successfully!', [
-        {
-          text: 'OK',
-          onPress: () => navigation.goBack(),
-        },
-      ]);
+      // Transform form data to match API requirements
+      const jobData = {
+        // Company Information
+        companyName: formData.companyName,
+        companyType: formData.companyType?.value,
+        employeeCount: formData.employeeCount?.value,
+        
+        // Job Details
+        jobTitle: formData.jobTitle,
+        keySkills: formData.keySkills?.map(skill => skill.label) || [],
+        employmentType: formData.employmentType?.value,
+        jobType: formData.jobType?.value,
+        jobMode: formData.jobMode?.value,
+        jobShift: formData.jobShift?.value,
+        
+        // Location
+        jobState: formData.jobState?.value,
+        jobCity: formData.jobCity?.map(city => city.label) || [],
+        jobLocality: formData.jobLocality,
+        distance: formData.distance?.value,
+        includeRelocate: formData.includeRelocate || false,
+        
+        // Experience & Salary
+        experienceLevel: formData.experienceLevel?.value,
+        experienceMin: formData.experienceMin?.value,
+        experienceMax: formData.experienceMax?.value,
+        salaryMin: formData.salaryMin,
+        salaryMax: formData.salaryMax,
+        hideSalary: formData.hideSalary || false,
+        additionalBenefits: formData.additionalBenefits?.map(benefit => benefit.label) || [],
+        
+        // Candidate Requirements
+        gender: formData.gender?.value,
+        maritalStatus: formData.maritalStatus?.value,
+        employerIndustry: formData.employerIndustry,
+        department: formData.department,
+        jobRoles: formData.jobRoles?.map(role => role.label) || [],
+        
+        // Education & Demographics
+        educationLevel: formData.educationLevel?.value,
+        course: formData.course?.map(c => c.label) || [],
+        candidateIndustry: formData.candidateIndustry?.map(ind => ind.label) || [],
+        ageMin: formData.ageMin?.value,
+        ageMax: formData.ageMax?.value,
+        preferredLanguage: formData.preferredLanguage?.map(lang => lang.label) || [],
+        joiningPeriod: formData.joiningPeriod?.value,
+        
+        // Diversity & Accessibility
+        diversityHiring: formData.diversityHiring?.value,
+        disabilityStatus: formData.disabilityStatus?.value,
+        disabilityTypes: formData.disabilityTypes?.map(type => type.label) || [],
+        
+        // Job Description
+        description: formData.jobDescription,
+        numberOfVacancy: formData.numberOfVacancy,
+        
+        // Walk-in Details
+        includeWalkin: formData.includeWalkin || false,
+        walkinStartDate: formData.walkinStartDate,
+        walkinEndDate: formData.walkinEndDate,
+        walkinDuration: formData.walkinDuration,
+        walkinTiming: formData.walkinTiming,
+        walkinVenue: formData.walkinVenue,
+        walkinGoogleMap: formData.walkinGoogleMap,
+        
+        // Contact Information
+        jobResponseMethod: formData.jobResponseMethod?.value,
+        communicationPreference: formData.communicationPreference?.value,
+        contactPersonName: formData.contactPersonName,
+        contactPersonNumber: formData.contactPersonNumber,
+        contactPersonEmail: formData.contactPersonEmail,
+        contactPersonWhatsapp: formData.contactPersonWhatsapp,
+        contactTimingStart: formData.contactTimingStart?.value,
+        contactTimingEnd: formData.contactTimingEnd?.value,
+        contactDays: formData.contactDays || [],
+        
+        // Additional Details
+        questionsForCandidates: formData.questionsForCandidates,
+        collaborateWithUsers: formData.collaborateWithUsers || false,
+        collaboratorEmails: formData.collaboratorEmails,
+        
+        // Client Details (For Consultancy)
+        aboutClient: formData.aboutClient,
+        clientCompanyName: formData.clientCompanyName,
+        hideClientName: formData.hideClientName || false,
+        hideEmployerDetails: formData.hideEmployerDetails,
+      };
+
+      await api.createJob(jobData);
+      
+      Alert.alert(
+        'Success',
+        'Job posted successfully!',
+        [
+          {
+            text: 'Post Another Job',
+            style: 'cancel',
+          },
+          {
+            text: 'View Jobs',
+            onPress: () => navigation.navigate('Jobs'),
+          },
+        ]
+      );
     } catch (error) {
-      Alert.alert('Error', error.message || 'Failed to post job');
-    } finally {
-      setLoading(false);
+      throw new Error(error.message || 'Failed to post job. Please try again.');
     }
+  };
+
+  const handleCancel = () => {
+    Alert.alert(
+      'Cancel Job Post',
+      'Are you sure you want to cancel? All entered data will be lost.',
+      [
+        {
+          text: 'Continue Editing',
+          style: 'cancel',
+        },
+        {
+          text: 'Yes, Cancel',
+          onPress: () => navigation.goBack(),
+          style: 'destructive',
+        },
+      ]
+    );
   };
 
   return (
     <View style={styles.container}>
       <Header />
-      
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Input
-          label="Job Title"
-          value={formData.jobTitle}
-          onChangeText={(text) => setFormData({ ...formData, jobTitle: text })}
-          placeholder="e.g., Software Engineer"
-          icon="briefcase-outline"
-          error={errors.jobTitle}
-        />
-
-        <Input
-          label="Company Name"
-          value={formData.companyName}
-          onChangeText={(text) => setFormData({ ...formData, companyName: text })}
-          placeholder="Company name"
-          icon="business-outline"
-          error={errors.companyName}
-        />
-
-        <Input
-          label="Location"
-          value={formData.location}
-          onChangeText={(text) => setFormData({ ...formData, location: text })}
-          placeholder="City, State"
-          icon="location-outline"
-          error={errors.location}
-        />
-
-        <Input
-          label="Experience Required"
-          value={formData.experienceRequired}
-          onChangeText={(text) => setFormData({ ...formData, experienceRequired: text })}
-          placeholder="e.g., 2-5 years"
-          icon="briefcase-outline"
-        />
-
-        <Input
-          label="Salary Min"
-          value={formData.salaryMin}
-          onChangeText={(text) => setFormData({ ...formData, salaryMin: text })}
-          placeholder="Minimum salary"
-          icon="cash-outline"
-          keyboardType="numeric"
-        />
-
-        <Input
-          label="Salary Max"
-          value={formData.salaryMax}
-          onChangeText={(text) => setFormData({ ...formData, salaryMax: text })}
-          placeholder="Maximum salary"
-          icon="cash-outline"
-          keyboardType="numeric"
-        />
-
-        <Input
-          label="Job Description"
-          value={formData.description}
-          onChangeText={(text) => setFormData({ ...formData, description: text })}
-          placeholder="Describe the job role..."
-          multiline
-          numberOfLines={6}
-          error={errors.description}
-        />
-
-        <Input
-          label="Requirements"
-          value={formData.requirements}
-          onChangeText={(text) => setFormData({ ...formData, requirements: text })}
-          placeholder="List the requirements..."
-          multiline
-          numberOfLines={4}
-        />
-
-        <Button
-          title="Post Job"
-          onPress={handlePostJob}
-          loading={loading}
-          style={styles.postButton}
-        />
-      </ScrollView>
+      <MultiStepJobPostForm
+        onSubmit={handleSubmit}
+        onCancel={handleCancel}
+      />
     </View>
   );
 };
@@ -141,13 +151,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  scrollContent: {
-    padding: spacing.lg,
-  },
-  postButton: {
-    marginTop: spacing.md,
-  },
 });
 
 export default PostJobScreen;
-

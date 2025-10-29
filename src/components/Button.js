@@ -1,5 +1,6 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, shadows, typography } from '../styles/theme';
 
 const Button = ({ 
@@ -10,6 +11,7 @@ const Button = ({
   loading = false,
   style,
   textStyle,
+  icon,
 }) => {
   const getButtonStyle = () => {
     const baseStyle = [styles.button];
@@ -55,7 +57,17 @@ const Button = ({
       {loading ? (
         <ActivityIndicator color={variant === 'primary' ? colors.textWhite : colors.primary} />
       ) : (
-        <Text style={getTextStyle()}>{title}</Text>
+        <View style={styles.buttonContent}>
+          <Text style={getTextStyle()}>{title}</Text>
+          {icon && (
+            <Ionicons 
+              name={icon} 
+              size={20} 
+              color={variant === 'primary' ? colors.textWhite : colors.primary}
+              style={styles.buttonIcon}
+            />
+          )}
+        </View>
       )}
     </TouchableOpacity>
   );
@@ -70,6 +82,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     ...shadows.sm,
+  },
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonIcon: {
+    marginLeft: spacing.xs,
   },
   buttonSecondary: {
     backgroundColor: colors.secondary,

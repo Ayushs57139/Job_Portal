@@ -169,58 +169,76 @@ const AdminDashboardScreen = ({ navigation }) => {
 
         {/* Main Stats Cards */}
         <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
+          <TouchableOpacity 
+            style={styles.statCard}
+            onPress={() => navigation.navigate('AdminUsers')}
+          >
             <View style={[styles.statIconContainer, { backgroundColor: `${colors.primary}15` }]}>
               <Ionicons name="people" size={24} color={colors.primary} />
             </View>
             <Text style={styles.statValue}>{stats.totalUsers}</Text>
             <Text style={styles.statLabel}>Total Users</Text>
-          </View>
+          </TouchableOpacity>
 
-          <View style={styles.statCard}>
+          <TouchableOpacity 
+            style={styles.statCard}
+            onPress={() => navigation.navigate('AdminJobs')}
+          >
             <View style={[styles.statIconContainer, { backgroundColor: `${colors.info}15` }]}>
               <Ionicons name="briefcase" size={24} color={colors.info} />
             </View>
             <Text style={styles.statValue}>{stats.totalJobs}</Text>
             <Text style={styles.statLabel}>Total Jobs</Text>
-          </View>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
+          <TouchableOpacity 
+            style={styles.statCard}
+            onPress={() => navigation.navigate('AdminApplications')}
+          >
             <View style={[styles.statIconContainer, { backgroundColor: `${colors.warning}15` }]}>
               <Ionicons name="document-text" size={24} color={colors.warning} />
             </View>
             <Text style={styles.statValue}>{stats.totalApplications}</Text>
             <Text style={styles.statLabel}>Applications</Text>
-          </View>
+          </TouchableOpacity>
 
-          <View style={styles.statCard}>
+          <TouchableOpacity 
+            style={styles.statCard}
+            onPress={() => navigation.navigate('AdminCompanies', { type: 'company' })}
+          >
             <View style={[styles.statIconContainer, { backgroundColor: `${colors.success}15` }]}>
               <Ionicons name="business" size={24} color={colors.success} />
             </View>
             <Text style={styles.statValue}>{stats.activeCompanies}</Text>
             <Text style={styles.statLabel}>Companies</Text>
-          </View>
+          </TouchableOpacity>
         </View>
 
         {/* Secondary Stats */}
         <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
+          <TouchableOpacity 
+            style={styles.statCard}
+            onPress={() => navigation.navigate('AdminCompanies', { type: 'consultancy' })}
+          >
             <View style={[styles.statIconContainer, { backgroundColor: `${colors.secondary}15` }]}>
               <Ionicons name="people-circle" size={24} color={colors.secondary} />
             </View>
             <Text style={styles.statValue}>{stats.activeConsultancies}</Text>
             <Text style={styles.statLabel}>Consultancies</Text>
-          </View>
+          </TouchableOpacity>
 
-          <View style={styles.statCard}>
+          <TouchableOpacity 
+            style={styles.statCard}
+            onPress={() => navigation.navigate('AdminJobs', { showPending: true })}
+          >
             <View style={[styles.statIconContainer, { backgroundColor: `${colors.warning}15` }]}>
               <Ionicons name="time" size={24} color={colors.warning} />
             </View>
             <Text style={styles.statValue}>{stats.pendingJobs}</Text>
             <Text style={styles.statLabel}>Pending Jobs</Text>
-          </View>
+          </TouchableOpacity>
         </View>
 
         {/* Quick Actions */}

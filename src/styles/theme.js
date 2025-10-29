@@ -2,12 +2,14 @@
 export const colors = {
   primary: '#2563EB',
   primaryDark: '#1E40AF',
+  primaryLight: '#DBEAFE',
   secondary: '#FF6B35',
   accent: '#1E88E5',
   
   // Backgrounds
   background: '#F9FAFB',
   cardBackground: '#ffffff',
+  white: '#ffffff',
   
   // Text
   text: '#2D3748',
@@ -69,6 +71,11 @@ export const typography = {
     fontSize: 16,
     fontWeight: '600',
     lineHeight: 22,
+  },
+  body: {
+    fontSize: 14,
+    fontWeight: '400',
+    lineHeight: 20,
   },
   body1: {
     fontSize: 16,

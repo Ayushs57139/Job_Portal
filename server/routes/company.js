@@ -7,6 +7,82 @@ const { auth } = require('../middleware/auth');
 
 const router = express.Router();
 
+// @route   GET /api/company
+// @desc    Get all companies (public)
+// @access  Public
+router.get('/', async (req, res) => {
+  try {
+    const { search, industry, page = 1, limit = 20 } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // Build query for registered companies
+    let query = {
+      userType: 'employer',
+      employerType: 'company',
+      isActive: true
+    };
+
+    // Add search filter
+    if (search) {
+      query.$or = [
+        { 'profile.company.name': { $regex: search, $options: 'i' } },
+        { 'profile.company.description': { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // Add industry filter
+    if (industry && industry !== 'all') {
+      query['profile.company.industry'] = { $regex: industry, $options: 'i' };
+    }
+
+    // Get registered companies
+    const companies = await User.find(query)
+      .select('profile.company firstName lastName isEmployerVerified verificationStatus createdAt')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .lean();
+
+    // Get total count
+    const totalCompanies = await User.countDocuments(query);
+
+    // Format companies data
+    const formattedCompanies = await Promise.all(companies.map(async (company) => {
+      // Get job count for this company
+      const jobCount = await Job.countDocuments({ 
+        postedBy: company._id,
+        status: 'active'
+      });
+
+      return {
+        _id: company._id,
+        name: company.profile?.company?.name || `${company.firstName} ${company.lastName}`,
+        industry: company.profile?.company?.industry || 'Technology',
+        website: company.profile?.company?.website || '',
+        size: company.profile?.company?.size || 'Not specified',
+        description: company.profile?.company?.description || 'Leading company in the industry',
+        location: company.profile?.company?.location || '',
+        openPositions: jobCount,
+        isEmployerVerified: company.isEmployerVerified,
+        verificationStatus: company.verificationStatus
+      };
+    }));
+
+    res.json({
+      success: true,
+      companies: formattedCompanies,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(totalCompanies / parseInt(limit)),
+        total: totalCompanies
+      }
+    });
+  } catch (error) {
+    console.error('Get companies error:', error);
+    res.status(500).json({ message: 'Server error while fetching companies' });
+  }
+});
+
 // @route   GET /api/company/dashboard
 // @desc    Get company dashboard data
 // @access  Private (Company Employer)

@@ -92,7 +92,7 @@ const CompanyCard = ({ company }) => {
       </View>
 
       <Text style={styles.description} numberOfLines={2}>
-        Leading company in the industry
+        {company.description || 'Leading company in the industry'}
       </Text>
 
       <TouchableOpacity
