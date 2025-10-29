@@ -136,6 +136,85 @@ router.get('/users/recent', async (req, res) => {
   }
 });
 
+// @route   PATCH /api/admin/users/:id/verify
+// @desc    Verify user
+// @access  Private (Admin)
+router.patch('/users/:id/verify', async (req, res) => {
+  try {
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      { isVerified: true, verifiedAt: new Date() },
+      { new: true }
+    ).select('-password');
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({ user, message: 'User verified successfully' });
+  } catch (error) {
+    console.error('Verify user error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   POST /api/admin/users/bulk-import
+// @desc    Bulk import users from CSV
+// @access  Private (Admin)
+router.post('/users/bulk-import', async (req, res) => {
+  try {
+    const { users } = req.body;
+    
+    if (!users || !Array.isArray(users) || users.length === 0) {
+      return res.status(400).json({ message: 'Invalid users data' });
+    }
+
+    const results = {
+      imported: 0,
+      failed: 0,
+      errors: []
+    };
+
+    for (const userData of users) {
+      try {
+        // Check if user already exists
+        const existingUser = await User.findOne({ email: userData.email });
+        if (existingUser) {
+          results.failed++;
+          results.errors.push(`User with email ${userData.email} already exists`);
+          continue;
+        }
+
+        // Create new user
+        const user = new User({
+          name: userData.name,
+          email: userData.email,
+          password: userData.password,
+          role: userData.role || 'JOBSEEKER',
+          isActive: true,
+          isVerified: false
+        });
+
+        await user.save();
+        results.imported++;
+      } catch (error) {
+        results.failed++;
+        results.errors.push(`Failed to import ${userData.email}: ${error.message}`);
+      }
+    }
+
+    res.json({
+      message: `Successfully imported ${results.imported} users. Failed: ${results.failed}`,
+      imported: results.imported,
+      failed: results.failed,
+      errors: results.errors
+    });
+  } catch (error) {
+    console.error('Bulk import error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // @route   GET /api/admin/users
 // @desc    Get all users with pagination and filters
 // @access  Private (Admin)
@@ -214,6 +293,59 @@ router.get('/users/:id', requirePermission('canManageUsers'), async (req, res) =
 // @desc    Update user
 // @access  Private (Admin)
 router.put('/users/:id', requirePermission('canManageUsers'), [
+  body('firstName').optional().notEmpty().withMessage('First name cannot be empty'),
+  body('lastName').optional().notEmpty().withMessage('Last name cannot be empty'),
+  body('email').optional().isEmail().withMessage('Please include a valid email'),
+  body('userType').optional().isIn(['jobseeker', 'employer', 'admin', 'superadmin']).withMessage('Invalid user type'),
+  body('isActive').optional().isBoolean().withMessage('isActive must be boolean')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const user = await User.findById(req.params.id);
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Prevent non-superadmin from promoting to superadmin
+    if (req.body.userType === 'superadmin' && !req.user.isSuperAdmin()) {
+      return res.status(403).json({ message: 'Only super admin can create super admin accounts' });
+    }
+
+    const updates = req.body;
+    const allowedUpdates = ['firstName', 'lastName', 'email', 'phone', 'userType', 'isActive', 'isEmailVerified', 'adminPermissions'];
+    
+    const filteredUpdates = {};
+    Object.keys(updates).forEach(key => {
+      if (allowedUpdates.includes(key)) {
+        filteredUpdates[key] = updates[key];
+      }
+    });
+
+    const updatedUser = await User.findByIdAndUpdate(
+      req.params.id,
+      { $set: filteredUpdates },
+      { new: true, runValidators: true }
+    ).select('-password');
+
+    res.json({
+      message: 'User updated successfully',
+      user: updatedUser
+    });
+  } catch (error) {
+    console.error('Update user error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   PATCH /api/admin/users/:id
+// @desc    Update user (partial update)
+// @access  Private (Admin)
+router.patch('/users/:id', requirePermission('canManageUsers'), [
   body('firstName').optional().notEmpty().withMessage('First name cannot be empty'),
   body('lastName').optional().notEmpty().withMessage('Last name cannot be empty'),
   body('email').optional().isEmail().withMessage('Please include a valid email'),
