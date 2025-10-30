@@ -23,11 +23,20 @@ import JobsScreen from '../screens/Jobs/JobsScreen';
 import JobDetailsScreen from '../screens/Jobs/JobDetailsScreen';
 import JobApplicationScreen from '../screens/Jobs/JobApplicationScreen';
 import PostJobScreen from '../screens/Jobs/PostJobScreen';
+import EmployerJobsScreen from '../screens/Jobs/EmployerJobsScreen';
+import MyApplicationsScreen from '../screens/Jobs/MyApplicationsScreen';
 
 // Dashboard Screens
 import UserDashboardScreen from '../screens/Dashboard/UserDashboardScreen';
 import CompanyDashboardScreen from '../screens/Dashboard/CompanyDashboardScreen';
 import ConsultancyDashboardScreen from '../screens/Dashboard/ConsultancyDashboardScreen';
+import EmployerPostJobScreen from '../screens/Dashboard/EmployerPostJobScreen';
+import EmployerDraftJobsScreen from '../screens/Dashboard/EmployerDraftJobsScreen';
+import EmployerManageResponsesScreen from '../screens/Dashboard/EmployerManageResponsesScreen';
+import EmployerCandidateSearchScreen from '../screens/Dashboard/EmployerCandidateSearchScreen';
+import EmployerEmployeesScreen from '../screens/Dashboard/EmployerEmployeesScreen';
+import EmployerSocialUpdatesScreen from '../screens/Dashboard/EmployerSocialUpdatesScreen';
+import EmployerCreateSocialPostScreen from '../screens/Dashboard/EmployerCreateSocialPostScreen';
 
 // Admin Screens
 import AdminDashboardScreen from '../screens/Admin/AdminDashboardScreen';
@@ -293,6 +302,51 @@ const AppNavigator = () => {
           name="JobApplication" 
           component={JobApplicationScreen}
           options={{ title: 'Apply for Job' }}
+        />
+        <Stack.Screen 
+          name="MyApplications" 
+          component={MyApplicationsScreen}
+          options={{ title: 'My Applications' }}
+        />
+        <Stack.Screen 
+          name="EmployerJobs" 
+          component={EmployerJobsScreen}
+          options={{ title: 'Jobs Management' }}
+        />
+        <Stack.Screen 
+          name="EmployerPostJob" 
+          component={EmployerPostJobScreen}
+          options={{ title: 'Post Job' }}
+        />
+        <Stack.Screen 
+          name="EmployerDraftJobs" 
+          component={EmployerDraftJobsScreen}
+          options={{ title: 'Draft Jobs' }}
+        />
+        <Stack.Screen 
+          name="EmployerManageResponses" 
+          component={EmployerManageResponsesScreen}
+          options={{ title: 'Manage Job Responses' }}
+        />
+        <Stack.Screen 
+          name="EmployerCandidateSearch" 
+          component={EmployerCandidateSearchScreen}
+          options={{ title: 'Candidate Search' }}
+        />
+        <Stack.Screen 
+          name="EmployerEmployees" 
+          component={EmployerEmployeesScreen}
+          options={{ title: 'Employees' }}
+        />
+        <Stack.Screen 
+          name="EmployerSocialUpdates" 
+          component={EmployerSocialUpdatesScreen}
+          options={{ title: 'Social Updates' }}
+        />
+        <Stack.Screen 
+          name="EmployerCreateSocialPost" 
+          component={EmployerCreateSocialPostScreen}
+          options={{ title: 'Create Social Post' }}
         />
         <Stack.Screen 
           name="PostJob" 

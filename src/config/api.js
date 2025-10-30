@@ -1123,6 +1123,30 @@ class JobWalaAPI {
   async getKYCStatus() {
     return await this.request('/kyc/status');
   }
+
+  // Company Profile APIs
+  async getCompanyProfile() {
+    return await this.request('/company/me');
+  }
+
+  async updateCompanyProfile(profileData) {
+    return await this.request('/company/profile', {
+      method: 'PUT',
+      body: JSON.stringify(profileData),
+    });
+  }
+
+  // Consultancy Profile APIs
+  async getConsultancyProfile() {
+    return await this.request('/consultancy/me');
+  }
+
+  async updateConsultancyProfile(profileData) {
+    return await this.request('/consultancy/profile', {
+      method: 'PUT',
+      body: JSON.stringify(profileData),
+    });
+  }
 }
 
 const apiInstance = new JobWalaAPI();

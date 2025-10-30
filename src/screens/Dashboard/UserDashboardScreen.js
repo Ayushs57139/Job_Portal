@@ -84,7 +84,7 @@ const UserDashboardScreen = ({ navigation }) => {
 
   const menuItems = [
     { title: 'Browse Jobs', icon: 'briefcase', screen: 'Jobs', color: colors.primary },
-    { title: 'My Applications', icon: 'document-text', action: () => navigation.navigate('Jobs', { showMyApplications: true }), color: colors.info },
+    { title: 'My Applications', icon: 'document-text', screen: 'MyApplications', color: colors.info },
     { title: 'Saved Jobs', icon: 'bookmark', screen: 'SavedJobs', color: colors.warning },
     { title: 'My Profile', icon: 'person', screen: 'UserProfile', color: colors.success },
     { title: 'Resume Builder', icon: 'document', screen: 'ResumeBuilder', color: colors.secondary },

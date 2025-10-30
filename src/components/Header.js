@@ -47,11 +47,23 @@ const Header = ({ showBack = false, title }) => {
   const navigateTo = (screen, params = null) => {
     setActiveDropdown(null);
     setMobileMenuOpen(false);
-    if (params) {
-      navigation.navigate(screen, params);
-    } else {
-      navigation.navigate(screen);
+    // Block employers/admin from public site; route them to their dashboards
+    if (user && user.userType && user.userType !== 'jobseeker') {
+      const type = user.userType;
+      if (type === 'admin' || type === 'superadmin') {
+        navigation.navigate('AdminDashboard');
+        return;
+      }
+      if (type === 'company') {
+        navigation.navigate('CompanyDashboard');
+        return;
+      }
+      if (type === 'consultancy') {
+        navigation.navigate('ConsultancyDashboard');
+        return;
+      }
     }
+    if (params) navigation.navigate(screen, params); else navigation.navigate(screen);
   };
 
   // Navigation menu configuration
@@ -263,14 +275,51 @@ const Header = ({ showBack = false, title }) => {
           <View style={styles.headerActions}>
             {user ? (
               <View style={styles.userMenu}>
-                <View style={styles.userAvatar}>
-                  <Text style={styles.userInitial}>
-                    {(user.firstName || user.name || 'U')[0].toUpperCase()}
+                <TouchableOpacity 
+                  style={styles.userAvatarContainer}
+                  onPress={() => {
+                    // Navigate based on user type
+                    if (user.userType === 'employer') {
+                      if (user.employerType === 'company') {
+                        navigation.navigate('CompanyDashboard');
+                      } else if (user.employerType === 'consultancy') {
+                        navigation.navigate('ConsultancyDashboard');
+                      }
+                    } else if (user.userType === 'admin' || user.userType === 'superadmin') {
+                      navigation.navigate('AdminDashboard');
+                    } else {
+                      navigation.navigate('UserDashboard');
+                    }
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.userAvatar}>
+                    <Text style={styles.userInitial}>
+                      {(user.firstName || user.name || 'U')[0].toUpperCase()}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => {
+                    // Navigate based on user type
+                    if (user.userType === 'employer') {
+                      if (user.employerType === 'company') {
+                        navigation.navigate('CompanyDashboard');
+                      } else if (user.employerType === 'consultancy') {
+                        navigation.navigate('ConsultancyDashboard');
+                      }
+                    } else if (user.userType === 'admin' || user.userType === 'superadmin') {
+                      navigation.navigate('AdminDashboard');
+                    } else {
+                      navigation.navigate('UserDashboard');
+                    }
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.userName} numberOfLines={1}>
+                    {user.firstName || user.name}
                   </Text>
-                </View>
-                <Text style={styles.userName} numberOfLines={1}>
-                  {user.firstName || user.name}
-                </Text>
+                </TouchableOpacity>
                 <TouchableOpacity
                   onPress={handleLogout}
                   style={styles.logoutButton}
@@ -630,6 +679,9 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
     borderWidth: 1,
     borderColor: colors.border,
+  },
+  userAvatarContainer: {
+    // Container for clickable avatar
   },
   userAvatar: {
     width: 36,

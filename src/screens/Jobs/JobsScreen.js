@@ -127,47 +127,58 @@ const JobsScreen = ({ route }) => {
 
   const loadJobs = async () => {
     try {
-      const filters = {};
-      if (searchQuery) filters.search = searchQuery;
-      if (locationQuery) filters.location = locationQuery;
+      const employerView = route?.params?.employerView;
+      const employerStatus = route?.params?.status;
 
-      // Apply active filters
-      if (workMode.length > 0) filters.workMode = workMode.join(',');
-      if (workType.length > 0) filters.workType = workType.join(',');
-      if (workShift.length > 0) filters.workShift = workShift.join(',');
-      if (selectedExperience !== 'All Experience') filters.experience = selectedExperience;
+      if (employerView) {
+        const params = {};
+        if (employerStatus) params.status = employerStatus;
+        const response = await api.getMyJobs(params);
+        const myJobs = response.jobs || [];
+        setJobs(myJobs);
+      } else {
+        const filters = {};
+        if (searchQuery) filters.search = searchQuery;
+        if (locationQuery) filters.location = locationQuery;
 
-      const response = await api.getJobs(filters);
+        // Apply active filters
+        if (workMode.length > 0) filters.workMode = workMode.join(',');
+        if (workType.length > 0) filters.workType = workType.join(',');
+        if (workShift.length > 0) filters.workShift = workShift.join(',');
+        if (selectedExperience !== 'All Experience') filters.experience = selectedExperience;
+
+        const response = await api.getJobs(filters);
+        
+        // Apply client-side filtering based on route params
+        let filteredJobs = response.jobs || [];
       
-      // Apply client-side filtering based on route params
-      let filteredJobs = response.jobs || [];
-      
-      if (filterType && filterValue) {
-        filteredJobs = filteredJobs.filter(job => {
-          switch (filterType) {
-            case 'workMode':
-              return job.workMode?.toLowerCase() === filterValue;
-            case 'workType':
-              return job.jobType?.toLowerCase().includes(filterValue) || 
-                     job.workType?.toLowerCase() === filterValue;
-            case 'workShift':
-              return job.workShift?.toLowerCase() === filterValue;
-            case 'experience':
-              if (filterValue === 'fresher') {
-                return job.experienceRequired === '0-1 year' || 
-                       job.experienceRequired?.toLowerCase().includes('fresher');
-              }
-              return true;
-            case 'gender':
-              return job.preferredGender?.toLowerCase() === filterValue || 
-                     !job.preferredGender;
-            default:
-              return true;
-          }
-        });
+        if (filterType && filterValue) {
+          filteredJobs = filteredJobs.filter(job => {
+            switch (filterType) {
+              case 'workMode':
+                return job.workMode?.toLowerCase() === filterValue;
+              case 'workType':
+                return job.jobType?.toLowerCase().includes(filterValue) || 
+                       job.workType?.toLowerCase() === filterValue;
+              case 'workShift':
+                return job.workShift?.toLowerCase() === filterValue;
+              case 'experience':
+                if (filterValue === 'fresher') {
+                  return job.experienceRequired === '0-1 year' || 
+                         job.experienceRequired?.toLowerCase().includes('fresher');
+                }
+                return true;
+              case 'gender':
+                return job.preferredGender?.toLowerCase() === filterValue || 
+                       !job.preferredGender;
+              default:
+                return true;
+            }
+          });
+        }
+
+        setJobs(filteredJobs);
       }
-
-      setJobs(filteredJobs);
     } catch (error) {
       console.error('Error loading jobs:', error);
     } finally {

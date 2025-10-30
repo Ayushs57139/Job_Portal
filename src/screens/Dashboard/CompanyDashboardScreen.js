@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, spacing, borderRadius, typography, shadows } from '../../styles/theme';
 import Header from '../../components/Header';
+import EmployerSidebar from '../../components/EmployerSidebar';
 import api from '../../config/api';
 
 const CompanyDashboardScreen = ({ navigation }) => {
@@ -16,6 +17,7 @@ const CompanyDashboardScreen = ({ navigation }) => {
     shortlistedCandidates: 0,
     pendingReviews: 0,
   });
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     loadDashboardData();
@@ -27,19 +29,18 @@ const CompanyDashboardScreen = ({ navigation }) => {
       const userData = await api.getCurrentUserFromStorage();
       setUser(userData);
 
-      // Fetch employer stats
+      // Fetch employer dashboard (dynamic)
       try {
-        const employerData = await api.getEmployerStats();
-        if (employerData && employerData.stats) {
+        const dashboard = await api.getEmployerDashboard();
+        const statusCounts = dashboard?.stats?.statusCounts || {};
           setStats({
-            activeJobs: employerData.stats.activeJobs || 0,
-            totalApplications: employerData.stats.totalApplications || 0,
-            shortlistedCandidates: employerData.stats.shortlistedCandidates || 0,
-            pendingReviews: employerData.stats.pendingApplications || 0,
-          });
-        }
+          activeJobs: dashboard?.stats?.activeJobs || 0,
+          totalApplications: dashboard?.stats?.totalApplications || 0,
+          shortlistedCandidates: statusCounts.shortlisted || 0,
+          pendingReviews: (statusCounts.applied || 0) + (statusCounts.viewed || 0),
+        });
       } catch (statsError) {
-        console.log('Could not load stats:', statsError.message);
+        console.log('Could not load dashboard:', statsError.message);
       }
     } catch (error) {
       console.error('Error loading dashboard:', error);
@@ -77,7 +78,7 @@ const CompanyDashboardScreen = ({ navigation }) => {
   };
 
   const menuItems = [
-    { title: 'Post New Job', icon: 'add-circle', screen: 'PostJob', color: colors.primary },
+    { title: 'Post New Job', icon: 'add-circle', screen: 'EmployerPostJob', color: colors.primary },
     { title: 'My Jobs', icon: 'briefcase', action: () => navigateToMyJobs(), color: colors.info },
     { title: 'Applications', icon: 'people', action: () => navigateToApplications(), color: colors.warning },
     { title: 'Company Profile', icon: 'business', screen: 'CompanyProfile', color: colors.success },
@@ -88,11 +89,11 @@ const CompanyDashboardScreen = ({ navigation }) => {
   ];
 
   const navigateToMyJobs = () => {
-    navigation.navigate('Jobs', { employerView: true });
+    navigation.navigate('EmployerJobs');
   };
 
   const navigateToApplications = () => {
-    navigation.navigate('Jobs', { showApplications: true });
+    navigation.navigate('EmployerJobs');
   };
 
   if (loading) {
@@ -106,6 +107,9 @@ const CompanyDashboardScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
+      <View style={styles.sidebarWrapper}>
+        <EmployerSidebar permanent navigation={navigation} role="company" activeKey="overview" />
+      </View>
       <ScrollView 
         contentContainerStyle={styles.scrollContent}
         refreshControl={
@@ -117,31 +121,33 @@ const CompanyDashboardScreen = ({ navigation }) => {
           />
         }
       >
-        {/* Welcome Section */}
-        <LinearGradient
-          colors={[colors.gradientStart, colors.gradientEnd]}
-          style={styles.welcomeCard}
-        >
-          <Text style={styles.welcomeText}>Welcome back,</Text>
-          <Text style={styles.companyName}>
-            {user?.profile?.company?.name || user?.firstName + ' ' + user?.lastName || 'Company'}
+        {/* Header Section - Admin style */}
+        <View style={styles.headerBar}>
+          <View style={styles.headerLeft}>
+            <Text style={styles.headerTitle}>Company Dashboard</Text>
+            <Text style={styles.headerSubtitle}>
+              Welcome, {user?.firstName || 'User'}
           </Text>
-          <Text style={styles.userType}>Company Dashboard</Text>
-        </LinearGradient>
+          </View>
+          <TouchableOpacity style={styles.headerLogoutButton} onPress={handleLogout}>
+            <Ionicons name="log-out-outline" size={18} color={'#FFF'} />
+            <Text style={styles.headerLogoutText}>Logout</Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Stats Cards */}
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
-            <View style={[styles.statIconContainer, { backgroundColor: `${colors.primary}15` }]}>
-              <Ionicons name="briefcase" size={24} color={colors.primary} />
+            <View style={[styles.statIconContainer, { backgroundColor: 'rgba(74,144,226,0.15)' }]}>
+              <Ionicons name="briefcase" size={24} color="#4A90E2" />
             </View>
             <Text style={styles.statValue}>{stats.activeJobs}</Text>
             <Text style={styles.statLabel}>Active Jobs</Text>
           </View>
 
           <View style={styles.statCard}>
-            <View style={[styles.statIconContainer, { backgroundColor: `${colors.info}15` }]}>
-              <Ionicons name="people" size={24} color={colors.info} />
+            <View style={[styles.statIconContainer, { backgroundColor: 'rgba(46,204,113,0.15)' }]}>
+              <Ionicons name="people" size={24} color="#2ECC71" />
             </View>
             <Text style={styles.statValue}>{stats.totalApplications}</Text>
             <Text style={styles.statLabel}>Applications</Text>
@@ -150,52 +156,22 @@ const CompanyDashboardScreen = ({ navigation }) => {
 
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
-            <View style={[styles.statIconContainer, { backgroundColor: `${colors.success}15` }]}>
-              <Ionicons name="checkmark-circle" size={24} color={colors.success} />
+            <View style={[styles.statIconContainer, { backgroundColor: 'rgba(52,152,219,0.15)' }]}>
+              <Ionicons name="checkmark-circle" size={24} color="#3498DB" />
             </View>
             <Text style={styles.statValue}>{stats.shortlistedCandidates}</Text>
             <Text style={styles.statLabel}>Shortlisted</Text>
           </View>
 
           <View style={styles.statCard}>
-            <View style={[styles.statIconContainer, { backgroundColor: `${colors.warning}15` }]}>
-              <Ionicons name="time" size={24} color={colors.warning} />
+            <View style={[styles.statIconContainer, { backgroundColor: 'rgba(241,196,15,0.15)' }]}>
+              <Ionicons name="time" size={24} color="#F1C40F" />
             </View>
             <Text style={styles.statValue}>{stats.pendingReviews}</Text>
             <Text style={styles.statLabel}>Pending Review</Text>
           </View>
         </View>
 
-        {/* Quick Actions */}
-        <Text style={styles.sectionTitle}>Quick Actions</Text>
-        <View style={styles.menuGrid}>
-          {menuItems.map((item, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.menuItem}
-              onPress={() => {
-                if (item.action) {
-                  item.action();
-                } else if (item.screen === 'KYCForm') {
-                  navigation.navigate(item.screen, { userType: 'company' });
-                } else {
-                  navigation.navigate(item.screen);
-                }
-              }}
-            >
-              <View style={[styles.menuIcon, { backgroundColor: `${item.color}15` }]}>
-                <Ionicons name={item.icon} size={28} color={item.color} />
-              </View>
-              <Text style={styles.menuTitle}>{item.title}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Logout Button */}
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={20} color={colors.error} />
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity>
       </ScrollView>
     </View>
   );
@@ -204,7 +180,11 @@ const CompanyDashboardScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: { 
     flex: 1, 
-    backgroundColor: colors.background 
+    flexDirection: 'row',
+    backgroundColor: '#F5F6FA' 
+  },
+  sidebarWrapper: {
+    width: 260,
   },
   loadingContainer: {
     flex: 1,
@@ -218,30 +198,45 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   scrollContent: { 
+    flexGrow: 1,
     padding: spacing.md,
     paddingBottom: spacing.xxl,
   },
-  welcomeCard: { 
-    borderRadius: borderRadius.lg, 
-    padding: spacing.xl, 
-    marginBottom: spacing.lg 
+  headerBar: {
+    backgroundColor: '#FFF',
+    padding: spacing.lg,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    marginBottom: spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between'
   },
-  welcomeText: { 
-    ...typography.body1, 
-    color: colors.textWhite, 
-    opacity: 0.9,
-    marginBottom: spacing.xs,
+  headerLeft: {
+    gap: 4,
   },
-  companyName: {
-    ...typography.h2,
-    color: colors.textWhite,
+  headerTitle: {
+    fontSize: 20,
     fontWeight: '700',
-    marginBottom: spacing.xs,
+    color: '#333',
   },
-  userType: {
-    ...typography.body2,
-    color: colors.textWhite,
-    opacity: 0.8,
+  headerSubtitle: {
+    marginTop: 4,
+    color: '#666',
+  },
+  headerLogoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E74C3C',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.md,
+    gap: 6,
+  },
+  headerLogoutText: {
+    color: '#FFF',
+    fontWeight: '700'
   },
   statsContainer: {
     flexDirection: 'row',
@@ -250,11 +245,12 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: colors.cardBackground,
+    backgroundColor: '#FFF',
     borderRadius: borderRadius.md,
     padding: spacing.md,
     alignItems: 'center',
-    ...shadows.sm,
+    borderWidth: 1,
+    borderColor: '#EAEAEA',
   },
   statIconContainer: {
     width: 48,
@@ -274,58 +270,6 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textSecondary,
     textAlign: 'center',
-  },
-  sectionTitle: {
-    ...typography.h5,
-    color: colors.text,
-    fontWeight: '700',
-    marginTop: spacing.lg,
-    marginBottom: spacing.md,
-  },
-  menuGrid: { 
-    flexDirection: 'row', 
-    flexWrap: 'wrap', 
-    gap: spacing.md,
-    marginBottom: spacing.lg,
-  },
-  menuItem: { 
-    width: '47%', 
-    backgroundColor: colors.cardBackground, 
-    borderRadius: borderRadius.lg, 
-    padding: spacing.lg, 
-    alignItems: 'center', 
-    ...shadows.md 
-  },
-  menuIcon: { 
-    width: 60, 
-    height: 60, 
-    borderRadius: borderRadius.md, 
-    alignItems: 'center', 
-    justifyContent: 'center', 
-    marginBottom: spacing.sm 
-  },
-  menuTitle: { 
-    ...typography.body2, 
-    color: colors.text, 
-    fontWeight: '600', 
-    textAlign: 'center' 
-  },
-  logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    marginTop: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.error,
-    gap: spacing.xs,
-  },
-  logoutText: {
-    ...typography.button,
-    color: colors.error,
-    fontWeight: '600',
   },
 });
 

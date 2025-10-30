@@ -58,17 +58,17 @@ const CompanyCard = ({ company }) => {
   return (
     <View style={styles.card}>
       <View style={styles.header}>
-        <View style={[styles.avatar, { backgroundColor: getAvatarColor(company.name) }]}>
-          <Text style={styles.avatarText}>{getInitials(company.name)}</Text>
+        <View style={[styles.avatar, { backgroundColor: getAvatarColor(company.profile?.company?.name || company.name) }]}>
+          <Text style={styles.avatarText}>{getInitials(company.profile?.company?.name || company.name)}</Text>
         </View>
         
         <View style={styles.headerInfo}>
           <Text style={styles.companyName} numberOfLines={1}>
-            {company.name}
+            {company.profile?.company?.name || company.name}
           </Text>
           <View style={styles.industryBadge}>
             <Text style={styles.industryText}>
-              {company.industry || 'Technology'}
+              {company.profile?.company?.industry || company.industry || 'Technology'}
             </Text>
           </View>
         </View>
@@ -92,7 +92,7 @@ const CompanyCard = ({ company }) => {
       </View>
 
       <Text style={styles.description} numberOfLines={2}>
-        {company.description || 'Leading company in the industry'}
+        {company.profile?.company?.description || company.description || 'Leading company in the industry'}
       </Text>
 
       <TouchableOpacity

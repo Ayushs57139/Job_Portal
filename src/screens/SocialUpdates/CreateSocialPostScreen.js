@@ -17,7 +17,7 @@ import { colors, typography, spacing, borderRadius, shadows } from '../../styles
 import Header from '../../components/Header';
 import api from '../../config/api';
 
-const CreateSocialPostScreen = ({ navigation }) => {
+const CreateSocialPostScreen = ({ navigation, route }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -194,9 +194,11 @@ const CreateSocialPostScreen = ({ navigation }) => {
     { value: 'event_announcement', label: 'Event Announcement' },
   ];
 
+  const hideHeader = route?.params?.hideHeader === true;
+
   return (
     <View style={styles.container}>
-      <Header />
+      {!hideHeader && <Header />}
       
       <ScrollView
         contentContainerStyle={styles.scrollContent}

@@ -39,6 +39,19 @@ const userSchema = new mongoose.Schema({
     trim: true,
     match: [/^[6-9]\d{9}$/, 'Please enter a valid 10-digit WhatsApp number']
   },
+  // HR/Recruiter details
+  hrName: {
+    type: String,
+    trim: true
+  },
+  hrDesignation: {
+    type: String,
+    trim: true
+  },
+  gender: {
+    type: String,
+    enum: ['Male', 'Female', 'Other']
+  },
   userType: {
     type: String,
     enum: ['jobseeker', 'employer', 'admin', 'superadmin'],
@@ -207,6 +220,10 @@ const userSchema = new mongoose.Schema({
         type: String,
         trim: true
       },
+      companyType: {
+        type: String,
+        enum: ['Indian MNC', 'Foreign MNC', 'Govt/PSU', 'Startup', 'Unicorn', 'Corporate', 'Consultancy']
+      },
       website: {
         type: String,
         trim: true
@@ -235,7 +252,7 @@ const userSchema = new mongoose.Schema({
       }],
       size: {
         type: String,
-        enum: ['1-10', '11-50', '51-200', '201-500', '501-1000', '1000+']
+        enum: ['0-10', '11-25', '26-50', '51-100', '101-200', '201-500', '500-1000', '1001-2000', '2000-3000', '3000 Above']
       },
       description: {
         type: String,
@@ -248,7 +265,21 @@ const userSchema = new mongoose.Schema({
       location: {
         city: String,
         state: String,
+        locality: String,
+        areaPincode: String,
         country: String
+      },
+      establishedYear: {
+        type: String,
+        trim: true
+      },
+      socialMediaProfile: {
+        type: String,
+        enum: ['Facebook', 'Instagram', 'LinkedIn', 'Telegram', 'Arattai Messenger', 'WhatsApp', 'YouTube', 'X / Twitter', 'Grokipedia', 'Wikipedia']
+      },
+      socialMediaLink: {
+        type: String,
+        trim: true
       },
       // For consultancies
       consultancy: {

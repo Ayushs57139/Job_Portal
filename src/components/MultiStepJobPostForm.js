@@ -37,8 +37,8 @@ import WeekDaysField from './FormFields/WeekDaysField';
 import QuestionBuilderField from './FormFields/QuestionBuilderField';
 import Button from './Button';
 
-const MultiStepJobPostForm = ({ onSubmit, initialData = {}, onCancel }) => {
-  const [currentStep, setCurrentStep] = useState(0);
+const MultiStepJobPostForm = ({ onSubmit, initialData = {}, onCancel, onChange, initialStep = 0, enableAutosave = false, autosaveKey = null }) => {
+  const [currentStep, setCurrentStep] = useState(initialStep || 0);
   const [formData, setFormData] = useState(initialData);
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -48,12 +48,30 @@ const MultiStepJobPostForm = ({ onSubmit, initialData = {}, onCancel }) => {
   const isLastStep = currentStep === formSteps.length - 1;
   const isFirstStep = currentStep === 0;
 
+  // Notify changes and autosave
+  const notifyChange = async (nextData, nextStep = currentStep) => {
+    if (onChange) {
+      try { onChange(nextData, nextStep); } catch (_) {}
+    }
+    if (enableAutosave && autosaveKey) {
+      try {
+        const payload = { formData: nextData, currentStep: nextStep, updatedAt: Date.now() };
+        // Defer import to avoid cyclic deps
+        const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+        await AsyncStorage.setItem(autosaveKey, JSON.stringify(payload));
+      } catch (e) {
+        // ignore autosave errors
+      }
+    }
+  };
+
   // Update form field value
   const handleFieldChange = (fieldName, value) => {
-    setFormData((prev) => ({
-      ...prev,
-      [fieldName]: value,
-    }));
+    setFormData((prev) => {
+      const next = { ...prev, [fieldName]: value };
+      notifyChange(next);
+      return next;
+    });
     
     // Clear error for this field
     if (errors[fieldName]) {
@@ -318,6 +336,7 @@ const MultiStepJobPostForm = ({ onSubmit, initialData = {}, onCancel }) => {
         handleSubmit();
       } else {
         setCurrentStep((prev) => prev + 1);
+        notifyChange(formData, currentStep + 1);
         scrollViewRef.current?.scrollTo({ y: 0, animated: false });
       }
     } else {
@@ -328,7 +347,11 @@ const MultiStepJobPostForm = ({ onSubmit, initialData = {}, onCancel }) => {
   // Navigate to previous step
   const handlePrevious = () => {
     if (!isFirstStep) {
-      setCurrentStep((prev) => prev - 1);
+      setCurrentStep((prev) => {
+        const next = prev - 1;
+        notifyChange(formData, next);
+        return next;
+      });
       scrollViewRef.current?.scrollTo({ y: 0, animated: false });
     }
   };
