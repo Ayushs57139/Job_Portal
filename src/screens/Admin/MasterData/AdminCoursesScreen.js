@@ -7,7 +7,7 @@ const AdminCoursesScreen = ({ navigation }) => {
       navigation={navigation}
       title="Courses"
       subtitle="Manage courses master data"
-      apiEndpoint="/api/admin/courses"
+      apiEndpoint="/admin/master-data/courses"
       screenName="AdminCourses"
       fieldName="name"
     />

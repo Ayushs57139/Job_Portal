@@ -103,8 +103,6 @@ const ConsultancyRegisterScreen = ({ navigation }) => {
         email: formData.email,
         phone: formData.phone,
         password: formData.password,
-        userType: 'employer',
-        employerType: 'consultancy',
         consultancy: {
           name: formData.consultancyName,
           designation: formData.designation,
@@ -112,26 +110,35 @@ const ConsultancyRegisterScreen = ({ navigation }) => {
         },
       };
 
-      const response = await api.register(registrationData);
+      console.log('Attempting consultancy registration...');
+      const response = await api.consultancyRegister(registrationData);
+      console.log('Registration response:', response);
 
-      if (response.token) {
+      if (response && response.token) {
+        console.log('Registration successful, navigating to KYC form...');
         Alert.alert(
           'Success',
-          'Registration successful! Redirecting to your dashboard...',
+          'Registration successful! Redirecting to KYC verification...',
           [
             {
               text: 'OK',
               onPress: () => {
-                navigation.reset({
-                  index: 0,
-                  routes: [{ name: 'ConsultancyDashboard' }],
-                });
+                console.log('Navigating to KYC form...');
+                navigation.navigate('KYCForm', { userType: 'consultancy' });
               },
             },
           ]
         );
+        // Navigate immediately after a short delay to ensure alert shows
+        setTimeout(() => {
+          navigation.navigate('KYCForm', { userType: 'consultancy' });
+        }, 500);
+      } else {
+        console.log('Registration failed: No token in response');
+        Alert.alert('Registration Failed', 'Registration was not successful. Please try again.');
       }
     } catch (error) {
+      console.error('Registration error:', error);
       Alert.alert('Registration Failed', error.message || 'Please check your details and try again');
     } finally {
       setLoading(false);

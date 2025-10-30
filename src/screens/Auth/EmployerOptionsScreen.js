@@ -48,7 +48,7 @@ const EmployerOptionsScreen = ({ navigation }) => {
               {/* Buttons */}
               <TouchableOpacity
                 style={styles.loginButton}
-                onPress={() => navigation.navigate('Login', { userType: 'employer', employerType: 'company' })}
+                onPress={() => navigation.navigate('CompanyLogin')}
               >
                 <Ionicons name="log-in-outline" size={18} color="#fff" />
                 <Text style={styles.loginButtonText}>Company Login</Text>
@@ -84,7 +84,7 @@ const EmployerOptionsScreen = ({ navigation }) => {
               {/* Buttons */}
               <TouchableOpacity
                 style={styles.loginButton}
-                onPress={() => navigation.navigate('Login', { userType: 'employer', employerType: 'consultancy' })}
+                onPress={() => navigation.navigate('ConsultancyLogin')}
               >
                 <Ionicons name="log-in-outline" size={18} color="#fff" />
                 <Text style={styles.loginButtonText}>Consultancy Login</Text>

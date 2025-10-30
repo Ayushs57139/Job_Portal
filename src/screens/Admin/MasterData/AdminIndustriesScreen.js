@@ -7,7 +7,7 @@ const AdminIndustriesScreen = ({ navigation }) => {
       navigation={navigation}
       title="Industries"
       subtitle="Manage industries master data"
-      apiEndpoint="/api/admin/industries"
+      apiEndpoint="/admin/master-data/industries"
       screenName="AdminIndustries"
       fieldName="name"
     />

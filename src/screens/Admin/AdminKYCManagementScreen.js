@@ -139,7 +139,11 @@ const AdminKYCManagementScreen = ({ navigation }) => {
 
   const handleOpenDocument = (url) => {
     if (url) {
-      Linking.openURL(url).catch(err => {
+      // Construct full URL
+      const baseUrl = API_URL.replace('/api', '');
+      const fullUrl = url.startsWith('http') ? url : `${baseUrl}${url}`;
+      
+      Linking.openURL(fullUrl).catch(err => {
         Alert.alert('Error', 'Could not open document');
       });
     } else {

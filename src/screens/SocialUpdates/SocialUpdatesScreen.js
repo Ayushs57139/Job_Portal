@@ -11,6 +11,7 @@ import {
   Alert,
   RefreshControl,
   Modal,
+  ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, typography, spacing, borderRadius, shadows } from '../../styles/theme';
@@ -31,6 +32,10 @@ const SocialUpdatesScreen = ({ navigation }) => {
   const [selectedPost, setSelectedPost] = useState(null);
   const [commentText, setCommentText] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
+
+  // View all comments modal state
+  const [viewCommentsModalVisible, setViewCommentsModalVisible] = useState(false);
+  const [commentsPost, setCommentsPost] = useState(null);
 
   useEffect(() => {
     loadUserData();
@@ -181,6 +186,60 @@ const SocialUpdatesScreen = ({ navigation }) => {
     }
   };
 
+  const openViewCommentsModal = (post) => {
+    setCommentsPost(post);
+    setViewCommentsModalVisible(true);
+  };
+
+  const closeViewCommentsModal = () => {
+    setViewCommentsModalVisible(false);
+    setCommentsPost(null);
+  };
+
+  const handleShare = async (post) => {
+    if (!currentUser) {
+      Alert.alert('Login Required', 'Please login to share posts.');
+      return;
+    }
+
+    Alert.alert(
+      'Share Post',
+      'Choose a platform to share',
+      [
+        { text: 'WhatsApp', onPress: () => shareToPlaystore(post, 'whatsapp') },
+        { text: 'Facebook', onPress: () => shareToPlaystore(post, 'facebook') },
+        { text: 'Twitter', onPress: () => shareToPlaystore(post, 'twitter') },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  };
+
+  const shareToPlaystore = async (post, platform) => {
+    try {
+      await api.shareSocialUpdate(post._id, platform);
+      
+      // Update local state
+      setPosts((prevPosts) =>
+        prevPosts.map((p) =>
+          p._id === post._id
+            ? {
+                ...p,
+                engagement: {
+                  ...p.engagement,
+                  shares: (p.engagement?.shares || 0) + 1,
+                },
+              }
+            : p
+        )
+      );
+
+      Alert.alert('Success', 'Post shared successfully!');
+    } catch (error) {
+      console.error('Error sharing post:', error);
+      Alert.alert('Error', 'Failed to share post. Please try again.');
+    }
+  };
+
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -266,12 +325,16 @@ const SocialUpdatesScreen = ({ navigation }) => {
 
         {/* Engagement Stats */}
         <View style={styles.engagementStats}>
-          <Text style={styles.engagementText}>
-            {item.engagement?.likes || 0} likes
-          </Text>
-          <Text style={styles.engagementText}>
-            {item.engagement?.comments || 0} comments
-          </Text>
+          <TouchableOpacity onPress={() => item.engagement?.likes > 0 && Alert.alert('Likes', `${item.engagement.likes} people liked this post`)}>
+            <Text style={styles.engagementText}>
+              {item.engagement?.likes || 0} likes
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => item.comments && item.comments.length > 0 && openViewCommentsModal(item)}>
+            <Text style={styles.engagementText}>
+              {item.engagement?.comments || 0} comments
+            </Text>
+          </TouchableOpacity>
           <Text style={styles.engagementText}>
             {item.engagement?.shares || 0} shares
           </Text>
@@ -301,7 +364,10 @@ const SocialUpdatesScreen = ({ navigation }) => {
             <Text style={styles.actionButtonText}>Comment</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionButton}>
+          <TouchableOpacity 
+            style={styles.actionButton}
+            onPress={() => handleShare(item)}
+          >
             <Ionicons name="share-outline" size={20} color={colors.textSecondary} />
             <Text style={styles.actionButtonText}>Share</Text>
           </TouchableOpacity>
@@ -321,7 +387,7 @@ const SocialUpdatesScreen = ({ navigation }) => {
               </View>
             ))}
             {item.comments.length > 2 && (
-              <TouchableOpacity onPress={() => openCommentModal(item)}>
+              <TouchableOpacity onPress={() => openViewCommentsModal(item)}>
                 <Text style={styles.viewMoreComments}>
                   View all {item.comments.length} comments
                 </Text>
@@ -387,7 +453,7 @@ const SocialUpdatesScreen = ({ navigation }) => {
         ListEmptyComponent={renderEmpty}
       />
 
-      {/* Comment Modal */}
+      {/* Add Comment Modal */}
       <Modal
         visible={commentModalVisible}
         animationType="slide"
@@ -435,6 +501,130 @@ const SocialUpdatesScreen = ({ navigation }) => {
               )}
             </TouchableOpacity>
           </View>
+        </View>
+      </Modal>
+
+      {/* View All Comments Modal */}
+      <Modal
+        visible={viewCommentsModalVisible}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={closeViewCommentsModal}
+      >
+        <View style={styles.fullModalContainer}>
+          <View style={styles.fullModalHeader}>
+            <Text style={styles.fullModalTitle}>Comments</Text>
+            <TouchableOpacity onPress={closeViewCommentsModal}>
+              <Ionicons name="close" size={28} color={colors.text} />
+            </TouchableOpacity>
+          </View>
+
+          {commentsPost && (
+            <ScrollView style={styles.fullModalContent}>
+              {/* Post Preview */}
+              <View style={styles.postPreviewCard}>
+                <View style={styles.postPreviewHeader}>
+                  <View style={styles.authorInfo}>
+                    <View style={styles.avatarContainer}>
+                      {commentsPost.authorLogo ? (
+                        <Image source={{ uri: commentsPost.authorLogo }} style={styles.avatar} />
+                      ) : (
+                        <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                          <Ionicons name="business" size={20} color={colors.textSecondary} />
+                        </View>
+                      )}
+                    </View>
+                    <View style={styles.authorDetails}>
+                      <Text style={styles.authorName}>{commentsPost.authorName}</Text>
+                      <Text style={styles.postDate}>{formatDate(commentsPost.createdAt)}</Text>
+                    </View>
+                  </View>
+                </View>
+                <Text style={styles.postPreviewTitle}>{commentsPost.title}</Text>
+                <Text style={styles.postPreviewContent} numberOfLines={3}>
+                  {commentsPost.content}
+                </Text>
+              </View>
+
+              {/* Comments List */}
+              <View style={styles.commentsListContainer}>
+                <Text style={styles.commentsListTitle}>
+                  {commentsPost.comments?.length || 0} Comments
+                </Text>
+
+                {commentsPost.comments && commentsPost.comments.length > 0 ? (
+                  commentsPost.comments.map((comment, index) => (
+                    <View key={index} style={styles.fullCommentCard}>
+                      <View style={styles.fullCommentHeader}>
+                        <View style={styles.commentUserInfo}>
+                          <View style={styles.commentAvatar}>
+                            <Ionicons name="person-circle" size={36} color={colors.primary} />
+                          </View>
+                          <View>
+                            <Text style={styles.fullCommentAuthor}>
+                              {comment.user?.firstName} {comment.user?.lastName}
+                            </Text>
+                            <Text style={styles.fullCommentDate}>
+                              {formatDate(comment.createdAt)}
+                            </Text>
+                          </View>
+                        </View>
+                        {comment.likes > 0 && (
+                          <View style={styles.commentLikesContainer}>
+                            <Ionicons name="heart" size={16} color={colors.error} />
+                            <Text style={styles.commentLikesCount}>{comment.likes}</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text style={styles.fullCommentContent}>{comment.content}</Text>
+                      
+                      {/* Replies */}
+                      {comment.replies && comment.replies.length > 0 && (
+                        <View style={styles.repliesContainer}>
+                          {comment.replies.map((reply, replyIndex) => (
+                            <View key={replyIndex} style={styles.replyCard}>
+                              <View style={styles.replyHeader}>
+                                <Ionicons name="person-circle" size={28} color={colors.info} />
+                                <View style={styles.replyInfo}>
+                                  <Text style={styles.replyAuthor}>
+                                    {reply.user?.firstName} {reply.user?.lastName}
+                                  </Text>
+                                  <Text style={styles.replyDate}>
+                                    {formatDate(reply.createdAt)}
+                                  </Text>
+                                </View>
+                              </View>
+                              <Text style={styles.replyContent}>{reply.content}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      )}
+                    </View>
+                  ))
+                ) : (
+                  <View style={styles.noCommentsContainer}>
+                    <Ionicons name="chatbubbles-outline" size={48} color={colors.border} />
+                    <Text style={styles.noCommentsText}>No comments yet</Text>
+                    <Text style={styles.noCommentsSubtext}>Be the first to comment!</Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Add Comment Button */}
+              {currentUser && (
+                <TouchableOpacity
+                  style={styles.addCommentButton}
+                  onPress={() => {
+                    closeViewCommentsModal();
+                    openCommentModal(commentsPost);
+                  }}
+                >
+                  <Ionicons name="add-circle" size={24} color={colors.primary} />
+                  <Text style={styles.addCommentButtonText}>Add a comment</Text>
+                </TouchableOpacity>
+              )}
+            </ScrollView>
+          )}
         </View>
       </Modal>
     </View>
@@ -715,7 +905,169 @@ const styles = StyleSheet.create({
     color: colors.textWhite,
     fontWeight: '600',
   },
+  // Full Modal Styles
+  fullModalContainer: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  fullModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.cardBackground,
+  },
+  fullModalTitle: {
+    ...typography.h5,
+    color: colors.text,
+    fontWeight: '700',
+  },
+  fullModalContent: {
+    flex: 1,
+    padding: spacing.md,
+  },
+  postPreviewCard: {
+    backgroundColor: colors.cardBackground,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
+    ...shadows.sm,
+  },
+  postPreviewHeader: {
+    marginBottom: spacing.sm,
+  },
+  postPreviewTitle: {
+    ...typography.h6,
+    color: colors.text,
+    fontWeight: '700',
+    marginBottom: spacing.xs,
+  },
+  postPreviewContent: {
+    ...typography.body2,
+    color: colors.textSecondary,
+    lineHeight: 20,
+  },
+  commentsListContainer: {
+    marginBottom: spacing.lg,
+  },
+  commentsListTitle: {
+    ...typography.h6,
+    color: colors.text,
+    fontWeight: '700',
+    marginBottom: spacing.md,
+  },
+  fullCommentCard: {
+    backgroundColor: colors.cardBackground,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    ...shadows.sm,
+  },
+  fullCommentHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: spacing.sm,
+  },
+  commentUserInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  commentAvatar: {
+    marginRight: spacing.sm,
+  },
+  fullCommentAuthor: {
+    ...typography.body1,
+    color: colors.text,
+    fontWeight: '600',
+  },
+  fullCommentDate: {
+    ...typography.caption,
+    color: colors.textSecondary,
+  },
+  commentLikesContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  commentLikesCount: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontWeight: '600',
+  },
+  fullCommentContent: {
+    ...typography.body2,
+    color: colors.text,
+    lineHeight: 22,
+  },
+  repliesContainer: {
+    marginTop: spacing.md,
+    paddingLeft: spacing.lg,
+    borderLeftWidth: 2,
+    borderLeftColor: colors.border,
+  },
+  replyCard: {
+    marginBottom: spacing.sm,
+  },
+  replyHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+    gap: spacing.xs,
+  },
+  replyInfo: {
+    flex: 1,
+  },
+  replyAuthor: {
+    ...typography.body2,
+    color: colors.text,
+    fontWeight: '600',
+  },
+  replyDate: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontSize: 11,
+  },
+  replyContent: {
+    ...typography.body2,
+    color: colors.textSecondary,
+    lineHeight: 20,
+    paddingLeft: 36,
+  },
+  noCommentsContainer: {
+    alignItems: 'center',
+    paddingVertical: spacing.xxl,
+  },
+  noCommentsText: {
+    ...typography.h6,
+    color: colors.text,
+    fontWeight: '600',
+    marginTop: spacing.md,
+  },
+  noCommentsSubtext: {
+    ...typography.body2,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+  },
+  addCommentButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.cardBackground,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    marginVertical: spacing.md,
+    gap: spacing.sm,
+    ...shadows.sm,
+  },
+  addCommentButtonText: {
+    ...typography.button,
+    color: colors.primary,
+    fontWeight: '600',
+  },
 });
 
 export default SocialUpdatesScreen;
-

@@ -137,6 +137,36 @@ class JobWalaAPI {
     return data;
   }
 
+  async companyLogin(credentials) {
+    const data = await this.request('/company/login', {
+      method: 'POST',
+      body: JSON.stringify(credentials),
+    });
+
+    if (data.token) {
+      await this.setToken(data.token);
+      await AsyncStorage.setItem('user', JSON.stringify(data.user));
+      await AsyncStorage.setItem('currentUser', JSON.stringify(data.user));
+    }
+
+    return data;
+  }
+
+  async consultancyLogin(credentials) {
+    const data = await this.request('/consultancy/login', {
+      method: 'POST',
+      body: JSON.stringify(credentials),
+    });
+
+    if (data.token) {
+      await this.setToken(data.token);
+      await AsyncStorage.setItem('user', JSON.stringify(data.user));
+      await AsyncStorage.setItem('currentUser', JSON.stringify(data.user));
+    }
+
+    return data;
+  }
+
   async register(userData) {
     const data = await this.request('/auth/register', {
       method: 'POST',
@@ -147,6 +177,50 @@ class JobWalaAPI {
       await this.setToken(data.token);
       await AsyncStorage.setItem('user', JSON.stringify(data.user));
       await AsyncStorage.setItem('currentUser', JSON.stringify(data.user));
+    }
+
+    return data;
+  }
+
+  async companyRegister(userData) {
+    console.log('companyRegister called with:', userData);
+    const data = await this.request('/company/register', {
+      method: 'POST',
+      body: JSON.stringify(userData),
+    });
+
+    console.log('companyRegister response data:', data);
+
+    if (data && data.token) {
+      console.log('Token received, saving to storage...');
+      await this.setToken(data.token);
+      await AsyncStorage.setItem('user', JSON.stringify(data.user));
+      await AsyncStorage.setItem('currentUser', JSON.stringify(data.user));
+      console.log('Token and user data saved successfully');
+    } else {
+      console.log('No token in response data');
+    }
+
+    return data;
+  }
+
+  async consultancyRegister(userData) {
+    console.log('consultancyRegister called with:', userData);
+    const data = await this.request('/consultancy/register', {
+      method: 'POST',
+      body: JSON.stringify(userData),
+    });
+
+    console.log('consultancyRegister response data:', data);
+
+    if (data && data.token) {
+      console.log('Token received, saving to storage...');
+      await this.setToken(data.token);
+      await AsyncStorage.setItem('user', JSON.stringify(data.user));
+      await AsyncStorage.setItem('currentUser', JSON.stringify(data.user));
+      console.log('Token and user data saved successfully');
+    } else {
+      console.log('No token in response data');
     }
 
     return data;
@@ -810,6 +884,244 @@ class JobWalaAPI {
     return await this.request(`/admin/logos/${id}`, {
       method: 'DELETE',
     });
+  }
+
+  // ==================== EMAIL TEMPLATE MANAGEMENT APIs ====================
+  
+  async getEmailTemplates(filters = {}) {
+    const params = new URLSearchParams(filters);
+    return await this.request(`/admin/email-templates?${params}`);
+  }
+
+  async getEmailTemplate(id) {
+    return await this.request(`/admin/email-templates/${id}`);
+  }
+
+  async createEmailTemplate(data) {
+    return await this.request('/admin/email-templates', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateEmailTemplate(id, data) {
+    return await this.request(`/admin/email-templates/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteEmailTemplate(id) {
+    return await this.request(`/admin/email-templates/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async setDefaultEmailTemplate(id) {
+    return await this.request(`/admin/email-templates/${id}/set-default`, {
+      method: 'POST',
+    });
+  }
+
+  async getEmailTemplateStats() {
+    return await this.request('/admin/email-templates/stats');
+  }
+
+  async testEmailTemplate(templateId, testEmail, variables = {}) {
+    return await this.request('/admin/email-templates/test', {
+      method: 'POST',
+      body: JSON.stringify({ templateId, testEmail, variables }),
+    });
+  }
+
+  async initializeDefaultEmailTemplates() {
+    return await this.request('/admin/email-templates/initialize-defaults', {
+      method: 'POST',
+    });
+  }
+
+  // ==================== EMAIL LOG APIs ====================
+  
+  async getEmailLogs(filters = {}) {
+    const params = new URLSearchParams(filters);
+    return await this.request(`/admin/email-logs?${params}`);
+  }
+
+  async getEmailLog(id) {
+    return await this.request(`/admin/email-logs/${id}`);
+  }
+
+  async getEmailLogStats(startDate = null, endDate = null) {
+    const params = new URLSearchParams();
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    return await this.request(`/admin/email-logs/stats?${params}`);
+  }
+
+  async retryEmailLog(id) {
+    return await this.request(`/admin/email-logs/${id}/retry`, {
+      method: 'POST',
+    });
+  }
+
+  async deleteOldEmailLogs(olderThanDays) {
+    return await this.request(`/admin/email-logs?olderThan=${olderThanDays}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // ==================== SMTP SETTINGS APIs ====================
+  
+  async getSMTPSettings() {
+    return await this.request('/settings');
+  }
+
+  async updateSMTPSettings(data) {
+    return await this.request('/settings/email', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async testSMTPConnection(testEmail) {
+    return await this.request('/settings/email/test', {
+      method: 'POST',
+      body: JSON.stringify({ testEmail }),
+    });
+  }
+
+  // ==================== SOCIAL UPDATES ADMIN APIs ====================
+  
+  async getAdminSocialUpdates(filters = {}) {
+    const params = new URLSearchParams(filters);
+    return await this.request(`/social-updates/public/all?${params}`);
+  }
+
+  async getSocialUpdateStats() {
+    // Calculate stats from recent data
+    try {
+      const response = await this.request('/social-updates/public/all?limit=1000');
+      const updates = response.socialUpdates || [];
+      
+      return {
+        total: response.pagination?.totalItems || 0,
+        published: updates.filter(u => u.status === 'published').length,
+        draft: updates.filter(u => u.status === 'draft').length,
+        totalLikes: updates.reduce((sum, u) => sum + (u.engagement?.likes || 0), 0),
+        totalComments: updates.reduce((sum, u) => sum + (u.engagement?.comments || 0), 0),
+        totalShares: updates.reduce((sum, u) => sum + (u.engagement?.shares || 0), 0),
+      };
+    } catch (error) {
+      console.error('Error getting stats:', error);
+      return {
+        total: 0,
+        published: 0,
+        draft: 0,
+        totalLikes: 0,
+        totalComments: 0,
+        totalShares: 0,
+      };
+    }
+  }
+
+  async moderateSocialUpdate(id, action, notes = '') {
+    return await this.request(`/social-updates/admin/${id}/moderate`, {
+      method: 'PUT',
+      body: JSON.stringify({ action, notes }),
+    });
+  }
+
+  async deleteSocialUpdate(id) {
+    return await this.request(`/social-updates/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // ==================== KYC APIs ====================
+  
+  async submitKYC(formData) {
+    const url = `${this.baseURL}/kyc/submit`;
+    const formDataToSend = new FormData();
+    
+    // Add text fields
+    if (formData.userType) formDataToSend.append('userType', formData.userType);
+    if (formData.companyType) formDataToSend.append('companyType', formData.companyType);
+    if (formData.documents) {
+      Object.keys(formData.documents).forEach(key => {
+        const doc = formData.documents[key];
+        if (doc && doc.idNumber) {
+          formDataToSend.append(`documents[${key}]`, JSON.stringify({ idNumber: doc.idNumber }));
+        }
+      });
+    }
+    
+    // Add files
+    if (formData.files) {
+      Object.keys(formData.files).forEach(key => {
+        if (formData.files[key]) {
+          formDataToSend.append(key, {
+            uri: formData.files[key].uri,
+            type: formData.files[key].type,
+            name: formData.files[key].name,
+          });
+        }
+      });
+    }
+    
+    const headers = {};
+    if (this.token) {
+      headers['Authorization'] = `Bearer ${this.token}`;
+    }
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: formDataToSend,
+    });
+    
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.message || 'KYC submission failed');
+    }
+    
+    return data;
+  }
+
+  async uploadKYCDocument(documentType, file, idNumber) {
+    const url = `${this.baseURL}/kyc/upload`;
+    const formData = new FormData();
+    
+    formData.append('documentType', documentType);
+    if (idNumber) formData.append('idNumber', idNumber);
+    formData.append(documentType, {
+      uri: file.uri,
+      type: file.type,
+      name: file.name,
+    });
+    
+    const headers = {};
+    if (this.token) {
+      headers['Authorization'] = `Bearer ${this.token}`;
+    }
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+    
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.message || 'Document upload failed');
+    }
+    
+    return data;
+  }
+
+  async getKYCStatus() {
+    return await this.request('/kyc/status');
   }
 }
 

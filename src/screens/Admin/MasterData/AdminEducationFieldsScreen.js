@@ -7,7 +7,7 @@ const AdminEducationFieldsScreen = ({ navigation }) => {
       navigation={navigation}
       title="Education Fields"
       subtitle="Manage education fields master data"
-      apiEndpoint="/api/admin/education"
+      apiEndpoint="/admin/master-data/education-fields"
       screenName="AdminEducationFields"
       fieldName="name"
     />

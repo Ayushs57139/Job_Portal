@@ -81,6 +81,7 @@ const ConsultancyDashboardScreen = ({ navigation }) => {
     { title: 'My Jobs', icon: 'briefcase', action: () => navigateToMyJobs(), color: colors.info },
     { title: 'Applications', icon: 'people', action: () => navigateToApplications(), color: colors.warning },
     { title: 'Consultancy Profile', icon: 'business', screen: 'CompanyProfile', color: colors.success },
+    { title: 'KYC Documents', icon: 'document-text', screen: 'KYCForm', color: colors.warning },
     { title: 'Create Post', icon: 'create', screen: 'CreateSocialPost', color: colors.primary },
     { title: 'Candidates', icon: 'person-add', screen: 'Jobs', color: colors.secondary },
     { title: 'Packages', icon: 'card', screen: 'Packages', color: colors.primary },
@@ -174,7 +175,15 @@ const ConsultancyDashboardScreen = ({ navigation }) => {
             <TouchableOpacity
               key={index}
               style={styles.menuItem}
-              onPress={() => item.action ? item.action() : navigation.navigate(item.screen)}
+              onPress={() => {
+                if (item.action) {
+                  item.action();
+                } else if (item.screen === 'KYCForm') {
+                  navigation.navigate(item.screen, { userType: 'consultancy' });
+                } else {
+                  navigation.navigate(item.screen);
+                }
+              }}
             >
               <View style={[styles.menuIcon, { backgroundColor: `${item.color}15` }]}>
                 <Ionicons name={item.icon} size={28} color={item.color} />

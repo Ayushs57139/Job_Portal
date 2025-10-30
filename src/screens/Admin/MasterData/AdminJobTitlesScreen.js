@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, TextInput, Alert, Modal } from 'react-native';
 import AdminLayout from '../../../components/Admin/AdminLayout';
 import { Ionicons } from '@expo/vector-icons';
-import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../../../config/api';
 
 const AdminJobTitlesScreen = ({ navigation }) => {
@@ -18,11 +18,21 @@ const AdminJobTitlesScreen = ({ navigation }) => {
     fetchJobTitles();
   }, []);
 
-  const fetchJobTitles = async () => {
+    const fetchJobTitles = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`${API_URL}/api/admin/job-titles`);
-      setJobTitles(response.data.jobTitles || []);
+      const token = await AsyncStorage.getItem('token');
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(`${API_URL}/admin/master-data/job-titles`, { headers });
+      const data = await response.json();
+      setJobTitles(data.data || []);
     } catch (error) {
       console.error('Error fetching job titles:', error);
       Alert.alert('Error', 'Failed to fetch job titles');
@@ -38,14 +48,28 @@ const AdminJobTitlesScreen = ({ navigation }) => {
     }
 
     try {
+      const token = await AsyncStorage.getItem('token');
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      let response;
       if (editMode) {
-        await axios.put(`${API_URL}/api/admin/job-titles/${currentItem.id}`, {
-          name: currentItem.name
+        response = await fetch(`${API_URL}/admin/master-data/job-titles/${currentItem.id}`, {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify({ name: currentItem.name })
         });
         Alert.alert('Success', 'Job title updated successfully');
       } else {
-        await axios.post(`${API_URL}/api/admin/job-titles`, {
-          name: currentItem.name
+        response = await fetch(`${API_URL}/admin/master-data/job-titles`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ name: currentItem.name })
         });
         Alert.alert('Success', 'Job title created successfully');
       }
@@ -75,7 +99,19 @@ const AdminJobTitlesScreen = ({ navigation }) => {
           style: 'destructive',
           onPress: async () => {
             try {
-              await axios.delete(`${API_URL}/api/admin/job-titles/${id}`);
+              const token = await AsyncStorage.getItem('token');
+              const headers = {
+                'Content-Type': 'application/json',
+              };
+              
+              if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+              }
+
+              await fetch(`${API_URL}/admin/master-data/job-titles/${id}`, {
+                method: 'DELETE',
+                headers
+              });
               Alert.alert('Success', 'Job title deleted successfully');
               fetchJobTitles();
             } catch (error) {

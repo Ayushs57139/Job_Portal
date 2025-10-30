@@ -31,9 +31,7 @@ router.post('/register', async (req, res) => {
             phone,
             userType: 'employer',
             employerType: 'company',
-            profile: {
-                company: company
-            },
+            company: company,
             verificationStatus: 'pending',
             isEmployerVerified: false
         });
@@ -68,7 +66,7 @@ router.post('/register', async (req, res) => {
                 lastName: newCompany.lastName,
                 email: newCompany.email,
                 userType: 'company',
-                companyName: newCompany.company.name
+                companyName: newCompany.company?.name || ''
             }
         });
     } catch (error) {
@@ -118,12 +116,46 @@ router.post('/login', async (req, res) => {
                 lastName: company.lastName,
                 email: company.email,
                 userType: 'company',
-                companyName: company.company.name
+                companyName: company.company?.name || ''
             }
         });
     } catch (error) {
         console.error('Company login error:', error);
         res.status(500).json({ message: 'Server error during login' });
+    }
+});
+
+// Get Companies List
+router.get('/', async (req, res) => {
+    try {
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = parseInt(req.query.skip) || 0;
+
+        const companies = await User.find({ 
+            userType: 'employer',
+            employerType: 'company',
+            isEmployerVerified: true
+        })
+        .select('firstName lastName email company verificationStatus createdAt')
+        .sort({ createdAt: -1 })
+        .limit(limit)
+        .skip(skip);
+
+        const total = await User.countDocuments({ 
+            userType: 'employer',
+            employerType: 'company',
+            isEmployerVerified: true
+        });
+
+        res.json({
+            companies,
+            total,
+            limit,
+            skip
+        });
+    } catch (error) {
+        console.error('Get companies error:', error);
+        res.status(500).json({ message: 'Server error' });
     }
 });
 

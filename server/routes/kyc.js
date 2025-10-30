@@ -58,7 +58,7 @@ const submitUploadFields = upload.fields([
 
 router.post('/submit', auth, submitUploadFields, async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user._id || req.user.id;
     const { userType, companyType, documents } = req.body;
 
     // Check if user is employer
@@ -100,13 +100,17 @@ router.post('/submit', auth, submitUploadFields, async (req, res) => {
       Object.keys(req.files).forEach(fieldName => {
         const file = req.files[fieldName][0];
         if (file) {
+          // Convert absolute path to relative URL
+          const relativePath = file.path.replace(path.join(__dirname, '../'), '').replace(/\\/g, '/');
+          const documentUrl = relativePath.startsWith('/') ? relativePath : '/' + relativePath;
+          
           if (kyc.documents[fieldName]) {
-            kyc.documents[fieldName].documentUrl = file.path;
+            kyc.documents[fieldName].documentUrl = documentUrl;
             kyc.documents[fieldName].uploadedAt = new Date();
           } else {
             kyc.documents[fieldName] = {
               idNumber: '',
-              documentUrl: file.path,
+              documentUrl: documentUrl,
               uploadedAt: new Date()
             };
           }
@@ -159,7 +163,7 @@ const uploadFields = upload.fields([
 
 router.post('/upload', auth, uploadFields, async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user._id || req.user.id;
     const { documentType, idNumber } = req.body;
 
     // Check if user is employer
@@ -181,9 +185,13 @@ router.post('/upload', auth, uploadFields, async (req, res) => {
     if (req.files && req.files[documentType]) {
       const file = req.files[documentType][0];
       if (file) {
+        // Convert absolute path to relative URL
+        const relativePath = file.path.replace(path.join(__dirname, '../'), '').replace(/\\/g, '/');
+        const documentUrl = relativePath.startsWith('/') ? relativePath : '/' + relativePath;
+        
         kyc.documents[documentType] = {
           idNumber: idNumber || '',
-          documentUrl: file.path,
+          documentUrl: documentUrl,
           uploadedAt: new Date()
         };
       }
@@ -207,7 +215,7 @@ router.post('/upload', auth, uploadFields, async (req, res) => {
 // @access  Private
 router.get('/status', auth, async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user._id || req.user.id;
     const kyc = await KYC.findOne({ userId }).populate('userId', 'firstName lastName email userType employerType');
 
     if (!kyc) {
@@ -306,7 +314,7 @@ router.put('/admin/verify/:kycId', adminAuth, async (req, res) => {
     if (action === 'verify') {
       kyc.submissionStatus = 'verified';
       kyc.reviewedAt = new Date();
-      kyc.reviewedBy = req.user.id;
+      kyc.reviewedBy = req.user._id || req.user.id;
       kyc.adminNotes = adminNotes || '';
       kyc.rejectionReason = '';
 
@@ -320,7 +328,7 @@ router.put('/admin/verify/:kycId', adminAuth, async (req, res) => {
     } else if (action === 'reject') {
       kyc.submissionStatus = 'rejected';
       kyc.reviewedAt = new Date();
-      kyc.reviewedBy = req.user.id;
+      kyc.reviewedBy = req.user._id || req.user.id;
       kyc.rejectionReason = rejectionReason || '';
       kyc.adminNotes = adminNotes || '';
 
@@ -368,9 +376,13 @@ router.get('/admin/download/:kycId', adminAuth, async (req, res) => {
     const documents = kyc.documents;
     Object.keys(documents).forEach(docType => {
       const doc = documents[docType];
-      if (doc && doc.documentUrl && fs.existsSync(doc.documentUrl)) {
-        const fileName = `${docType}_${doc.idNumber || 'no_id'}.${path.extname(doc.documentUrl).slice(1)}`;
-        archive.file(doc.documentUrl, { name: fileName });
+      if (doc && doc.documentUrl) {
+        // Convert relative path to absolute
+        const absolutePath = path.join(__dirname, '..', doc.documentUrl);
+        if (fs.existsSync(absolutePath)) {
+          const fileName = `${docType}_${doc.idNumber || 'no_id'}${path.extname(doc.documentUrl)}`;
+          archive.file(absolutePath, { name: fileName });
+        }
       }
     });
 
@@ -406,9 +418,13 @@ router.get('/admin/bulk-download', adminAuth, async (req, res) => {
       const documents = kyc.documents;
       Object.keys(documents).forEach(docType => {
         const doc = documents[docType];
-        if (doc && doc.documentUrl && fs.existsSync(doc.documentUrl)) {
-          const fileName = `${kyc.userId.firstName}_${kyc.userId.lastName}/${docType}_${doc.idNumber || 'no_id'}.${path.extname(doc.documentUrl).slice(1)}`;
-          archive.file(doc.documentUrl, { name: fileName });
+        if (doc && doc.documentUrl) {
+          // Convert relative path to absolute
+          const absolutePath = path.join(__dirname, '..', doc.documentUrl);
+          if (fs.existsSync(absolutePath)) {
+            const fileName = `${kyc.userId.firstName}_${kyc.userId.lastName}/${docType}_${doc.idNumber || 'no_id'}${path.extname(doc.documentUrl)}`;
+            archive.file(absolutePath, { name: fileName });
+          }
         }
       });
     }

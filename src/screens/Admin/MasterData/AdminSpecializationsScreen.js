@@ -7,7 +7,7 @@ const AdminSpecializationsScreen = ({ navigation }) => {
       navigation={navigation}
       title="Specializations"
       subtitle="Manage specializations master data"
-      apiEndpoint="/api/admin/specializations"
+      apiEndpoint="/admin/master-data/specializations"
       screenName="AdminSpecializations"
       fieldName="name"
     />

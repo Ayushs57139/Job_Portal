@@ -7,7 +7,7 @@ const AdminKeySkillsScreen = ({ navigation }) => {
       navigation={navigation}
       title="Key Skills"
       subtitle="Manage key skills master data"
-      apiEndpoint="/api/admin/key-skills"
+      apiEndpoint="/admin/master-data/key-skills"
       screenName="AdminKeySkills"
       fieldName="name"
     />

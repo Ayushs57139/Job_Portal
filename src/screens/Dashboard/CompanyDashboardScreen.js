@@ -81,6 +81,7 @@ const CompanyDashboardScreen = ({ navigation }) => {
     { title: 'My Jobs', icon: 'briefcase', action: () => navigateToMyJobs(), color: colors.info },
     { title: 'Applications', icon: 'people', action: () => navigateToApplications(), color: colors.warning },
     { title: 'Company Profile', icon: 'business', screen: 'CompanyProfile', color: colors.success },
+    { title: 'KYC Documents', icon: 'document-text', screen: 'KYCForm', color: colors.warning },
     { title: 'Create Post', icon: 'create', screen: 'CreateSocialPost', color: colors.primary },
     { title: 'Packages', icon: 'card', screen: 'Packages', color: colors.secondary },
     { title: 'Messages', icon: 'chatbubbles', screen: 'Chat', color: colors.primary },
@@ -172,7 +173,15 @@ const CompanyDashboardScreen = ({ navigation }) => {
             <TouchableOpacity
               key={index}
               style={styles.menuItem}
-              onPress={() => item.action ? item.action() : navigation.navigate(item.screen)}
+              onPress={() => {
+                if (item.action) {
+                  item.action();
+                } else if (item.screen === 'KYCForm') {
+                  navigation.navigate(item.screen, { userType: 'company' });
+                } else {
+                  navigation.navigate(item.screen);
+                }
+              }}
             >
               <View style={[styles.menuIcon, { backgroundColor: `${item.color}15` }]}>
                 <Ionicons name={item.icon} size={28} color={item.color} />

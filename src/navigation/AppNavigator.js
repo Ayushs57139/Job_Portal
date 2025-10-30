@@ -13,6 +13,9 @@ import AdminLoginScreen from '../screens/Auth/AdminLoginScreen';
 import EmployerOptionsScreen from '../screens/Auth/EmployerOptionsScreen';
 import CompanyRegisterScreen from '../screens/Auth/CompanyRegisterScreen';
 import ConsultancyRegisterScreen from '../screens/Auth/ConsultancyRegisterScreen';
+import CompanyLoginScreen from '../screens/Auth/CompanyLoginScreen';
+import ConsultancyLoginScreen from '../screens/Auth/ConsultancyLoginScreen';
+import KYCFormScreen from '../screens/Auth/KYCFormScreen';
 
 // Main Screens
 import HomeScreen from '../screens/Home/HomeScreen';
@@ -129,9 +132,9 @@ const AppNavigator = () => {
     'AdminCustomFields', 'AdminJobCategories', 'AdminInstitutions', 'AdminJobTitles', 'AdminJobRoles',
     'AdminSkills', 'AdminIndustries', 'AdminDepartments', 'AdminLocations', 'AdminSpecializations',
     'AdminCourses', 'AdminLogos', 'AdminAdvertisements',
-    'CompanyDashboard', 'CompanyJobs', 'CompanyApplications', 'CompanyProfile', 'CompanyTeam',
+    'CompanyLogin', 'CompanyDashboard', 'CompanyJobs', 'CompanyApplications', 'CompanyProfile', 'CompanyTeam',
     'CompanyPackages', 'CompanyAnalytics', 'CompanySettings',
-    'ConsultancyDashboard', 'ConsultancyJobs', 'ConsultancyApplications', 'ConsultancyProfile',
+    'ConsultancyLogin', 'ConsultancyDashboard', 'ConsultancyJobs', 'ConsultancyApplications', 'ConsultancyProfile',
     'ConsultancyTeam', 'ConsultancyPackages', 'ConsultancyAnalytics', 'ConsultancySettings',
     'JobseekerDashboard', 'JobseekerProfile', 'JobseekerApplications', 'JobseekerSettings',
     'EmployerDashboard', 'EmployerProfile'
@@ -183,6 +186,8 @@ const AppNavigator = () => {
         Packages: 'packages',
         PostJob: 'post-job',
         EmployerOptions: 'employer-options',
+        CompanyLogin: 'company/login',
+        ConsultancyLogin: 'consultancy/login',
         CompanyRegister: 'company/register',
         ConsultancyRegister: 'consultancy/register',
       },
@@ -248,6 +253,16 @@ const AppNavigator = () => {
           options={{ title: 'For Employers' }}
         />
         <Stack.Screen 
+          name="CompanyLogin" 
+          component={CompanyLoginScreen}
+          options={{ title: 'Company Login' }}
+        />
+        <Stack.Screen 
+          name="ConsultancyLogin" 
+          component={ConsultancyLoginScreen}
+          options={{ title: 'Consultancy Login' }}
+        />
+        <Stack.Screen 
           name="CompanyRegister" 
           component={CompanyRegisterScreen}
           options={{ title: 'Company Registration' }}
@@ -256,6 +271,11 @@ const AppNavigator = () => {
           name="ConsultancyRegister" 
           component={ConsultancyRegisterScreen}
           options={{ title: 'Consultancy Registration' }}
+        />
+        <Stack.Screen 
+          name="KYCForm" 
+          component={KYCFormScreen}
+          options={{ title: 'KYC Verification' }}
         />
         
         {/* Job Screens */}

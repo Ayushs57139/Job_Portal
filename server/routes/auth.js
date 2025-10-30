@@ -316,6 +316,20 @@ router.get('/me', auth, async (req, res) => {
   }
 });
 
+// @route   POST /api/auth/logout
+// @desc    Logout user (client-side token removal, server acknowledges)
+// @access  Public
+router.post('/logout', async (req, res) => {
+  try {
+    // Since JWT is stateless, logout is primarily handled client-side
+    // by removing the token from storage. This endpoint acknowledges the logout.
+    res.json({ message: 'Logout successful' });
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.status(500).json({ message: 'Server error during logout' });
+  }
+});
+
 // @route   PUT /api/auth/profile
 // @desc    Update user profile
 // @access  Private

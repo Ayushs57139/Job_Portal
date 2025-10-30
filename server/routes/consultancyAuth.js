@@ -31,9 +31,7 @@ router.post('/register', async (req, res) => {
             phone,
             userType: 'employer',
             employerType: 'consultancy',
-            profile: {
-                company: consultancy
-            },
+            company: consultancy,
             verificationStatus: 'pending',
             isEmployerVerified: false
         });
@@ -68,7 +66,7 @@ router.post('/register', async (req, res) => {
                 lastName: newConsultancy.lastName,
                 email: newConsultancy.email,
                 userType: 'consultancy',
-                consultancyName: newConsultancy.consultancy.name
+                consultancyName: newConsultancy.company?.name || ''
             }
         });
     } catch (error) {
@@ -118,7 +116,7 @@ router.post('/login', async (req, res) => {
                 lastName: consultancy.lastName,
                 email: consultancy.email,
                 userType: 'consultancy',
-                consultancyName: consultancy.consultancy.name
+                consultancyName: consultancy.company?.name || ''
             }
         });
     } catch (error) {

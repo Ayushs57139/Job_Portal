@@ -5,6 +5,7 @@ const Job = require('../models/Job');
 const Application = require('../models/Application');
 const Package = require('../models/Package');
 const EmailTemplate = require('../models/EmailTemplate');
+const EmailLog = require('../models/EmailLog');
 const { adminAuth, superAdminAuth, requirePermission } = require('../middleware/adminAuth');
 const emailTemplateService = require('../services/emailTemplateService');
 
@@ -2355,12 +2356,270 @@ router.post('/email-templates/test', requirePermission('canManageSettings'), [
   }
 });
 
+// ==================== EMAIL LOG MANAGEMENT ====================
+
+// @route   GET /api/admin/email-logs
+// @desc    Get all email logs with pagination and filtering
+// @access  Private (Admin)
+router.get('/email-logs', requirePermission('canManageSettings'), async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    // Build filter
+    const filter = {};
+    
+    if (req.query.status) {
+      filter.status = req.query.status;
+    }
+    
+    if (req.query.templateType) {
+      filter.templateType = req.query.templateType;
+    }
+    
+    if (req.query.to) {
+      filter.to = { $regex: req.query.to, $options: 'i' };
+    }
+    
+    if (req.query.search) {
+      filter.$or = [
+        { to: { $regex: req.query.search, $options: 'i' } },
+        { subject: { $regex: req.query.search, $options: 'i' } }
+      ];
+    }
+
+    // Date range filter
+    if (req.query.startDate || req.query.endDate) {
+      filter.createdAt = {};
+      if (req.query.startDate) {
+        filter.createdAt.$gte = new Date(req.query.startDate);
+      }
+      if (req.query.endDate) {
+        filter.createdAt.$lte = new Date(req.query.endDate);
+      }
+    }
+
+    const [logs, total] = await Promise.all([
+      EmailLog.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate('templateId', 'name type')
+        .populate('sentBy', 'firstName lastName email')
+        .populate('metadata.userId', 'firstName lastName email'),
+      EmailLog.countDocuments(filter)
+    ]);
+
+    res.json({
+      success: true,
+      data: logs,
+      pagination: {
+        current: page,
+        pages: Math.ceil(total / limit),
+        total,
+        limit
+      }
+    });
+  } catch (error) {
+    console.error('Get email logs error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Server error',
+      error: error.message 
+    });
+  }
+});
+
+// @route   GET /api/admin/email-logs/stats
+// @desc    Get email log statistics
+// @access  Private (Admin)
+router.get('/email-logs/stats', requirePermission('canManageSettings'), async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    const stats = await EmailLog.getEmailStats(startDate, endDate);
+
+    // Get today's stats
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayStats = await EmailLog.getEmailStats(todayStart, new Date());
+
+    // Get this week's stats
+    const weekStart = new Date();
+    weekStart.setDate(weekStart.getDate() - 7);
+    const weekStats = await EmailLog.getEmailStats(weekStart, new Date());
+
+    // Get this month's stats
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+    const monthStats = await EmailLog.getEmailStats(monthStart, new Date());
+
+    // Get recent failed emails
+    const recentFailed = await EmailLog.find({ status: 'failed' })
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .select('to subject error.message createdAt');
+
+    res.json({
+      success: true,
+      data: {
+        overall: stats,
+        today: todayStats,
+        week: weekStats,
+        month: monthStats,
+        recentFailed,
+        deliveryRate: stats.total > 0 ? ((stats.delivered / stats.total) * 100).toFixed(2) : 0,
+        openRate: stats.delivered > 0 ? ((stats.uniqueOpens / stats.delivered) * 100).toFixed(2) : 0,
+        clickRate: stats.delivered > 0 ? ((stats.uniqueClicks / stats.delivered) * 100).toFixed(2) : 0
+      }
+    });
+  } catch (error) {
+    console.error('Get email log stats error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Server error',
+      error: error.message 
+    });
+  }
+});
+
+// @route   GET /api/admin/email-logs/:id
+// @desc    Get email log by ID
+// @access  Private (Admin)
+router.get('/email-logs/:id', requirePermission('canManageSettings'), async (req, res) => {
+  try {
+    const log = await EmailLog.findById(req.params.id)
+      .populate('templateId', 'name type subject')
+      .populate('sentBy', 'firstName lastName email')
+      .populate('metadata.userId', 'firstName lastName email userType');
+
+    if (!log) {
+      return res.status(404).json({
+        success: false,
+        message: 'Email log not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: log
+    });
+  } catch (error) {
+    console.error('Get email log error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Server error',
+      error: error.message 
+    });
+  }
+});
+
+// @route   POST /api/admin/email-logs/:id/retry
+// @desc    Retry sending a failed email
+// @access  Private (Admin)
+router.post('/email-logs/:id/retry', requirePermission('canManageSettings'), async (req, res) => {
+  try {
+    const log = await EmailLog.findById(req.params.id);
+
+    if (!log) {
+      return res.status(404).json({
+        success: false,
+        message: 'Email log not found'
+      });
+    }
+
+    if (log.status !== 'failed') {
+      return res.status(400).json({
+        success: false,
+        message: 'Only failed emails can be retried'
+      });
+    }
+
+    // Create a new email log entry for the retry
+    const newLog = new EmailLog({
+      to: log.to,
+      from: log.from,
+      subject: log.subject,
+      templateId: log.templateId,
+      templateName: log.templateName,
+      templateType: log.templateType,
+      htmlContent: log.htmlContent,
+      textContent: log.textContent,
+      cc: log.cc,
+      bcc: log.bcc,
+      attachments: log.attachments,
+      provider: log.provider,
+      metadata: {
+        ...log.metadata,
+        source: 'manual'
+      },
+      sentBy: req.user.id
+    });
+
+    await newLog.save();
+
+    // Here you would trigger the actual email sending
+    // For now, we'll just mark it as pending
+    
+    res.json({
+      success: true,
+      message: 'Email retry initiated',
+      data: newLog
+    });
+  } catch (error) {
+    console.error('Retry email error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Server error',
+      error: error.message 
+    });
+  }
+});
+
+// @route   DELETE /api/admin/email-logs
+// @desc    Delete old email logs (bulk cleanup)
+// @access  Private (Super Admin)
+router.delete('/email-logs', superAdminAuth, async (req, res) => {
+  try {
+    const { olderThan } = req.query; // Number of days
+    
+    if (!olderThan) {
+      return res.status(400).json({
+        success: false,
+        message: 'olderThan parameter is required (days)'
+      });
+    }
+
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - parseInt(olderThan));
+
+    const result = await EmailLog.deleteMany({
+      createdAt: { $lt: cutoffDate },
+      status: { $in: ['sent', 'delivered'] }
+    });
+
+    res.json({
+      success: true,
+      message: `Deleted ${result.deletedCount} email logs`,
+      deletedCount: result.deletedCount
+    });
+  } catch (error) {
+    console.error('Delete email logs error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Server error',
+      error: error.message 
+    });
+  }
+});
+
 // ==================== MASTER DATA MANAGEMENT ROUTES ====================
 
 // @route   GET /api/admin/master-data/industries
 // @desc    Get all industries for admin management
 // @access  Public (for testing)
-router.get('/master-data/industries', async (req, res) => {
+router.get('/master-data/industries', adminAuth, async (req, res) => {
   try {
     const Industry = require('../models/Industry');
     const industries = await Industry.find({ isActive: true }).sort({ name: 1 });
@@ -2479,7 +2738,7 @@ router.delete('/master-data/industries/:id', adminAuth, requirePermission('canMa
 // @route   GET /api/admin/master-data/departments
 // @desc    Get all departments for admin management
 // @access  Public (for testing)
-router.get('/master-data/departments', async (req, res) => {
+router.get('/master-data/departments', adminAuth, async (req, res) => {
   try {
     const Department = require('../models/Department');
     const departments = await Department.find({ isActive: true }).sort({ name: 1 });
@@ -2675,7 +2934,7 @@ router.delete('/master-data/departments/:id/subcategories/:subcategory', require
 // @route   GET /api/admin/master-data/job-roles
 // @desc    Get all job roles for admin management
 // @access  Private (Admin)
-router.get('/master-data/job-roles', requirePermission('canManageSettings'), async (req, res) => {
+router.get('/master-data/job-roles', adminAuth, requirePermission('canManageSettings'), async (req, res) => {
   try {
     const JobRole = require('../models/JobRole');
     const jobRoles = await JobRole.find({ isActive: true }).sort({ name: 1 });
@@ -2758,7 +3017,7 @@ router.delete('/master-data/job-roles/:id', requirePermission('canManageSettings
 // @route   GET /api/admin/master-data/job-titles
 // @desc    Get all job titles for admin management
 // @access  Private (Admin)
-router.get('/master-data/job-titles', requirePermission('canManageSettings'), async (req, res) => {
+router.get('/master-data/job-titles', adminAuth, requirePermission('canManageSettings'), async (req, res) => {
   try {
     const JobTitle = require('../models/JobTitle');
     const jobTitles = await JobTitle.find({}).sort({ usageCount: -1, name: 1 });
@@ -2887,7 +3146,7 @@ router.post('/master-data/skills/seed', async (req, res) => {
 // @route   GET /api/admin/master-data/key-skills
 // @desc    Get Key Skills from KeySkill model (master data)
 // @access  Private (Admin)
-router.get('/master-data/key-skills', requirePermission('canManageSettings'), async (req, res) => {
+router.get('/master-data/key-skills', adminAuth, requirePermission('canManageSettings'), async (req, res) => {
   try {
     const KeySkill = require('../models/KeySkill');
     const query = req.query.search || '';
@@ -2961,7 +3220,7 @@ router.post('/master-data/key-skills', requirePermission('canManageSettings'), [
 // @route   GET /api/admin/master-data/specializations
 // @desc    Get all specializations for admin management
 // @access  Private (Admin)
-router.get('/master-data/specializations', requirePermission('canManageSettings'), async (req, res) => {
+router.get('/master-data/specializations', adminAuth, requirePermission('canManageSettings'), async (req, res) => {
   try {
     const Specialization = require('../models/Specialization');
     const specializations = await Specialization.find({ isActive: true }).sort({ name: 1 });
@@ -3051,7 +3310,7 @@ router.delete('/master-data/specializations/:id', requirePermission('canManageSe
 // @route   GET /api/admin/master-data/courses
 // @desc    Get all courses for admin management
 // @access  Private (Admin)
-router.get('/master-data/courses', requirePermission('canManageSettings'), async (req, res) => {
+router.get('/master-data/courses', adminAuth, requirePermission('canManageSettings'), async (req, res) => {
   try {
     const Course = require('../models/Course');
     const courses = await Course.find({ isActive: true }).sort({ name: 1 });
@@ -3144,25 +3403,21 @@ router.delete('/master-data/courses/:id', requirePermission('canManageSettings')
 // @route   GET /api/admin/master-data/locations
 // @desc    Get all locations for admin management
 // @access  Private (Admin)
-router.get('/master-data/locations', requirePermission('canManageSettings'), async (req, res) => {
+router.get('/master-data/locations', adminAuth, requirePermission('canManageSettings'), async (req, res) => {
   try {
-    // For now, return mock data since locations route uses mock data
-    const locations = [
-      { id: 1, city: 'Mumbai', state: 'Maharashtra', country: 'India', type: 'Metro' },
-      { id: 2, city: 'Delhi', state: 'Delhi', country: 'India', type: 'Metro' },
-      { id: 3, city: 'Bangalore', state: 'Karnataka', country: 'India', type: 'Metro' },
-      { id: 4, city: 'Chennai', state: 'Tamil Nadu', country: 'India', type: 'Metro' },
-      { id: 5, city: 'Hyderabad', state: 'Telangana', country: 'India', type: 'Metro' },
-      { id: 6, city: 'Pune', state: 'Maharashtra', country: 'India', type: 'Tier-1' },
-      { id: 7, city: 'Kolkata', state: 'West Bengal', country: 'India', type: 'Metro' },
-      { id: 8, city: 'Ahmedabad', state: 'Gujarat', country: 'India', type: 'Tier-1' },
-      { id: 9, city: 'Jaipur', state: 'Rajasthan', country: 'India', type: 'Tier-1' },
-      { id: 10, city: 'Surat', state: 'Gujarat', country: 'India', type: 'Tier-1' }
-    ];
+    const Location = require('../models/Location');
+    const locations = await Location.find({ isActive: true }).sort({ name: 1, state: 1 });
     
     res.json({
       success: true,
-      data: locations
+      data: locations.map(location => ({
+        id: location._id,
+        name: location.name,
+        city: location.name, // For compatibility
+        state: location.state,
+        country: location.country,
+        pincode: location.pincode
+      }))
     });
   } catch (error) {
     console.error('Get locations error:', error);
@@ -3174,7 +3429,8 @@ router.get('/master-data/locations', requirePermission('canManageSettings'), asy
 // @desc    Add new location
 // @access  Private (Admin)
 router.post('/master-data/locations', requirePermission('canManageSettings'), [
-  body('city').notEmpty().withMessage('City is required'),
+  body('name').optional().isString(),
+  body('city').optional().isString(),
   body('state').notEmpty().withMessage('State is required'),
   body('country').notEmpty().withMessage('Country is required')
 ], async (req, res) => {
@@ -3184,25 +3440,46 @@ router.post('/master-data/locations', requirePermission('canManageSettings'), [
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { city, state, country, type } = req.body;
+    const Location = require('../models/Location');
+    const { name, city, state, country, pincode } = req.body;
     
-    // For now, just return success since locations use mock data
-    // In a real implementation, you would save to database
-    const newLocation = {
-      id: Date.now(), // Simple ID generation
-      city: city.trim(),
+    // Use city as name if name is not provided
+    const locationName = name || city;
+    
+    if (!locationName) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Either name or city is required' 
+      });
+    }
+    
+    const location = new Location({
+      name: locationName.trim(),
       state: state.trim(),
       country: country.trim(),
-      type: type || 'Other'
-    };
+      pincode: pincode?.trim() || '',
+      createdBy: req.user.id
+    });
+    
+    await location.save();
     
     res.status(201).json({
       success: true,
-      data: newLocation,
+      data: {
+        id: location._id,
+        name: location.name,
+        city: location.name, // For compatibility
+        state: location.state,
+        country: location.country,
+        pincode: location.pincode
+      },
       message: 'Location added successfully'
     });
   } catch (error) {
     console.error('Add location error:', error);
+    if (error.code === 11000) {
+      return res.status(400).json({ message: 'Location with this name, state, and country already exists' });
+    }
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -3212,8 +3489,12 @@ router.post('/master-data/locations', requirePermission('canManageSettings'), [
 // @access  Private (Admin)
 router.delete('/master-data/locations/:id', requirePermission('canManageSettings'), async (req, res) => {
   try {
-    // For now, just return success since locations use mock data
-    // In a real implementation, you would delete from database
+    const Location = require('../models/Location');
+    const location = await Location.findByIdAndDelete(req.params.id);
+    
+    if (!location) {
+      return res.status(404).json({ message: 'Location not found' });
+    }
     
     res.json({
       success: true,
@@ -3222,6 +3503,222 @@ router.delete('/master-data/locations/:id', requirePermission('canManageSettings
   } catch (error) {
     console.error('Delete location error:', error);
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ==================== MASTER DATA SEEDING ROUTE ====================
+
+// @route   POST /api/admin/seed-master-data
+// @desc    Seed all master data with initial values
+// @access  Private (Admin)
+router.post('/seed-master-data', requirePermission('canManageSettings'), async (req, res) => {
+  try {
+    const JobTitle = require('../models/JobTitle');
+    const KeySkill = require('../models/KeySkill');
+    const Industry = require('../models/Industry');
+    const Department = require('../models/Department');
+    const Course = require('../models/Course');
+    const Specialization = require('../models/Specialization');
+    const Education = require('../models/Education');
+    const Location = require('../models/Location');
+
+    let seededData = {
+      jobTitles: 0,
+      keySkills: 0,
+      industries: 0,
+      departments: 0,
+      courses: 0,
+      specializations: 0,
+      educationFields: 0,
+      locations: 0
+    };
+
+    // 1. SEED JOB TITLES (FROM JOB POST FORM)
+    const seedData = require('../seedData');
+    const jobTitles = seedData.jobTitles;
+
+    for (const title of jobTitles) {
+      try {
+        await JobTitle.addOrUpdateJobTitle(title, 'Other', req.user.id);
+        seededData.jobTitles++;
+      } catch (err) {
+        console.log(`Skipping duplicate: ${title}`);
+      }
+    }
+
+    // 2. SEED KEY SKILLS (FROM JOB POST FORM)
+    const keySkills = seedData.keySkills;
+
+    for (const skill of keySkills) {
+      try {
+        await KeySkill.addOrUpdateKeySkill(skill, 'Other', 'Technical', req.user.id, '', []);
+        seededData.keySkills++;
+      } catch (err) {
+        console.log(`Skipping duplicate: ${skill}`);
+      }
+    }
+
+    // 3. SEED INDUSTRIES (FROM JOB POST FORM)
+    const industries = seedData.industries;
+
+    for (const industryName of industries) {
+      try {
+        const existing = await Industry.findOne({ name: industryName });
+        if (!existing) {
+          const newIndustry = new Industry({ name: industryName, subcategories: [] });
+          await newIndustry.save();
+          seededData.industries++;
+        }
+      } catch (err) {
+        console.log(`Skipping duplicate: ${industryName}`);
+      }
+    }
+
+    // 4. SEED DEPARTMENTS (FROM JOB POST FORM)
+    const departments = seedData.departments;
+
+    for (const deptName of departments) {
+      try {
+        const existing = await Department.findOne({ name: deptName });
+        if (!existing) {
+          const newDept = new Department({ name: deptName, description: '', subcategories: [] });
+          await newDept.save();
+          seededData.departments++;
+        }
+      } catch (err) {
+        console.log(`Skipping duplicate: ${deptName}`);
+      }
+    }
+
+    // 5. SEED COURSES
+    const courses = [
+      { name: 'B.Tech (Bachelor of Technology)', level: 'Graduate', category: 'Engineering' },
+      { name: 'M.Tech (Master of Technology)', level: 'Post Graduate', category: 'Engineering' },
+      { name: 'BCA (Bachelor of Computer Applications)', level: 'Graduate', category: 'Technical' },
+      { name: 'MCA (Master of Computer Applications)', level: 'Post Graduate', category: 'Technical' },
+      { name: 'MBA (Master of Business Administration)', level: 'Post Graduate', category: 'Management' },
+      { name: 'BBA (Bachelor of Business Administration)', level: 'Graduate', category: 'Management' },
+      { name: 'B.Com (Bachelor of Commerce)', level: 'Graduate', category: 'Commerce' },
+      { name: 'M.Com (Master of Commerce)', level: 'Post Graduate', category: 'Commerce' },
+      { name: 'B.Sc (Bachelor of Science)', level: 'Graduate', category: 'Science' },
+      { name: 'M.Sc (Master of Science)', level: 'Post Graduate', category: 'Science' }
+    ];
+
+    for (const course of courses) {
+      try {
+        const existing = await Course.findOne({ name: course.name });
+        if (!existing) {
+          const newCourse = new Course({ ...course, createdBy: req.user.id });
+          await newCourse.save();
+          seededData.courses++;
+        }
+      } catch (err) {
+        console.log(`Skipping duplicate: ${course.name}`);
+      }
+    }
+
+    // 6. SEED SPECIALIZATIONS
+    const specializations = [
+      { name: 'Computer Science', field: 'Engineering', level: 'Graduate' },
+      { name: 'Information Technology', field: 'Engineering', level: 'Graduate' },
+      { name: 'Mechanical Engineering', field: 'Engineering', level: 'Graduate' },
+      { name: 'Civil Engineering', field: 'Engineering', level: 'Graduate' },
+      { name: 'Finance', field: 'Business', level: 'Post Graduate' },
+      { name: 'Marketing', field: 'Business', level: 'Post Graduate' },
+      { name: 'Human Resources', field: 'Business', level: 'Post Graduate' },
+      { name: 'Data Science', field: 'Technology', level: 'Post Graduate' }
+    ];
+
+    for (const spec of specializations) {
+      try {
+        const existing = await Specialization.findOne({ name: spec.name });
+        if (!existing) {
+          const newSpec = new Specialization({ ...spec, createdBy: req.user.id });
+          await newSpec.save();
+          seededData.specializations++;
+        }
+      } catch (err) {
+        console.log(`Skipping duplicate: ${spec.name}`);
+      }
+    }
+
+    // 7. SEED EDUCATION FIELDS
+    const educationFields = [
+      { name: 'No Formal Education', level: 'No Education' },
+      { name: 'Below 10th Standard', level: 'Below 10th' },
+      { name: '10th Pass', level: '10th Pass' },
+      { name: '12th Pass', level: '12th Pass' },
+      { name: 'ITI', level: 'ITI' },
+      { name: 'Diploma', level: 'Diploma' },
+      { name: 'Graduate', level: 'Graduate' },
+      { name: 'Post Graduate', level: 'Post Graduate' },
+      { name: 'Doctorate/PhD', level: 'Doctorate' }
+    ];
+
+    for (const edu of educationFields) {
+      try {
+        const existing = await Education.findOne({ name: edu.name });
+        if (!existing) {
+          const newEdu = new Education({ ...edu, createdBy: req.user.id });
+          await newEdu.save();
+          seededData.educationFields++;
+        }
+      } catch (err) {
+        console.log(`Skipping duplicate: ${edu.name}`);
+      }
+    }
+
+    // 8. SEED LOCATIONS
+    const locations = [
+      { name: 'Mumbai', state: 'Maharashtra', country: 'India' },
+      { name: 'Delhi', state: 'Delhi', country: 'India' },
+      { name: 'Bangalore', state: 'Karnataka', country: 'India' },
+      { name: 'Hyderabad', state: 'Telangana', country: 'India' },
+      { name: 'Chennai', state: 'Tamil Nadu', country: 'India' },
+      { name: 'Kolkata', state: 'West Bengal', country: 'India' },
+      { name: 'Pune', state: 'Maharashtra', country: 'India' },
+      { name: 'Ahmedabad', state: 'Gujarat', country: 'India' },
+      { name: 'Jaipur', state: 'Rajasthan', country: 'India' },
+      { name: 'Surat', state: 'Gujarat', country: 'India' },
+      { name: 'Lucknow', state: 'Uttar Pradesh', country: 'India' },
+      { name: 'Kanpur', state: 'Uttar Pradesh', country: 'India' },
+      { name: 'Nagpur', state: 'Maharashtra', country: 'India' },
+      { name: 'Indore', state: 'Madhya Pradesh', country: 'India' },
+      { name: 'Noida', state: 'Uttar Pradesh', country: 'India' },
+      { name: 'Gurugram', state: 'Haryana', country: 'India' },
+      { name: 'Chandigarh', state: 'Chandigarh', country: 'India' },
+      { name: 'Coimbatore', state: 'Tamil Nadu', country: 'India' },
+      { name: 'Kochi', state: 'Kerala', country: 'India' },
+      { name: 'Guwahati', state: 'Assam', country: 'India' }
+    ];
+
+    for (const loc of locations) {
+      try {
+        const existing = await Location.findOne({ name: loc.name, state: loc.state });
+        if (!existing) {
+          const newLoc = new Location({ ...loc, createdBy: req.user.id });
+          await newLoc.save();
+          seededData.locations++;
+        }
+      } catch (err) {
+        console.log(`Skipping duplicate: ${loc.name}`);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'Master data seeded successfully!',
+      data: seededData,
+      total: Object.values(seededData).reduce((a, b) => a + b, 0)
+    });
+
+  } catch (error) {
+    console.error('Seed master data error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error seeding master data',
+      error: error.message 
+    });
   }
 });
 
@@ -4388,6 +4885,21 @@ router.patch('/kyc/:id/status', requirePermission('canManageUsers'), async (req,
       return res.status(404).json({ message: 'KYC submission not found' });
     }
 
+    // Update user verification status based on KYC status
+    if (status === 'verified') {
+      await User.findByIdAndUpdate(kyc.userId._id, {
+        isEmployerVerified: true,
+        verificationStatus: 'verified',
+        kycStatus: 'verified'
+      });
+    } else if (status === 'rejected') {
+      await User.findByIdAndUpdate(kyc.userId._id, {
+        isEmployerVerified: false,
+        verificationStatus: 'rejected',
+        kycStatus: 'rejected'
+      });
+    }
+
     res.json({ 
       kyc,
       message: `KYC ${status} successfully`
@@ -4407,6 +4919,461 @@ router.get('/kyc/stats', requirePermission('canManageUsers'), async (req, res) =
     res.json({ stats });
   } catch (error) {
     console.error('Get KYC stats error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   POST /api/admin/master-data/job-titles
+// @desc    Add new job title
+// @access  Private (Admin)
+router.post('/master-data/job-titles', requirePermission('canManageSettings'), [
+  body('name').notEmpty().withMessage('Job title name is required'),
+  body('category').optional().isString().withMessage('Category must be a string')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const JobTitle = require('../models/JobTitle');
+    const { name, category = 'Other' } = req.body;
+    
+    const jobTitle = await JobTitle.addOrUpdateJobTitle(
+      name.trim(),
+      category,
+      req.user.id
+    );
+    
+    res.status(201).json({
+      success: true,
+      data: {
+        id: jobTitle._id,
+        name: jobTitle.name,
+        category: jobTitle.category,
+        usageCount: jobTitle.usageCount
+      },
+      message: 'Job title added successfully'
+    });
+  } catch (error) {
+    console.error('Add job title error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   PUT /api/admin/master-data/job-titles/:id
+// @desc    Update job title
+// @access  Private (Admin)
+router.put('/master-data/job-titles/:id', requirePermission('canManageSettings'), [
+  body('name').notEmpty().withMessage('Job title name is required'),
+  body('category').optional().isString().withMessage('Category must be a string')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const JobTitle = require('../models/JobTitle');
+    const { name, category, isActive } = req.body;
+    
+    const jobTitle = await JobTitle.findByIdAndUpdate(
+      req.params.id,
+      {
+        ...(name && { name: name.trim() }),
+        ...(category && { category }),
+        ...(isActive !== undefined && { isActive }),
+        lastUsed: new Date()
+      },
+      { new: true, runValidators: true }
+    );
+    
+    if (!jobTitle) {
+      return res.status(404).json({ message: 'Job title not found' });
+    }
+    
+    res.json({
+      success: true,
+      data: {
+        id: jobTitle._id,
+        name: jobTitle.name,
+        category: jobTitle.category,
+        usageCount: jobTitle.usageCount,
+        isActive: jobTitle.isActive
+      },
+      message: 'Job title updated successfully'
+    });
+  } catch (error) {
+    console.error('Update job title error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   DELETE /api/admin/master-data/job-titles/:id
+// @desc    Delete job title
+// @access  Private (Admin)
+router.delete('/master-data/job-titles/:id', requirePermission('canManageSettings'), async (req, res) => {
+  try {
+    const JobTitle = require('../models/JobTitle');
+    const jobTitle = await JobTitle.findByIdAndDelete(req.params.id);
+    
+    if (!jobTitle) {
+      return res.status(404).json({ message: 'Job title not found' });
+    }
+    
+    res.json({
+      success: true,
+      message: 'Job title deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete job title error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   PUT /api/admin/master-data/key-skills/:id
+// @desc    Update key skill
+// @access  Private (Admin)
+router.put('/master-data/key-skills/:id', requirePermission('canManageSettings'), [
+  body('name').notEmpty().withMessage('Skill name is required')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const KeySkill = require('../models/KeySkill');
+    const { name, category, skillType, description, tags, isActive } = req.body;
+    
+    const skill = await KeySkill.findByIdAndUpdate(
+      req.params.id,
+      {
+        ...(name && { name: name.trim() }),
+        ...(category && { category }),
+        ...(skillType && { skillType }),
+        ...(description !== undefined && { description: description.trim() }),
+        ...(tags && { tags }),
+        ...(isActive !== undefined && { isActive }),
+        updatedBy: req.user.id
+      },
+      { new: true, runValidators: true }
+    );
+    
+    if (!skill) {
+      return res.status(404).json({ message: 'Skill not found' });
+    }
+    
+    res.json({
+      success: true,
+      data: {
+        id: skill._id,
+        name: skill.name,
+        category: skill.category,
+        skillType: skill.skillType,
+        usageCount: skill.usageCount
+      },
+      message: 'Skill updated successfully'
+    });
+  } catch (error) {
+    console.error('Update key skill error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   PUT /api/admin/master-data/specializations/:id
+// @desc    Update specialization
+// @access  Private (Admin)
+router.put('/master-data/specializations/:id', requirePermission('canManageSettings'), [
+  body('name').notEmpty().withMessage('Specialization name is required')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const Specialization = require('../models/Specialization');
+    const { name, description, field, level, isActive } = req.body;
+    
+    const specialization = await Specialization.findByIdAndUpdate(
+      req.params.id,
+      {
+        ...(name && { name: name.trim() }),
+        ...(description !== undefined && { description: description.trim() }),
+        ...(field && { field }),
+        ...(level && { level }),
+        ...(isActive !== undefined && { isActive }),
+        updatedBy: req.user.id
+      },
+      { new: true, runValidators: true }
+    );
+    
+    if (!specialization) {
+      return res.status(404).json({ message: 'Specialization not found' });
+    }
+    
+    res.json({
+      success: true,
+      data: {
+        id: specialization._id,
+        name: specialization.name,
+        description: specialization.description,
+        field: specialization.field,
+        level: specialization.level,
+        isActive: specialization.isActive
+      },
+      message: 'Specialization updated successfully'
+    });
+  } catch (error) {
+    console.error('Update specialization error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   PUT /api/admin/master-data/courses/:id
+// @desc    Update course
+// @access  Private (Admin)
+router.put('/master-data/courses/:id', requirePermission('canManageSettings'), [
+  body('name').notEmpty().withMessage('Course name is required')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const Course = require('../models/Course');
+    const { name, description, duration, level, category, isActive } = req.body;
+    
+    const course = await Course.findByIdAndUpdate(
+      req.params.id,
+      {
+        ...(name && { name: name.trim() }),
+        ...(description !== undefined && { description: description.trim() }),
+        ...(duration !== undefined && { duration: duration.trim() }),
+        ...(level && { level }),
+        ...(category && { category }),
+        ...(isActive !== undefined && { isActive }),
+        updatedBy: req.user.id
+      },
+      { new: true, runValidators: true }
+    );
+    
+    if (!course) {
+      return res.status(404).json({ message: 'Course not found' });
+    }
+    
+    res.json({
+      success: true,
+      data: {
+        id: course._id,
+        name: course.name,
+        description: course.description,
+        duration: course.duration,
+        level: course.level,
+        category: course.category,
+        isActive: course.isActive
+      },
+      message: 'Course updated successfully'
+    });
+  } catch (error) {
+    console.error('Update course error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   GET /api/admin/master-data/education-fields
+// @desc    Get all education fields for admin management
+// @access  Private (Admin)
+router.get('/master-data/education-fields', adminAuth, requirePermission('canManageSettings'), async (req, res) => {
+  try {
+    const Education = require('../models/Education');
+    const educationFields = await Education.find({ isActive: true }).sort({ name: 1 });
+    
+    res.json({
+      success: true,
+      data: educationFields.map(edu => ({
+        id: edu._id,
+        name: edu.name,
+        description: edu.description,
+        level: edu.level
+      }))
+    });
+  } catch (error) {
+    console.error('Get education fields error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   POST /api/admin/master-data/education-fields
+// @desc    Add new education field
+// @access  Private (Admin)
+router.post('/master-data/education-fields', requirePermission('canManageSettings'), [
+  body('name').notEmpty().withMessage('Education field name is required'),
+  body('level').notEmpty().withMessage('Education level is required')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const Education = require('../models/Education');
+    const { name, description, level } = req.body;
+    
+    const educationField = new Education({
+      name: name.trim(),
+      description: description?.trim() || '',
+      level: level,
+      createdBy: req.user.id
+    });
+    
+    await educationField.save();
+    
+    res.status(201).json({
+      success: true,
+      data: {
+        id: educationField._id,
+        name: educationField.name,
+        description: educationField.description,
+        level: educationField.level
+      },
+      message: 'Education field added successfully'
+    });
+  } catch (error) {
+    console.error('Add education field error:', error);
+    if (error.code === 11000) {
+      return res.status(400).json({ message: 'Education field with this name already exists' });
+    }
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   PUT /api/admin/master-data/education-fields/:id
+// @desc    Update education field
+// @access  Private (Admin)
+router.put('/master-data/education-fields/:id', requirePermission('canManageSettings'), [
+  body('name').notEmpty().withMessage('Education field name is required')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const Education = require('../models/Education');
+    const { name, description, level, isActive } = req.body;
+    
+    const educationField = await Education.findByIdAndUpdate(
+      req.params.id,
+      {
+        ...(name && { name: name.trim() }),
+        ...(description !== undefined && { description: description.trim() }),
+        ...(level && { level }),
+        ...(isActive !== undefined && { isActive }),
+        updatedBy: req.user.id
+      },
+      { new: true, runValidators: true }
+    );
+    
+    if (!educationField) {
+      return res.status(404).json({ message: 'Education field not found' });
+    }
+    
+    res.json({
+      success: true,
+      data: {
+        id: educationField._id,
+        name: educationField.name,
+        description: educationField.description,
+        level: educationField.level,
+        isActive: educationField.isActive
+      },
+      message: 'Education field updated successfully'
+    });
+  } catch (error) {
+    console.error('Update education field error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   DELETE /api/admin/master-data/education-fields/:id
+// @desc    Delete education field
+// @access  Private (Admin)
+router.delete('/master-data/education-fields/:id', requirePermission('canManageSettings'), async (req, res) => {
+  try {
+    const Education = require('../models/Education');
+    const educationField = await Education.findByIdAndDelete(req.params.id);
+    
+    if (!educationField) {
+      return res.status(404).json({ message: 'Education field not found' });
+    }
+    
+    res.json({
+      success: true,
+      message: 'Education field deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete education field error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   PUT /api/admin/master-data/locations/:id
+// @desc    Update location
+// @access  Private (Admin)
+router.put('/master-data/locations/:id', requirePermission('canManageSettings'), [
+  body('name').optional().isString(),
+  body('city').optional().isString(),
+  body('state').optional().isString(),
+  body('country').optional().isString()
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const Location = require('../models/Location');
+    const { name, city, state, country, pincode, isActive } = req.body;
+    
+    const updateData = {
+      updatedBy: req.user.id
+    };
+    
+    if (name) updateData.name = name.trim();
+    if (city) updateData.name = city.trim(); // Use city as name if provided
+    if (state) updateData.state = state.trim();
+    if (country) updateData.country = country.trim();
+    if (pincode !== undefined) updateData.pincode = pincode.trim();
+    if (isActive !== undefined) updateData.isActive = isActive;
+    
+    const location = await Location.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true, runValidators: true }
+    );
+    
+    if (!location) {
+      return res.status(404).json({ message: 'Location not found' });
+    }
+    
+    res.json({
+      success: true,
+      data: {
+        id: location._id,
+        name: location.name,
+        city: location.name, // For compatibility
+        state: location.state,
+        country: location.country,
+        pincode: location.pincode,
+        isActive: location.isActive
+      },
+      message: 'Location updated successfully'
+    });
+  } catch (error) {
+    console.error('Update location error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });

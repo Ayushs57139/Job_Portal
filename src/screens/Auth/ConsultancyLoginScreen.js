@@ -19,25 +19,16 @@ const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
 const isWideScreen = width > 768;
 
-const LoginScreen = ({ navigation }) => {
-  const [userType] = useState('jobseeker');
-  const [loginId, setLoginId] = useState('');
+const ConsultancyLoginScreen = ({ navigation }) => {
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
 
-  const userTypeConfig = {
-    jobseeker: {
-      title: 'Job Seeker Login',
-      subtitle: 'Sign in to your job seeker account',
-      icon: 'person',
-    },
-  };
-
   const handleLogin = async () => {
     // Validate inputs
     const newErrors = {};
-    if (!loginId.trim()) newErrors.loginId = 'Please enter your login ID';
+    if (!email.trim()) newErrors.email = 'Please enter your email';
     if (!password) newErrors.password = 'Please enter your password';
 
     if (Object.keys(newErrors).length > 0) {
@@ -50,20 +41,19 @@ const LoginScreen = ({ navigation }) => {
 
     try {
       const loginData = {
-        loginId: loginId.trim(),
+        email: email.trim(),
         password,
-        userType,
       };
 
-      const response = await api.login(loginData);
+      const response = await api.consultancyLogin(loginData);
 
       if (response.token) {
         Alert.alert('Success', 'Login successful!');
         
-        // Navigate to job seeker dashboard
+        // Navigate to consultancy dashboard
         navigation.reset({
           index: 0,
-          routes: [{ name: 'UserDashboard' }],
+          routes: [{ name: 'ConsultancyDashboard' }],
         });
       }
     } catch (error) {
@@ -91,36 +81,32 @@ const LoginScreen = ({ navigation }) => {
 
         {/* Header Badge */}
         <View style={styles.headerBadge}>
-          <Ionicons name={userTypeConfig[userType].icon} size={16} color="#fff" />
-          <Text style={styles.headerBadgeText}>{userTypeConfig[userType].title}</Text>
+          <Ionicons name="people" size={16} color="#fff" />
+          <Text style={styles.headerBadgeText}>Consultancy Login</Text>
         </View>
 
         {/* Welcome */}
         <Text style={styles.welcomeTitle}>Welcome Back!</Text>
-        <Text style={styles.welcomeSubtitle}>{userTypeConfig[userType].subtitle}</Text>
+        <Text style={styles.welcomeSubtitle}>Sign in to your consultancy account</Text>
 
-
-        {/* Login ID Input */}
+        {/* Email Input */}
         <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Login ID</Text>
+          <Text style={styles.inputLabel}>Email</Text>
           <View style={styles.inputWrapper}>
             <TextInput
               style={styles.input}
-              placeholder="Enter User ID, Email, or Phone Number"
+              placeholder="Enter your email address"
               placeholderTextColor="#94a3b8"
-              value={loginId}
+              value={email}
               onChangeText={(text) => {
-                setLoginId(text);
-                setErrors({ ...errors, loginId: null });
+                setEmail(text);
+                setErrors({ ...errors, email: null });
               }}
               autoCapitalize="none"
               keyboardType="email-address"
             />
           </View>
-          <Text style={styles.inputHelp}>
-            You can login with your User ID (JW12345678), Email, or Phone Number
-          </Text>
-          {errors.loginId && <Text style={styles.errorText}>{errors.loginId}</Text>}
+          {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
         </View>
 
         {/* Password Input */}
@@ -155,11 +141,20 @@ const LoginScreen = ({ navigation }) => {
 
         {/* Create Account */}
         <View style={styles.createAccountContainer}>
-          <Text style={styles.createAccountText}>Don't have an account?</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+          <Text style={styles.createAccountText}>Don't have a consultancy account?</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('ConsultancyRegister')}>
             <Text style={styles.createAccountLink}>Create Account</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Back to Employer Options */}
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => navigation.navigate('EmployerOptions')}
+        >
+          <Ionicons name="arrow-back" size={16} color="#6366f1" />
+          <Text style={styles.backButtonText}>Back to Employer Options</Text>
+        </TouchableOpacity>
       </ScrollView>
     </View>
   );
@@ -172,9 +167,9 @@ const LoginScreen = ({ navigation }) => {
       style={styles.rightSide}
     >
       <View style={styles.rightContent}>
-        <Text style={styles.rightTitle}>Find Your Dream Job</Text>
+        <Text style={styles.rightTitle}>Recruitment Excellence</Text>
         <Text style={styles.rightSubtitle}>
-          Connect with top employers and discover opportunities that match your skills and aspirations
+          Manage client requirements, source candidates, and streamline your recruitment process
         </Text>
 
         <View style={styles.featuresList}>
@@ -182,35 +177,35 @@ const LoginScreen = ({ navigation }) => {
             <View style={styles.checkIcon}>
               <Ionicons name="checkmark" size={16} color="#6366f1" />
             </View>
-            <Text style={styles.featureText}>Browse thousands of job listings</Text>
+            <Text style={styles.featureText}>Access premium candidate pool</Text>
           </View>
 
           <View style={styles.featureItem}>
             <View style={styles.checkIcon}>
               <Ionicons name="checkmark" size={16} color="#6366f1" />
             </View>
-            <Text style={styles.featureText}>Create professional profiles</Text>
+            <Text style={styles.featureText}>Manage multiple clients</Text>
           </View>
 
           <View style={styles.featureItem}>
             <View style={styles.checkIcon}>
               <Ionicons name="checkmark" size={16} color="#6366f1" />
             </View>
-            <Text style={styles.featureText}>Get matched with relevant jobs</Text>
+            <Text style={styles.featureText}>Track placements efficiently</Text>
           </View>
 
           <View style={styles.featureItem}>
             <View style={styles.checkIcon}>
               <Ionicons name="checkmark" size={16} color="#6366f1" />
             </View>
-            <Text style={styles.featureText}>Track application status</Text>
+            <Text style={styles.featureText}>Advanced search and filters</Text>
           </View>
 
           <View style={styles.featureItem}>
             <View style={styles.checkIcon}>
               <Ionicons name="checkmark" size={16} color="#6366f1" />
             </View>
-            <Text style={styles.featureText}>Receive job recommendations</Text>
+            <Text style={styles.featureText}>Performance analytics</Text>
           </View>
         </View>
       </View>
@@ -272,7 +267,7 @@ const styles = StyleSheet.create({
   headerBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#475569',
+    backgroundColor: '#6366f1',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
@@ -321,11 +316,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#1e293b',
   },
-  inputHelp: {
-    fontSize: 12,
-    color: '#64748b',
-    marginTop: 6,
-  },
   errorText: {
     fontSize: 12,
     color: '#ef4444',
@@ -353,12 +343,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     gap: 6,
+    marginBottom: 20,
   },
   createAccountText: {
     fontSize: 14,
     color: '#64748b',
   },
   createAccountLink: {
+    fontSize: 14,
+    color: '#6366f1',
+    fontWeight: '600',
+  },
+  
+  // Back Button
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  backButtonText: {
     fontSize: 14,
     color: '#6366f1',
     fontWeight: '600',
@@ -410,5 +414,5 @@ const styles = StyleSheet.create({
   },
 });
 
-export default LoginScreen;
+export default ConsultancyLoginScreen;
 

@@ -7,7 +7,7 @@ const AdminLocationsScreen = ({ navigation }) => {
       navigation={navigation}
       title="Locations"
       subtitle="Manage locations master data"
-      apiEndpoint="/api/admin/locations"
+      apiEndpoint="/admin/master-data/locations"
       screenName="AdminLocations"
       fieldName="name"
     />
