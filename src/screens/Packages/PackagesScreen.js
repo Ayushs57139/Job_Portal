@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,99 +7,125 @@ import {
   TouchableOpacity,
   Platform,
   Dimensions,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, typography, spacing, borderRadius, shadows } from '../../styles/theme';
 import Header from '../../components/Header';
+import { API_URL } from '../../config/api';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
 
+// Predefined gradient colors for packages
+const gradientColors = [
+  ['#667eea', '#764ba2'],
+  ['#f093fb', '#f5576c'],
+  ['#4facfe', '#00f2fe'],
+  ['#fa709a', '#fee140'],
+  ['#a8edea', '#fed6e3'],
+  ['#ff9a9e', '#fecfef'],
+  ['#ffecd2', '#fcb69f'],
+  ['#ff6e7f', '#bfe9ff'],
+];
+
 const PackagesScreen = () => {
   const [selectedTab, setSelectedTab] = useState('employer');
+  const [loading, setLoading] = useState(true);
+  const [employerPackages, setEmployerPackages] = useState([]);
+  const [candidatePackages, setCandidatePackages] = useState([]);
 
-  // Employer Packages Data
-  const employerPackages = [
-    {
-      id: 1,
-      title: 'Free Package',
-      subtitle: 'Perfect for Getting Started',
-      price: 'FREE',
-      gradientColors: ['#667eea', '#764ba2'],
-      features: [
-        { icon: 'person', label: 'SuperUser', value: '1' },
-        { icon: 'people-outline', label: 'SubUser', value: '0' },
-        { icon: 'briefcase', label: 'Job Post', value: '2' },
-        { icon: 'star-outline', label: 'Featured Job', value: '0' },
-        { icon: 'people', label: 'Job Applies Candidates', value: 'Upto 60' },
-        { icon: 'time', label: 'Job Applies Expiry', value: '30 Days' },
-        { icon: 'document-text', label: 'CV Access', value: '10' },
-        { icon: 'mail', label: 'Job (Invite) Invitee', value: '30' },
-        { icon: 'chatbubble-outline', label: 'Chat Support', value: '×', isNegative: true },
-        { icon: 'calendar', label: 'Package Validity', value: '15 Days' },
-      ],
-    },
-    {
-      id: 2,
-      title: 'Starter Package',
-      subtitle: 'Best for Small Teams',
-      price: '₹999',
-      popular: true,
-      gradientColors: ['#f093fb', '#f5576c'],
-      features: [
-        { icon: 'person', label: 'SuperUser', value: '1' },
-        { icon: 'people-outline', label: 'SubUser', value: '1' },
-        { icon: 'briefcase', label: 'Job Post', value: '4' },
-        { icon: 'star', label: 'Featured Job', value: '2' },
-        { icon: 'people', label: 'Job Applies Candidates', value: 'Upto 150' },
-        { icon: 'time', label: 'Job Applies Expiry', value: '45 Days' },
-        { icon: 'document-text', label: 'CV Access', value: '75' },
-        { icon: 'mail', label: 'Job (Invite) Invitee', value: '75' },
-        { icon: 'chatbubble', label: 'Chat Support', value: 'Mon-Sat 10am-7pm', isPositive: true },
-        { icon: 'calendar', label: 'Package Validity', value: '30 Days' },
-      ],
-    },
-    {
-      id: 3,
-      title: 'Professional Package',
-      subtitle: 'For Growing Businesses',
-      price: '₹2,499',
-      gradientColors: ['#4facfe', '#00f2fe'],
-      features: [
-        { icon: 'person', label: 'SuperUser', value: '1' },
-        { icon: 'people-outline', label: 'SubUser', value: '2' },
-        { icon: 'briefcase', label: 'Job Post', value: '10' },
-        { icon: 'star', label: 'Featured Job', value: '6' },
-        { icon: 'people', label: 'Job Applies Candidates', value: 'Upto 300' },
-        { icon: 'time', label: 'Job Applies Expiry', value: '45 Days' },
-        { icon: 'document-text', label: 'CV Access', value: '150' },
-        { icon: 'mail', label: 'Job (Invite) Invitee', value: '150' },
-        { icon: 'chatbubble', label: 'Chat Support', value: 'Mon-Sat 10am-7pm', isPositive: true },
-        { icon: 'calendar', label: 'Package Validity', value: '45 Days' },
-      ],
-    },
-  ];
+  useEffect(() => {
+    fetchPackages();
+  }, []);
 
-  // Candidate Package Data
-  const candidatePackage = {
-    title: 'Profile Booster Package',
-    subtitle: 'Stand Out from the Crowd',
-    price: '₹499',
-    gradientColors: ['#fa709a', '#fee140'],
-    features: [
-      { icon: 'trophy', label: 'Priority Applicant Tag', value: '✓', isPositive: true },
-      { icon: 'eye', label: 'Get Upto 10X attention from recruiters', value: '✓', isPositive: true },
-      { icon: 'flash', label: 'Highlight your application to recruiter', value: '✓', isPositive: true },
-      { icon: 'trending-up', label: 'Increase your chance of shortlisting', value: '✓', isPositive: true },
-      { icon: 'chatbubble', label: 'Chat Support (Mon-Sat 10am-7pm)', value: '✓', isPositive: true },
-      { icon: 'calendar', label: 'Package Validity', value: '30 Days' },
-    ],
-    referralProgram: {
-      title: 'Referral Program',
-      description: 'Refer 20 Job Seekers / Candidates and Get Profile Booster Package For Free',
-      icon: 'gift',
-    },
+  const fetchPackages = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch employer packages (using public endpoint, no auth required)
+      const employerResponse = await fetch(`${API_URL}/api/packages?packageType=employer&isActive=true`);
+      const employerData = await employerResponse.json();
+      
+      // Fetch candidate packages (using public endpoint, no auth required)
+      const candidateResponse = await fetch(`${API_URL}/api/packages?packageType=candidate&isActive=true`);
+      const candidateData = await candidateResponse.json();
+      
+      if (employerData.success) {
+        // Transform backend data to frontend format
+        const transformedEmployer = employerData.packages.map((pkg, index) => ({
+          id: pkg._id,
+          title: pkg.name,
+          subtitle: pkg.description.substring(0, 50) + (pkg.description.length > 50 ? '...' : ''),
+          price: pkg.price === 0 ? 'FREE' : `${pkg.currency === 'INR' ? '₹' : '$'}${pkg.price.toLocaleString()}`,
+          popular: pkg.isFeatured,
+          gradientColors: gradientColors[index % gradientColors.length],
+          period: `${pkg.periodValue} ${pkg.period}`,
+          gstApplicable: pkg.gstApplicable,
+          supportIncluded: pkg.supportIncluded,
+          supportDetails: pkg.supportDetails,
+          features: pkg.features.map(feature => ({
+            icon: getIconForFeature(feature.name),
+            label: feature.name,
+            value: feature.value,
+            isPositive: feature.included,
+            isNegative: !feature.included,
+          })),
+        }));
+        setEmployerPackages(transformedEmployer);
+      }
+      
+      if (candidateData.success) {
+        // Transform backend data to frontend format
+        const transformedCandidate = candidateData.packages.map((pkg, index) => ({
+          id: pkg._id,
+          title: pkg.name,
+          subtitle: pkg.description.substring(0, 50) + (pkg.description.length > 50 ? '...' : ''),
+          price: pkg.price === 0 ? 'FREE' : `${pkg.currency === 'INR' ? '₹' : '$'}${pkg.price.toLocaleString()}`,
+          gradientColors: gradientColors[(index + 3) % gradientColors.length],
+          period: `${pkg.periodValue} ${pkg.period}`,
+          gstApplicable: pkg.gstApplicable,
+          supportIncluded: pkg.supportIncluded,
+          supportDetails: pkg.supportDetails,
+          features: pkg.features.map(feature => ({
+            icon: getIconForFeature(feature.name),
+            label: feature.name,
+            value: feature.value,
+            isPositive: feature.included,
+            isNegative: !feature.included,
+          })),
+        }));
+        setCandidatePackages(transformedCandidate);
+      }
+    } catch (error) {
+      console.error('Fetch packages error:', error);
+      Alert.alert('Error', 'Failed to load packages. Please try again later.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Helper function to get appropriate icon for feature
+  const getIconForFeature = (featureName) => {
+    const lowerName = featureName.toLowerCase();
+    if (lowerName.includes('user') || lowerName.includes('superuser')) return 'person';
+    if (lowerName.includes('subuser') || lowerName.includes('sub user')) return 'people-outline';
+    if (lowerName.includes('job post')) return 'briefcase';
+    if (lowerName.includes('featured')) return 'star';
+    if (lowerName.includes('candidate') || lowerName.includes('applies')) return 'people';
+    if (lowerName.includes('expiry') || lowerName.includes('time')) return 'time';
+    if (lowerName.includes('cv') || lowerName.includes('resume')) return 'document-text';
+    if (lowerName.includes('invite') || lowerName.includes('mail') || lowerName.includes('email')) return 'mail';
+    if (lowerName.includes('chat') || lowerName.includes('support')) return 'chatbubble';
+    if (lowerName.includes('validity') || lowerName.includes('period')) return 'calendar';
+    if (lowerName.includes('priority') || lowerName.includes('boost')) return 'trophy';
+    if (lowerName.includes('attention') || lowerName.includes('view')) return 'eye';
+    if (lowerName.includes('highlight')) return 'flash';
+    if (lowerName.includes('chance') || lowerName.includes('increase')) return 'trending-up';
+    if (lowerName.includes('referral') || lowerName.includes('gift')) return 'gift';
+    return 'checkmark-circle';
   };
 
   const renderFeatureItem = (feature) => (
@@ -124,7 +150,7 @@ const PackagesScreen = () => {
     </View>
   );
 
-  const renderEmployerPackageCard = (pkg) => (
+  const renderPackageCard = (pkg, isCandidate = false) => (
     <View key={pkg.id} style={styles.packageCard}>
       <LinearGradient
         colors={pkg.gradientColors}
@@ -142,15 +168,31 @@ const PackagesScreen = () => {
         <Text style={styles.packageSubtitle}>{pkg.subtitle}</Text>
         <View style={styles.priceContainer}>
           <Text style={styles.packagePrice}>{pkg.price}</Text>
-          {pkg.price !== 'FREE' && (
+          {pkg.price !== 'FREE' && pkg.gstApplicable && (
             <Text style={styles.gstText}>*GST As Applicable</Text>
           )}
         </View>
+        {pkg.period && (
+          <View style={styles.periodContainer}>
+            <Ionicons name="time-outline" size={14} color="rgba(255,255,255,0.9)" />
+            <Text style={styles.periodText}>Valid for {pkg.period}</Text>
+          </View>
+        )}
       </LinearGradient>
 
       <View style={styles.featuresContainer}>
-        {pkg.features.map(renderFeatureItem)}
+        {pkg.features && pkg.features.map(renderFeatureItem)}
       </View>
+
+      {pkg.supportIncluded && pkg.supportDetails && (
+        <View style={styles.supportContainer}>
+          <View style={styles.supportHeader}>
+            <Ionicons name="chatbubble-ellipses" size={20} color={colors.info} />
+            <Text style={styles.supportTitle}>Support Included</Text>
+          </View>
+          <Text style={styles.supportDescription}>{pkg.supportDetails}</Text>
+        </View>
+      )}
 
       <TouchableOpacity style={styles.selectButton}>
         <LinearGradient
@@ -160,57 +202,33 @@ const PackagesScreen = () => {
           style={styles.selectButtonGradient}
         >
           <Text style={styles.selectButtonText}>
-            {pkg.price === 'FREE' ? 'Get Started' : 'Choose Plan'}
+            {isCandidate 
+              ? 'Boost My Profile' 
+              : pkg.price === 'FREE' 
+                ? 'Get Started' 
+                : 'Choose Plan'}
           </Text>
-          <Ionicons name="arrow-forward" size={18} color="#fff" />
+          <Ionicons 
+            name={isCandidate ? "rocket" : "arrow-forward"} 
+            size={18} 
+            color="#fff" 
+          />
         </LinearGradient>
       </TouchableOpacity>
     </View>
   );
 
-  const renderCandidatePackageCard = () => (
-    <View style={styles.packageCard}>
-      <LinearGradient
-        colors={candidatePackage.gradientColors}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.packageHeader}
-      >
-        <Text style={styles.packageTitle}>{candidatePackage.title}</Text>
-        <Text style={styles.packageSubtitle}>{candidatePackage.subtitle}</Text>
-        <View style={styles.priceContainer}>
-          <Text style={styles.packagePrice}>{candidatePackage.price}</Text>
-          <Text style={styles.gstText}>*GST As Applicable</Text>
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <Header />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Loading packages...</Text>
         </View>
-      </LinearGradient>
-
-      <View style={styles.featuresContainer}>
-        {candidatePackage.features.map(renderFeatureItem)}
       </View>
-
-      <View style={styles.referralContainer}>
-        <View style={styles.referralHeader}>
-          <Ionicons name={candidatePackage.referralProgram.icon} size={24} color={colors.warning} />
-          <Text style={styles.referralTitle}>{candidatePackage.referralProgram.title}</Text>
-        </View>
-        <Text style={styles.referralDescription}>
-          {candidatePackage.referralProgram.description}
-        </Text>
-      </View>
-
-      <TouchableOpacity style={styles.selectButton}>
-        <LinearGradient
-          colors={candidatePackage.gradientColors}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.selectButtonGradient}
-        >
-          <Text style={styles.selectButtonText}>Boost My Profile</Text>
-          <Ionicons name="rocket" size={18} color="#fff" />
-        </LinearGradient>
-      </TouchableOpacity>
-    </View>
-  );
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -274,15 +292,35 @@ const PackagesScreen = () => {
               <Text style={styles.sectionSubtitle}>
                 Choose the perfect plan to find and hire top talent
               </Text>
-              {employerPackages.map(renderEmployerPackageCard)}
+              {employerPackages.length > 0 ? (
+                employerPackages.map((pkg) => renderPackageCard(pkg, false))
+              ) : (
+                <View style={styles.emptyContainer}>
+                  <Ionicons name="cube-outline" size={64} color="#ccc" />
+                  <Text style={styles.emptyText}>No packages available</Text>
+                  <Text style={styles.emptySubtext}>
+                    Check back later for employer packages
+                  </Text>
+                </View>
+              )}
             </>
           ) : (
             <>
-              <Text style={styles.sectionTitle}>Candidate Package</Text>
+              <Text style={styles.sectionTitle}>Candidate Packages</Text>
               <Text style={styles.sectionSubtitle}>
                 Boost your profile visibility and get noticed by recruiters
               </Text>
-              {renderCandidatePackageCard()}
+              {candidatePackages.length > 0 ? (
+                candidatePackages.map((pkg) => renderPackageCard(pkg, true))
+              ) : (
+                <View style={styles.emptyContainer}>
+                  <Ionicons name="cube-outline" size={64} color="#ccc" />
+                  <Text style={styles.emptyText}>No packages available</Text>
+                  <Text style={styles.emptySubtext}>
+                    Check back later for candidate packages
+                  </Text>
+                </View>
+              )}
             </>
           )}
         </View>
@@ -314,6 +352,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xl,
+  },
+  loadingText: {
+    ...typography.body1,
+    color: colors.textSecondary,
+    marginTop: spacing.md,
   },
   scrollView: {
     flex: 1,
@@ -533,6 +582,59 @@ const styles = StyleSheet.create({
     ...typography.body2,
     color: colors.textSecondary,
     textAlign: 'center',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.xxl * 2,
+    paddingHorizontal: spacing.lg,
+  },
+  emptyText: {
+    ...typography.h5,
+    color: colors.textSecondary,
+    marginTop: spacing.md,
+    textAlign: 'center',
+  },
+  emptySubtext: {
+    ...typography.body2,
+    color: colors.textSecondary,
+    marginTop: spacing.sm,
+    textAlign: 'center',
+  },
+  periodContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginTop: spacing.sm,
+  },
+  periodText: {
+    ...typography.caption,
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontWeight: '600',
+  },
+  supportContainer: {
+    margin: spacing.lg,
+    padding: spacing.md,
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  supportHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  supportTitle: {
+    ...typography.body1,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  supportDescription: {
+    ...typography.body2,
+    color: colors.textSecondary,
+    lineHeight: 20,
   },
 });
 

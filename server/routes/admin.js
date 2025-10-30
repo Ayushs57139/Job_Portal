@@ -158,6 +158,80 @@ router.patch('/users/:id/verify', async (req, res) => {
   }
 });
 
+// @route   PATCH /api/admin/users/:id/unverify
+// @desc    Unverify user
+// @access  Private (Admin)
+router.patch('/users/:id/unverify', async (req, res) => {
+  try {
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      { isVerified: false, verifiedAt: null },
+      { new: true }
+    ).select('-password');
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({ user, message: 'User unverified successfully' });
+  } catch (error) {
+    console.error('Unverify user error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   POST /api/admin/users/create
+// @desc    Create a new user manually
+// @access  Private (Admin)
+router.post('/users/create', requirePermission('canManageUsers'), async (req, res) => {
+  try {
+    const { firstName, lastName, email, phone, password, role } = req.body;
+
+    // Validate required fields
+    if (!firstName || !lastName || !email || !password || !role) {
+      return res.status(400).json({ message: 'All fields are required' });
+    }
+
+    // Validate role
+    const validRoles = ['JOBSEEKER', 'EMPLOYER'];
+    if (!validRoles.includes(role.toUpperCase())) {
+      return res.status(400).json({ message: 'Invalid role. Must be JOBSEEKER or EMPLOYER' });
+    }
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    if (existingUser) {
+      return res.status(400).json({ message: 'User with this email already exists' });
+    }
+
+    // Map role to userType
+    const userType = role.toUpperCase() === 'JOBSEEKER' ? 'jobseeker' : 'employer';
+
+    // Create new user
+    const newUser = new User({
+      firstName,
+      lastName,
+      email: email.toLowerCase(),
+      phone: phone || '',
+      password,
+      userType,
+      role: role.toUpperCase(),
+      isActive: true,
+      isVerified: false
+    });
+
+    await newUser.save();
+
+    res.status(201).json({ 
+      user: newUser, 
+      message: 'User created successfully' 
+    });
+  } catch (error) {
+    console.error('Create user error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 // @route   POST /api/admin/users/bulk-import
 // @desc    Bulk import users from CSV
 // @access  Private (Admin)
@@ -227,6 +301,8 @@ router.get('/users', requirePermission('canManageUsers'), async (req, res) => {
     const userType = req.query.userType || '';
     const isActive = req.query.isActive;
 
+    console.log('GET /admin/users - Query params:', { page, limit, search, userType, isActive });
+
     let query = {};
     
     if (search) {
@@ -238,12 +314,21 @@ router.get('/users', requirePermission('canManageUsers'), async (req, res) => {
     }
     
     if (userType) {
-      query.userType = userType;
+      // Support comma-separated userTypes
+      const userTypes = userType.split(',').map(ut => ut.trim());
+      console.log('Filtering by userTypes:', userTypes);
+      if (userTypes.length > 1) {
+        query.userType = { $in: userTypes };
+      } else {
+        query.userType = userTypes[0];
+      }
     }
     
     if (isActive !== undefined) {
       query.isActive = isActive === 'true';
     }
+
+    console.log('MongoDB query:', JSON.stringify(query));
 
     const users = await User.find(query)
       .select('-password')
@@ -257,8 +342,27 @@ router.get('/users', requirePermission('canManageUsers'), async (req, res) => {
 
     const total = await User.countDocuments(query);
 
+    console.log(`Found ${users.length} users (total: ${total})`);
+
+    // Transform users to match frontend expectations
+    const transformedUsers = users.map(user => {
+      const userObj = user.toObject();
+      return {
+        ...userObj,
+        name: `${userObj.firstName || ''} ${userObj.lastName || ''}`.trim() || 'N/A',
+        role: userObj.userType ? userObj.userType.toUpperCase() : 'N/A',
+        lastActive: userObj.userProfile?.profileStatus?.lastActive || userObj.lastLogin,
+        lastModified: userObj.userProfile?.profileStatus?.lastModified || userObj.updatedAt,
+        teamLimit: userObj.teamMemberLimits?.maxTeamMembers || 0,
+        currentTeamMembers: userObj.teamMemberLimits?.currentTeamMembers || 0,
+        companyName: userObj.profile?.company?.name || userObj.companyName || null
+      };
+    });
+
+    console.log('Returning transformed users:', transformedUsers.length);
+
     res.json({
-      users,
+      users: transformedUsers,
       pagination: {
         current: page,
         pages: Math.ceil(total / limit),
@@ -392,6 +496,55 @@ router.patch('/users/:id', requirePermission('canManageUsers'), [
   } catch (error) {
     console.error('Update user error:', error);
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   PATCH /api/admin/users/:id/team-limit
+// @desc    Update team limit for employer/consultancy
+// @access  Private (Admin)
+router.patch('/users/:id/team-limit', requirePermission('canManageUsers'), async (req, res) => {
+  try {
+    const { teamLimit } = req.body;
+
+    if (teamLimit === undefined || teamLimit === null || isNaN(teamLimit) || teamLimit < 0) {
+      return res.status(400).json({ message: 'Team limit must be a non-negative number' });
+    }
+
+    const user = await User.findById(req.params.id);
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Only allow team limit updates for company and consultancy users
+    if (user.userType !== 'company' && user.userType !== 'consultancy') {
+      return res.status(400).json({ message: 'Team limit can only be set for company and consultancy users' });
+    }
+
+    // Update team limit
+    if (!user.teamMemberLimits) {
+      user.teamMemberLimits = {};
+    }
+    user.teamMemberLimits.maxTeamMembers = parseInt(teamLimit);
+    user.teamMemberLimits.limitSetBy = req.user._id;
+    user.teamMemberLimits.limitSetAt = new Date();
+    
+    await user.save();
+
+    res.json({
+      message: 'Team limit updated successfully',
+      user: {
+        _id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        teamLimit: user.teamMemberLimits.maxTeamMembers,
+        currentTeamMembers: user.teamMemberLimits.currentTeamMembers || 0
+      }
+    });
+  } catch (error) {
+    console.error('Update team limit error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
@@ -618,6 +771,129 @@ router.get('/role-management/permissions', requirePermission('canManageUsers'), 
   }
 });
 
+// @route   GET /api/admin/roles
+// @desc    Get all roles with user counts
+// @access  Private (Admin)
+router.get('/roles', requirePermission('canManageUsers'), async (req, res) => {
+  try {
+    // Define role types and their permissions
+    const roleDefinitions = {
+      superadmin: {
+        name: 'Super Admin',
+        permissions: ['all'],
+        description: 'Full access to all features and settings'
+      },
+      admin: {
+        name: 'Admin',
+        permissions: ['manage_users', 'manage_jobs', 'manage_applications', 'view_analytics', 'manage_content'],
+        description: 'Can manage users, jobs, and applications'
+      },
+      moderator: {
+        name: 'Moderator',
+        permissions: ['view_users', 'manage_jobs', 'manage_content'],
+        description: 'Can moderate content and manage jobs'
+      },
+      employer: {
+        name: 'Employer',
+        permissions: ['post_jobs', 'view_applications', 'manage_company'],
+        description: 'Can post jobs and manage applications'
+      },
+      jobseeker: {
+        name: 'Job Seeker',
+        permissions: ['apply_jobs', 'view_jobs', 'manage_profile'],
+        description: 'Can apply to jobs and manage profile'
+      }
+    };
+
+    // Count users for each role
+    const roles = await Promise.all(
+      Object.entries(roleDefinitions).map(async ([key, roleInfo]) => {
+        const userCount = await User.countDocuments({ userType: key });
+        return {
+          id: key,
+          name: roleInfo.name,
+          permissions: roleInfo.permissions,
+          description: roleInfo.description,
+          users: userCount,
+          canDelete: key !== 'superadmin' && key !== 'admin'
+        };
+      })
+    );
+
+    res.json({ roles });
+  } catch (error) {
+    console.error('Get roles error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   PUT /api/admin/roles/:roleId
+// @desc    Update role permissions
+// @access  Private (Admin)
+router.put('/roles/:roleId', requirePermission('canManageUsers'), async (req, res) => {
+  try {
+    const { roleId } = req.params;
+    const { permissions } = req.body;
+
+    // Prevent updating superadmin role
+    if (roleId === 'superadmin') {
+      return res.status(403).json({ message: 'Cannot modify Super Admin role' });
+    }
+
+    // In a real application, you would store role definitions in the database
+    // For now, we'll just return success
+    res.json({ 
+      message: 'Role updated successfully',
+      role: { id: roleId, permissions }
+    });
+  } catch (error) {
+    console.error('Update role error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   POST /api/admin/roles/assign
+// @desc    Assign role to user
+// @access  Private (Admin)
+router.post('/roles/assign', requirePermission('canManageUsers'), [
+  body('userId').notEmpty().withMessage('User ID is required'),
+  body('userType').isIn(['jobseeker', 'employer', 'admin', 'moderator']).withMessage('Invalid role')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { userId, userType, adminPermissions } = req.body;
+
+    const updateData = { userType };
+    
+    // If assigning admin role, set permissions
+    if (userType === 'admin' && adminPermissions) {
+      updateData.adminPermissions = adminPermissions;
+    }
+
+    const user = await User.findByIdAndUpdate(
+      userId,
+      updateData,
+      { new: true }
+    ).select('-password');
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({ 
+      message: 'Role assigned successfully',
+      user 
+    });
+  } catch (error) {
+    console.error('Assign role error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // @route   GET /api/admin/jobs/count
 // @desc    Get job counts
 // @access  Private (Admin)
@@ -721,6 +997,35 @@ router.put('/jobs/:id', requirePermission('canManageJobs'), async (req, res) => 
   }
 });
 
+// @route   PATCH /api/admin/jobs/:id
+// @desc    Partially update job (for status toggle, etc.)
+// @access  Private (Admin)
+router.patch('/jobs/:id', requirePermission('canManageJobs'), async (req, res) => {
+  try {
+    const job = await Job.findById(req.params.id);
+    
+    if (!job) {
+      return res.status(404).json({ message: 'Job not found' });
+    }
+
+    const updates = req.body;
+
+    const updatedJob = await Job.findByIdAndUpdate(
+      req.params.id,
+      { $set: updates },
+      { new: true, runValidators: true }
+    ).populate('postedBy', 'firstName lastName email');
+
+    res.json({
+      message: 'Job updated successfully',
+      job: updatedJob
+    });
+  } catch (error) {
+    console.error('Update job error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // @route   DELETE /api/admin/jobs/:id
 // @desc    Delete job
 // @access  Private (Admin)
@@ -773,16 +1078,25 @@ router.get('/applications', requirePermission('canManageApplications'), async (r
     }
 
     const applications = await Application.find(query)
-      .populate('user', 'firstName lastName email')
-      .populate('job', 'title company.name')
+      .populate('user', 'firstName lastName email phone')
+      .populate('job', 'title company location')
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(limit);
+      .limit(limit)
+      .lean();
+
+    // Transform applications to include candidate and job info
+    const transformedApplications = applications.map(app => ({
+      ...app,
+      candidateName: app.fullName || (app.user ? `${app.user.firstName || ''} ${app.user.lastName || ''}`.trim() : 'N/A'),
+      jobTitle: app.job?.title || 'N/A',
+      candidate: app.user,
+    }));
 
     const total = await Application.countDocuments(query);
 
     res.json({
-      applications,
+      applications: transformedApplications,
       pagination: {
         current: page,
         pages: Math.ceil(total / limit),
@@ -795,11 +1109,91 @@ router.get('/applications', requirePermission('canManageApplications'), async (r
   }
 });
 
+// @route   GET /api/admin/applications/:id
+// @desc    Get single application details
+// @access  Private (Admin)
+router.get('/applications/:id', requirePermission('canManageApplications'), async (req, res) => {
+  try {
+    console.log('Fetching application with ID:', req.params.id);
+    
+    // Validate MongoDB ObjectId format
+    if (!req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
+      console.log('Invalid application ID format');
+      return res.status(400).json({ message: 'Invalid application ID format' });
+    }
+
+    const application = await Application.findById(req.params.id)
+      .populate('user', 'firstName lastName email phone')
+      .populate('job', 'title company location salary');
+    
+    if (!application) {
+      console.log('Application not found in database');
+      return res.status(404).json({ message: 'Application not found' });
+    }
+
+    console.log('Application found:', application._id);
+    res.json({ application });
+  } catch (error) {
+    console.error('Get application error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// @route   PATCH /api/admin/applications/:id
+// @desc    Update application (partial update)
+// @access  Private (Admin)
+router.patch('/applications/:id', requirePermission('canManageApplications'), async (req, res) => {
+  try {
+    const application = await Application.findById(req.params.id);
+    
+    if (!application) {
+      return res.status(404).json({ message: 'Application not found' });
+    }
+
+    const updates = req.body;
+    const updatedApplication = await Application.findByIdAndUpdate(
+      req.params.id,
+      { $set: updates },
+      { new: true, runValidators: true }
+    )
+      .populate('user', 'firstName lastName email phone')
+      .populate('job', 'title company location');
+
+    res.json({
+      message: 'Application updated successfully',
+      application: updatedApplication
+    });
+  } catch (error) {
+    console.error('Update application error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   DELETE /api/admin/applications/:id
+// @desc    Delete application
+// @access  Private (Admin)
+router.delete('/applications/:id', requirePermission('canManageApplications'), async (req, res) => {
+  try {
+    const application = await Application.findById(req.params.id);
+    
+    if (!application) {
+      return res.status(404).json({ message: 'Application not found' });
+    }
+
+    await Application.findByIdAndDelete(req.params.id);
+
+    res.json({ message: 'Application deleted successfully' });
+  } catch (error) {
+    console.error('Delete application error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // @route   PUT /api/admin/applications/:id/status
 // @desc    Update application status
 // @access  Private (Admin)
 router.put('/applications/:id/status', requirePermission('canManageApplications'), [
-  body('status').isIn(['pending', 'reviewed', 'shortlisted', 'rejected', 'hired']).withMessage('Invalid status')
+  body('status').isIn(['pending', 'reviewed', 'shortlisted', 'rejected', 'accepted', 'hired']).withMessage('Invalid status')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -3417,6 +3811,602 @@ router.patch('/verifications/:id/reject', async (req, res) => {
     res.json({ user });
   } catch (error) {
     console.error('Reject verification error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ==================== Analytics Routes ====================
+
+// @route   GET /api/admin/analytics
+// @desc    Get comprehensive analytics data
+// @access  Private (Admin)
+router.get('/analytics', requirePermission('canManageUsers'), async (req, res) => {
+  try {
+    const User = require('../models/User');
+    const Job = require('../models/Job');
+    const Application = require('../models/Application');
+
+    // Date ranges
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const lastWeek = new Date(today);
+    lastWeek.setDate(lastWeek.getDate() - 7);
+    const lastMonth = new Date(today);
+    lastMonth.setMonth(lastMonth.getMonth() - 1);
+    const last3Months = new Date(today);
+    last3Months.setMonth(last3Months.getMonth() - 3);
+
+    // User Statistics
+    const totalUsers = await User.countDocuments();
+    const verifiedUsers = await User.countDocuments({ isVerified: true });
+    const jobseekers = await User.countDocuments({ userType: 'jobseeker' });
+    const companies = await User.countDocuments({ userType: 'company' });
+    const consultancies = await User.countDocuments({ userType: 'consultancy' });
+    const newUsersToday = await User.countDocuments({ createdAt: { $gte: today } });
+    const newUsersThisWeek = await User.countDocuments({ createdAt: { $gte: lastWeek } });
+    const newUsersThisMonth = await User.countDocuments({ createdAt: { $gte: lastMonth } });
+
+    // Job Statistics
+    const totalJobs = await Job.countDocuments();
+    const activeJobs = await Job.countDocuments({ status: 'active' });
+    const inactiveJobs = await Job.countDocuments({ status: 'inactive' });
+    const closedJobs = await Job.countDocuments({ status: 'closed' });
+    const newJobsToday = await Job.countDocuments({ createdAt: { $gte: today } });
+    const newJobsThisWeek = await Job.countDocuments({ createdAt: { $gte: lastWeek } });
+    const newJobsThisMonth = await Job.countDocuments({ createdAt: { $gte: lastMonth } });
+
+    // Application Statistics
+    const totalApplications = await Application.countDocuments();
+    const pendingApplications = await Application.countDocuments({ status: 'pending' });
+    const shortlistedApplications = await Application.countDocuments({ status: 'shortlisted' });
+    const rejectedApplications = await Application.countDocuments({ status: 'rejected' });
+    const acceptedApplications = await Application.countDocuments({ status: 'accepted' });
+    const newApplicationsToday = await Application.countDocuments({ createdAt: { $gte: today } });
+    const newApplicationsThisWeek = await Application.countDocuments({ createdAt: { $gte: lastWeek } });
+    const newApplicationsThisMonth = await Application.countDocuments({ createdAt: { $gte: lastMonth } });
+
+    // Average calculations
+    const avgApplicationsPerJob = totalJobs > 0 ? (totalApplications / totalJobs).toFixed(2) : 0;
+    const avgJobsPerCompany = (companies + consultancies) > 0 ? (totalJobs / (companies + consultancies)).toFixed(2) : 0;
+
+    // Growth rates (comparing current month to last month)
+    const usersLastMonth = await User.countDocuments({ 
+      createdAt: { $gte: lastMonth, $lt: today } 
+    });
+    const userGrowthRate = usersLastMonth > 0 ? 
+      (((newUsersThisMonth - usersLastMonth) / usersLastMonth) * 100).toFixed(1) : 0;
+
+    const jobsLastMonth = await Job.countDocuments({ 
+      createdAt: { $gte: lastMonth, $lt: today } 
+    });
+    const jobGrowthRate = jobsLastMonth > 0 ? 
+      (((newJobsThisMonth - jobsLastMonth) / jobsLastMonth) * 100).toFixed(1) : 0;
+
+    // Top locations
+    const topLocations = await Job.aggregate([
+      { $match: { 'location.city': { $exists: true, $ne: null } } },
+      { $group: { _id: '$location.city', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 5 }
+    ]);
+
+    // Top industries
+    const topIndustries = await Job.aggregate([
+      { $match: { 'industry.name': { $exists: true, $ne: null } } },
+      { $group: { _id: '$industry.name', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 5 }
+    ]);
+
+    // Recent activity (last 30 days by day)
+    const last30Days = [];
+    for (let i = 29; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      const nextDate = new Date(date);
+      nextDate.setDate(nextDate.getDate() + 1);
+
+      const dayUsers = await User.countDocuments({ 
+        createdAt: { $gte: date, $lt: nextDate } 
+      });
+      const dayJobs = await Job.countDocuments({ 
+        createdAt: { $gte: date, $lt: nextDate } 
+      });
+      const dayApplications = await Application.countDocuments({ 
+        createdAt: { $gte: date, $lt: nextDate } 
+      });
+
+      last30Days.push({
+        date: date.toISOString().split('T')[0],
+        users: dayUsers,
+        jobs: dayJobs,
+        applications: dayApplications
+      });
+    }
+
+    // Conversion rates
+    const applicationConversionRate = totalApplications > 0 ? 
+      ((acceptedApplications / totalApplications) * 100).toFixed(2) : 0;
+    const jobFillRate = totalJobs > 0 ? 
+      ((closedJobs / totalJobs) * 100).toFixed(2) : 0;
+
+    res.json({
+      users: {
+        total: totalUsers,
+        verified: verifiedUsers,
+        jobseekers,
+        companies,
+        consultancies,
+        newToday: newUsersToday,
+        newThisWeek: newUsersThisWeek,
+        newThisMonth: newUsersThisMonth,
+        growthRate: parseFloat(userGrowthRate)
+      },
+      jobs: {
+        total: totalJobs,
+        active: activeJobs,
+        inactive: inactiveJobs,
+        closed: closedJobs,
+        newToday: newJobsToday,
+        newThisWeek: newJobsThisWeek,
+        newThisMonth: newJobsThisMonth,
+        growthRate: parseFloat(jobGrowthRate),
+        avgPerCompany: parseFloat(avgJobsPerCompany)
+      },
+      applications: {
+        total: totalApplications,
+        pending: pendingApplications,
+        shortlisted: shortlistedApplications,
+        rejected: rejectedApplications,
+        accepted: acceptedApplications,
+        newToday: newApplicationsToday,
+        newThisWeek: newApplicationsThisWeek,
+        newThisMonth: newApplicationsThisMonth,
+        avgPerJob: parseFloat(avgApplicationsPerJob),
+        conversionRate: parseFloat(applicationConversionRate)
+      },
+      metrics: {
+        jobFillRate: parseFloat(jobFillRate),
+        verificationRate: totalUsers > 0 ? ((verifiedUsers / totalUsers) * 100).toFixed(2) : 0
+      },
+      topLocations,
+      topIndustries,
+      chartData: last30Days
+    });
+  } catch (error) {
+    console.error('Get analytics error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ==================== Homepage Management Routes ====================
+
+const HomepageConfig = require('../models/HomepageConfig');
+
+// @route   GET /api/admin/homepage/config
+// @desc    Get homepage configuration
+// @access  Private (Admin)
+router.get('/homepage/config', requirePermission('canManageUsers'), async (req, res) => {
+  try {
+    const config = await HomepageConfig.getActiveConfig();
+    res.json({ config });
+  } catch (error) {
+    console.error('Get homepage config error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   PUT /api/admin/homepage/config
+// @desc    Update homepage configuration
+// @access  Private (Admin)
+router.put('/homepage/config', requirePermission('canManageUsers'), async (req, res) => {
+  try {
+    const { hero, banners, sections, stats } = req.body;
+
+    let config = await HomepageConfig.getActiveConfig();
+
+    if (hero) config.hero = { ...config.hero, ...hero };
+    if (banners !== undefined) config.banners = banners;
+    if (sections) config.sections = { ...config.sections, ...sections };
+    if (stats) config.stats = { ...config.stats, ...stats };
+    
+    config.lastUpdatedBy = req.user._id;
+    await config.save();
+
+    res.json({ 
+      config,
+      message: 'Homepage configuration updated successfully'
+    });
+  } catch (error) {
+    console.error('Update homepage config error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   POST /api/admin/homepage/banners
+// @desc    Add a new banner
+// @access  Private (Admin)
+router.post('/homepage/banners', requirePermission('canManageUsers'), async (req, res) => {
+  try {
+    const { title, description, imageUrl, buttonText, buttonLink, backgroundColor, textColor } = req.body;
+
+    const config = await HomepageConfig.getActiveConfig();
+    
+    const newBanner = {
+      title,
+      description,
+      imageUrl,
+      buttonText,
+      buttonLink,
+      backgroundColor: backgroundColor || '#4A90E2',
+      textColor: textColor || '#FFFFFF',
+      order: config.banners.length,
+      enabled: true
+    };
+
+    config.banners.push(newBanner);
+    config.lastUpdatedBy = req.user._id;
+    await config.save();
+
+    res.json({ 
+      config,
+      message: 'Banner added successfully'
+    });
+  } catch (error) {
+    console.error('Add banner error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   DELETE /api/admin/homepage/banners/:index
+// @desc    Delete a banner
+// @access  Private (Admin)
+router.delete('/homepage/banners/:index', requirePermission('canManageUsers'), async (req, res) => {
+  try {
+    const index = parseInt(req.params.index);
+    
+    const config = await HomepageConfig.getActiveConfig();
+    
+    if (index < 0 || index >= config.banners.length) {
+      return res.status(404).json({ message: 'Banner not found' });
+    }
+
+    config.banners.splice(index, 1);
+    // Reorder remaining banners
+    config.banners.forEach((banner, idx) => {
+      banner.order = idx;
+    });
+    
+    config.lastUpdatedBy = req.user._id;
+    await config.save();
+
+    res.json({ 
+      config,
+      message: 'Banner deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete banner error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   GET /api/homepage/config
+// @desc    Get homepage configuration (Public)
+// @access  Public
+router.get('/homepage/public', async (req, res) => {
+  try {
+    const config = await HomepageConfig.getActiveConfig();
+    res.json({ config });
+  } catch (error) {
+    console.error('Get public homepage config error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ==================== Chatbot Management Routes ====================
+
+const ChatbotConversation = require('../models/ChatbotConversation');
+
+// @route   GET /api/admin/chatbot/conversations
+// @desc    Get all chatbot conversations
+// @access  Private (Admin)
+router.get('/chatbot/conversations', requirePermission('canManageUsers'), async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 50;
+    const skip = (page - 1) * limit;
+    const status = req.query.status;
+    const search = req.query.search;
+
+    let query = {};
+    
+    if (status && status !== 'all') {
+      query.status = status;
+    }
+
+    if (search) {
+      query.$or = [
+        { guestName: { $regex: search, $options: 'i' } },
+        { guestEmail: { $regex: search, $options: 'i' } },
+        { guestPhone: { $regex: search, $options: 'i' } },
+        { sessionId: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    const conversations = await ChatbotConversation.find(query)
+      .populate('userId', 'firstName lastName email')
+      .sort({ lastActivity: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean();
+
+    const total = await ChatbotConversation.countDocuments(query);
+
+    // Add unread count to each conversation
+    const conversationsWithUnread = conversations.map(conv => ({
+      ...conv,
+      unreadCount: conv.messages.filter(msg => msg.sender === 'user' && !msg.isRead).length
+    }));
+
+    res.json({
+      conversations: conversationsWithUnread,
+      pagination: {
+        current: page,
+        pages: Math.ceil(total / limit),
+        total
+      }
+    });
+  } catch (error) {
+    console.error('Get conversations error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   GET /api/admin/chatbot/conversations/:id
+// @desc    Get single conversation
+// @access  Private (Admin)
+router.get('/chatbot/conversations/:id', requirePermission('canManageUsers'), async (req, res) => {
+  try {
+    const conversation = await ChatbotConversation.findById(req.params.id)
+      .populate('userId', 'firstName lastName email phone')
+      .populate('assignedTo', 'firstName lastName');
+    
+    if (!conversation) {
+      return res.status(404).json({ message: 'Conversation not found' });
+    }
+
+    // Mark messages as read
+    await conversation.markAsRead();
+
+    res.json({ conversation });
+  } catch (error) {
+    console.error('Get conversation error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   PATCH /api/admin/chatbot/conversations/:id
+// @desc    Update conversation (status, notes, assign)
+// @access  Private (Admin)
+router.patch('/chatbot/conversations/:id', requirePermission('canManageUsers'), async (req, res) => {
+  try {
+    const { status, adminNotes, assignedTo } = req.body;
+
+    const updateData = {};
+    
+    if (status) updateData.status = status;
+    if (adminNotes !== undefined) updateData.adminNotes = adminNotes;
+    if (assignedTo !== undefined) updateData.assignedTo = assignedTo;
+
+    const conversation = await ChatbotConversation.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true }
+    ).populate('userId', 'firstName lastName email');
+    
+    if (!conversation) {
+      return res.status(404).json({ message: 'Conversation not found' });
+    }
+
+    res.json({ 
+      conversation,
+      message: 'Conversation updated successfully'
+    });
+  } catch (error) {
+    console.error('Update conversation error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   DELETE /api/admin/chatbot/conversations/:id
+// @desc    Delete conversation
+// @access  Private (Admin)
+router.delete('/chatbot/conversations/:id', requirePermission('canManageUsers'), async (req, res) => {
+  try {
+    const conversation = await ChatbotConversation.findByIdAndDelete(req.params.id);
+    
+    if (!conversation) {
+      return res.status(404).json({ message: 'Conversation not found' });
+    }
+
+    res.json({ message: 'Conversation deleted successfully' });
+  } catch (error) {
+    console.error('Delete conversation error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   GET /api/admin/chatbot/stats
+// @desc    Get chatbot statistics
+// @access  Private (Admin)
+router.get('/chatbot/stats', requirePermission('canManageUsers'), async (req, res) => {
+  try {
+    const totalConversations = await ChatbotConversation.countDocuments();
+    const activeConversations = await ChatbotConversation.countDocuments({ status: 'active' });
+    const closedConversations = await ChatbotConversation.countDocuments({ status: 'closed' });
+    
+    // Get total messages
+    const result = await ChatbotConversation.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalMessages: { $sum: '$messageCount' }
+        }
+      }
+    ]);
+
+    const totalMessages = result.length > 0 ? result[0].totalMessages : 0;
+
+    res.json({
+      stats: {
+        total: totalConversations,
+        active: activeConversations,
+        closed: closedConversations,
+        totalMessages
+      }
+    });
+  } catch (error) {
+    console.error('Get chatbot stats error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ==================== KYC Management Routes ====================
+
+const KYC = require('../models/KYC');
+
+// @route   GET /api/admin/kyc
+// @desc    Get all KYC submissions
+// @access  Private (Admin)
+router.get('/kyc', requirePermission('canManageUsers'), async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 1000;
+    const skip = (page - 1) * limit;
+    const status = req.query.status;
+    const userType = req.query.userType;
+
+    let query = {};
+    
+    if (status && status !== 'all') {
+      query.submissionStatus = status;
+    }
+    
+    if (userType && userType !== 'all') {
+      query.userType = userType;
+    }
+
+    const kycs = await KYC.find(query)
+      .populate('userId', 'firstName lastName email companyName phone userType')
+      .populate('reviewedBy', 'firstName lastName')
+      .sort({ submittedAt: -1, createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean();
+
+    // Transform to include user info at root level
+    const transformedKycs = kycs.map(kyc => ({
+      ...kyc,
+      user: kyc.userId
+    }));
+
+    const total = await KYC.countDocuments(query);
+
+    res.json({
+      kycs: transformedKycs,
+      pagination: {
+        current: page,
+        pages: Math.ceil(total / limit),
+        total
+      }
+    });
+  } catch (error) {
+    console.error('Get KYC submissions error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   GET /api/admin/kyc/:id
+// @desc    Get single KYC submission
+// @access  Private (Admin)
+router.get('/kyc/:id', requirePermission('canManageUsers'), async (req, res) => {
+  try {
+    const kyc = await KYC.findById(req.params.id)
+      .populate('userId', 'firstName lastName email companyName phone userType')
+      .populate('reviewedBy', 'firstName lastName');
+    
+    if (!kyc) {
+      return res.status(404).json({ message: 'KYC submission not found' });
+    }
+
+    const transformedKyc = {
+      ...kyc.toObject(),
+      user: kyc.userId
+    };
+
+    res.json({ kyc: transformedKyc });
+  } catch (error) {
+    console.error('Get KYC error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   PATCH /api/admin/kyc/:id/status
+// @desc    Update KYC status (verify/reject)
+// @access  Private (Admin)
+router.patch('/kyc/:id/status', requirePermission('canManageUsers'), async (req, res) => {
+  try {
+    const { status, adminNotes, rejectionReason } = req.body;
+
+    if (!['submitted', 'under_review', 'verified', 'rejected'].includes(status)) {
+      return res.status(400).json({ message: 'Invalid status' });
+    }
+
+    const updateData = {
+      submissionStatus: status,
+      reviewedAt: new Date(),
+      reviewedBy: req.user._id
+    };
+
+    if (adminNotes) {
+      updateData.adminNotes = adminNotes;
+    }
+
+    if (status === 'rejected' && rejectionReason) {
+      updateData.rejectionReason = rejectionReason;
+    }
+
+    const kyc = await KYC.findByIdAndUpdate(
+      req.params.id,
+      updateData,
+      { new: true }
+    ).populate('userId', 'firstName lastName email');
+    
+    if (!kyc) {
+      return res.status(404).json({ message: 'KYC submission not found' });
+    }
+
+    res.json({ 
+      kyc,
+      message: `KYC ${status} successfully`
+    });
+  } catch (error) {
+    console.error('Update KYC status error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   GET /api/admin/kyc/stats
+// @desc    Get KYC statistics
+// @access  Private (Admin)
+router.get('/kyc/stats', requirePermission('canManageUsers'), async (req, res) => {
+  try {
+    const stats = await KYC.getKYCStats();
+    res.json({ stats });
+  } catch (error) {
+    console.error('Get KYC stats error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });

@@ -529,6 +529,288 @@ class JobWalaAPI {
     const params = new URLSearchParams(filters);
     return await this.request(`/social-updates/trending?${params}`);
   }
+
+  // Job Alert APIs
+  async createJobAlert(formData) {
+    const url = `${this.baseURL}/job-alerts`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': this.token ? `Bearer ${this.token}` : undefined,
+      },
+      body: formData,
+    });
+    return await response.json();
+  }
+
+  async getJobAlerts(filters = {}) {
+    const params = new URLSearchParams(filters);
+    return await this.request(`/job-alerts?${params}`);
+  }
+
+  async getJobAlert(id) {
+    return await this.request(`/job-alerts/${id}`);
+  }
+
+  async updateJobAlert(id, data) {
+    return await this.request(`/job-alerts/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteJobAlert(id) {
+    return await this.request(`/job-alerts/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async toggleJobAlertStatus(id) {
+    return await this.request(`/job-alerts/${id}/toggle-status`, {
+      method: 'POST',
+    });
+  }
+
+  async getJobAlertStats() {
+    return await this.request('/job-alerts/stats/summary');
+  }
+
+  async exportJobAlerts() {
+    const url = `${this.baseURL}/job-alerts/export/csv`;
+    const response = await fetch(url, {
+      headers: this.getHeaders(),
+    });
+    return await response.blob();
+  }
+
+  // Chat APIs - Live Chat Support
+  async getConversations(filters = {}) {
+    const params = new URLSearchParams(filters);
+    return await this.request(`/chat/conversations?${params}`);
+  }
+
+  async getConversation(conversationId) {
+    return await this.request(`/chat/conversations/${conversationId}`);
+  }
+
+  async getConversationMessages(conversationId, page = 1, limit = 50) {
+    return await this.request(`/chat/conversations/${conversationId}/messages?page=${page}&limit=${limit}`);
+  }
+
+  async sendMessage(conversationId, content, replyTo = null) {
+    return await this.request(`/chat/conversations/${conversationId}/messages`, {
+      method: 'POST',
+      body: JSON.stringify({ content, replyTo }),
+    });
+  }
+
+  async createConversation(participants, conversationType, subject = null, metadata = {}) {
+    return await this.request('/chat/conversations', {
+      method: 'POST',
+      body: JSON.stringify({ participants, conversationType, subject, metadata }),
+    });
+  }
+
+  async getChatPartners(search = '') {
+    const params = search ? `?search=${encodeURIComponent(search)}` : '';
+    return await this.request(`/chat/chat-partners${params}`);
+  }
+
+  async markConversationAsRead(conversationId) {
+    return await this.request(`/chat/conversations/${conversationId}/read`, {
+      method: 'PUT',
+    });
+  }
+
+  async getChatRooms(filters = {}) {
+    const params = new URLSearchParams(filters);
+    return await this.request(`/chat/rooms?${params}`);
+  }
+
+  async createChatRoom(name, description, roomType, isPublic = false, settings = {}, metadata = {}) {
+    return await this.request('/chat/rooms', {
+      method: 'POST',
+      body: JSON.stringify({ name, description, roomType, isPublic, settings, metadata }),
+    });
+  }
+
+  async joinChatRoom(roomId) {
+    return await this.request(`/chat/rooms/${roomId}/join`, {
+      method: 'POST',
+    });
+  }
+
+  async leaveChatRoom(roomId) {
+    return await this.request(`/chat/rooms/${roomId}/leave`, {
+      method: 'POST',
+    });
+  }
+
+  // Platform Settings APIs
+  async getSettings() {
+    return await this.request('/settings');
+  }
+
+  async updateGeneralSettings(data) {
+    return await this.request('/settings/general', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateSecuritySettings(data) {
+    return await this.request('/settings/security', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateEmailSettings(data) {
+    return await this.request('/settings/email', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async sendTestEmail(testEmail) {
+    return await this.request('/settings/email/test', {
+      method: 'POST',
+      body: JSON.stringify({ testEmail }),
+    });
+  }
+
+  async updatePaymentSettings(data) {
+    return await this.request('/settings/payment', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateNotificationSettings(data) {
+    return await this.request('/settings/notifications', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async resetSettings(section = null) {
+    return await this.request('/settings/reset', {
+      method: 'POST',
+      body: JSON.stringify({ section }),
+    });
+  }
+
+  // Theme & Logo Management APIs
+  async getActiveTheme() {
+    return await this.request('/theme/active');
+  }
+
+  async getAllThemes() {
+    return await this.request('/theme');
+  }
+
+  async createTheme(data) {
+    return await this.request('/theme', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateTheme(id, data) {
+    return await this.request(`/theme/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async activateTheme(id) {
+    return await this.request(`/theme/${id}/activate`, {
+      method: 'PUT',
+    });
+  }
+
+  async deleteTheme(id) {
+    return await this.request(`/theme/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Logo Management APIs
+  async getActiveLogo() {
+    return await this.request('/logos/active');
+  }
+
+  async getAllLogos(filters = {}) {
+    const params = new URLSearchParams(filters);
+    return await this.request(`/admin/logos?${params}`);
+  }
+
+  async getLogoById(id) {
+    return await this.request(`/admin/logos/${id}`);
+  }
+
+  async createLogo(data) {
+    return await this.request('/admin/logos', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateLogo(id, data) {
+    return await this.request(`/admin/logos/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async uploadLogoImage(file) {
+    const formData = new FormData();
+    formData.append('logo', file);
+    
+    const url = `${this.baseURL}/admin/logos/upload`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': this.token ? `Bearer ${this.token}` : undefined,
+      },
+      body: formData,
+    });
+    return await response.json();
+  }
+
+  // Generic Upload API
+  async uploadFile(file, type = 'general') {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const url = `${this.baseURL}/upload/${type}`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': this.token ? `Bearer ${this.token}` : undefined,
+      },
+      body: formData,
+    });
+    return await response.json();
+  }
+
+  async deleteUploadedFile(type, filename) {
+    return await this.request(`/upload/${type}/${filename}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async activateLogo(id) {
+    return await this.request(`/admin/logos/${id}/activate`, {
+      method: 'PUT',
+    });
+  }
+
+  async deleteLogo(id) {
+    return await this.request(`/admin/logos/${id}`, {
+      method: 'DELETE',
+    });
+  }
 }
 
 const apiInstance = new JobWalaAPI();

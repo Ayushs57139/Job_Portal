@@ -64,6 +64,27 @@ app.use('/api/consultancy', require('./routes/consultancyAuth'));
 app.use('/api/company', require('./routes/companyAuth'));
 app.use('/api/chat', require('./routes/chat'));
 
+// Public packages endpoint (no authentication required)
+app.get('/api/packages', async (req, res) => {
+  try {
+    const Package = require('./models/Package');
+    const { packageType, isActive } = req.query;
+    
+    const query = {};
+    if (packageType) query.packageType = packageType;
+    if (isActive !== undefined) query.isActive = isActive === 'true';
+    
+    const packages = await Package.find(query)
+      .sort({ displayOrder: 1, createdAt: 1 })
+      .select('-createdBy -updatedBy -__v');
+    
+    res.json({ success: true, packages });
+  } catch (error) {
+    console.error('Get public packages error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
 // Employer login route - handle employer login requests
 app.post('/api/employer/login', async (req, res) => {
   try {
@@ -189,13 +210,18 @@ app.use('/api/departments', require('./routes/departments')); // Departments man
 app.use('/api/locations', require('./routes/locations')); // Locations management routes
 app.use('/api/specializations', require('./routes/specializations')); // Specializations management routes
 app.use('/api/courses', require('./routes/courses')); // Courses management routes
+app.use('/api/certifications', require('./routes/certifications')); // Certifications management routes
 app.use('/api/candidates', require('./routes/candidates')); // Candidates search and management routes
 app.use('/api/job-alerts', require('./routes/jobAlerts')); // Job alerts management routes
 app.use('/api/freejobwala-chat', require('./routes/freejobwalaChat')); // Freejobwala Chat feature routes
+app.use('/api/chatbot', require('./routes/chatbot')); // Chatbot conversations routes
 app.use('/api/kyc', require('./routes/kyc')); // KYC document management routes
 app.use('/api/advertisements', require('./routes/advertisements')); // Advertisement management routes
 app.use('/api/social-updates', require('./routes/socialUpdates')); // Social updates and sharing routes
 app.use('/api/saved-jobs', require('./routes/savedJobs')); // Saved jobs management routes
+app.use('/api/settings', require('./routes/settings')); // Platform settings management routes
+app.use('/api/theme', require('./routes/theme')); // Theme management routes
+app.use('/api/upload', require('./routes/upload')); // File upload routes
 
 // Public packages route
 app.get('/api/packages', async (req, res) => {

@@ -126,6 +126,7 @@ const AdminDashboardScreen = ({ navigation }) => {
     { title: 'All Applications', icon: 'document-text', action: () => navigation.navigate('Jobs', { adminView: 'applications' }), color: colors.warning },
     { title: 'Companies', icon: 'business', screen: 'Companies', color: colors.success },
     { title: 'Consultancies', icon: 'people-circle', action: () => navigation.navigate('Companies', { type: 'consultancy' }), color: colors.secondary },
+    { title: 'Live Chat Support', icon: 'chatbubbles', screen: 'AdminLiveChatSupport', color: colors.info },
     { title: 'Create Post', icon: 'create', screen: 'CreateSocialPost', color: colors.primary },
     { title: 'Analytics', icon: 'stats-chart', action: () => Alert.alert('Coming Soon', 'Analytics dashboard is under development'), color: colors.primary },
     { title: 'Packages', icon: 'card', screen: 'Packages', color: colors.info },

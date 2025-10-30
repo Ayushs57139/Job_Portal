@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, typography, spacing, borderRadius, shadows } from '../../styles/theme';
 import Header from '../../components/Header';
 import CompanyCard from '../../components/CompanyCard';
+import AdvertisementWidget from '../../components/AdvertisementWidget';
 import api from '../../config/api';
 
 const { width } = Dimensions.get('window');
@@ -220,16 +221,44 @@ const CompaniesScreen = () => {
           </View>
         )}
 
+        {/* Advertisement - Top of companies section */}
+        <AdvertisementWidget 
+          position="content-top" 
+          page="companies"
+          containerStyle={styles.adContainer}
+        />
+
         {/* Companies Grid */}
         {!loading && companies.length > 0 ? (
           <View style={styles.companiesSection}>
             <View style={styles.companiesGrid}>
-              {companies.map((company) => (
-                <View key={company._id} style={styles.companyCardWrapper}>
-                  <CompanyCard company={company} />
-                </View>
+              {companies.map((company, index) => (
+                <React.Fragment key={company._id}>
+                  <View style={styles.companyCardWrapper}>
+                    <CompanyCard company={company} />
+                  </View>
+                  {/* Show ad after every 6 companies */}
+                  {(index + 1) % 6 === 0 && index < companies.length - 1 && (
+                    <View style={[styles.companyCardWrapper, { width: '100%' }]}>
+                      <AdvertisementWidget 
+                        position="content-middle" 
+                        page="companies"
+                        containerStyle={styles.adContainer}
+                      />
+                    </View>
+                  )}
+                </React.Fragment>
               ))}
             </View>
+            
+            {/* Advertisement - Bottom of companies section */}
+            {companies.length > 3 && (
+              <AdvertisementWidget 
+                position="content-bottom" 
+                page="companies"
+                containerStyle={styles.adContainer}
+              />
+            )}
           </View>
         ) : !loading ? (
           <View style={styles.emptyContainer}>
@@ -464,6 +493,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.textWhite,
     fontWeight: '600',
+  },
+  adContainer: {
+    paddingVertical: spacing.md,
+    marginVertical: spacing.md,
+    alignItems: 'center',
+    width: '100%',
   },
 });
 

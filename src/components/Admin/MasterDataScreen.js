@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, TextInput, Alert, Modal } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, TextInput, Alert, Modal, Switch } from 'react-native';
 import AdminLayout from './AdminLayout';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -10,6 +10,7 @@ const MasterDataScreen = ({
   title,
   subtitle,
   apiEndpoint,
+  fetchEndpoint,
   screenName,
   fieldName = 'name',
   additionalFields = []
@@ -38,12 +39,61 @@ const MasterDataScreen = ({
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const response = await fetch(`${API_URL}${apiEndpoint}`, { headers });
+      const endpoint = fetchEndpoint || apiEndpoint;
+      const response = await fetch(`${API_URL}${endpoint}`, { headers });
+      
+      if (!response.ok) {
+        throw new Error(`API returned status ${response.status}`);
+      }
+      
       const data = await response.json();
-      const dataKey = Object.keys(data)[0];
-      setItems(data[dataKey] || []);
+      
+      // Try to find the data array in the response
+      let fetchedItems = null;
+      
+      // Common key names for data arrays
+      const possibleKeys = [
+        title.toLowerCase(),
+        title.toLowerCase() + 's',
+        'data',
+        'items',
+        'results'
+      ];
+      
+      // First, check if the response itself is an array
+      if (Array.isArray(data)) {
+        fetchedItems = data;
+      } else {
+        // Look for array values in the response object
+        for (const key of possibleKeys) {
+          if (data[key] && Array.isArray(data[key])) {
+            fetchedItems = data[key];
+            break;
+          }
+        }
+        
+        // If still not found, try to find any array in the response
+        if (!fetchedItems) {
+          const keys = Object.keys(data);
+          for (const key of keys) {
+            if (Array.isArray(data[key])) {
+              fetchedItems = data[key];
+              break;
+            }
+          }
+        }
+      }
+      
+      // Ensure items is always an array
+      if (Array.isArray(fetchedItems)) {
+        setItems(fetchedItems);
+      } else {
+        console.warn(`Expected array for ${title}, got:`, typeof fetchedItems);
+        setItems([]);
+      }
     } catch (error) {
       console.error(`Error fetching ${title}:`, error);
+      setItems([]); // Ensure items is always an array even on error
       Alert.alert('Error', `Failed to fetch ${title}`);
     } finally {
       setLoading(false);
@@ -51,9 +101,18 @@ const MasterDataScreen = ({
   };
 
   const handleSave = async () => {
+    // Validate main field
     if (!currentItem[fieldName]?.trim()) {
       Alert.alert('Error', `Please enter a ${fieldName}`);
       return;
+    }
+
+    // Validate required additional fields
+    for (const field of additionalFields) {
+      if (field.required && !currentItem[field.key]?.trim()) {
+        Alert.alert('Error', `Please enter ${field.label}`);
+        return;
+      }
     }
 
     try {
@@ -66,27 +125,38 @@ const MasterDataScreen = ({
         headers['Authorization'] = `Bearer ${token}`;
       }
 
+      // Prepare data (remove id for create/update)
+      const dataToSend = { ...currentItem };
+      delete dataToSend.id;
+
+      let response;
       if (editMode) {
-        await fetch(`${API_URL}${apiEndpoint}/${currentItem.id}`, {
+        response = await fetch(`${API_URL}${apiEndpoint}/${currentItem.id}`, {
           method: 'PUT',
           headers,
-          body: JSON.stringify(currentItem)
+          body: JSON.stringify(dataToSend)
         });
-        Alert.alert('Success', `${title} updated successfully`);
       } else {
-        await fetch(`${API_URL}${apiEndpoint}`, {
+        response = await fetch(`${API_URL}${apiEndpoint}`, {
           method: 'POST',
           headers,
-          body: JSON.stringify(currentItem)
+          body: JSON.stringify(dataToSend)
         });
-        Alert.alert('Success', `${title} created successfully`);
       }
+
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.message || `Failed to save ${title}`);
+      }
+
+      Alert.alert('Success', editMode ? `${title} updated successfully` : `${title} created successfully`);
       setModalVisible(false);
       resetCurrentItem();
       fetchItems();
     } catch (error) {
       console.error(`Error saving ${title}:`, error);
-      Alert.alert('Error', `Failed to save ${title}`);
+      Alert.alert('Error', error.message || `Failed to save ${title}`);
     }
   };
 
@@ -128,15 +198,22 @@ const MasterDataScreen = ({
                 headers['Authorization'] = `Bearer ${token}`;
               }
 
-              await fetch(`${API_URL}${apiEndpoint}/${id}`, {
+              const response = await fetch(`${API_URL}${apiEndpoint}/${id}`, {
                 method: 'DELETE',
                 headers
               });
+
+              const result = await response.json();
+              
+              if (!response.ok) {
+                throw new Error(result.message || `Failed to delete ${title}`);
+              }
+
               Alert.alert('Success', `${title} deleted successfully`);
               fetchItems();
             } catch (error) {
               console.error(`Error deleting ${title}:`, error);
-              Alert.alert('Error', `Failed to delete ${title}`);
+              Alert.alert('Error', error.message || `Failed to delete ${title}`);
             }
           }
         }
@@ -144,9 +221,11 @@ const MasterDataScreen = ({
     );
   };
 
-  const filteredItems = items.filter(item =>
-    item[fieldName]?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredItems = Array.isArray(items) 
+    ? items.filter(item =>
+        item[fieldName]?.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : [];
 
   const handleLogout = () => {
     navigation.replace('AdminLogin');
@@ -262,20 +341,38 @@ const MasterDataScreen = ({
                 onChangeText={(text) => setCurrentItem({ ...currentItem, [fieldName]: text })}
               />
 
-              {additionalFields.map(field => (
-                <View key={field.key}>
-                  {field.type === 'text' && (
-                    <TextInput
-                      style={styles.modalInput}
-                      placeholder={field.placeholder || field.label}
-                      value={currentItem[field.key] || ''}
-                      onChangeText={(text) => setCurrentItem({ ...currentItem, [field.key]: text })}
-                      multiline={field.multiline}
-                      numberOfLines={field.numberOfLines}
-                    />
-                  )}
-                </View>
-              ))}
+              <ScrollView style={styles.modalFieldsContainer} showsVerticalScrollIndicator={false}>
+                {additionalFields.map(field => (
+                  <View key={field.key} style={styles.fieldContainer}>
+                    {field.type === 'text' && (
+                      <>
+                        <Text style={styles.fieldLabel}>
+                          {field.label} {field.required && <Text style={styles.requiredStar}>*</Text>}
+                        </Text>
+                        <TextInput
+                          style={[styles.modalInput, field.multiline && styles.multilineInput]}
+                          placeholder={field.placeholder || field.label}
+                          value={currentItem[field.key] || ''}
+                          onChangeText={(text) => setCurrentItem({ ...currentItem, [field.key]: text })}
+                          multiline={field.multiline}
+                          numberOfLines={field.numberOfLines}
+                        />
+                      </>
+                    )}
+                    {field.type === 'boolean' && (
+                      <View style={styles.switchContainer}>
+                        <Text style={styles.fieldLabel}>{field.label}</Text>
+                        <Switch
+                          value={currentItem[field.key] !== undefined ? currentItem[field.key] : field.defaultValue}
+                          onValueChange={(value) => setCurrentItem({ ...currentItem, [field.key]: value })}
+                          trackColor={{ false: '#E0E0E0', true: '#4A90E2' }}
+                          thumbColor={currentItem[field.key] ? '#FFF' : '#F4F3F4'}
+                        />
+                      </View>
+                    )}
+                  </View>
+                ))}
+              </ScrollView>
 
               <View style={styles.modalActions}>
                 <TouchableOpacity
@@ -442,12 +539,30 @@ const styles = StyleSheet.create({
     padding: 24,
     width: '100%',
     maxWidth: 500,
+    maxHeight: '90%',
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#333',
     marginBottom: 20,
+  },
+  modalFieldsContainer: {
+    maxHeight: 400,
+    marginBottom: 15,
+  },
+  fieldContainer: {
+    marginBottom: 15,
+  },
+  fieldLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+  },
+  requiredStar: {
+    color: '#E74C3C',
+    fontWeight: 'bold',
   },
   modalInput: {
     borderWidth: 1,
@@ -456,7 +571,16 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 15,
     fontSize: 14,
-    marginBottom: 15,
+  },
+  multilineInput: {
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+  switchContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
   },
   modalActions: {
     flexDirection: 'row',

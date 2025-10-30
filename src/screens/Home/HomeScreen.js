@@ -16,6 +16,7 @@ import JobCard from '../../components/JobCard';
 import CompanyCard from '../../components/CompanyCard';
 import BlogCard from '../../components/BlogCard';
 import Footer from '../../components/Footer';
+import AdvertisementWidget from '../../components/AdvertisementWidget';
 import api from '../../config/api';
 
 const { width } = Dimensions.get('window');
@@ -186,6 +187,20 @@ const HomeScreen = ({ navigation }) => {
             <Text style={styles.popularTagText}>web development, delhi</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Job Alert Button */}
+        <View style={styles.jobAlertContainer}>
+          <TouchableOpacity
+            style={styles.jobAlertButton}
+            onPress={() => navigation.navigate('JobAlertForm')}
+          >
+            <Ionicons name="notifications" size={20} color={colors.textWhite} />
+            <Text style={styles.jobAlertButtonText}>Job Alert</Text>
+          </TouchableOpacity>
+          <Text style={styles.jobAlertSubtext}>
+            Get notified about new job opportunities matching your preferences
+          </Text>
+        </View>
       </View>
     </View>
   );
@@ -308,23 +323,36 @@ const HomeScreen = ({ navigation }) => {
         })}
       >
         {renderHeroSection()}
+        
+        {/* Advertisement - Top Banner */}
+        <AdvertisementWidget 
+          position="content-top" 
+          page="home"
+          containerStyle={styles.adContainer}
+        />
+        
         {renderLatestJobs()}
+        
+        {/* Advertisement - Middle Content */}
+        <AdvertisementWidget 
+          position="content-middle" 
+          page="home"
+          containerStyle={styles.adContainer}
+        />
+        
         {renderTopCompanies()}
         {renderCareerInsights()}
+        
+        {/* Advertisement - Bottom Content */}
+        <AdvertisementWidget 
+          position="content-bottom" 
+          page="home"
+          containerStyle={styles.adContainer}
+        />
+        
         {renderResumeCTA()}
         <Footer />
       </ScrollView>
-
-      {/* Floating Chat Button */}
-      <TouchableOpacity
-        style={styles.chatButton}
-        onPress={() => navigation.navigate('Chat')}
-      >
-        <View style={styles.chatBadge}>
-          <Text style={styles.chatBadgeText}>1</Text>
-        </View>
-        <Ionicons name="chatbubbles" size={28} color={colors.textWhite} />
-      </TouchableOpacity>
     </View>
   );
 };
@@ -484,6 +512,31 @@ const styles = StyleSheet.create({
     ...typography.body2,
     color: colors.textSecondary,
   },
+  jobAlertContainer: {
+    marginTop: spacing.lg,
+    alignItems: 'center',
+  },
+  jobAlertButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.primary,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xl,
+    borderRadius: borderRadius.md,
+    ...shadows.md,
+  },
+  jobAlertButtonText: {
+    ...typography.button,
+    color: colors.textWhite,
+  },
+  jobAlertSubtext: {
+    ...typography.body2,
+    color: colors.textSecondary,
+    marginTop: spacing.sm,
+    textAlign: 'center',
+    maxWidth: 400,
+  },
   section: {
     paddingVertical: spacing.xxl,
     paddingHorizontal: spacing.lg,
@@ -567,35 +620,11 @@ const styles = StyleSheet.create({
     ...typography.button,
     color: '#10B981',
   },
-  chatButton: {
-    position: isWeb ? 'fixed' : 'absolute',
-    bottom: spacing.xl,
-    right: spacing.xl,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
+  adContainer: {
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.lg,
     alignItems: 'center',
-    ...shadows.lg,
-  },
-  chatBadge: {
-    position: 'absolute',
-    top: -5,
-    right: -5,
-    backgroundColor: colors.error,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: colors.cardBackground,
-  },
-  chatBadgeText: {
-    color: colors.textWhite,
-    fontSize: 12,
-    fontWeight: '700',
+    backgroundColor: colors.background,
   },
 });
 

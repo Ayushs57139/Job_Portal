@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, typography, shadows } from '../../styles/theme';
 import Header from '../../components/Header';
 import JobCard from '../../components/JobCard';
+import AdvertisementWidget from '../../components/AdvertisementWidget';
 import api from '../../config/api';
 
 const { width } = Dimensions.get('window');
@@ -312,11 +313,6 @@ const JobsScreen = ({ route }) => {
           <Text style={styles.searchButtonText}>Search</Text>
         </TouchableOpacity>
       </View>
-
-      <TouchableOpacity style={styles.jobAlertButton}>
-        <Ionicons name="notifications" size={20} color={colors.textWhite} />
-        <Text style={styles.jobAlertText}>Job Alert</Text>
-      </TouchableOpacity>
       </View>
     </LinearGradient>
   );
@@ -470,9 +466,36 @@ const JobsScreen = ({ route }) => {
       ) : jobs.length > 0 ? (
         <>
           <Text style={styles.resultsCount}>{jobs.length} jobs found</Text>
-          {jobs.map((job) => (
-            <JobCard key={job._id} job={job} />
+          
+          {/* Advertisement - Top of job listings */}
+          <AdvertisementWidget 
+            position="content-top" 
+            page="jobs"
+            containerStyle={styles.adContainer}
+          />
+          
+          {jobs.map((job, index) => (
+            <React.Fragment key={job._id}>
+              <JobCard job={job} />
+              {/* Show ad after every 5 jobs */}
+              {(index + 1) % 5 === 0 && index < jobs.length - 1 && (
+                <AdvertisementWidget 
+                  position="content-middle" 
+                  page="jobs"
+                  containerStyle={styles.adContainer}
+                />
+              )}
+            </React.Fragment>
           ))}
+          
+          {/* Advertisement - Bottom of job listings */}
+          {jobs.length > 3 && (
+            <AdvertisementWidget 
+              position="content-bottom" 
+              page="jobs"
+              containerStyle={styles.adContainer}
+            />
+          )}
         </>
       ) : (
         <View style={styles.emptyContainer}>
@@ -688,25 +711,6 @@ const styles = StyleSheet.create({
     minWidth: isWeb ? 120 : undefined,
   },
   searchButtonText: {
-    ...typography.button,
-    color: colors.textWhite,
-    fontWeight: '600',
-  },
-  jobAlertButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: borderRadius.md,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    gap: spacing.sm,
-    alignSelf: 'flex-start',
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
-    ...shadows.md,
-  },
-  jobAlertText: {
     ...typography.button,
     color: colors.textWhite,
     fontWeight: '600',
@@ -956,6 +960,12 @@ const styles = StyleSheet.create({
     ...typography.button,
     color: colors.textWhite,
     fontWeight: '600',
+  },
+  adContainer: {
+    paddingVertical: spacing.md,
+    marginVertical: spacing.md,
+    alignItems: 'center',
+    width: '100%',
   },
 });
 

@@ -3,8 +3,125 @@ const { body, validationResult, query } = require('express-validator');
 const UserProfile = require('../models/UserProfile');
 const User = require('../models/User');
 const { auth, employerAuth } = require('../middleware/auth');
+const { adminAuth } = require('../middleware/adminAuth');
 
 const router = express.Router();
+
+// @route   POST /api/candidates/admin-search
+// @desc    Admin candidate search with comprehensive filtering (Fastdex/Freedex)
+// @access  Private (Admin only)
+router.post('/admin-search', adminAuth, async (req, res) => {
+    try {
+        const {
+            filters = {},
+            page = 1,
+            limit = 20,
+            sortBy = 'updatedAt',
+            sortOrder = 'desc',
+            searchMode = 'and' // 'and' or 'or' for multiple criteria
+        } = req.body;
+
+        console.log('Admin candidate search - Filters received:', JSON.stringify(filters, null, 2));
+
+        // Build the search query with enhanced filtering
+        const searchQuery = buildAdvancedSearchQuery(filters, searchMode);
+        
+        console.log('Admin candidate search - MongoDB query:', JSON.stringify(searchQuery, null, 2));
+        
+        // Calculate pagination
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+
+        // Build sort object
+        const sortObject = {};
+        sortObject[sortBy] = sortOrder === 'desc' ? -1 : 1;
+
+        // Execute search with pagination and sorting
+        const candidates = await UserProfile.find(searchQuery)
+            .populate('userId', 'firstName lastName email phone userType isActive lastLogin')
+            .sort(sortObject)
+            .skip(skip)
+            .limit(parseInt(limit))
+            .lean();
+
+        // Get total count for pagination
+        const totalCandidates = await UserProfile.countDocuments(searchQuery);
+
+        // Get search statistics
+        const searchStats = await getSearchStatistics(searchQuery);
+
+        // Format the response with enhanced data
+        const formattedCandidates = candidates.map(candidate => ({
+            _id: candidate._id,
+            userId: candidate.userId._id,
+            name: `${candidate.userId.firstName} ${candidate.userId.lastName}`,
+            email: candidate.userId.email,
+            phone: candidate.userId.phone,
+            userType: candidate.userId.userType,
+            isActive: candidate.userId.isActive,
+            lastLogin: candidate.userId.lastLogin,
+            profileImage: candidate.personalInfo?.profilePicture || '/images/default-avatar.png',
+            currentJobTitle: candidate.professional?.currentJobTitle,
+            currentCompany: candidate.professional?.currentCompany,
+            experience: candidate.professional?.experience,
+            totalExperience: candidate.professional?.totalExperience,
+            location: candidate.personalInfo?.currentCity,
+            skills: candidate.professional?.skills || [],
+            keySkills: candidate.professional?.keySkills || [],
+            expectedSalary: candidate.preferences?.expectedSalary,
+            currentSalary: candidate.professional?.currentSalary,
+            availability: candidate.preferences?.noticePeriod,
+            workMode: candidate.preferences?.workMode,
+            status: candidate.profileStatus?.isActive ? 'active' : 'inactive',
+            profileCompletion: candidate.profileStatus?.completionPercentage || 0,
+            isComplete: candidate.profileStatus?.isComplete || false,
+            lastActive: candidate.updatedAt,
+            createdAt: candidate.createdAt,
+            education: candidate.education,
+            personalInfo: candidate.personalInfo,
+            professional: candidate.professional,
+            preferences: candidate.preferences,
+            additionalInfo: candidate.additionalInfo,
+            // Enhanced fields for better search results
+            matchScore: calculateMatchScore(candidate, filters),
+            isVerified: candidate.profileStatus?.isVerified || false,
+            adminRating: candidate.adminRating,
+            adminTags: candidate.adminTags || [],
+            // Additional tracking fields
+            hasResume: candidate.profileStatus?.hasResume || false,
+            hasProfilePicture: candidate.profileStatus?.hasProfilePicture || false,
+            mobileVerified: candidate.profileStatus?.mobileVerified || false,
+            emailVerified: candidate.profileStatus?.emailVerified || false,
+            whatsappAvailable: candidate.profileStatus?.whatsappAvailable || false
+        }));
+
+        // Sort by match score if no specific sort is provided
+        if (sortBy === 'updatedAt' && filters.searchKeywords) {
+            formattedCandidates.sort((a, b) => b.matchScore - a.matchScore);
+        }
+
+        res.json({
+            success: true,
+            candidates: formattedCandidates,
+            total: totalCandidates,
+            page: parseInt(page),
+            limit: parseInt(limit),
+            totalPages: Math.ceil(totalCandidates / parseInt(limit)),
+            searchStats,
+            appliedFilters: Object.keys(filters).filter(key => filters[key] && filters[key] !== ''),
+            searchMode,
+            sortBy,
+            sortOrder
+        });
+
+    } catch (error) {
+        console.error('Admin candidate search error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error during candidate search',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
 
 // @route   POST /api/candidates/advanced-search
 // @desc    Advanced candidate search with comprehensive filtering (Candex)

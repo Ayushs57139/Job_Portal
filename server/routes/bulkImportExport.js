@@ -129,35 +129,96 @@ router.get('/export/users', adminAuth, async (req, res) => {
   }
 });
 
-// Export Jobs to CSV
+// Export Jobs to CSV (All Fields)
 router.get('/export/jobs', adminAuth, async (req, res) => {
   try {
     const jobs = await Job.find({}).populate('postedBy', 'firstName lastName email');
     
     const headers = [
-      { id: 'title', title: 'Job Title' },
-      { id: 'description', title: 'Description' },
+      // Company Information
       { id: 'company.name', title: 'Company Name' },
-      { id: 'company.totalEmployees', title: 'Company Size' },
+      { id: 'company.type', title: 'Company Type' },
+      { id: 'company.totalEmployees', title: 'Total Employees' },
       { id: 'company.website', title: 'Company Website' },
+      { id: 'company.industry', title: 'Company Industry' },
+      
+      // Job Details
+      { id: 'title', title: 'Job Title' },
+      { id: 'description', title: 'Job Description' },
+      { id: 'keySkills', title: 'Key Skills (semicolon separated)' },
       { id: 'jobPostType', title: 'Job Post Type' },
       { id: 'employmentType', title: 'Employment Type' },
-      { id: 'jobModeType', title: 'Job Mode' },
-      { id: 'jobShiftType', title: 'Job Shift' },
-      { id: 'skills', title: 'Skills' },
+      { id: 'jobType', title: 'Job Type' },
+      { id: 'jobModeType', title: 'Job Mode Type' },
+      { id: 'jobShiftType', title: 'Job Shift Type' },
+      
+      // Location
       { id: 'location.state', title: 'State' },
       { id: 'location.city', title: 'City' },
       { id: 'location.locality', title: 'Locality' },
-      { id: 'experienceType', title: 'Experience Type' },
+      { id: 'location.distanceFromLocation', title: 'Distance From Location' },
+      { id: 'location.includeWillingToRelocate', title: 'Include Willing To Relocate' },
+      
+      // Experience & Salary
+      { id: 'experienceLevel', title: 'Experience Level' },
       { id: 'totalExperience.min', title: 'Min Experience' },
       { id: 'totalExperience.max', title: 'Max Experience' },
       { id: 'salary.min', title: 'Min Salary' },
       { id: 'salary.max', title: 'Max Salary' },
       { id: 'salary.currency', title: 'Currency' },
+      { id: 'salary.hideFromCandidates', title: 'Hide Salary From Candidates' },
+      { id: 'additionalBenefits', title: 'Additional Benefits (semicolon separated)' },
+      
+      // Candidate Requirements
+      { id: 'gender', title: 'Gender (semicolon separated)' },
+      { id: 'maritalStatus', title: 'Marital Status (semicolon separated)' },
+      { id: 'minimumAge', title: 'Minimum Age' },
+      { id: 'maximumAge', title: 'Maximum Age' },
+      { id: 'educationLevel', title: 'Education Level (semicolon separated)' },
+      { id: 'course', title: 'Course (semicolon separated)' },
+      { id: 'specialization', title: 'Specialization (semicolon separated)' },
+      { id: 'candidateIndustry', title: 'Candidate Industry (semicolon separated)' },
+      { id: 'industry', title: 'Industry (semicolon separated)' },
+      { id: 'department', title: 'Department (semicolon separated)' },
+      { id: 'jobRole', title: 'Job Role (semicolon separated)' },
+      
+      // Language Requirements
+      { id: 'preferredLanguage', title: 'Preferred Language (semicolon separated)' },
+      { id: 'englishLevel', title: 'English Level' },
+      
+      // Assets & Documents
+      { id: 'assetsRequired', title: 'Assets Required (semicolon separated)' },
+      { id: 'documentsRequired', title: 'Documents Required (semicolon separated)' },
+      
+      // Diversity & Inclusion
+      { id: 'diversityHiring', title: 'Diversity Hiring (semicolon separated)' },
+      { id: 'disabilityStatus', title: 'Disability Status (semicolon separated)' },
+      { id: 'disabilities', title: 'Disabilities (semicolon separated)' },
+      
+      // Job Settings
       { id: 'numberOfVacancy', title: 'Number of Vacancies' },
+      { id: 'joiningPeriod', title: 'Joining Period' },
+      { id: 'interviewDetails', title: 'Interview Details' },
+      { id: 'interviewMode', title: 'Interview Mode' },
+      { id: 'walkinInterviewDetails', title: 'Walk-in Interview Details' },
+      
+      // Communication
       { id: 'hrContact.name', title: 'HR Contact Name' },
       { id: 'hrContact.number', title: 'HR Contact Number' },
       { id: 'hrContact.email', title: 'HR Contact Email' },
+      { id: 'hrContact.days', title: 'HR Available Days (semicolon separated)' },
+      { id: 'hrContact.timeFrom', title: 'HR Available From Time' },
+      { id: 'hrContact.timeTo', title: 'HR Available To Time' },
+      { id: 'jobResponseMethods', title: 'Job Response Methods (semicolon separated)' },
+      { id: 'communicationPreference', title: 'Communication Preference (semicolon separated)' },
+      
+      // Questions
+      { id: 'questionsForCandidates', title: 'Questions For Candidates' },
+      
+      // Collaboration
+      { id: 'collaborateWithOtherUsers', title: 'Collaborate With Other Users (semicolon separated)' },
+      
+      // Status
       { id: 'status', title: 'Status' },
       { id: 'featured', title: 'Featured' },
       { id: 'createdAt', title: 'Created At' }
@@ -625,7 +686,7 @@ router.post('/import/users', adminAuth, upload.single('file'), async (req, res) 
   }
 });
 
-// Bulk Import Jobs
+// Bulk Import Jobs (All Fields)
 router.post('/import/jobs', adminAuth, upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
@@ -640,56 +701,123 @@ router.post('/import/jobs', adminAuth, upload.single('file'), async (req, res) =
       errors: []
     };
 
+    // Get the admin user from the request
+    const adminUserId = req.user._id;
+
     for (let i = 0; i < csvData.length; i++) {
       try {
         const row = csvData[i];
         
-        // Get the admin user who is importing (you might want to get this from the token)
-        const adminUser = await User.findOne({ userType: 'admin' }).limit(1);
-        if (!adminUser) {
-          results.failed++;
-          results.errors.push(`Row ${i + 1}: No admin user found to assign as job poster`);
-          continue;
-        }
+        // Helper function to parse array fields (semicolon separated)
+        const parseArrayField = (value) => {
+          if (!value) return [];
+          return value.split(';').map(s => s.trim()).filter(s => s);
+        };
+        
+        // Helper function to parse boolean fields
+        const parseBoolean = (value) => {
+          return value === 'true' || value === 'TRUE' || value === '1' || value === 'yes' || value === 'YES';
+        };
 
-        // Create job data
+        // Create comprehensive job data with all fields
         const jobData = {
-          title: row.title || row['Job Title'],
-          description: row.description || row['Description'],
+          // Company Information
           company: {
-            name: row['company.name'] || row['Company Name'],
-            totalEmployees: row['company.totalEmployees'] || row['Company Size'],
-            website: row['company.website'] || row['Company Website']
+            name: row['Company Name'] || '',
+            type: row['Company Type'] || '',
+            totalEmployees: row['Total Employees'] || '',
+            website: row['Company Website'] || '',
+            industry: row['Company Industry'] || ''
           },
-          jobPostType: row.jobPostType || row['Job Post Type'],
-          employmentType: row.employmentType || row['Employment Type'],
-          jobModeType: row.jobModeType || row['Job Mode'],
-          jobShiftType: row.jobShiftType || row['Job Shift'],
-          skills: (row.skills || row['Skills'] || '').split(';').map(s => s.trim()).filter(s => s),
+          
+          // Job Details
+          title: row['Job Title'] || '',
+          description: row['Job Description'] || '',
+          keySkills: parseArrayField(row['Key Skills (semicolon separated)']),
+          jobPostType: row['Job Post Type'] || '',
+          employmentType: row['Employment Type'] || '',
+          jobType: row['Job Type'] || '',
+          jobModeType: row['Job Mode Type'] || '',
+          jobShiftType: row['Job Shift Type'] || '',
+          
+          // Location
           location: {
-            state: row['location.state'] || row['State'],
-            city: row['location.city'] || row['City'],
-            locality: row['location.locality'] || row['Locality']
+            state: row['State'] || '',
+            city: row['City'] || '',
+            locality: row['Locality'] || '',
+            distanceFromLocation: row['Distance From Location'] || '',
+            includeWillingToRelocate: parseBoolean(row['Include Willing To Relocate'])
           },
-          experienceType: row.experienceType || row['Experience Type'],
+          
+          // Experience & Salary
+          experienceLevel: row['Experience Level'] || '',
           totalExperience: {
-            min: row['totalExperience.min'] || row['Min Experience'],
-            max: row['totalExperience.max'] || row['Max Experience']
+            min: row['Min Experience'] || '',
+            max: row['Max Experience'] || ''
           },
           salary: {
-            min: parseInt(row['salary.min'] || row['Min Salary']),
-            max: parseInt(row['salary.max'] || row['Max Salary']),
-            currency: row['salary.currency'] || row['Currency'] || 'INR'
+            min: parseInt(row['Min Salary']) || 0,
+            max: parseInt(row['Max Salary']) || 0,
+            currency: row['Currency'] || 'INR',
+            hideFromCandidates: parseBoolean(row['Hide Salary From Candidates'])
           },
-          numberOfVacancy: parseInt(row.numberOfVacancy || row['Number of Vacancies']),
+          additionalBenefits: parseArrayField(row['Additional Benefits (semicolon separated)']),
+          
+          // Candidate Requirements
+          gender: parseArrayField(row['Gender (semicolon separated)']),
+          maritalStatus: parseArrayField(row['Marital Status (semicolon separated)']),
+          minimumAge: parseInt(row['Minimum Age']) || undefined,
+          maximumAge: parseInt(row['Maximum Age']) || undefined,
+          educationLevel: parseArrayField(row['Education Level (semicolon separated)']),
+          course: parseArrayField(row['Course (semicolon separated)']),
+          specialization: parseArrayField(row['Specialization (semicolon separated)']),
+          candidateIndustry: parseArrayField(row['Candidate Industry (semicolon separated)']),
+          industry: parseArrayField(row['Industry (semicolon separated)']),
+          department: parseArrayField(row['Department (semicolon separated)']),
+          jobRole: parseArrayField(row['Job Role (semicolon separated)']),
+          
+          // Language Requirements
+          preferredLanguage: parseArrayField(row['Preferred Language (semicolon separated)']),
+          englishLevel: row['English Level'] || '',
+          
+          // Assets & Documents
+          assetsRequired: parseArrayField(row['Assets Required (semicolon separated)']),
+          documentsRequired: parseArrayField(row['Documents Required (semicolon separated)']),
+          
+          // Diversity & Inclusion
+          diversityHiring: parseArrayField(row['Diversity Hiring (semicolon separated)']),
+          disabilityStatus: parseArrayField(row['Disability Status (semicolon separated)']),
+          disabilities: parseArrayField(row['Disabilities (semicolon separated)']),
+          
+          // Job Settings
+          numberOfVacancy: parseInt(row['Number of Vacancies']) || 1,
+          joiningPeriod: row['Joining Period'] || '',
+          interviewDetails: row['Interview Details'] || '',
+          interviewMode: row['Interview Mode'] || '',
+          walkinInterviewDetails: row['Walk-in Interview Details'] || '',
+          
+          // Communication
           hrContact: {
-            name: row['hrContact.name'] || row['HR Contact Name'],
-            number: row['hrContact.number'] || row['HR Contact Number'],
-            email: row['hrContact.email'] || row['HR Contact Email']
+            name: row['HR Contact Name'] || '',
+            number: row['HR Contact Number'] || '',
+            email: row['HR Contact Email'] || '',
+            days: parseArrayField(row['HR Available Days (semicolon separated)']),
+            timeFrom: row['HR Available From Time'] || '',
+            timeTo: row['HR Available To Time'] || ''
           },
-          status: row.status || row['Status'] || 'active',
-          featured: row.featured === 'true' || row['Featured'] === 'true',
-          postedBy: adminUser._id
+          jobResponseMethods: parseArrayField(row['Job Response Methods (semicolon separated)']),
+          communicationPreference: parseArrayField(row['Communication Preference (semicolon separated)']),
+          
+          // Questions
+          questionsForCandidates: row['Questions For Candidates'] || '',
+          
+          // Collaboration
+          collaborateWithOtherUsers: parseArrayField(row['Collaborate With Other Users (semicolon separated)']),
+          
+          // Status
+          status: row['Status'] || 'active',
+          featured: parseBoolean(row['Featured']),
+          postedBy: adminUserId
         };
 
         const job = new Job(jobData);
@@ -711,6 +839,130 @@ router.post('/import/jobs', adminAuth, upload.single('file'), async (req, res) =
   } catch (error) {
     console.error('Import jobs error:', error);
     res.status(500).json({ message: 'Failed to import jobs', error: error.message });
+  }
+});
+
+// Download Sample Job CSV Template
+router.get('/sample/jobs', adminAuth, async (req, res) => {
+  try {
+    // Create sample data with all fields
+    const sampleData = [
+      {
+        'Company Name': 'Example Company Ltd',
+        'Company Type': 'Indian MNC',
+        'Total Employees': '101-200',
+        'Company Website': 'https://example.com',
+        'Company Industry': 'Information Technology',
+        'Job Title': 'Senior Software Engineer',
+        'Job Description': 'We are looking for an experienced software engineer to join our team...',
+        'Key Skills (semicolon separated)': 'JavaScript; React; Node.js; MongoDB',
+        'Job Post Type': 'Sales',
+        'Employment Type': 'Permanent',
+        'Job Type': 'Full Time',
+        'Job Mode Type': 'Hybrid',
+        'Job Shift Type': 'Day Shift',
+        'State': 'Maharashtra',
+        'City': 'Mumbai',
+        'Locality': 'Andheri East',
+        'Distance From Location': '10 km',
+        'Include Willing To Relocate': 'true',
+        'Experience Level': 'Experienced',
+        'Min Experience': '3 Years',
+        'Max Experience': '5 Years',
+        'Min Salary': '600000',
+        'Max Salary': '1200000',
+        'Currency': 'INR',
+        'Hide Salary From Candidates': 'false',
+        'Additional Benefits (semicolon separated)': 'Health Insurance; PF; ESIC; Annual Bonus',
+        'Gender (semicolon separated)': 'Male; Female',
+        'Marital Status (semicolon separated)': 'Married; Unmarried',
+        'Minimum Age': '22',
+        'Maximum Age': '35',
+        'Education Level (semicolon separated)': 'Graduate; Post Graduate',
+        'Course (semicolon separated)': 'B.Tech/B.E.; MCA',
+        'Specialization (semicolon separated)': 'Computer Science; Information Technology',
+        'Candidate Industry (semicolon separated)': 'IT/Software',
+        'Industry (semicolon separated)': 'IT/Software',
+        'Department (semicolon separated)': 'Software Development',
+        'Job Role (semicolon separated)': 'Software Engineer',
+        'Preferred Language (semicolon separated)': 'English; Hindi',
+        'English Level': 'Fluent',
+        'Assets Required (semicolon separated)': 'Laptop; Mobile Phone',
+        'Documents Required (semicolon separated)': 'Aadhar Card; PAN Card; Educational Certificates',
+        'Diversity Hiring (semicolon separated)': 'Open to all',
+        'Disability Status (semicolon separated)': 'Open to Persons with Disabilities',
+        'Disabilities (semicolon separated)': 'Hearing Impairment; Visual Impairment',
+        'Number of Vacancies': '5',
+        'Joining Period': 'Immediate',
+        'Interview Details': 'Online interview followed by technical round',
+        'Interview Mode': 'Online',
+        'Walk-in Interview Details': '',
+        'HR Contact Name': 'John Doe',
+        'HR Contact Number': '+91-9876543210',
+        'HR Contact Email': 'hr@example.com',
+        'HR Available Days (semicolon separated)': 'Monday; Tuesday; Wednesday; Thursday; Friday',
+        'HR Available From Time': '10:00',
+        'HR Available To Time': '18:00',
+        'Job Response Methods (semicolon separated)': 'Email; Phone Call',
+        'Communication Preference (semicolon separated)': 'Email; WhatsApp',
+        'Questions For Candidates': 'What is your notice period? What are your salary expectations?',
+        'Collaborate With Other Users (semicolon separated)': '',
+        'Status': 'active',
+        'Featured': 'false'
+      }
+    ];
+
+    const headers = [
+      'Company Name', 'Company Type', 'Total Employees', 'Company Website', 'Company Industry',
+      'Job Title', 'Job Description', 'Key Skills (semicolon separated)', 'Job Post Type',
+      'Employment Type', 'Job Type', 'Job Mode Type', 'Job Shift Type',
+      'State', 'City', 'Locality', 'Distance From Location', 'Include Willing To Relocate',
+      'Experience Level', 'Min Experience', 'Max Experience',
+      'Min Salary', 'Max Salary', 'Currency', 'Hide Salary From Candidates',
+      'Additional Benefits (semicolon separated)',
+      'Gender (semicolon separated)', 'Marital Status (semicolon separated)',
+      'Minimum Age', 'Maximum Age',
+      'Education Level (semicolon separated)', 'Course (semicolon separated)',
+      'Specialization (semicolon separated)', 'Candidate Industry (semicolon separated)',
+      'Industry (semicolon separated)', 'Department (semicolon separated)',
+      'Job Role (semicolon separated)',
+      'Preferred Language (semicolon separated)', 'English Level',
+      'Assets Required (semicolon separated)', 'Documents Required (semicolon separated)',
+      'Diversity Hiring (semicolon separated)', 'Disability Status (semicolon separated)',
+      'Disabilities (semicolon separated)',
+      'Number of Vacancies', 'Joining Period', 'Interview Details', 'Interview Mode',
+      'Walk-in Interview Details',
+      'HR Contact Name', 'HR Contact Number', 'HR Contact Email',
+      'HR Available Days (semicolon separated)', 'HR Available From Time', 'HR Available To Time',
+      'Job Response Methods (semicolon separated)', 'Communication Preference (semicolon separated)',
+      'Questions For Candidates', 'Collaborate With Other Users (semicolon separated)',
+      'Status', 'Featured'
+    ];
+
+    // Generate CSV content
+    const csvRows = [];
+    csvRows.push(headers.join(','));
+    
+    sampleData.forEach(row => {
+      const values = headers.map(header => {
+        const value = row[header] || '';
+        // Escape values containing commas or quotes
+        if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
+          return `"${value.replace(/"/g, '""')}"`;
+        }
+        return value;
+      });
+      csvRows.push(values.join(','));
+    });
+
+    const csvContent = csvRows.join('\n');
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=sample_jobs_import.csv');
+    res.send(csvContent);
+  } catch (error) {
+    console.error('Download sample CSV error:', error);
+    res.status(500).json({ message: 'Failed to generate sample CSV', error: error.message });
   }
 });
 

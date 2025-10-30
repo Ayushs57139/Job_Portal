@@ -109,6 +109,12 @@ const jobAlertSchema = new mongoose.Schema({
         required: true,
         trim: true
     },
+    alertFrequency: {
+        type: String,
+        required: true,
+        enum: ['daily', 'weekly', 'monthly'],
+        default: 'daily'
+    },
 
     // User Information
     userId: {

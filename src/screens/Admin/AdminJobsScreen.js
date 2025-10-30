@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, TextInput, Alert, Platform } from 'react-native';
 import AdminLayout from '../../components/Admin/AdminLayout';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../../config/api';
+import * as DocumentPicker from 'expo-document-picker';
 
 const AdminJobsScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
@@ -48,16 +49,21 @@ const AdminJobsScreen = ({ navigation }) => {
     let filtered = [...jobs];
 
     if (searchQuery) {
-      filtered = filtered.filter(job =>
-        job.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        job.company?.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+      filtered = filtered.filter(job => {
+        const companyName = typeof job.company === 'object' ? job.company?.name : job.company;
+        const locationStr = typeof job.location === 'object' 
+          ? `${job.location?.city || ''} ${job.location?.state || ''}`.trim()
+          : job.location;
+        return job.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          companyName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          locationStr?.toLowerCase().includes(searchQuery.toLowerCase());
+      });
     }
 
     if (filterStatus === 'ACTIVE') {
-      filtered = filtered.filter(job => job.status === 'ACTIVE');
+      filtered = filtered.filter(job => job.status === 'active' || job.status === 'ACTIVE');
     } else if (filterStatus === 'INACTIVE') {
-      filtered = filtered.filter(job => job.status !== 'ACTIVE');
+      filtered = filtered.filter(job => job.status !== 'active' && job.status !== 'ACTIVE');
     }
 
     setFilteredJobs(filtered);
@@ -74,12 +80,18 @@ const AdminJobsScreen = ({ navigation }) => {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const newStatus = currentStatus === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
-      await fetch(`${API_URL}/admin/jobs/${jobId}`, {
+      const newStatus = (currentStatus === 'active' || currentStatus === 'ACTIVE') ? 'inactive' : 'active';
+      
+      const response = await fetch(`${API_URL}/admin/jobs/${jobId}`, {
         method: 'PATCH',
         headers,
         body: JSON.stringify({ status: newStatus })
       });
+
+      if (!response.ok) {
+        throw new Error('Failed to update job status');
+      }
+
       Alert.alert('Success', 'Job status updated successfully');
       fetchJobs();
     } catch (error) {
@@ -124,6 +136,117 @@ const AdminJobsScreen = ({ navigation }) => {
     );
   };
 
+  const handleBulkExport = async () => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+      };
+
+      const response = await fetch(`${API_URL}/bulk/export/jobs`, { headers });
+      const csvData = await response.text();
+
+      if (Platform.OS === 'web') {
+        // For web, create a download link
+        const blob = new Blob([csvData], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'jobs_export.csv';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        Alert.alert('Success', 'Jobs exported successfully!');
+      } else {
+        Alert.alert('Success', 'Export functionality is available on web platform');
+      }
+    } catch (error) {
+      console.error('Error exporting jobs:', error);
+      Alert.alert('Error', 'Failed to export jobs');
+    }
+  };
+
+  const handleBulkImport = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'text/csv',
+        copyToCacheDirectory: true,
+      });
+
+      if (result.canceled) {
+        return;
+      }
+
+      const token = await AsyncStorage.getItem('token');
+      const formData = new FormData();
+      
+      if (Platform.OS === 'web') {
+        formData.append('file', result.assets[0].file);
+      } else {
+        formData.append('file', {
+          uri: result.assets[0].uri,
+          type: 'text/csv',
+          name: result.assets[0].name,
+        });
+      }
+
+      const response = await fetch(`${API_URL}/bulk/import/jobs`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to import jobs');
+      }
+
+      Alert.alert(
+        'Import Complete',
+        `Total: ${data.results.total}\nSuccess: ${data.results.success}\nFailed: ${data.results.failed}${data.results.errors.length > 0 ? '\n\nErrors:\n' + data.results.errors.slice(0, 5).join('\n') : ''}`,
+        [{ text: 'OK', onPress: fetchJobs }]
+      );
+    } catch (error) {
+      console.error('Error importing jobs:', error);
+      Alert.alert('Error', error.message || 'Failed to import jobs');
+    }
+  };
+
+  const handleDownloadSample = async () => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+      };
+
+      const response = await fetch(`${API_URL}/bulk/sample/jobs`, { headers });
+      const csvData = await response.text();
+
+      if (Platform.OS === 'web') {
+        // For web, create a download link
+        const blob = new Blob([csvData], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'sample_jobs_import.csv';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        Alert.alert('Success', 'Sample CSV downloaded successfully!');
+      } else {
+        Alert.alert('Success', 'Download functionality is available on web platform');
+      }
+    } catch (error) {
+      console.error('Error downloading sample:', error);
+      Alert.alert('Error', 'Failed to download sample CSV');
+    }
+  };
+
   const handleLogout = () => {
     navigation.replace('AdminLogin');
   };
@@ -165,126 +288,148 @@ const AdminJobsScreen = ({ navigation }) => {
       user={user}
       onLogout={handleLogout}
     >
-      <View style={styles.container}>
-        <View style={styles.headerSection}>
-          <Text style={styles.pageTitle}>Job Management</Text>
-          <Text style={styles.pageSubtitle}>Manage all job postings</Text>
-        </View>
-
-        <View style={styles.filterSection}>
-          <View style={styles.searchContainer}>
-            <Ionicons name="search" size={20} color="#999" style={styles.searchIcon} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search by job title or company..."
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
+      <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+        <View style={styles.container}>
+          <View style={styles.headerSection}>
+            <Text style={styles.pageTitle}>Job Management</Text>
+            <Text style={styles.pageSubtitle}>Manage all job postings</Text>
           </View>
 
-          <View style={styles.filterButtons}>
-            <TouchableOpacity
-              style={[styles.filterButton, filterStatus === 'ALL' && styles.activeFilter]}
-              onPress={() => setFilterStatus('ALL')}
-            >
-              <Text style={[styles.filterButtonText, filterStatus === 'ALL' && styles.activeFilterText]}>
-                All Jobs
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.filterButton, filterStatus === 'ACTIVE' && styles.activeFilter]}
-              onPress={() => setFilterStatus('ACTIVE')}
-            >
-              <Text style={[styles.filterButtonText, filterStatus === 'ACTIVE' && styles.activeFilterText]}>
-                Active
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.filterButton, filterStatus === 'INACTIVE' && styles.activeFilter]}
-              onPress={() => setFilterStatus('INACTIVE')}
-            >
-              <Text style={[styles.filterButtonText, filterStatus === 'INACTIVE' && styles.activeFilterText]}>
-                Inactive
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View style={styles.statsBar}>
-          <Text style={styles.statsText}>Total Jobs: {filteredJobs.length}</Text>
-        </View>
-
-        <ScrollView style={styles.tableContainer} showsVerticalScrollIndicator={false}>
-          <View style={styles.table}>
-            <View style={styles.tableHeader}>
-              <Text style={[styles.tableHeaderText, styles.titleColumn]}>Job Title</Text>
-              <Text style={[styles.tableHeaderText, styles.companyColumn]}>Company</Text>
-              <Text style={[styles.tableHeaderText, styles.locationColumn]}>Location</Text>
-              <Text style={[styles.tableHeaderText, styles.statusColumn]}>Status</Text>
-              <Text style={[styles.tableHeaderText, styles.postedColumn]}>Posted</Text>
-              <Text style={[styles.tableHeaderText, styles.actionsColumn]}>Actions</Text>
+          <View style={styles.filterSection}>
+            <View style={styles.searchContainer}>
+              <Ionicons name="search" size={20} color="#999" style={styles.searchIcon} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search by job title or company..."
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
             </View>
 
-            {filteredJobs.length > 0 ? (
-              filteredJobs.map((job, index) => (
-                <View key={job._id || index} style={styles.tableRow}>
-                  <Text style={[styles.tableCellText, styles.titleColumn, styles.jobTitle]}>
-                    {job.title || 'N/A'}
-                  </Text>
-                  <Text style={[styles.tableCellText, styles.companyColumn]}>
-                    {job.company || job.postedBy?.companyName || 'N/A'}
-                  </Text>
-                  <Text style={[styles.tableCellText, styles.locationColumn]}>
-                    {job.location || 'N/A'}
-                  </Text>
-                  <View style={styles.statusColumn}>
-                    <TouchableOpacity
-                      style={[
-                        styles.statusBadge,
-                        job.status === 'ACTIVE' ? styles.activeBadge : styles.inactiveBadge,
-                      ]}
-                      onPress={() => toggleJobStatus(job._id, job.status)}
-                    >
-                      <Text style={styles.statusBadgeText}>
-                        {job.status || 'INACTIVE'}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                  <Text style={[styles.tableCellText, styles.postedColumn]}>
-                    {formatDate(job.createdAt)}
-                  </Text>
-                  <View style={styles.actionsColumn}>
-                    <TouchableOpacity
-                      style={styles.actionButton}
-                      onPress={() => navigation.navigate('AdminJobDetails', { jobId: job._id })}
-                    >
-                      <Ionicons name="eye-outline" size={18} color="#4A90E2" />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.actionButton, styles.deleteButton]}
-                      onPress={() => deleteJob(job._id)}
-                    >
-                      <Ionicons name="trash-outline" size={18} color="#E74C3C" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              ))
-            ) : (
-              <View style={styles.emptyState}>
-                <Ionicons name="briefcase-outline" size={64} color="#CCC" />
-                <Text style={styles.emptyStateText}>No jobs found</Text>
-              </View>
-            )}
+            <View style={styles.filterButtons}>
+              <TouchableOpacity
+                style={[styles.filterButton, filterStatus === 'ALL' && styles.activeFilter]}
+                onPress={() => setFilterStatus('ALL')}
+              >
+                <Text style={[styles.filterButtonText, filterStatus === 'ALL' && styles.activeFilterText]}>
+                  All Jobs
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.filterButton, filterStatus === 'ACTIVE' && styles.activeFilter]}
+                onPress={() => setFilterStatus('ACTIVE')}
+              >
+                <Text style={[styles.filterButtonText, filterStatus === 'ACTIVE' && styles.activeFilterText]}>
+                  Active
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.filterButton, filterStatus === 'INACTIVE' && styles.activeFilter]}
+                onPress={() => setFilterStatus('INACTIVE')}
+              >
+                <Text style={[styles.filterButtonText, filterStatus === 'INACTIVE' && styles.activeFilterText]}>
+                  Inactive
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </ScrollView>
-      </View>
+
+          <View style={styles.bulkActionsBar}>
+            <TouchableOpacity style={styles.bulkActionButton} onPress={handleDownloadSample}>
+              <Ionicons name="document-text-outline" size={18} color="#4A90E2" />
+              <Text style={styles.bulkActionButtonText}>Sample CSV</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.bulkActionButton} onPress={handleBulkImport}>
+              <Ionicons name="cloud-upload-outline" size={18} color="#10B981" />
+              <Text style={styles.bulkActionButtonText}>Bulk Import</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.bulkActionButton} onPress={handleBulkExport}>
+              <Ionicons name="cloud-download-outline" size={18} color="#F59E0B" />
+              <Text style={styles.bulkActionButtonText}>Bulk Export</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.statsBar}>
+            <Text style={styles.statsText}>Total Jobs: {filteredJobs.length}</Text>
+          </View>
+
+          <View style={styles.tableContainer}>
+            <View style={styles.table}>
+              <View style={styles.tableHeader}>
+                <Text style={[styles.tableHeaderText, styles.titleColumn]}>Job Title</Text>
+                <Text style={[styles.tableHeaderText, styles.companyColumn]}>Company</Text>
+                <Text style={[styles.tableHeaderText, styles.locationColumn]}>Location</Text>
+                <Text style={[styles.tableHeaderText, styles.statusColumn]}>Status</Text>
+                <Text style={[styles.tableHeaderText, styles.postedColumn]}>Posted</Text>
+                <Text style={[styles.tableHeaderText, styles.actionsColumn]}>Actions</Text>
+              </View>
+
+              {filteredJobs.length > 0 ? (
+                filteredJobs.map((job, index) => (
+                  <View key={job._id || index} style={styles.tableRow}>
+                    <Text style={[styles.tableCellText, styles.titleColumn, styles.jobTitle]}>
+                      {job.title || 'N/A'}
+                    </Text>
+                    <Text style={[styles.tableCellText, styles.companyColumn]}>
+                      {typeof job.company === 'object' ? (job.company?.name || 'N/A') : (job.company || job.postedBy?.companyName || 'N/A')}
+                    </Text>
+                    <Text style={[styles.tableCellText, styles.locationColumn]}>
+                      {typeof job.location === 'object' 
+                        ? `${job.location?.city || ''}${job.location?.city && job.location?.state ? ', ' : ''}${job.location?.state || ''}`.trim() || 'N/A'
+                        : (job.location || 'N/A')}
+                    </Text>
+                    <View style={styles.statusColumn}>
+                      <TouchableOpacity
+                        style={[
+                          styles.statusBadge,
+                          job.status === 'active' ? styles.activeBadge : styles.inactiveBadge,
+                        ]}
+                        onPress={() => toggleJobStatus(job._id, job.status)}
+                      >
+                        <Text style={styles.statusBadgeText}>
+                          {job.status === 'active' ? 'ACTIVE' : 'INACTIVE'}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                    <Text style={[styles.tableCellText, styles.postedColumn]}>
+                      {formatDate(job.createdAt)}
+                    </Text>
+                    <View style={styles.actionsColumn}>
+                      <TouchableOpacity
+                        style={styles.actionButton}
+                        onPress={() => navigation.navigate('AdminJobDetails', { jobId: job._id })}
+                      >
+                        <Ionicons name="eye-outline" size={18} color="#4A90E2" />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.actionButton, styles.deleteButton]}
+                        onPress={() => deleteJob(job._id)}
+                      >
+                        <Ionicons name="trash-outline" size={18} color="#E74C3C" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))
+              ) : (
+                <View style={styles.emptyState}>
+                  <Ionicons name="briefcase-outline" size={64} color="#CCC" />
+                  <Text style={styles.emptyStateText}>No jobs found</Text>
+                </View>
+              )}
+            </View>
+          </View>
+        </View>
+      </ScrollView>
     </AdminLayout>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  scrollContainer: {
     flex: 1,
+  },
+  container: {
+    padding: 20,
   },
   loadingContainer: {
     flex: 1,
@@ -359,6 +504,35 @@ const styles = StyleSheet.create({
   },
   activeFilterText: {
     color: '#FFF',
+  },
+  bulkActionsBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
+    marginBottom: 15,
+  },
+  bulkActionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#FFF',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+  },
+  bulkActionButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#374151',
   },
   statsBar: {
     backgroundColor: '#FFF',

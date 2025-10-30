@@ -35,6 +35,25 @@ const JobCard = ({ job }) => {
     return parts.length > 0 ? parts.join(', ') : 'Location not specified';
   };
 
+  const formatExperience = (totalExp) => {
+    if (!totalExp) return 'Not specified';
+    if (typeof totalExp === 'string') return totalExp;
+    if (totalExp.min && totalExp.max) {
+      return `${totalExp.min} - ${totalExp.max}`;
+    }
+    if (totalExp.min) return `From ${totalExp.min}`;
+    if (totalExp.max) return `Up to ${totalExp.max}`;
+    return 'Not specified';
+  };
+
+  // Extract job data with proper field mapping
+  const companyName = job.company?.name || job.companyName || 'N/A';
+  const jobTitle = job.title || job.jobTitle || 'Untitled Job';
+  const salaryMin = job.salary?.min || job.salaryMin;
+  const salaryMax = job.salary?.max || job.salaryMax;
+  const experienceRequired = job.totalExperience ? formatExperience(job.totalExperience) : (job.experienceRequired || 'Not specified');
+  const jobSkills = job.keySkills || job.skills || [];
+
   const handleSave = (e) => {
     if (e) e.stopPropagation();
     setIsSaved(!isSaved);
@@ -53,9 +72,9 @@ const JobCard = ({ job }) => {
             <Ionicons name="business" size={24} color={colors.primary} />
           </View>
           <View style={styles.companyInfo}>
-            {job.companyName && (
+            {companyName && (
               <Text style={styles.company} numberOfLines={1}>
-                {job.companyName}
+                {companyName}
               </Text>
             )}
             <Text style={styles.postedDate}>
@@ -78,7 +97,7 @@ const JobCard = ({ job }) => {
 
       {/* Job Title */}
       <Text style={styles.title} numberOfLines={2}>
-        {job.jobTitle}
+        {jobTitle}
       </Text>
 
       {/* Details Grid */}
@@ -97,7 +116,7 @@ const JobCard = ({ job }) => {
           </View>
         )}
         
-        {job.experienceRequired && (
+        {experienceRequired && (
           <View style={styles.detailItem}>
             <View style={styles.detailIcon}>
               <Ionicons name="briefcase" size={16} color={colors.primary} />
@@ -105,7 +124,7 @@ const JobCard = ({ job }) => {
             <View style={styles.detailContent}>
               <Text style={styles.detailLabel}>Experience</Text>
               <Text style={styles.detailValue} numberOfLines={1}>
-                {job.experienceRequired}
+                {experienceRequired}
               </Text>
             </View>
           </View>
@@ -116,21 +135,21 @@ const JobCard = ({ job }) => {
       <View style={styles.salaryBadge}>
         <Ionicons name="cash" size={18} color={colors.success || '#10B981'} />
         <Text style={styles.salaryText}>
-          {formatSalary(job.salaryMin, job.salaryMax)}
+          {formatSalary(salaryMin, salaryMax)}
         </Text>
       </View>
 
       {/* Skills */}
-      {job.skills && job.skills.length > 0 && (
+      {jobSkills && jobSkills.length > 0 && (
         <View style={styles.skills}>
-          {job.skills.slice(0, 4).map((skill, index) => (
+          {jobSkills.slice(0, 4).map((skill, index) => (
             <View key={index} style={styles.skill}>
               <Text style={styles.skillText}>{skill}</Text>
             </View>
           ))}
-          {job.skills.length > 4 && (
+          {jobSkills.length > 4 && (
             <View style={styles.skill}>
-              <Text style={styles.skillText}>+{job.skills.length - 4}</Text>
+              <Text style={styles.skillText}>+{jobSkills.length - 4}</Text>
             </View>
           )}
         </View>

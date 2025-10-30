@@ -22,6 +22,7 @@ const AdminSidebar = ({ activeScreen, onNavigate }) => {
     { id: 'analytics', label: 'Analytics', icon: 'bar-chart-outline', screen: 'AdminAnalytics' },
     { id: 'resumeSearch', label: 'Resume Search', icon: 'search-outline', screen: 'AdminResumeSearch' },
     { id: 'resumeManagement', label: 'Resume Management', icon: 'document-outline', screen: 'AdminResumeManagement' },
+    { id: 'candidateSearch', label: 'Candidate Search (Fastdex)', icon: 'people-outline', screen: 'AdminCandidateSearch' },
     { id: 'jobAlerts', label: 'Job Alerts', icon: 'notifications-outline', screen: 'AdminJobAlerts' },
     { id: 'packageManagement', label: 'Package Management', icon: 'cube-outline', screen: 'AdminPackageManagement' },
     { id: 'advertisementManagement', label: 'Advertisement Management', icon: 'megaphone-outline', screen: 'AdminAdvertisementManagement' },

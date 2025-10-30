@@ -18,6 +18,15 @@ const AdminUsersScreen = ({ navigation }) => {
   const [viewModalVisible, setViewModalVisible] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [importExportLoading, setImportExportLoading] = useState(false);
+  const [addUserModalVisible, setAddUserModalVisible] = useState(false);
+  const [newUserData, setNewUserData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    password: '',
+    role: 'JOBSEEKER'
+  });
 
   useEffect(() => {
     fetchUsers();
@@ -146,16 +155,23 @@ const AdminUsersScreen = ({ navigation }) => {
                 headers['Authorization'] = `Bearer ${token}`;
               }
 
-              await fetch(`${API_URL}/admin/users/${userId}/verify`, {
+              const response = await fetch(`${API_URL}/admin/users/${userId}/verify`, {
                 method: 'PATCH',
                 headers,
                 body: JSON.stringify({ isVerified: true })
               });
+
+              const data = await response.json();
+
+              if (!response.ok) {
+                throw new Error(data.message || 'Failed to verify user');
+              }
+
               Alert.alert('Success', 'User verified successfully');
               fetchUsers();
             } catch (error) {
               console.error('Error verifying user:', error);
-              Alert.alert('Error', 'Failed to verify user');
+              Alert.alert('Error', error.message || 'Failed to verify user');
             }
           }
         }
@@ -166,6 +182,65 @@ const AdminUsersScreen = ({ navigation }) => {
   const viewUser = (user) => {
     setSelectedUser(user);
     setViewModalVisible(true);
+  };
+
+  const handleAddUser = async () => {
+    try {
+      // Validate required fields
+      if (!newUserData.firstName || !newUserData.lastName || !newUserData.email || !newUserData.password || !newUserData.role) {
+        Alert.alert('Error', 'Please fill in all required fields');
+        return;
+      }
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(newUserData.email)) {
+        Alert.alert('Error', 'Please enter a valid email address');
+        return;
+      }
+
+      // Validate password length
+      if (newUserData.password.length < 6) {
+        Alert.alert('Error', 'Password must be at least 6 characters long');
+        return;
+      }
+
+      const token = await AsyncStorage.getItem('token');
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(`${API_URL}/admin/users/create`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(newUserData)
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to create user');
+      }
+
+      Alert.alert('Success', 'User created successfully');
+      setAddUserModalVisible(false);
+      setNewUserData({
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        password: '',
+        role: 'JOBSEEKER'
+      });
+      fetchUsers();
+    } catch (error) {
+      console.error('Error creating user:', error);
+      Alert.alert('Error', error.message || 'Failed to create user');
+    }
   };
 
   const handleBulkExport = async () => {
@@ -376,6 +451,13 @@ Mike Johnson,mike@example.com,JOBSEEKER,Password123!`;
             <Text style={styles.pageSubtitle}>Manage all registered users</Text>
           </View>
           <View style={styles.bulkActionsContainer}>
+            <TouchableOpacity
+              style={styles.addUserButton}
+              onPress={() => setAddUserModalVisible(true)}
+            >
+              <Ionicons name="person-add-outline" size={18} color="#FFF" />
+              <Text style={styles.addUserButtonText}>Add User</Text>
+            </TouchableOpacity>
             <TouchableOpacity
               style={styles.sampleButton}
               onPress={downloadSampleCSV}
@@ -652,6 +734,126 @@ Mike Johnson,mike@example.com,JOBSEEKER,Password123!`;
             </View>
           </View>
         </Modal>
+
+        {/* Add User Modal */}
+        <Modal
+          visible={addUserModalVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setAddUserModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Add New User</Text>
+                <TouchableOpacity
+                  onPress={() => setAddUserModalVisible(false)}
+                  style={styles.closeButton}
+                >
+                  <Ionicons name="close" size={24} color="#666" />
+                </TouchableOpacity>
+              </View>
+              
+              <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>First Name *</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    placeholder="Enter first name"
+                    value={newUserData.firstName}
+                    onChangeText={(text) => setNewUserData({...newUserData, firstName: text})}
+                  />
+                </View>
+
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>Last Name *</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    placeholder="Enter last name"
+                    value={newUserData.lastName}
+                    onChangeText={(text) => setNewUserData({...newUserData, lastName: text})}
+                  />
+                </View>
+
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>Email *</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    placeholder="Enter email address"
+                    value={newUserData.email}
+                    onChangeText={(text) => setNewUserData({...newUserData, email: text})}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                  />
+                </View>
+
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>Phone</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    placeholder="Enter phone number"
+                    value={newUserData.phone}
+                    onChangeText={(text) => setNewUserData({...newUserData, phone: text})}
+                    keyboardType="phone-pad"
+                  />
+                </View>
+
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>Password *</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    placeholder="Enter password (min 6 characters)"
+                    value={newUserData.password}
+                    onChangeText={(text) => setNewUserData({...newUserData, password: text})}
+                    secureTextEntry
+                  />
+                </View>
+
+                <View style={styles.formGroup}>
+                  <Text style={styles.formLabel}>Role *</Text>
+                  <View style={styles.roleSelector}>
+                    <TouchableOpacity
+                      style={[
+                        styles.roleOption,
+                        newUserData.role === 'JOBSEEKER' && styles.roleOptionActive
+                      ]}
+                      onPress={() => setNewUserData({...newUserData, role: 'JOBSEEKER'})}
+                    >
+                      <Text style={[
+                        styles.roleOptionText,
+                        newUserData.role === 'JOBSEEKER' && styles.roleOptionTextActive
+                      ]}>
+                        Job Seeker
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.roleOption,
+                        newUserData.role === 'EMPLOYER' && styles.roleOptionActive
+                      ]}
+                      onPress={() => setNewUserData({...newUserData, role: 'EMPLOYER'})}
+                    >
+                      <Text style={[
+                        styles.roleOptionText,
+                        newUserData.role === 'EMPLOYER' && styles.roleOptionTextActive
+                      ]}>
+                        Employer
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.submitButton}
+                  onPress={handleAddUser}
+                >
+                  <Ionicons name="person-add" size={20} color="#FFF" />
+                  <Text style={styles.submitButtonText}>Create User</Text>
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
       </View>
     </AdminLayout>
   );
@@ -690,6 +892,20 @@ const styles = StyleSheet.create({
   bulkActionsContainer: {
     flexDirection: 'row',
     gap: 10,
+  },
+  addUserButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E67E22',
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderRadius: 8,
+    gap: 6,
+  },
+  addUserButtonText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
   sampleButton: {
     flexDirection: 'row',
@@ -1008,6 +1224,67 @@ const styles = StyleSheet.create({
     color: '#333',
     flex: 2,
     textAlign: 'right',
+  },
+  formGroup: {
+    marginBottom: 20,
+  },
+  formLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+  },
+  formInput: {
+    backgroundColor: '#F5F6FA',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    fontSize: 14,
+    color: '#333',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  roleSelector: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  roleOption: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    borderRadius: 8,
+    backgroundColor: '#F5F6FA',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    alignItems: 'center',
+  },
+  roleOptionActive: {
+    backgroundColor: '#4A90E2',
+    borderColor: '#4A90E2',
+  },
+  roleOptionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+  },
+  roleOptionTextActive: {
+    color: '#FFF',
+  },
+  submitButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#E67E22',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    marginTop: 10,
+    gap: 8,
+  },
+  submitButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

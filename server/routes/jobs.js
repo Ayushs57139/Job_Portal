@@ -119,13 +119,24 @@ router.get('/', [
 // @access  Public
 router.get('/:id', async (req, res) => {
   try {
+    console.log('Fetching job with ID:', req.params.id);
+    
+    // Validate MongoDB ObjectId format
+    if (!req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
+      console.log('Invalid job ID format');
+      return res.status(400).json({ message: 'Invalid job ID format' });
+    }
+
     const job = await Job.findById(req.params.id)
       .populate('postedBy', 'firstName lastName company profile')
       .lean();
 
     if (!job) {
+      console.log('Job not found in database');
       return res.status(404).json({ message: 'Job not found' });
     }
+
+    console.log('Job found:', job._id);
 
     // Increment view count
     await Job.findByIdAndUpdate(req.params.id, { $inc: { views: 1 } });
@@ -133,7 +144,7 @@ router.get('/:id', async (req, res) => {
     res.json({ job });
   } catch (error) {
     console.error('Get job error:', error);
-    res.status(500).json({ message: 'Server error while fetching job' });
+    res.status(500).json({ message: 'Server error while fetching job', error: error.message });
   }
 });
 
@@ -171,30 +182,36 @@ router.post('/', [
     }
 
     // Check if employer is verified (only for employers, not admins)
-    if (req.user.userType === 'employer' && !req.user.canPostJobs()) {
+    const isAdmin = req.user.userType === 'admin' || req.user.userType === 'superadmin';
+    
+    if (!isAdmin && req.user.userType === 'employer' && !req.user.canPostJobs()) {
       return res.status(403).json({
         message: 'Your employer account is not verified yet. Please wait for admin verification before posting jobs.',
         verificationStatus: req.user.verificationStatus
       });
     }
 
-    // Check for duplicate job posting within last 30 seconds
-    const recentJob = await Job.findOne({
-      postedBy: req.user._id,
-      title: req.body.title,
-      'company.name': req.body.company?.name,
-      createdAt: { $gte: new Date(Date.now() - 30000) } // 30 seconds ago
-    });
-
-    if (recentJob) {
-      return res.status(400).json({ 
-        message: 'Duplicate job posting detected. Please wait before posting the same job again.' 
+    // Check for duplicate job posting within last 30 seconds (skip for admins)
+    if (!isAdmin) {
+      const recentJob = await Job.findOne({
+        postedBy: req.user._id,
+        title: req.body.title,
+        'company.name': req.body.company?.name,
+        createdAt: { $gte: new Date(Date.now() - 30000) } // 30 seconds ago
       });
+
+      if (recentJob) {
+        return res.status(400).json({ 
+          message: 'Duplicate job posting detected. Please wait before posting the same job again.' 
+        });
+      }
     }
 
     const jobData = {
       ...req.body,
-      postedBy: req.user._id
+      postedBy: req.user._id,
+      // Set job to active immediately if posted by admin
+      status: isAdmin ? 'active' : (req.body.status || 'pending')
     };
 
     // Process skills array

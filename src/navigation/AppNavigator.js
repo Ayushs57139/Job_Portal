@@ -4,6 +4,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ActivityIndicator, View, Platform } from 'react-native';
+import ChatbotWidget from '../components/ChatbotWidget';
 
 // Auth Screens
 import LoginScreen from '../screens/Auth/LoginScreen';
@@ -29,15 +30,22 @@ import ConsultancyDashboardScreen from '../screens/Dashboard/ConsultancyDashboar
 import AdminDashboardScreen from '../screens/Admin/AdminDashboardScreen';
 import AdminUsersScreen from '../screens/Admin/AdminUsersScreen';
 import AdminJobsScreen from '../screens/Admin/AdminJobsScreen';
+import AdminJobDetailsScreen from '../screens/Admin/AdminJobDetailsScreen';
 import AdminApplicationsScreen from '../screens/Admin/AdminApplicationsScreen';
+import AdminApplicationDetailsScreen from '../screens/Admin/AdminApplicationDetailsScreen';
 import AdminRoleManagementScreen from '../screens/Admin/AdminRoleManagementScreen';
 import AdminTeamLimitsScreen from '../screens/Admin/AdminTeamLimitsScreen';
 import AdminBlogsScreen from '../screens/Admin/AdminBlogsScreen';
 import AdminVerificationScreen from '../screens/Admin/AdminVerificationScreen';
-import AdminKYCScreen from '../screens/Admin/AdminKYCScreen';
+import AdminKYCScreen from '../screens/Admin/AdminKYCManagementScreen';
 import AdminSalesEnquiryScreen from '../screens/Admin/AdminSalesEnquiryScreen';
 import AdminAnalyticsScreen from '../screens/Admin/AdminAnalyticsScreen';
 import AdminSettingsScreen from '../screens/Admin/AdminSettingsScreen';
+import GeneralSettingsScreen from '../screens/Admin/Settings/GeneralSettingsScreen';
+import SecuritySettingsScreen from '../screens/Admin/Settings/SecuritySettingsScreen';
+import EmailConfigurationScreen from '../screens/Admin/Settings/EmailConfigurationScreen';
+import PaymentSettingsScreen from '../screens/Admin/Settings/PaymentSettingsScreen';
+import NotificationSettingsScreen from '../screens/Admin/Settings/NotificationSettingsScreen';
 import AdminEmailTemplatesScreen from '../screens/Admin/AdminEmailTemplatesScreen';
 import AdminSMTPSettingsScreen from '../screens/Admin/AdminSMTPSettingsScreen';
 import AdminEmailLogsScreen from '../screens/Admin/AdminEmailLogsScreen';
@@ -48,6 +56,8 @@ import AdminLiveChatSupportScreen from '../screens/Admin/AdminLiveChatSupportScr
 import AdminResumeSearchScreen from '../screens/Admin/AdminResumeSearchScreen';
 import AdminResumeManagementScreen from '../screens/Admin/AdminResumeManagementScreen';
 import AdminJobAlertsScreen from '../screens/Admin/AdminJobAlertsScreen';
+import AdminCandidateSearchScreen from '../screens/Admin/AdminCandidateSearchScreen';
+import AdminCandidateDetailsScreen from '../screens/Admin/AdminCandidateDetailsScreen';
 import AdminHomepageScreen from '../screens/Admin/AdminHomepageScreen';
 import AdminFreejobwalaChatScreen from '../screens/Admin/AdminFreejobwalaChatScreen';
 import AdminLogoManagementScreen from '../screens/Admin/AdminLogoManagementScreen';
@@ -79,7 +89,10 @@ import SocialUpdatesScreen from '../screens/SocialUpdates/SocialUpdatesScreen';
 import CreateSocialPostScreen from '../screens/SocialUpdates/CreateSocialPostScreen';
 import PackagesScreen from '../screens/Packages/PackagesScreen';
 import SavedJobsScreen from '../screens/Jobs/SavedJobsScreen';
+import JobAlertFormScreen from '../screens/Jobs/JobAlertFormScreen';
 import ChatScreen from '../screens/Chat/ChatScreen';
+import LiveChatSupportScreen from '../screens/Chat/LiveChatSupportScreen';
+import ChatConversationScreen from '../screens/Chat/ChatConversationScreen';
 
 // Import colors from theme
 import { colors } from '../styles/theme';
@@ -89,6 +102,7 @@ const Stack = createStackNavigator();
 const AppNavigator = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [userToken, setUserToken] = useState(null);
+  const [currentRoute, setCurrentRoute] = useState('Home');
 
   useEffect(() => {
     // Check if user is logged in
@@ -105,6 +119,25 @@ const AppNavigator = () => {
 
     checkAuth();
   }, []);
+
+  // List of routes where chatbot should NOT be shown
+  const noChatbotRoutes = [
+    'AdminLogin', 'AdminDashboard', 'AdminUsers', 'AdminJobs', 'AdminPostJob', 'AdminJobDetails',
+    'AdminApplications', 'AdminApplicationDetails', 'AdminRoleManagement', 'AdminTeamLimits',
+    'AdminBlogs', 'AdminVerification', 'AdminKYC', 'AdminSalesEnquiry', 'AdminFreejobwalaChat',
+    'AdminAnalytics', 'AdminSettings', 'AdminEmailTemplates', 'AdminSMTPSettings', 'AdminPackages',
+    'AdminCustomFields', 'AdminJobCategories', 'AdminInstitutions', 'AdminJobTitles', 'AdminJobRoles',
+    'AdminSkills', 'AdminIndustries', 'AdminDepartments', 'AdminLocations', 'AdminSpecializations',
+    'AdminCourses', 'AdminLogos', 'AdminAdvertisements',
+    'CompanyDashboard', 'CompanyJobs', 'CompanyApplications', 'CompanyProfile', 'CompanyTeam',
+    'CompanyPackages', 'CompanyAnalytics', 'CompanySettings',
+    'ConsultancyDashboard', 'ConsultancyJobs', 'ConsultancyApplications', 'ConsultancyProfile',
+    'ConsultancyTeam', 'ConsultancyPackages', 'ConsultancyAnalytics', 'ConsultancySettings',
+    'JobseekerDashboard', 'JobseekerProfile', 'JobseekerApplications', 'JobseekerSettings',
+    'EmployerDashboard', 'EmployerProfile'
+  ];
+
+  const shouldShowChatbot = !noChatbotRoutes.includes(currentRoute);
 
   if (isLoading) {
     return (
@@ -132,6 +165,7 @@ const AppNavigator = () => {
         Home: '',
         AdminLogin: 'admin',
         AdminDashboard: 'admin/dashboard',
+        AdminResumeManagement: 'admin/resume-management',
         CompanyDashboard: 'company/dashboard',
         ConsultancyDashboard: 'consultancy/dashboard',
         UserDashboard: 'dashboard',
@@ -155,9 +189,16 @@ const AppNavigator = () => {
     },
   };
 
+  const onNavigationStateChange = (state) => {
+    if (state) {
+      const route = state.routes[state.index];
+      setCurrentRoute(route.name);
+    }
+  };
+
   return (
     <View style={containerStyle}>
-      <NavigationContainer linking={linking}>
+      <NavigationContainer linking={linking} onStateChange={onNavigationStateChange}>
         <Stack.Navigator
           initialRouteName="Home"
           screenOptions={{
@@ -238,6 +279,11 @@ const AppNavigator = () => {
           component={PostJobScreen}
           options={{ title: 'Post a Job' }}
         />
+        <Stack.Screen 
+          name="JobAlertForm" 
+          component={JobAlertFormScreen}
+          options={{ title: 'Create Job Alert' }}
+        />
         
         {/* Dashboard Screens */}
         <Stack.Screen 
@@ -273,9 +319,19 @@ const AppNavigator = () => {
           options={{ title: 'Jobs Management' }}
         />
         <Stack.Screen 
+          name="AdminJobDetails" 
+          component={AdminJobDetailsScreen}
+          options={{ title: 'Job Details' }}
+        />
+        <Stack.Screen 
           name="AdminApplications" 
           component={AdminApplicationsScreen}
           options={{ title: 'Applications Management' }}
+        />
+        <Stack.Screen 
+          name="AdminApplicationDetails" 
+          component={AdminApplicationDetailsScreen}
+          options={{ title: 'Application Details' }}
         />
         <Stack.Screen 
           name="AdminRoleManagement" 
@@ -316,6 +372,31 @@ const AppNavigator = () => {
           name="AdminSettings" 
           component={AdminSettingsScreen}
           options={{ title: 'Settings' }}
+        />
+        <Stack.Screen 
+          name="GeneralSettings" 
+          component={GeneralSettingsScreen}
+          options={{ title: 'General Settings' }}
+        />
+        <Stack.Screen 
+          name="SecuritySettings" 
+          component={SecuritySettingsScreen}
+          options={{ title: 'Security Settings' }}
+        />
+        <Stack.Screen 
+          name="EmailConfiguration" 
+          component={EmailConfigurationScreen}
+          options={{ title: 'Email Configuration' }}
+        />
+        <Stack.Screen 
+          name="PaymentSettings" 
+          component={PaymentSettingsScreen}
+          options={{ title: 'Payment Settings' }}
+        />
+        <Stack.Screen 
+          name="NotificationSettings" 
+          component={NotificationSettingsScreen}
+          options={{ title: 'Notification Settings' }}
         />
         <Stack.Screen 
           name="AdminEmailTemplates" 
@@ -361,6 +442,16 @@ const AppNavigator = () => {
           name="AdminResumeManagement" 
           component={AdminResumeManagementScreen}
           options={{ title: 'Resume Management' }}
+        />
+        <Stack.Screen 
+          name="AdminCandidateSearch" 
+          component={AdminCandidateSearchScreen}
+          options={{ title: 'Candidate Search (Fastdex/Freedex)' }}
+        />
+        <Stack.Screen 
+          name="AdminCandidateDetails" 
+          component={AdminCandidateDetailsScreen}
+          options={{ title: 'Candidate Details' }}
         />
         <Stack.Screen 
           name="AdminJobAlerts" 
@@ -503,8 +594,22 @@ const AppNavigator = () => {
           component={ChatScreen}
           options={{ title: 'Messages' }}
         />
+        <Stack.Screen 
+          name="LiveChatSupport" 
+          component={LiveChatSupportScreen}
+          options={{ title: 'Live Chat Support' }}
+        />
+        <Stack.Screen 
+          name="ChatConversation" 
+          component={ChatConversationScreen}
+          options={{ 
+            title: 'Chat',
+            headerShown: true
+          }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
+    {shouldShowChatbot && <ChatbotWidget />}
     </View>
   );
 };

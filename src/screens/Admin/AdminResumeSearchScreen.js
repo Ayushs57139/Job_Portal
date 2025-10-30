@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import AdminLayout from '../../components/Admin/AdminLayout';
 
@@ -6,13 +6,18 @@ const AdminResumeSearchScreen = ({ navigation }) => {
   const handleLogout = () => navigation.replace('AdminLogin');
   const handleNavigate = (screen) => navigation.navigate(screen);
 
+  useEffect(() => {
+    // Redirect to Candidate Search screen
+    navigation.replace('AdminCandidateSearch');
+  }, []);
+
   return (
     <AdminLayout title="Resume Search" activeScreen="AdminResumeSearch" onNavigate={handleNavigate} onLogout={handleLogout}>
       <View style={styles.container}>
         <Text style={styles.pageTitle}>Resume Search</Text>
         <Text style={styles.pageSubtitle}>Search and filter candidate resumes</Text>
         <View style={styles.infoCard}>
-          <Text style={styles.infoText}>Resume search functionality coming soon...</Text>
+          <Text style={styles.infoText}>Redirecting to Candidate Search...</Text>
         </View>
       </View>
     </AdminLayout>

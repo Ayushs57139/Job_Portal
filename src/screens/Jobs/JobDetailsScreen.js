@@ -52,6 +52,27 @@ const JobDetailsScreen = ({ route, navigation }) => {
     return parts.length > 0 ? parts.join(', ') : 'Location not specified';
   };
 
+  const formatExperience = (totalExp) => {
+    if (!totalExp) return null;
+    if (typeof totalExp === 'string') return totalExp;
+    if (totalExp.min && totalExp.max) {
+      return `${totalExp.min} - ${totalExp.max}`;
+    }
+    if (totalExp.min) return `From ${totalExp.min}`;
+    if (totalExp.max) return `Up to ${totalExp.max}`;
+    return null;
+  };
+
+  const formatSalary = (salary) => {
+    if (!salary) return null;
+    if (salary.min && salary.max) {
+      return `${api.formatIndianCurrency(salary.min)} - ${api.formatIndianCurrency(salary.max)}`;
+    }
+    if (salary.min) return `From ${api.formatIndianCurrency(salary.min)}`;
+    if (salary.max) return `Up to ${api.formatIndianCurrency(salary.max)}`;
+    return null;
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -70,15 +91,23 @@ const JobDetailsScreen = ({ route, navigation }) => {
     );
   }
 
+  // Extract job data with proper field mapping
+  const jobTitle = job.title || job.jobTitle || 'Untitled Job';
+  const companyName = job.company?.name || job.companyName;
+  const experienceText = job.totalExperience ? formatExperience(job.totalExperience) : job.experienceRequired;
+  const salaryText = job.salary ? formatSalary(job.salary) : (job.salaryMin || job.salaryMax) ? `${api.formatIndianCurrency(job.salaryMin || 0)} - ${api.formatIndianCurrency(job.salaryMax || 0)}` : null;
+  const jobSkills = job.keySkills || job.skills || [];
+  const benefits = job.additionalBenefits || job.benefits;
+
   return (
     <View style={styles.container}>
       <Header />
       
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.card}>
-          <Text style={styles.title}>{job.jobTitle}</Text>
-          {job.companyName && (
-            <Text style={styles.company}>{job.companyName}</Text>
+          <Text style={styles.title}>{jobTitle}</Text>
+          {companyName && (
+            <Text style={styles.company}>{companyName}</Text>
           )}
 
           <View style={styles.details}>
@@ -89,18 +118,18 @@ const JobDetailsScreen = ({ route, navigation }) => {
               </View>
             )}
             
-            {job.experienceRequired && (
+            {experienceText && (
               <View style={styles.detail}>
                 <Ionicons name="briefcase" size={20} color={colors.primary} />
-                <Text style={styles.detailText}>{job.experienceRequired}</Text>
+                <Text style={styles.detailText}>{experienceText}</Text>
               </View>
             )}
             
-            {(job.salaryMin || job.salaryMax) && (
+            {salaryText && (
               <View style={styles.detail}>
                 <Ionicons name="cash" size={20} color={colors.primary} />
                 <Text style={styles.detailText}>
-                  {api.formatIndianCurrency(job.salaryMin)} - {api.formatIndianCurrency(job.salaryMax)}
+                  {salaryText}
                 </Text>
               </View>
             )}
@@ -127,11 +156,11 @@ const JobDetailsScreen = ({ route, navigation }) => {
             </View>
           )}
 
-          {job.skills && job.skills.length > 0 && (
+          {jobSkills && jobSkills.length > 0 && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Required Skills</Text>
               <View style={styles.skills}>
-                {job.skills.map((skill, index) => (
+                {jobSkills.map((skill, index) => (
                   <View key={index} style={styles.skill}>
                     <Text style={styles.skillText}>{skill}</Text>
                   </View>
@@ -140,10 +169,18 @@ const JobDetailsScreen = ({ route, navigation }) => {
             </View>
           )}
 
-          {job.benefits && (
+          {benefits && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Benefits</Text>
-              <Text style={styles.sectionText}>{job.benefits}</Text>
+              {Array.isArray(benefits) ? (
+                <View style={styles.benefitsList}>
+                  {benefits.map((benefit, index) => (
+                    <Text key={index} style={styles.benefitItem}>• {benefit}</Text>
+                  ))}
+                </View>
+              ) : (
+                <Text style={styles.sectionText}>{benefits}</Text>
+              )}
             </View>
           )}
 
@@ -250,6 +287,15 @@ const styles = StyleSheet.create({
     ...typography.body2,
     color: colors.primary,
     fontWeight: '600',
+  },
+  benefitsList: {
+    gap: spacing.xs,
+  },
+  benefitItem: {
+    ...typography.body1,
+    color: colors.text,
+    lineHeight: 24,
+    marginBottom: spacing.xs,
   },
   footer: {
     borderTopWidth: 1,

@@ -178,6 +178,61 @@ router.post('/', upload.single('resumeFile'), async (req, res) => {
     }
 });
 
+// @route   GET /api/job-alerts/stats/summary
+// @desc    Get job alerts statistics
+// @access  Admin only
+router.get('/stats/summary', adminAuth, async (req, res) => {
+    try {
+        const totalAlerts = await JobAlert.countDocuments();
+        const activeAlerts = await JobAlert.countDocuments({ isActive: true });
+        const inactiveAlerts = await JobAlert.countDocuments({ isActive: false });
+        const alertsWithUsers = await JobAlert.countDocuments({ userId: { $ne: null } });
+        const anonymousAlerts = await JobAlert.countDocuments({ userId: null });
+
+        // Get top industries
+        const topIndustries = await JobAlert.aggregate([
+            { $group: { _id: '$industry', count: { $sum: 1 } } },
+            { $sort: { count: -1 } },
+            { $limit: 5 }
+        ]);
+
+        // Get top departments
+        const topDepartments = await JobAlert.aggregate([
+            { $group: { _id: '$department', count: { $sum: 1 } } },
+            { $sort: { count: -1 } },
+            { $limit: 5 }
+        ]);
+
+        // Get alerts created in last 30 days
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const recentAlerts = await JobAlert.countDocuments({
+            createdAt: { $gte: thirtyDaysAgo }
+        });
+
+        res.json({
+            success: true,
+            data: {
+                total: totalAlerts,
+                active: activeAlerts,
+                inactive: inactiveAlerts,
+                withUsers: alertsWithUsers,
+                anonymous: anonymousAlerts,
+                recent: recentAlerts,
+                topIndustries,
+                topDepartments
+            }
+        });
+
+    } catch (error) {
+        console.error('Error fetching job alerts statistics:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error while fetching statistics'
+        });
+    }
+});
+
 // @route   GET /api/job-alerts
 // @desc    Get job alerts (with pagination and filters)
 // @access  Admin only
@@ -560,61 +615,6 @@ router.post('/:id/toggle-status', adminAuth, async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Server error while toggling job alert status'
-        });
-    }
-});
-
-// @route   GET /api/job-alerts/stats/summary
-// @desc    Get job alerts statistics
-// @access  Admin only
-router.get('/stats/summary', adminAuth, async (req, res) => {
-    try {
-        const totalAlerts = await JobAlert.countDocuments();
-        const activeAlerts = await JobAlert.countDocuments({ isActive: true });
-        const inactiveAlerts = await JobAlert.countDocuments({ isActive: false });
-        const alertsWithUsers = await JobAlert.countDocuments({ userId: { $ne: null } });
-        const anonymousAlerts = await JobAlert.countDocuments({ userId: null });
-
-        // Get top industries
-        const topIndustries = await JobAlert.aggregate([
-            { $group: { _id: '$industry', count: { $sum: 1 } } },
-            { $sort: { count: -1 } },
-            { $limit: 5 }
-        ]);
-
-        // Get top departments
-        const topDepartments = await JobAlert.aggregate([
-            { $group: { _id: '$department', count: { $sum: 1 } } },
-            { $sort: { count: -1 } },
-            { $limit: 5 }
-        ]);
-
-        // Get alerts created in last 30 days
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        const recentAlerts = await JobAlert.countDocuments({
-            createdAt: { $gte: thirtyDaysAgo }
-        });
-
-        res.json({
-            success: true,
-            data: {
-                total: totalAlerts,
-                active: activeAlerts,
-                inactive: inactiveAlerts,
-                withUsers: alertsWithUsers,
-                anonymous: anonymousAlerts,
-                recent: recentAlerts,
-                topIndustries,
-                topDepartments
-            }
-        });
-
-    } catch (error) {
-        console.error('Error fetching job alerts statistics:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Server error while fetching statistics'
         });
     }
 });

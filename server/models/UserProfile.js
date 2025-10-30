@@ -22,7 +22,7 @@ const userProfileSchema = new mongoose.Schema({
         },
         gender: {
             type: String,
-            enum: ['male', 'female', 'other', 'prefer-not-to-say'],
+            enum: ['Male', 'Female', 'Other', 'Any'],
             required: true
         },
         email: {
@@ -39,17 +39,48 @@ const userProfileSchema = new mongoose.Schema({
             type: Boolean,
             default: false
         },
+        whatsappAvailable: {
+            type: Boolean,
+            default: false
+        },
         profilePicture: {
             type: String,
             default: null
+        },
+        currentCity: {
+            type: String,
+            trim: true
+        },
+        pincode: {
+            type: String,
+            trim: true
+        },
+        disabilityStatus: {
+            type: String,
+            enum: ['Have Disability', 'Don\'t Have Disability', 'Any']
+        },
+        disabilities: [{
+            type: String,
+            enum: ['Blindness', 'Low Vision', 'Physical Disability', 'Locomotor Disability', 'Hearing Impairment', 'Speech and Language Disability', 'Any']
+        }],
+        diversityHiring: {
+            type: String,
+            enum: ['Man', 'Man Returning to work', 'Woman', 'Woman Returning to work', 'Ex-Army Personal', 'Differently-abled', 'Any']
+        },
+        category: {
+            type: String,
+            enum: ['Scheduled Caste - SC', 'Scheduled Tribe - ST', 'OBC - Creamy', 'OBC – Non Creamy', 'General', 'EWS', 'Other', 'Any']
+        },
+        age: {
+            type: Number
         }
     },
     
-    // Education Information
-    education: {
+    // Education Information (Array to support multiple education records)
+    education: [{
         educationLevel: {
             type: String,
-            enum: ['high-school', 'diploma', 'bachelor', 'master', 'phd', 'other'],
+            enum: ['No Education', 'Below 10th', '10th Pass', '12th Pass', 'ITI', 'Diploma', 'Graduate', 'Post Graduate', 'PPG', 'Doctorate', 'Other'],
             required: true
         },
         degree: {
@@ -66,8 +97,32 @@ const userProfileSchema = new mongoose.Schema({
         },
         educationStatus: {
             type: String,
-            enum: ['completed', 'pursuing', 'dropped'],
-            default: 'completed'
+            enum: ['Pursuing / Running', 'Pass Out / Completed', 'No Education'],
+            default: 'Pass Out / Completed'
+        },
+        startDate: {
+            type: String, // MM-YYYY format
+            trim: true
+        },
+        endDate: {
+            type: String, // MM-YYYY format
+            trim: true
+        },
+        educationType: {
+            type: String,
+            enum: ['Full Time', 'Part Time', 'Correspondence', 'Any']
+        },
+        educationMedium: {
+            type: String,
+            enum: ['Hindi', 'English', 'Kannada', 'Telugu', 'Marathi', 'Gujarati', 'Bengali', 'Punjabi', 'Tamil', 'Kashmiri', 'Maithili', 'Nepali', 'Bhojpuri', 'Assamese', 'Malayalam', 'Urdu', 'Sanskrit', 'Meitei (Manipuri)', 'Santali', 'Odia', 'Any']
+        },
+        marksType: {
+            type: String,
+            enum: ['Grade', 'Percentage', 'Division', 'CGPA', 'Any']
+        },
+        marksValue: {
+            type: String,
+            trim: true
         },
         graduationYear: {
             type: Number
@@ -76,14 +131,31 @@ const userProfileSchema = new mongoose.Schema({
             type: Number,
             min: 0,
             max: 10
+        },
+        percentage: {
+            type: Number,
+            min: 0,
+            max: 100
         }
-    },
+    }],
     
     // Professional Information
     professional: {
         experience: {
             type: String,
             required: true
+        },
+        experienceLevel: {
+            type: String,
+            enum: ['Fresher', 'Experienced', 'Internship', 'Apprenticeship', 'Any']
+        },
+        totalExperience: {
+            type: Number, // in years
+            default: 0
+        },
+        totalExperienceMonths: {
+            type: Number, // in months
+            default: 0
         },
         currentJobTitle: {
             type: String,
@@ -93,7 +165,27 @@ const userProfileSchema = new mongoose.Schema({
             type: String,
             trim: true
         },
+        companyType: {
+            type: String,
+            enum: ['Indian MNC', 'Foreign MNC', 'Govt/PSU', 'Startup', 'Unicorn', 'Corporate', 'Consultancy', 'Any']
+        },
+        industry: {
+            type: String,
+            trim: true
+        },
+        department: {
+            type: String,
+            trim: true
+        },
+        jobRole: {
+            type: String,
+            trim: true
+        },
         skills: [{
+            type: String,
+            trim: true
+        }],
+        keySkills: [{
             type: String,
             trim: true
         }],
@@ -105,6 +197,14 @@ const userProfileSchema = new mongoose.Schema({
             type: String,
             trim: true
         }],
+        preferredLanguage: [{
+            type: String,
+            enum: ['Hindi', 'English', 'Kannada', 'Telugu', 'Marathi', 'Gujarati', 'Bengali', 'Punjabi', 'Tamil', 'Kashmiri', 'Maithili', 'Nepali', 'Bhojpuri', 'Assamese', 'Malayalam', 'Urdu', 'Sanskrit', 'Meitei (Manipuri)', 'Santali', 'Odia', 'Japanese', 'Russian', 'French', 'Chinese', 'German', 'Mexican', 'Vietnamese', 'Portuguese', 'Korean', 'Spanish', 'Turkish', 'Arabian', 'Filipino', 'Swedish', 'Greek', 'Latin', 'Polish', 'Thai', 'Serbian']
+        }],
+        englishFluencyLevel: {
+            type: String,
+            enum: ['Fluent English', 'Good English', 'Basic English', 'No English', 'Any']
+        },
         certifications: [{
             name: String,
             issuer: String,
@@ -118,7 +218,14 @@ const userProfileSchema = new mongoose.Schema({
             endDate: Date,
             current: Boolean,
             description: String
-        }]
+        }],
+        currentSalary: {
+            type: Number
+        },
+        includeNoSalaryCandidates: {
+            type: Boolean,
+            default: false
+        }
     },
     
     // Job Preferences
@@ -132,10 +239,30 @@ const userProfileSchema = new mongoose.Schema({
             type: String,
             trim: true
         }],
+        willingToRelocate: {
+            type: Boolean,
+            default: false
+        },
+        preferredPincodes: [{
+            type: String,
+            trim: true
+        }],
         jobTypePreference: {
             type: String,
-            enum: ['fulltime', 'parttime', 'contract', 'internship', 'freelance'],
+            enum: ['Permanent', 'Temporary/Contract Job', 'Internship', 'Apprenticeship', 'NAPS', 'Freelance', 'Trainee', 'Fresher', 'Any'],
             required: true
+        },
+        employmentType: {
+            type: String,
+            enum: ['Full Time', 'Part Time', 'Any']
+        },
+        jobModeType: {
+            type: String,
+            enum: ['Work From Home', 'Work From Office', 'Work From Field', 'Hybrid', 'Remote', 'Any']
+        },
+        jobShiftType: {
+            type: String,
+            enum: ['Day Shift', 'Night Shift', 'Rotational Shift', 'Split Shift', 'Any']
         },
         expectedSalary: {
             type: Number,
@@ -147,17 +274,22 @@ const userProfileSchema = new mongoose.Schema({
         },
         workMode: {
             type: String,
-            enum: ['onsite', 'remote', 'hybrid'],
-            default: 'onsite'
+            enum: ['Work From Home', 'Work From Office', 'Work From Field', 'Hybrid', 'Remote', 'Any'],
+            default: 'Work From Office'
         },
         noticePeriod: {
             type: String,
-            default: 'immediate'
+            enum: ['Immediate Joining', '7 Days', '15 Days', '30 Days', '45 Days', '60 Days', '90 Days', '90 Days Plus', 'Serving Notice Period', 'Any'],
+            default: 'Immediate Joining'
         },
         availability: {
             type: String,
-            default: 'immediate'
-        }
+            default: 'Immediate Joining'
+        },
+        assetRequirements: [{
+            type: String,
+            enum: ['LMV License', 'Heavy Driver License', 'Crane Operator License', 'Electrical License', 'Laptop', 'Android Smart Phone', 'iOS Smart Phone', 'Camera', 'Two Wheeler', 'Bike', 'E-Bike', 'Auto', 'E-Rikshaw', 'Three Wheeler', 'Four Wheeler', 'Tempo', 'Traveller/Van', 'Truck', 'Crane', 'Bus', 'Tractor']
+        }]
     },
     
     // Profile Status and Metadata
@@ -194,6 +326,35 @@ const userProfileSchema = new mongoose.Schema({
         lastModified: {
             type: Date,
             default: Date.now
+        },
+        // Candidate tracking fields
+        candidateShowType: {
+            type: String,
+            enum: ['New Registered', 'New Modified', 'Actively Applying', 'Trending Profile', 'Featured Candidate', 'Any']
+        },
+        hasResume: {
+            type: Boolean,
+            default: false
+        },
+        hasProfilePicture: {
+            type: Boolean,
+            default: false
+        },
+        mobileVerified: {
+            type: Boolean,
+            default: false
+        },
+        emailVerified: {
+            type: Boolean,
+            default: false
+        },
+        whatsappAvailable: {
+            type: Boolean,
+            default: false
+        },
+        resumeAttached: {
+            type: Boolean,
+            default: false
         }
     },
     

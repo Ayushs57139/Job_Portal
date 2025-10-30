@@ -31,8 +31,9 @@ const auth = async (req, res, next) => {
 const employerAuth = async (req, res, next) => {
   try {
     await auth(req, res, () => {
-      if (req.user.userType !== 'employer') {
-        return res.status(403).json({ message: 'Access denied. Employer role required.' });
+      // Allow both employers and admins to post jobs
+      if (req.user.userType !== 'employer' && req.user.userType !== 'admin' && req.user.userType !== 'superadmin') {
+        return res.status(403).json({ message: 'Access denied. Employer or Admin role required.' });
       }
       next();
     });

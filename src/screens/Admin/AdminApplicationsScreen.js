@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, TextInput, Alert, Platform } from 'react-native';
 import AdminLayout from '../../components/Admin/AdminLayout';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -50,15 +50,54 @@ const AdminApplicationsScreen = ({ navigation }) => {
     if (searchQuery) {
       filtered = filtered.filter(app =>
         app.candidateName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        app.jobTitle?.toLowerCase().includes(searchQuery.toLowerCase())
+        app.jobTitle?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        app.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        app.candidate?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        app.job?.title?.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
     if (filterStatus !== 'ALL') {
-      filtered = filtered.filter(app => app.status === filterStatus);
+      filtered = filtered.filter(app => app.status?.toUpperCase() === filterStatus);
     }
 
     setFilteredApplications(filtered);
+  };
+
+  const handleBulkExport = async () => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+      };
+
+      const response = await fetch(`${API_URL}/bulk/export/applications`, { headers });
+      
+      if (!response.ok) {
+        throw new Error('Failed to export applications');
+      }
+
+      const csvData = await response.text();
+
+      if (Platform.OS === 'web') {
+        // For web, create a download link
+        const blob = new Blob([csvData], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'applications_export.csv';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        Alert.alert('Success', 'Applications exported successfully!');
+      } else {
+        Alert.alert('Info', 'Export functionality is available on web platform');
+      }
+    } catch (error) {
+      console.error('Error exporting applications:', error);
+      Alert.alert('Error', 'Failed to export applications');
+    }
   };
 
   const updateApplicationStatus = async (applicationId, newStatus) => {
@@ -179,112 +218,124 @@ const AdminApplicationsScreen = ({ navigation }) => {
       user={user}
       onLogout={handleLogout}
     >
-      <View style={styles.container}>
-        <View style={styles.headerSection}>
-          <Text style={styles.pageTitle}>Application Management</Text>
-          <Text style={styles.pageSubtitle}>Manage all job applications</Text>
-        </View>
-
-        <View style={styles.filterSection}>
-          <View style={styles.searchContainer}>
-            <Ionicons name="search" size={20} color="#999" style={styles.searchIcon} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search by candidate name or job title..."
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
+      <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+        <View style={styles.container}>
+          <View style={styles.headerSection}>
+            <Text style={styles.pageTitle}>Application Management</Text>
+            <Text style={styles.pageSubtitle}>Manage all job applications</Text>
           </View>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={styles.filterButtons}>
-              {['ALL', 'PENDING', 'REVIEWED', 'SHORTLISTED', 'ACCEPTED', 'REJECTED'].map(status => (
-                <TouchableOpacity
-                  key={status}
-                  style={[styles.filterButton, filterStatus === status && styles.activeFilter]}
-                  onPress={() => setFilterStatus(status)}
-                >
-                  <Text style={[styles.filterButtonText, filterStatus === status && styles.activeFilterText]}>
-                    {status.charAt(0) + status.slice(1).toLowerCase()}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </ScrollView>
-        </View>
-
-        <View style={styles.statsBar}>
-          <Text style={styles.statsText}>Total Applications: {filteredApplications.length}</Text>
-        </View>
-
-        <ScrollView style={styles.tableContainer} showsVerticalScrollIndicator={false}>
-          <View style={styles.table}>
-            <View style={styles.tableHeader}>
-              <Text style={[styles.tableHeaderText, styles.candidateColumn]}>Candidate</Text>
-              <Text style={[styles.tableHeaderText, styles.jobColumn]}>Job Title</Text>
-              <Text style={[styles.tableHeaderText, styles.emailColumn]}>Email</Text>
-              <Text style={[styles.tableHeaderText, styles.statusColumn]}>Status</Text>
-              <Text style={[styles.tableHeaderText, styles.appliedColumn]}>Applied On</Text>
-              <Text style={[styles.tableHeaderText, styles.actionsColumn]}>Actions</Text>
+          <View style={styles.filterSection}>
+            <View style={styles.searchContainer}>
+              <Ionicons name="search" size={20} color="#999" style={styles.searchIcon} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search by candidate name or job title..."
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
             </View>
 
-            {filteredApplications.length > 0 ? (
-              filteredApplications.map((application, index) => {
-                const statusColors = getStatusColor(application.status);
-                return (
-                  <View key={application._id || index} style={styles.tableRow}>
-                    <Text style={[styles.tableCellText, styles.candidateColumn, styles.candidateName]}>
-                      {application.candidateName || application.candidate?.name || 'N/A'}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={styles.filterButtons}>
+                {['ALL', 'PENDING', 'REVIEWED', 'SHORTLISTED', 'ACCEPTED', 'REJECTED'].map(status => (
+                  <TouchableOpacity
+                    key={status}
+                    style={[styles.filterButton, filterStatus === status && styles.activeFilter]}
+                    onPress={() => setFilterStatus(status)}
+                  >
+                    <Text style={[styles.filterButtonText, filterStatus === status && styles.activeFilterText]}>
+                      {status.charAt(0) + status.slice(1).toLowerCase()}
                     </Text>
-                    <Text style={[styles.tableCellText, styles.jobColumn]}>
-                      {application.jobTitle || application.job?.title || 'N/A'}
-                    </Text>
-                    <Text style={[styles.tableCellText, styles.emailColumn]}>
-                      {application.email || application.candidate?.email || 'N/A'}
-                    </Text>
-                    <View style={styles.statusColumn}>
-                      <View style={[styles.statusBadge, { backgroundColor: statusColors.bg }]}>
-                        <Text style={[styles.statusBadgeText, { color: statusColors.text }]}>
-                          {application.status || 'PENDING'}
-                        </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+          </View>
+
+          <View style={styles.bulkActionsBar}>
+            <TouchableOpacity style={styles.bulkActionButton} onPress={handleBulkExport}>
+              <Ionicons name="cloud-download-outline" size={18} color="#10B981" />
+              <Text style={styles.bulkActionButtonText}>Export All Applications</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.statsBar}>
+            <Text style={styles.statsText}>Total Applications: {filteredApplications.length}</Text>
+          </View>
+
+          <View style={styles.tableContainer}>
+            <View style={styles.table}>
+              <View style={styles.tableHeader}>
+                <Text style={[styles.tableHeaderText, styles.candidateColumn]}>Candidate</Text>
+                <Text style={[styles.tableHeaderText, styles.jobColumn]}>Job Title</Text>
+                <Text style={[styles.tableHeaderText, styles.emailColumn]}>Email</Text>
+                <Text style={[styles.tableHeaderText, styles.statusColumn]}>Status</Text>
+                <Text style={[styles.tableHeaderText, styles.appliedColumn]}>Applied On</Text>
+                <Text style={[styles.tableHeaderText, styles.actionsColumn]}>Actions</Text>
+              </View>
+
+              {filteredApplications.length > 0 ? (
+                filteredApplications.map((application, index) => {
+                  const statusColors = getStatusColor(application.status?.toUpperCase() || 'PENDING');
+                  return (
+                    <View key={application._id || index} style={styles.tableRow}>
+                      <Text style={[styles.tableCellText, styles.candidateColumn, styles.candidateName]}>
+                        {application.candidateName || application.candidate?.name || application.fullName || 'N/A'}
+                      </Text>
+                      <Text style={[styles.tableCellText, styles.jobColumn]}>
+                        {application.jobTitle || application.job?.title || 'N/A'}
+                      </Text>
+                      <Text style={[styles.tableCellText, styles.emailColumn]}>
+                        {application.email || application.candidate?.email || 'N/A'}
+                      </Text>
+                      <View style={styles.statusColumn}>
+                        <View style={[styles.statusBadge, { backgroundColor: statusColors.bg }]}>
+                          <Text style={[styles.statusBadgeText, { color: statusColors.text }]}>
+                            {application.status?.toLowerCase() || 'pending'}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text style={[styles.tableCellText, styles.appliedColumn]}>
+                        {formatDate(application.createdAt || application.appliedAt)}
+                      </Text>
+                      <View style={styles.actionsColumn}>
+                        <TouchableOpacity
+                          style={styles.actionButton}
+                          onPress={() => navigation.navigate('AdminApplicationDetails', { applicationId: application._id })}
+                        >
+                          <Ionicons name="eye-outline" size={18} color="#4A90E2" />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.actionButton, styles.deleteButton]}
+                          onPress={() => deleteApplication(application._id)}
+                        >
+                          <Ionicons name="trash-outline" size={18} color="#E74C3C" />
+                        </TouchableOpacity>
                       </View>
                     </View>
-                    <Text style={[styles.tableCellText, styles.appliedColumn]}>
-                      {formatDate(application.createdAt || application.appliedAt)}
-                    </Text>
-                    <View style={styles.actionsColumn}>
-                      <TouchableOpacity
-                        style={styles.actionButton}
-                        onPress={() => navigation.navigate('AdminApplicationDetails', { applicationId: application._id })}
-                      >
-                        <Ionicons name="eye-outline" size={18} color="#4A90E2" />
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.actionButton, styles.deleteButton]}
-                        onPress={() => deleteApplication(application._id)}
-                      >
-                        <Ionicons name="trash-outline" size={18} color="#E74C3C" />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                );
-              })
-            ) : (
-              <View style={styles.emptyState}>
-                <Ionicons name="document-text-outline" size={64} color="#CCC" />
-                <Text style={styles.emptyStateText}>No applications found</Text>
-              </View>
-            )}
+                  );
+                })
+              ) : (
+                <View style={styles.emptyState}>
+                  <Ionicons name="document-text-outline" size={64} color="#CCC" />
+                  <Text style={styles.emptyStateText}>No applications found</Text>
+                </View>
+              )}
+            </View>
           </View>
-        </ScrollView>
-      </View>
+        </View>
+      </ScrollView>
     </AdminLayout>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  scrollContainer: {
     flex: 1,
+  },
+  container: {
+    padding: 20,
   },
   loadingContainer: {
     flex: 1,
@@ -358,6 +409,33 @@ const styles = StyleSheet.create({
   },
   activeFilterText: {
     color: '#FFF',
+  },
+  bulkActionsBar: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: 15,
+  },
+  bulkActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    backgroundColor: '#FFF',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+  },
+  bulkActionButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
   },
   statsBar: {
     backgroundColor: '#FFF',
