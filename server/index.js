@@ -51,11 +51,8 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use(morgan('combined'));
 
 // MongoDB connection
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://ayushs57139_db_user:6atpoj3C0h4VRvGJ@cluster0.vy1jecc.mongodb.net/jobwala?retryWrites=true&w=majority&appName=Cluster0';
-
-mongoose.connect(MONGODB_URI)
-.then(() => console.log('MongoDB Atlas connected successfully'))
-.catch(err => console.error('MongoDB connection error:', err));
+const connectDB = require('./config/database');
+connectDB();
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
