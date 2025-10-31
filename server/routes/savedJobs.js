@@ -102,7 +102,7 @@ router.delete('/unsave/:jobId', auth, async (req, res) => {
 router.get('/', auth, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    const limit = parseInt(req.query.limit) || 100; // Increased default to show more jobs
 
     const savedJobs = await SavedJob.getSavedJobs(req.user._id, page, limit);
     const totalCount = await SavedJob.getSavedJobsCount(req.user._id);
@@ -114,19 +114,23 @@ router.get('/', auth, async (req, res) => {
       success: true,
       savedJobs: activeSavedJobs.map(savedJob => ({
         id: savedJob._id,
-        job: {
+        _id: savedJob._id,
+        job: savedJob.job ? {
           id: savedJob.job._id,
+          _id: savedJob.job._id,
           title: savedJob.job.title,
           company: savedJob.job.company,
           location: savedJob.job.location,
           salary: savedJob.job.salary,
           employmentType: savedJob.job.employmentType,
           jobType: savedJob.job.jobType,
-          createdAt: savedJob.job.createdAt
-        },
+          type: savedJob.job.type,
+          createdAt: savedJob.job.createdAt,
+          status: savedJob.job.status,
+        } : null,
         savedAt: savedJob.savedAt,
-        notes: savedJob.notes,
-        tags: savedJob.tags
+        notes: savedJob.notes || '',
+        tags: savedJob.tags || []
       })),
       pagination: {
         current: page,

@@ -17,10 +17,12 @@ const AutoCompleteField = ({
   onAddNew,
   disabled = false,
   multiline = false,
-  numberOfLines = 1
+  numberOfLines = 1,
+  onSearch = null // New prop for async search
 }) => {
   const [isFocused, setIsFocused] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
 
   const filteredSuggestions = value
     ? suggestions.filter(suggestion =>
@@ -37,9 +39,27 @@ const AutoCompleteField = ({
     setShowSuggestions(false);
   };
 
-  const handleChangeText = (text) => {
-    onChangeText(text);
+  const handleChangeText = async (text) => {
+    if (onChangeText) {
+      if (typeof onChangeText === 'function' && onChangeText.constructor.name === 'AsyncFunction') {
+        await onChangeText(text);
+      } else {
+        onChangeText(text);
+      }
+    }
     setShowSuggestions(true);
+    
+    // If async search is provided, trigger it
+    if (onSearch && text.length >= 2) {
+      setIsSearching(true);
+      try {
+        await onSearch(text);
+      } catch (error) {
+        console.error('Search error:', error);
+      } finally {
+        setIsSearching(false);
+      }
+    }
   };
 
   const handleAddNew = () => {
@@ -102,6 +122,11 @@ const AutoCompleteField = ({
             nestedScrollEnabled
             keyboardShouldPersistTaps="handled"
           >
+            {isSearching && (
+              <View style={styles.searchingContainer}>
+                <Text style={styles.searchingText}>Searching...</Text>
+              </View>
+            )}
             {filteredSuggestions.map((suggestion, index) => (
               <TouchableOpacity
                 key={suggestion.value || index}

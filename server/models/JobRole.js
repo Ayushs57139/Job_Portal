@@ -83,8 +83,8 @@ jobRoleSchema.statics.addOrUpdateJobRole = function(name, category = 'Other', ad
 
 // Static method to get popular job roles
 jobRoleSchema.statics.getPopularJobRoles = function(limit = 20) {
-  return this.find({ isActive: true, isVerified: true })
-    .sort({ usageCount: -1, lastUsed: -1 })
+  return this.find({ isActive: true })
+    .sort({ isVerified: -1, usageCount: -1, lastUsed: -1 })
     .limit(limit);
 };
 

@@ -20,18 +20,31 @@ import api from '../../config/api';
 const isWeb = Platform.OS === 'web';
 const REFRESH_INTERVAL = 15000; // 15 seconds for real-time updates
 
-const SavedJobsScreen = ({ navigation }) => {
-  const [savedJobs, setSavedJobs] = useState([]);
+const ACTIVE_STATUSES = ['pending', 'reviewed', 'shortlisted', 'viewed', 'interviewed'];
+
+const ActiveApplicationsScreen = ({ navigation }) => {
+  const [applications, setApplications] = useState([]);
+  const [activeApplications, setActiveApplications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(isWeb);
   const [user, setUser] = useState(null);
-  const [unsavingJobId, setUnsavingJobId] = useState(null);
   const intervalRef = useRef(null);
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
-  // Load saved jobs function
-  const loadSavedJobs = useCallback(async (showLoading = false) => {
+  const statusConfig = {
+    applied: { label: 'Applied', color: '#3b82f6', icon: 'paper-plane-outline' },
+    pending: { label: 'Pending', color: '#f59e0b', icon: 'time-outline' },
+    viewed: { label: 'Viewed', color: '#10b981', icon: 'eye-outline' },
+    reviewed: { label: 'Under Review', color: '#3b82f6', icon: 'eye-outline' },
+    shortlisted: { label: 'Shortlisted', color: '#8B5CF6', icon: 'checkmark-circle-outline' },
+    interviewed: { label: 'Interviewed', color: '#f59e0b', icon: 'calendar-outline' },
+    rejected: { label: 'Not Selected', color: '#ef4444', icon: 'close-circle-outline' },
+    hired: { label: 'Hired', color: '#10b981', icon: 'trophy-outline' },
+  };
+
+  // Load applications function
+  const loadApplications = useCallback(async (showLoading = false) => {
     if (showLoading) {
       Animated.sequence([
         Animated.timing(fadeAnim, {
@@ -51,13 +64,19 @@ const SavedJobsScreen = ({ navigation }) => {
       const userData = await api.getCurrentUserFromStorage();
       setUser(userData);
 
-      const response = await api.getSavedJobs();
-      const jobs = response.savedJobs || [];
-      setSavedJobs(jobs);
+      const response = await api.getMyApplications();
+      const apps = response.applications || [];
+      setApplications(apps);
+      
+      // Filter only active applications
+      const active = apps.filter(app => 
+        ACTIVE_STATUSES.includes(app.status?.toLowerCase())
+      );
+      setActiveApplications(active);
     } catch (error) {
-      console.error('Error loading saved jobs:', error);
+      console.error('Error loading applications:', error);
       if (showLoading) {
-        Alert.alert('Error', 'Failed to load saved jobs. Please try again.');
+        Alert.alert('Error', 'Failed to load active applications. Please try again.');
       }
     } finally {
       setLoading(false);
@@ -67,13 +86,13 @@ const SavedJobsScreen = ({ navigation }) => {
 
   // Initial load
   useEffect(() => {
-    loadSavedJobs(true);
+    loadApplications(true);
   }, []);
 
   // Auto-refresh interval
   useEffect(() => {
     intervalRef.current = setInterval(() => {
-      loadSavedJobs(false); // Silent refresh
+      loadApplications(false); // Silent refresh
     }, REFRESH_INTERVAL);
 
     return () => {
@@ -81,19 +100,19 @@ const SavedJobsScreen = ({ navigation }) => {
         clearInterval(intervalRef.current);
       }
     };
-  }, [loadSavedJobs]);
+  }, [loadApplications]);
 
   // Refresh on screen focus
   useFocusEffect(
     useCallback(() => {
-      loadSavedJobs(false); // Refresh when screen comes into focus
+      loadApplications(false); // Refresh when screen comes into focus
       
       // Restart interval when screen is focused
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
       }
       intervalRef.current = setInterval(() => {
-        loadSavedJobs(false);
+        loadApplications(false);
       }, REFRESH_INTERVAL);
 
       return () => {
@@ -101,44 +120,12 @@ const SavedJobsScreen = ({ navigation }) => {
           clearInterval(intervalRef.current);
         }
       };
-    }, [loadSavedJobs])
+    }, [loadApplications])
   );
 
   const handleRefresh = () => {
     setRefreshing(true);
-    loadSavedJobs(true);
-  };
-
-  const handleUnsaveJob = async (jobId, event) => {
-    event?.stopPropagation();
-    
-    Alert.alert(
-      'Unsave Job',
-      'Are you sure you want to remove this job from your saved jobs?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setUnsavingJobId(jobId);
-              await api.unsaveJob(jobId);
-              
-              // Remove from local state
-              setSavedJobs(prev => prev.filter(savedJob => savedJob.job?.id !== jobId && savedJob.job?._id !== jobId));
-              
-              Alert.alert('Success', 'Job removed from saved jobs');
-            } catch (error) {
-              console.error('Error unsaving job:', error);
-              Alert.alert('Error', 'Failed to remove job. Please try again.');
-            } finally {
-              setUnsavingJobId(null);
-            }
-          },
-        },
-      ]
-    );
+    loadApplications(true);
   };
 
   const getUserInitials = () => {
@@ -175,6 +162,14 @@ const SavedJobsScreen = ({ navigation }) => {
     );
   };
 
+  const getStatusConfig = (status) => {
+    return statusConfig[status?.toLowerCase()] || { 
+      label: status || 'Unknown', 
+      color: colors.textSecondary, 
+      icon: 'help-outline' 
+    };
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
@@ -199,22 +194,34 @@ const SavedJobsScreen = ({ navigation }) => {
     return `₹${parseInt(salary).toLocaleString('en-IN')}`;
   };
 
-  const getEmploymentTypeLabel = (type) => {
-    const types = {
-      'fulltime': 'Full Time',
-      'parttime': 'Part Time',
-      'contract': 'Contract',
-      'internship': 'Internship',
-      'freelance': 'Freelance',
+  const getStatusCounts = () => {
+    const counts = {
+      pending: 0,
+      viewed: 0,
+      reviewed: 0,
+      shortlisted: 0,
+      interviewed: 0,
+      total: 0,
     };
-    return types[type] || type || 'Not specified';
+
+    activeApplications.forEach(app => {
+      const status = app.status?.toLowerCase();
+      if (status && ACTIVE_STATUSES.includes(status)) {
+        counts[status] = (counts[status] || 0) + 1;
+        counts.total++;
+      }
+    });
+
+    return counts;
   };
 
-  if (loading && savedJobs.length === 0) {
+  const statusCounts = getStatusCounts();
+
+  if (loading && activeApplications.length === 0) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>Loading saved jobs...</Text>
+        <Text style={styles.loadingText}>Loading active applications...</Text>
       </View>
     );
   }
@@ -225,10 +232,10 @@ const SavedJobsScreen = ({ navigation }) => {
       {sidebarOpen && (
         <UserSidebar
           navigation={navigation}
-          activeKey="savedJobs"
+          activeKey="activeApplications"
           onClose={!isWeb ? () => setSidebarOpen(false) : null}
           badges={{
-            savedJobs: savedJobs.length,
+            activeApplications: activeApplications.length,
           }}
         />
       )}
@@ -244,7 +251,7 @@ const SavedJobsScreen = ({ navigation }) => {
             <Ionicons name="menu" size={24} color={colors.text} />
           </TouchableOpacity>
           
-          <Text style={styles.headerTitle}>Saved Jobs</Text>
+          <Text style={styles.headerTitle}>Active Applications</Text>
           
           <View style={styles.headerRight}>
             <View style={styles.userInfo}>
@@ -275,7 +282,7 @@ const SavedJobsScreen = ({ navigation }) => {
           {/* Welcome Message with Live Indicator */}
           <View style={styles.welcomeHeader}>
             <Text style={styles.welcomeMessage}>
-              Your saved jobs
+              Your active job applications
             </Text>
             <View style={styles.liveIndicator}>
               <View style={styles.liveDot} />
@@ -286,76 +293,71 @@ const SavedJobsScreen = ({ navigation }) => {
           {/* Stats Cards */}
           <Animated.View style={[styles.statsGrid, { opacity: fadeAnim }]}>
             <View style={styles.statCard}>
-              <View style={[styles.statIconContainer, { backgroundColor: '#4A90E2' }]}>
-                <Ionicons name="bookmark" size={24} color="#FFFFFF" />
-              </View>
-              <Text style={styles.statValue}>{savedJobs.length}</Text>
-              <Text style={styles.statLabel}>Saved Jobs</Text>
-            </View>
-
-            <View style={styles.statCard}>
               <View style={[styles.statIconContainer, { backgroundColor: '#10b981' }]}>
-                <Ionicons name="briefcase" size={24} color="#FFFFFF" />
+                <Ionicons name="checkmark-circle" size={24} color="#FFFFFF" />
               </View>
-              <Text style={styles.statValue}>
-                {savedJobs.filter(job => job.job?.employmentType === 'fulltime').length}
-              </Text>
-              <Text style={styles.statLabel}>Full Time</Text>
-            </View>
-
-            <View style={styles.statCard}>
-              <View style={[styles.statIconContainer, { backgroundColor: '#8B5CF6' }]}>
-                <Ionicons name="time" size={24} color="#FFFFFF" />
-              </View>
-              <Text style={styles.statValue}>
-                {savedJobs.filter(job => job.job?.employmentType === 'parttime').length}
-              </Text>
-              <Text style={styles.statLabel}>Part Time</Text>
+              <Text style={styles.statValue}>{activeApplications.length}</Text>
+              <Text style={styles.statLabel}>Active Applications</Text>
             </View>
 
             <View style={styles.statCard}>
               <View style={[styles.statIconContainer, { backgroundColor: '#f59e0b' }]}>
-                <Ionicons name="school" size={24} color="#FFFFFF" />
+                <Ionicons name="time-outline" size={24} color="#FFFFFF" />
               </View>
-              <Text style={styles.statValue}>
-                {savedJobs.filter(job => job.job?.employmentType === 'internship').length}
-              </Text>
-              <Text style={styles.statLabel}>Internships</Text>
+              <Text style={styles.statValue}>{statusCounts.pending}</Text>
+              <Text style={styles.statLabel}>Pending</Text>
+            </View>
+
+            <View style={styles.statCard}>
+              <View style={[styles.statIconContainer, { backgroundColor: '#3b82f6' }]}>
+                <Ionicons name="eye-outline" size={24} color="#FFFFFF" />
+              </View>
+              <Text style={styles.statValue}>{statusCounts.reviewed}</Text>
+              <Text style={styles.statLabel}>Under Review</Text>
+            </View>
+
+            <View style={styles.statCard}>
+              <View style={[styles.statIconContainer, { backgroundColor: '#8B5CF6' }]}>
+                <Ionicons name="star" size={24} color="#FFFFFF" />
+              </View>
+              <Text style={styles.statValue}>{statusCounts.shortlisted}</Text>
+              <Text style={styles.statLabel}>Shortlisted</Text>
             </View>
           </Animated.View>
 
-          {/* Saved Jobs List */}
-          {savedJobs.length === 0 ? (
-          <View style={styles.emptyState}>
-              <Ionicons name="bookmark-outline" size={64} color={colors.textSecondary} />
-            <Text style={styles.emptyTitle}>No Saved Jobs</Text>
+          {/* Applications List */}
+          {activeApplications.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="checkmark-circle-outline" size={64} color={colors.textSecondary} />
+              <Text style={styles.emptyTitle}>No Active Applications</Text>
               <Text style={styles.emptySubtitle}>
-                Start saving jobs to view them here. You can save jobs from the job listings page.
-            </Text>
-            <TouchableOpacity
+                You don't have any active applications at the moment. Active applications include those with status: Pending, Viewed, Under Review, Shortlisted, or Interviewed.
+              </Text>
+              <TouchableOpacity
                 style={styles.browseJobsButton}
-              onPress={() => navigation.navigate('Jobs')}
-            >
+                onPress={() => navigation.navigate('Jobs')}
+              >
                 <Text style={styles.browseJobsButtonText}>Browse Jobs</Text>
               </TouchableOpacity>
             </View>
           ) : (
-            <View style={styles.jobsList}>
-              <Text style={styles.sectionTitle}>Your Saved Jobs ({savedJobs.length})</Text>
-              {savedJobs.map((savedJob) => {
-                const job = savedJob.job || {};
+            <View style={styles.applicationsList}>
+              <Text style={styles.sectionTitle}>
+                Active Applications ({activeApplications.length})
+              </Text>
+              {activeApplications.map((application) => {
+                const status = getStatusConfig(application.status);
+                const job = application.job || {};
                 const jobId = job.id || job._id;
-                const isUnsaving = unsavingJobId === jobId;
 
                 if (!jobId) return null;
 
                 return (
                   <TouchableOpacity
-                    key={savedJob.id || savedJob._id || jobId}
-                    style={styles.jobCard}
+                    key={application.id || application._id || jobId}
+                    style={styles.applicationCard}
                     onPress={() => navigation.navigate('JobDetails', { jobId })}
                     activeOpacity={0.7}
-                    disabled={isUnsaving}
                   >
                     <View style={styles.cardHeader}>
                       <View style={styles.jobInfo}>
@@ -368,68 +370,48 @@ const SavedJobsScreen = ({ navigation }) => {
                           </View>
                         )}
                       </View>
-                      <TouchableOpacity
-                        style={styles.unsaveButton}
-                        onPress={(e) => handleUnsaveJob(jobId, e)}
-                        disabled={isUnsaving}
-                      >
-                        {isUnsaving ? (
-                          <ActivityIndicator size="small" color={colors.error} />
-                        ) : (
-                          <Ionicons name="bookmark" size={20} color={colors.error} />
-                        )}
-            </TouchableOpacity>
+                      <View style={styles.statusContainer}>
+                        <View style={[styles.statusBadge, { backgroundColor: `${status.color}20` }]}>
+                          <Ionicons name={status.icon} size={16} color={status.color} />
+                          <Text style={[styles.statusText, { color: status.color }]}>
+                            {status.label}
+                          </Text>
+                        </View>
+                      </View>
                     </View>
 
                     <View style={styles.cardDetails}>
-                      {job.employmentType && (
+                      {application.currentJobTitle && (
                         <View style={styles.detailRow}>
                           <Ionicons name="briefcase-outline" size={16} color={colors.textSecondary} />
+                          <Text style={styles.detailText}>{application.currentJobTitle}</Text>
+                        </View>
+                      )}
+                      {application.experienceLevel && (
+                        <View style={styles.detailRow}>
+                          <Ionicons name="school-outline" size={16} color={colors.textSecondary} />
+                          <Text style={styles.detailText}>{application.experienceLevel}</Text>
+                        </View>
+                      )}
+                      <View style={styles.detailRow}>
+                        <Ionicons name="time-outline" size={16} color={colors.textSecondary} />
+                        <Text style={styles.detailText}>
+                          Applied {formatDate(application.appliedAt)}
+                        </Text>
+                      </View>
+                      {application.updatedAt && application.updatedAt !== application.appliedAt && (
+                        <View style={styles.detailRow}>
+                          <Ionicons name="refresh-outline" size={16} color={colors.textSecondary} />
                           <Text style={styles.detailText}>
-                            {getEmploymentTypeLabel(job.employmentType)}
+                            Updated {formatDate(application.updatedAt)}
                           </Text>
                         </View>
                       )}
-                      {job.jobType && (
-                        <View style={styles.detailRow}>
-                          <Ionicons name="time-outline" size={16} color={colors.textSecondary} />
-                          <Text style={styles.detailText}>{job.jobType}</Text>
-                        </View>
-                      )}
-                      <View style={styles.detailRow}>
-                        <Ionicons name="calendar-outline" size={16} color={colors.textSecondary} />
-                        <Text style={styles.detailText}>
-                          Posted {formatDate(job.createdAt)}
-                        </Text>
-                      </View>
-                      <View style={styles.detailRow}>
-                        <Ionicons name="bookmark-outline" size={16} color={colors.textSecondary} />
-                        <Text style={styles.detailText}>
-                          Saved {formatDate(savedJob.savedAt)}
-                        </Text>
-                      </View>
                     </View>
 
                     {job.salary && (
                       <View style={styles.salaryContainer}>
                         <Text style={styles.salaryText}>{formatSalary(job.salary)}</Text>
-                      </View>
-                    )}
-
-                    {savedJob.notes && (
-                      <View style={styles.notesContainer}>
-                        <Text style={styles.notesLabel}>Notes:</Text>
-                        <Text style={styles.notesText}>{savedJob.notes}</Text>
-                      </View>
-                    )}
-
-                    {savedJob.tags && savedJob.tags.length > 0 && (
-                      <View style={styles.tagsContainer}>
-                        {savedJob.tags.map((tag, index) => (
-                          <View key={index} style={styles.tag}>
-                            <Text style={styles.tagText}>{tag}</Text>
-                          </View>
-                        ))}
                       </View>
                     )}
 
@@ -443,9 +425,9 @@ const SavedJobsScreen = ({ navigation }) => {
                   </TouchableOpacity>
                 );
               })}
-          </View>
-        )}
-      </ScrollView>
+            </View>
+          )}
+        </ScrollView>
       </View>
     </View>
   );
@@ -610,10 +592,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginBottom: spacing.md,
   },
-  jobsList: {
+  applicationsList: {
     gap: spacing.md,
   },
-  jobCard: {
+  applicationCard: {
     backgroundColor: colors.cardBackground,
     borderRadius: borderRadius.md,
     padding: spacing.lg,
@@ -650,10 +632,20 @@ const styles = StyleSheet.create({
     ...typography.body2,
     color: colors.textSecondary,
   },
-  unsaveButton: {
-    padding: spacing.xs,
+  statusContainer: {
+    marginLeft: spacing.md,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
     borderRadius: borderRadius.sm,
-    backgroundColor: `${colors.error}15`,
+    gap: spacing.xs,
+  },
+  statusText: {
+    ...typography.caption,
+    fontWeight: '600',
   },
   cardDetails: {
     marginBottom: spacing.md,
@@ -673,47 +665,12 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.sm,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
     marginBottom: spacing.sm,
   },
   salaryText: {
     ...typography.body1,
     color: colors.primary,
     fontWeight: '600',
-  },
-  notesContainer: {
-    marginBottom: spacing.sm,
-    padding: spacing.sm,
-    backgroundColor: colors.background,
-    borderRadius: borderRadius.sm,
-  },
-  notesLabel: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    fontWeight: '600',
-    marginBottom: spacing.xs,
-  },
-  notesText: {
-    ...typography.body2,
-    color: colors.text,
-  },
-  tagsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.xs,
-    marginBottom: spacing.md,
-  },
-  tag: {
-    backgroundColor: colors.primary + '20',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: borderRadius.sm,
-  },
-  tagText: {
-    ...typography.caption,
-    color: colors.primary,
-    fontWeight: '500',
   },
   viewJobButton: {
     flexDirection: 'row',
@@ -747,6 +704,7 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: spacing.xl,
+    paddingHorizontal: spacing.lg,
   },
   browseJobsButton: {
     backgroundColor: colors.primary,
@@ -761,4 +719,5 @@ const styles = StyleSheet.create({
   },
 });
 
-export default SavedJobsScreen;
+export default ActiveApplicationsScreen;
+

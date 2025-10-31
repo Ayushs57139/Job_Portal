@@ -25,6 +25,10 @@ const userProfileSchema = new mongoose.Schema({
             enum: ['Male', 'Female', 'Other', 'Any'],
             required: true
         },
+        maritalStatus: {
+            type: String,
+            enum: ['Single', 'Married', 'Divorced', 'Widowed', 'Any']
+        },
         email: {
             type: String,
             required: true,
@@ -32,6 +36,10 @@ const userProfileSchema = new mongoose.Schema({
             lowercase: true
         },
         phone: {
+            type: String,
+            trim: true
+        },
+        whatsappNumber: {
             type: String,
             trim: true
         },
@@ -47,13 +55,17 @@ const userProfileSchema = new mongoose.Schema({
             type: String,
             default: null
         },
-        currentCity: {
+        guardian: {
+            type: String,
+            enum: ['Father', 'Mother', 'Brother', 'Sister', 'Husband', 'Wife', 'Guardian', 'Uncle', 'Aunt', 'Other']
+        },
+        guardianName: {
             type: String,
             trim: true
         },
-        pincode: {
+        category: {
             type: String,
-            trim: true
+            enum: ['Scheduled Caste - SC', 'Scheduled Tribe - ST', 'OBC - Creamy', 'OBC – Non Creamy', 'General', 'EWS', 'Other', 'Any']
         },
         disabilityStatus: {
             type: String,
@@ -61,19 +73,84 @@ const userProfileSchema = new mongoose.Schema({
         },
         disabilities: [{
             type: String,
-            enum: ['Blindness', 'Low Vision', 'Physical Disability', 'Locomotor Disability', 'Hearing Impairment', 'Speech and Language Disability', 'Any']
+            enum: ['Blindness', 'Low Vision', 'Physical Disability', 'Locomotor Disability', 'Hearing Impairment', 'Speech and Language Disability', 'Other', 'Any']
+        }],
+        militaryExperience: {
+            type: String,
+            enum: ['Currently Serving', 'Previously Served', 'Never Served', 'Any']
+        },
+        bikeScootyAvailable: [{
+            type: String,
+            enum: ['Yes', 'No', 'I Can Arrange', 'Learning Available', 'I Can Apply']
+        }],
+        drivingLicense: [{
+            type: String,
+            enum: ['LMV License', 'Heavy Driver License', 'Crane Operator License', 'Electrical License', 'Any']
+        }],
+        assetRequirements: [{
+            type: String,
+            enum: ['Laptop', 'Android Smart Phone', 'iOS Smart Phone', 'Camera', 'Two Wheeler', 'Bike', 'E-Bike', 'Auto', 'E-Rikshaw', 'Three Wheeler', 'Four Wheeler', 'Tempo', 'Traveller/Van', 'Truck', 'Crane', 'Bus', 'Tractor', 'Any']
         }],
         diversityHiring: {
             type: String,
             enum: ['Man', 'Man Returning to work', 'Woman', 'Woman Returning to work', 'Ex-Army Personal', 'Differently-abled', 'Any']
         },
-        category: {
-            type: String,
-            enum: ['Scheduled Caste - SC', 'Scheduled Tribe - ST', 'OBC - Creamy', 'OBC – Non Creamy', 'General', 'EWS', 'Other', 'Any']
-        },
         age: {
             type: Number
         }
+    },
+    
+    // Location Information
+    locationInfo: {
+        currentState: {
+            type: String,
+            trim: true
+        },
+        currentCity: {
+            type: String,
+            trim: true
+        },
+        currentAddress: {
+            type: String,
+            trim: true
+        },
+        currentLocality: {
+            type: String,
+            trim: true
+        },
+        areaPincode: {
+            type: String,
+            trim: true
+        },
+        homeTownCity: {
+            type: String,
+            trim: true
+        },
+        homeTownState: {
+            type: String,
+            trim: true
+        },
+        homeTownLocality: {
+            type: String,
+            trim: true
+        },
+        homeTownPincode: {
+            type: String,
+            trim: true
+        },
+        preferredLanguage: [{
+            type: String,
+            enum: ['Hindi', 'English', 'Kannada', 'Telugu', 'Marathi', 'Gujarati', 'Bengali', 'Punjabi', 'Tamil', 'Kashmiri', 'Maithili', 'Nepali', 'Bhojpuri', 'Assamese', 'Malayalam', 'Urdu', 'Sanskrit', 'Meitei (Manipuri)', 'Santali', 'Odia', 'Japanese', 'Russian', 'French', 'Chinese', 'German', 'Mexican', 'Vietnamese', 'Portuguese', 'Korean', 'Spanish', 'Turkish', 'Arabian', 'Filipino', 'Swedish', 'Greek', 'Latin', 'Polish', 'Thai', 'Serbian', 'Any']
+        }],
+        englishFluencyLevel: {
+            type: String,
+            enum: ['Fluent English', 'Good English', 'Basic English', 'No English', 'Any']
+        },
+        preferredJobLocations: [{
+            city: String,
+            state: String,
+            locality: String
+        }]
     },
     
     // Education Information (Array to support multiple education records)
@@ -87,11 +164,11 @@ const userProfileSchema = new mongoose.Schema({
             type: String,
             trim: true
         },
-        institution: {
+        specialization: {
             type: String,
             trim: true
         },
-        specialization: {
+        institution: {
             type: String,
             trim: true
         },
@@ -124,6 +201,10 @@ const userProfileSchema = new mongoose.Schema({
             type: String,
             trim: true
         },
+        isHighestEducation: {
+            type: Boolean,
+            default: false
+        },
         graduationYear: {
             type: Number
         },
@@ -141,51 +222,106 @@ const userProfileSchema = new mongoose.Schema({
     
     // Professional Information
     professional: {
+        currentJobTitle: {
+            type: String,
+            trim: true
+        },
+        currentSalary: {
+            type: Number
+        },
+        expectedSalary: {
+            type: Number
+        },
+        expectedJobRoles: [{
+            type: String,
+            trim: true
+        }],
         experience: {
             type: String,
-            required: true
+            trim: true
         },
         experienceLevel: {
             type: String,
             enum: ['Fresher', 'Experienced', 'Internship', 'Apprenticeship', 'Any']
         },
         totalExperience: {
-            type: Number, // in years
-            default: 0
+            type: String,
+            enum: ['Fresher', '1 Month', '2 Months', '3 Months', '6 Months', '9 Months', '1 Year', '1.5 Years', '2 Years', '2.5 Years', '3 Years', '3.5 Years', '4 Years', '4.5 Years', '5 Years', '5.5 Years', '6 Years', '6.5 Years', '7 Years', '7.5 Years', '8 Years', '8.5 Years', '9 Years', '9.5 Years', '10 Years', '10.5 Years', '11 Years', '11.5 Years', '12 Years', '12.5 Years', '13 Years', '13.5 Years', '14 Years', '14.5 Years', '15 Years', '15.5 Years', '16 Years', '16.5 Years', '17 Years', '17.5 Years', '18 Years', '18.5 Years', '19 Years', '19.5 Years', '20 Years', '20.5 Years', '21 Years', '21.5 Years', '22 Years', '22.5 Years', '23 Years', '23.5 Years', '24 Years', '24.5 Years', '25 Years', '25.5 Years', '26 Years', '26.5 Years', '27 Years', '27.5 Years', '28 Years', '28.5 Years', '29 Years', '29.5 Years', '30 Years', '30.5 Years', '31 Years', '31.5 Years', '32 Years', '32.5 Years', '33 Years', '33.5 Years', '34 Years', '34.5 Years', '35 Years', '35.5 Years', '36 Years', '36 Years Plus']
         },
-        totalExperienceMonths: {
-            type: Number, // in months
-            default: 0
+        jobStatus: {
+            type: String,
+            enum: ['Working', 'Not Working', 'Internship', 'Apprenticeship', 'Any']
         },
-        currentJobTitle: {
+        jobTitle: {
             type: String,
             trim: true
         },
+        keySkills: [{
+            type: String,
+            trim: true
+        }],
+        jobProfileDescription: {
+            type: String,
+            maxlength: 2000,
+            trim: true
+        },
+        jobRoles: [{
+            type: String,
+            trim: true
+        }],
+        departmentCategory: [{
+            type: String,
+            trim: true
+        }],
         currentCompany: {
             type: String,
             trim: true
         },
-        companyType: {
-            type: String,
-            enum: ['Indian MNC', 'Foreign MNC', 'Govt/PSU', 'Startup', 'Unicorn', 'Corporate', 'Consultancy', 'Any']
-        },
-        industry: {
-            type: String,
-            trim: true
-        },
-        department: {
-            type: String,
-            trim: true
-        },
-        jobRole: {
-            type: String,
-            trim: true
-        },
-        skills: [{
+        industries: [{
             type: String,
             trim: true
         }],
-        keySkills: [{
+        companyType: {
+            type: String,
+            enum: ['Indian MNC', 'Foreign MNC', 'Govt / PSU', 'Startup', 'Unicorn', 'Corporate', 'Consultancy', 'Any']
+        },
+        employmentType: {
+            type: String,
+            enum: ['Permanent', 'Temporary/Contract Job', 'Internship', 'Apprenticeship', 'NAPS', 'Freelance', 'Trainee', 'Fresher', 'Any']
+        },
+        jobType: {
+            type: String,
+            enum: ['Full Time', 'Part Time', 'Any']
+        },
+        jobModeType: [{
+            type: String,
+            enum: ['Work From Home', 'Work From Office', 'Work From Field', 'Hybrid', 'Remote', 'Any']
+        }],
+        jobShiftType: [{
+            type: String,
+            enum: ['Day Shift', 'Night Shift', 'Rotational Shift', 'Split Shift', 'Any']
+        }],
+        currentlyWorking: {
+            type: Boolean,
+            default: false
+        },
+        workStartDate: {
+            type: String, // MM-YYYY format
+            trim: true
+        },
+        workEndDate: {
+            type: String, // MM-YYYY format
+            trim: true
+        },
+        workLocation: {
+            type: String,
+            trim: true
+        },
+        noticePeriod: {
+            type: String,
+            enum: ['Immediate Joining', '7 Days', '15 Days', '30 Days', '45 Days', '60 Days', '90 Days', '90 Days Plus', 'Serving Notice Period', 'Any']
+        },
+        skills: [{
             type: String,
             trim: true
         }],
@@ -193,18 +329,6 @@ const userProfileSchema = new mongoose.Schema({
             type: String,
             trim: true
         }],
-        languages: [{
-            type: String,
-            trim: true
-        }],
-        preferredLanguage: [{
-            type: String,
-            enum: ['Hindi', 'English', 'Kannada', 'Telugu', 'Marathi', 'Gujarati', 'Bengali', 'Punjabi', 'Tamil', 'Kashmiri', 'Maithili', 'Nepali', 'Bhojpuri', 'Assamese', 'Malayalam', 'Urdu', 'Sanskrit', 'Meitei (Manipuri)', 'Santali', 'Odia', 'Japanese', 'Russian', 'French', 'Chinese', 'German', 'Mexican', 'Vietnamese', 'Portuguese', 'Korean', 'Spanish', 'Turkish', 'Arabian', 'Filipino', 'Swedish', 'Greek', 'Latin', 'Polish', 'Thai', 'Serbian']
-        }],
-        englishFluencyLevel: {
-            type: String,
-            enum: ['Fluent English', 'Good English', 'Basic English', 'No English', 'Any']
-        },
         certifications: [{
             name: String,
             issuer: String,
@@ -214,14 +338,12 @@ const userProfileSchema = new mongoose.Schema({
         workExperience: [{
             company: String,
             position: String,
-            startDate: Date,
-            endDate: Date,
+            startDate: String, // MM-YYYY
+            endDate: String, // MM-YYYY
             current: Boolean,
-            description: String
+            description: String,
+            location: String
         }],
-        currentSalary: {
-            type: Number
-        },
         includeNoSalaryCandidates: {
             type: Boolean,
             default: false
@@ -230,14 +352,11 @@ const userProfileSchema = new mongoose.Schema({
     
     // Job Preferences
     preferences: {
-        currentCity: {
-            type: String,
-            required: true,
-            trim: true
-        },
         preferredLocations: [{
-            type: String,
-            trim: true
+            city: String,
+            state: String,
+            locality: String,
+            pincode: String
         }],
         willingToRelocate: {
             type: Boolean,
@@ -249,47 +368,25 @@ const userProfileSchema = new mongoose.Schema({
         }],
         jobTypePreference: {
             type: String,
-            enum: ['Permanent', 'Temporary/Contract Job', 'Internship', 'Apprenticeship', 'NAPS', 'Freelance', 'Trainee', 'Fresher', 'Any'],
-            required: true
+            enum: ['Permanent', 'Temporary/Contract Job', 'Internship', 'Apprenticeship', 'NAPS', 'Freelance', 'Trainee', 'Fresher', 'Any']
         },
         employmentType: {
             type: String,
             enum: ['Full Time', 'Part Time', 'Any']
-        },
-        jobModeType: {
-            type: String,
-            enum: ['Work From Home', 'Work From Office', 'Work From Field', 'Hybrid', 'Remote', 'Any']
-        },
-        jobShiftType: {
-            type: String,
-            enum: ['Day Shift', 'Night Shift', 'Rotational Shift', 'Split Shift', 'Any']
-        },
-        expectedSalary: {
-            type: Number,
-            min: 0
-        },
-        salaryCurrency: {
-            type: String,
-            default: 'INR'
         },
         workMode: {
             type: String,
             enum: ['Work From Home', 'Work From Office', 'Work From Field', 'Hybrid', 'Remote', 'Any'],
             default: 'Work From Office'
         },
-        noticePeriod: {
+        salaryCurrency: {
             type: String,
-            enum: ['Immediate Joining', '7 Days', '15 Days', '30 Days', '45 Days', '60 Days', '90 Days', '90 Days Plus', 'Serving Notice Period', 'Any'],
-            default: 'Immediate Joining'
+            default: 'INR'
         },
         availability: {
             type: String,
             default: 'Immediate Joining'
-        },
-        assetRequirements: [{
-            type: String,
-            enum: ['LMV License', 'Heavy Driver License', 'Crane Operator License', 'Electrical License', 'Laptop', 'Android Smart Phone', 'iOS Smart Phone', 'Camera', 'Two Wheeler', 'Bike', 'E-Bike', 'Auto', 'E-Rikshaw', 'Three Wheeler', 'Four Wheeler', 'Tempo', 'Traveller/Van', 'Truck', 'Crane', 'Bus', 'Tractor']
-        }]
+        }
     },
     
     // Profile Status and Metadata
@@ -364,14 +461,55 @@ const userProfileSchema = new mongoose.Schema({
             type: String,
             default: null
         },
+        onlineSocialProfiles: {
+            facebook: {
+                type: String,
+                trim: true
+            },
+            instagram: {
+                type: String,
+                trim: true
+            },
+            linkedin: {
+                type: String,
+                trim: true
+            },
+            twitter: {
+                type: String,
+                trim: true
+            },
+            telegram: {
+                type: String,
+                trim: true
+            },
+            whatsapp: {
+                type: String,
+                trim: true
+            },
+            youtube: {
+                type: String,
+                trim: true
+            },
+            other: {
+                type: String,
+                trim: true
+            }
+        },
         portfolio: {
-            type: String,
-            default: null
+            name: {
+                type: String,
+                trim: true
+            },
+            link: {
+                type: String,
+                trim: true
+            }
         },
-        linkedin: {
-            type: String,
-            default: null
-        },
+        projectPortfolio: [{
+            name: String,
+            link: String,
+            description: String
+        }],
         github: {
             type: String,
             default: null
@@ -382,7 +520,7 @@ const userProfileSchema = new mongoose.Schema({
         },
         bio: {
             type: String,
-            maxlength: 500
+            maxlength: 2000
         },
         achievements: [{
             title: String,
@@ -519,3 +657,4 @@ userProfileSchema.pre('save', function(next) {
 });
 
 module.exports = mongoose.model('UserProfile', userProfileSchema);
+

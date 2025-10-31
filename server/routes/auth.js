@@ -42,7 +42,7 @@ router.post('/register', [
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { firstName, lastName, email, password, userType, phone, resumeData, whatsappAvailable } = req.body;
+    const { firstName, lastName, email, password, userType, phone, resumeData, whatsappAvailable, dateOfBirth, gender, referralSource } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -58,8 +58,18 @@ router.post('/register', [
       password,
       userType,
       phone,
-      whatsappAvailable: whatsappAvailable || false
+      whatsappAvailable: whatsappAvailable || false,
+      profile: {}
     };
+
+    // Add jobseeker-specific data to profile
+    if (userType === 'jobseeker') {
+      userData.profile = {
+        dateOfBirth: dateOfBirth || undefined,
+        gender: gender || undefined,
+        referralSource: referralSource || undefined
+      };
+    }
     
            // Add employer type if user is an employer
            if (userType === 'employer' && req.body.employerType) {
@@ -110,13 +120,13 @@ router.post('/register', [
                }
            }
     
-    // Add resume data to profile if available
+    // Add resume data to profile if available (for jobseekers)
     if (resumeData && userType === 'jobseeker') {
-        if (!userData.profile) {
-            userData.profile = {};
+        // Add parsed resume data to profile
+        if (!userData.profile.resumeData) {
+            userData.profile.resumeData = {};
         }
         
-        // Add parsed resume data to profile
         userData.profile.resumeData = {
             skills: resumeData.skills || '',
             experience: resumeData.experience || '',

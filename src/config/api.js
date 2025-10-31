@@ -467,6 +467,11 @@ class JobWalaAPI {
     });
   }
 
+  // User Dashboard APIs
+  async getUserDashboardStats() {
+    return await this.request('/users/dashboard-stats');
+  }
+
   // Saved Jobs APIs
   async getSavedJobs() {
     return await this.request('/saved-jobs');
@@ -480,7 +485,7 @@ class JobWalaAPI {
   }
 
   async unsaveJob(jobId) {
-    return await this.request(`/saved-jobs/${jobId}`, {
+    return await this.request(`/saved-jobs/unsave/${jobId}`, {
       method: 'DELETE',
     });
   }
@@ -491,6 +496,75 @@ class JobWalaAPI {
       method: 'PUT',
       body: JSON.stringify(profileData),
     });
+  }
+
+  // User Profile APIs (comprehensive profile)
+  async getUserProfile() {
+    return await this.request('/user-profiles/me');
+  }
+
+  async saveUserProfile(profileData) {
+    return await this.request('/user-profiles', {
+      method: 'POST',
+      body: JSON.stringify(profileData),
+    });
+  }
+
+  async getUserProfileForAdmin(userId) {
+    return await this.request(`/user-profiles/${userId}`);
+  }
+
+  // Change Password API
+  async changePassword(passwordData) {
+    return await this.request('/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify(passwordData),
+    });
+  }
+
+  // Master Data APIs
+  async getJobTitles(limit = 50) {
+    return await this.request(`/job-titles/popular?limit=${limit}`);
+  }
+
+  async searchJobTitles(query, limit = 10) {
+    return await this.request(`/job-titles/search?q=${encodeURIComponent(query)}&limit=${limit}`);
+  }
+
+  async getJobRoles(limit = 50) {
+    return await this.request(`/job-roles/popular?limit=${limit}`);
+  }
+
+  async searchJobRoles(query, limit = 10) {
+    return await this.request(`/job-roles/search?q=${encodeURIComponent(query)}&limit=${limit}`);
+  }
+
+  async getAllJobRoles() {
+    return await this.request('/job-roles');
+  }
+
+  async getAllIndustries() {
+    return await this.request('/industries');
+  }
+
+  async getIndustrySubcategories(industryName) {
+    return await this.request(`/industries/${encodeURIComponent(industryName)}/subcategories`);
+  }
+
+  async getAllDepartments() {
+    return await this.request('/departments');
+  }
+
+  async getDepartmentSubcategories(departmentName) {
+    return await this.request(`/departments/${encodeURIComponent(departmentName)}/subcategories`);
+  }
+
+  async searchSkills(query, limit = 12) {
+    return await this.request(`/skills/search?q=${encodeURIComponent(query)}&limit=${limit}`);
+  }
+
+  async getPopularSkills(limit = 50) {
+    return await this.request(`/skills/popular?limit=${limit}`);
   }
 
   async uploadProfilePicture(formData) {
@@ -1146,6 +1220,33 @@ class JobWalaAPI {
       method: 'PUT',
       body: JSON.stringify(profileData),
     });
+  }
+
+  // Popular Searches APIs
+  async getPopularSearches(limit = 10) {
+    return await this.request(`/popular-searches?limit=${limit}`);
+  }
+
+  async trackPopularSearchClick(searchId) {
+    return await this.request(`/popular-searches/${searchId}/click`, {
+      method: 'POST',
+    });
+  }
+
+  async trackSearch(searchQuery) {
+    return await this.request('/popular-searches/track-search', {
+      method: 'POST',
+      body: JSON.stringify({ searchQuery }),
+    });
+  }
+
+  // Trending Job Roles APIs
+  async getTrendingJobRoles(limit = 12) {
+    return await this.request(`/job-roles/trending?limit=${limit}`);
+  }
+
+  async getPopularJobRoles(limit = 12) {
+    return await this.request(`/job-roles/popular?limit=${limit}`);
   }
 }
 

@@ -1,9 +1,11 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { colors, spacing, borderRadius, shadows, typography } from '../styles/theme';
+
+const isWeb = Platform.OS === 'web';
 
 const BlogCard = ({ blog }) => {
   const navigation = useNavigation();
@@ -22,7 +24,7 @@ const BlogCard = ({ blog }) => {
   return (
     <TouchableOpacity
       style={styles.card}
-      onPress={() => navigation.navigate('BlogDetails', { slug: blog.slug })}
+      onPress={() => navigation.navigate('BlogDetail', { slug: blog.slug })}
       activeOpacity={0.8}
     >
       <LinearGradient
@@ -72,6 +74,10 @@ const styles = StyleSheet.create({
     width: 320,
     overflow: 'hidden',
     ...shadows.md,
+    ...(isWeb && {
+      cursor: 'pointer',
+      userSelect: 'none',
+    }),
   },
   imageContainer: {
     height: 180,

@@ -222,6 +222,7 @@ app.use('/api/saved-jobs', require('./routes/savedJobs')); // Saved jobs managem
 app.use('/api/settings', require('./routes/settings')); // Platform settings management routes
 app.use('/api/theme', require('./routes/theme')); // Theme management routes
 app.use('/api/upload', require('./routes/upload')); // File upload routes
+app.use('/api/popular-searches', require('./routes/popularSearches')); // Popular searches routes
 
 // Public packages route
 app.get('/api/packages', async (req, res) => {

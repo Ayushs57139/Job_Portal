@@ -95,10 +95,16 @@ router.get('/featured', async (req, res) => {
     }
 });
 
-// GET /api/blogs/:id - Get single blog by ID (public)
+// GET /api/blogs/:id - Get single blog by ID or slug (public)
 router.get('/:id', async (req, res) => {
     try {
-        const blog = await Blog.findById(req.params.id);
+        // Try to find by ID first, then by slug
+        const blog = await Blog.findOne({
+            $or: [
+                { _id: req.params.id },
+                { slug: req.params.id }
+            ]
+        });
 
         if (!blog) {
             return res.status(404).json({

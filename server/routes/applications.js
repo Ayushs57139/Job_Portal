@@ -425,22 +425,42 @@ router.post('/', [
 router.get('/my-applications', auth, async (req, res) => {
     try {
         const applications = await Application.find({ user: req.user._id })
-            .populate('job', 'title company location salary type')
+            .populate('job', 'title company location salary type employmentType jobType createdAt')
             .sort({ appliedAt: -1 });
 
         res.json({
+            success: true,
             applications: applications.map(app => ({
                 id: app._id,
-                job: app.job,
-                status: app.status,
+                _id: app._id,
+                job: app.job ? {
+                    _id: app.job._id,
+                    id: app.job._id,
+                    title: app.job.title,
+                    company: app.job.company,
+                    location: app.job.location,
+                    salary: app.job.salary,
+                    type: app.job.type,
+                    employmentType: app.job.employmentType,
+                    jobType: app.job.jobType,
+                    createdAt: app.job.createdAt,
+                } : null,
+                status: app.status || 'applied',
                 appliedAt: app.appliedAt,
+                updatedAt: app.updatedAt,
                 currentJobTitle: app.currentJobTitle,
-                experienceLevel: app.experienceLevel
+                experienceLevel: app.experienceLevel,
+                keySkills: app.keySkills,
+                educationLevel: app.educationLevel,
+                course: app.course,
             }))
         });
     } catch (error) {
         console.error('Get applications error:', error);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ 
+            success: false,
+            message: 'Server error while fetching applications' 
+        });
     }
 });
 

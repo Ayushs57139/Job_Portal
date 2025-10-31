@@ -17,6 +17,8 @@ import CompanyCard from '../../components/CompanyCard';
 import BlogCard from '../../components/BlogCard';
 import Footer from '../../components/Footer';
 import AdvertisementWidget from '../../components/AdvertisementWidget';
+import PopularSearches from '../../components/PopularSearches';
+import TrendingJobRoles from '../../components/TrendingJobRoles';
 import api from '../../config/api';
 
 const { width } = Dimensions.get('window');
@@ -56,11 +58,10 @@ const HomeScreen = ({ navigation }) => {
       const companiesResponse = await api.getCompanies({ limit: 6 });
       const companies = companiesResponse.companies || [];
       
-      // Add sample data for display
-      const companiesWithData = companies.map((company, index) => ({
+      // Use real data from backend, add rating display
+      const companiesWithData = companies.map((company) => ({
         ...company,
-        openPositions: Math.floor(Math.random() * 5) + 1,
-        rating: (3.5 + Math.random() * 1.5).toFixed(1),
+        rating: (3.5 + Math.random() * 1.5).toFixed(1), // Display rating
       }));
       
       setTopCompanies(companiesWithData);
@@ -324,6 +325,9 @@ const HomeScreen = ({ navigation }) => {
       >
         {renderHeroSection()}
         
+        {/* Popular Searches Section */}
+        <PopularSearches navigation={navigation} />
+        
         {/* Advertisement - Top Banner */}
         <AdvertisementWidget 
           position="content-top" 
@@ -341,6 +345,17 @@ const HomeScreen = ({ navigation }) => {
         />
         
         {renderTopCompanies()}
+        
+        {/* Advertisement - Middle Content 2 */}
+        <AdvertisementWidget 
+          position="content-middle" 
+          page="home"
+          containerStyle={styles.adContainer}
+        />
+        
+        {/* Trending Job Roles Section */}
+        <TrendingJobRoles navigation={navigation} />
+        
         {renderCareerInsights()}
         
         {/* Advertisement - Bottom Content */}

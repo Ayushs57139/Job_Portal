@@ -56,7 +56,11 @@ const CompanyCard = ({ company }) => {
   };
 
   return (
-    <View style={styles.card}>
+    <TouchableOpacity 
+      style={styles.card}
+      onPress={() => navigation.navigate('CompanyDetails', { companyId: company._id })}
+      activeOpacity={0.9}
+    >
       <View style={styles.header}>
         <View style={[styles.avatar, { backgroundColor: getAvatarColor(company.profile?.company?.name || company.name) }]}>
           <Text style={styles.avatarText}>{getInitials(company.profile?.company?.name || company.name)}</Text>
@@ -95,14 +99,11 @@ const CompanyCard = ({ company }) => {
         {company.profile?.company?.description || company.description || 'Leading company in the industry'}
       </Text>
 
-      <TouchableOpacity
-        style={styles.viewJobsButton}
-        onPress={() => navigation.navigate('CompanyDetails', { companyId: company._id })}
-        activeOpacity={0.8}
-      >
+      <View style={styles.viewJobsButton}>
         <Text style={styles.viewJobsText}>View Jobs</Text>
-      </TouchableOpacity>
-    </View>
+        <Ionicons name="arrow-forward" size={16} color="#FFFFFF" style={{ marginLeft: 8 }} />
+      </View>
+    </TouchableOpacity>
   );
 };
 
@@ -114,6 +115,10 @@ const styles = StyleSheet.create({
     ...shadows.lg,
     borderWidth: 1,
     borderColor: colors.borderLight,
+    ...(isWeb && {
+      cursor: 'pointer',
+      userSelect: 'none',
+    }),
   },
   header: {
     flexDirection: 'row',
@@ -192,6 +197,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#6366F1',
     borderRadius: borderRadius.md,
     paddingVertical: spacing.md,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
   },

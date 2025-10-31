@@ -25,6 +25,8 @@ import JobApplicationScreen from '../screens/Jobs/JobApplicationScreen';
 import PostJobScreen from '../screens/Jobs/PostJobScreen';
 import EmployerJobsScreen from '../screens/Jobs/EmployerJobsScreen';
 import MyApplicationsScreen from '../screens/Jobs/MyApplicationsScreen';
+import ActiveApplicationsScreen from '../screens/Jobs/ActiveApplicationsScreen';
+import AppliedJobsScreen from '../screens/Jobs/AppliedJobsScreen';
 
 // Dashboard Screens
 import UserDashboardScreen from '../screens/Dashboard/UserDashboardScreen';
@@ -87,6 +89,7 @@ import AdminLocationsScreen from '../screens/Admin/MasterData/AdminLocationsScre
 
 // Profile Screens
 import UserProfileScreen from '../screens/Profile/UserProfileScreen';
+import UserSettingsScreen from '../screens/Profile/UserSettingsScreen';
 import CompanyProfileScreen from '../screens/Profile/CompanyProfileScreen';
 import ResumeBuilderScreen from '../screens/Profile/ResumeBuilderScreen';
 
@@ -307,6 +310,16 @@ const AppNavigator = () => {
           name="MyApplications" 
           component={MyApplicationsScreen}
           options={{ title: 'My Applications' }}
+        />
+        <Stack.Screen 
+          name="ActiveApplications" 
+          component={ActiveApplicationsScreen}
+          options={{ title: 'Active Applications' }}
+        />
+        <Stack.Screen 
+          name="AppliedJobs" 
+          component={AppliedJobsScreen}
+          options={{ title: 'Applied Jobs' }}
         />
         <Stack.Screen 
           name="EmployerJobs" 
@@ -600,6 +613,11 @@ const AppNavigator = () => {
           name="UserProfile" 
           component={UserProfileScreen}
           options={{ title: 'My Profile' }}
+        />
+        <Stack.Screen 
+          name="UserSettings" 
+          component={UserSettingsScreen}
+          options={{ title: 'Settings' }}
         />
         <Stack.Screen 
           name="CompanyProfile" 

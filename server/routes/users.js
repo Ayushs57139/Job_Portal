@@ -118,22 +118,57 @@ router.put('/profile', [
   }
 });
 
+// Configure multer for resume uploads
+const resumeStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadDir = path.join(__dirname, '../uploads/resumes');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, 'resume-' + req.user._id + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const resumeFilter = (req, file, cb) => {
+  const allowedTypes = /pdf|doc|docx/;
+  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+  const mimetype = file.mimetype === 'application/pdf' || 
+                   file.mimetype === 'application/msword' || 
+                   file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
+  if (mimetype && extname) {
+    return cb(null, true);
+  } else {
+    cb(new Error('Only PDF, DOC, and DOCX files are allowed'));
+  }
+};
+
+const resumeUpload = multer({
+  storage: resumeStorage,
+  fileFilter: resumeFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  }
+});
+
 // @route   POST /api/users/upload-resume
 // @desc    Upload resume
 // @access  Private
-router.post('/upload-resume', auth, async (req, res) => {
+router.post('/upload-resume', auth, resumeUpload.single('resume'), async (req, res) => {
   try {
-    // In a real application, you would handle file upload here
-    // For now, we'll just update the resume field with a URL
-    const { resumeUrl } = req.body;
-
-    if (!resumeUrl) {
-      return res.status(400).json({ message: 'Resume URL is required' });
+    if (!req.file) {
+      return res.status(400).json({ message: 'No resume file uploaded' });
     }
 
+    const filePath = `/uploads/resumes/${req.file.filename}`;
+    
     const user = await User.findByIdAndUpdate(
       req.user._id,
-      { $set: { 'profile.resume': resumeUrl } },
+      { $set: { 'profile.resume': filePath } },
       { new: true }
     ).select('-password');
 
@@ -393,16 +428,23 @@ router.get('/dashboard-stats', auth, async (req, res) => {
       // Simulate profile views (you can implement actual profile view tracking later)
       const profileViews = Math.floor(Math.random() * 200) + 50; // Random number between 50-250
       
-      const recentApplications = applications
-        .sort((a, b) => new Date(b.appliedAt) - new Date(a.appliedAt))
-        .slice(0, 5);
+      const recentApplications = await Application.find({ user: req.user._id })
+        .populate('job', 'title company location salary type')
+        .sort({ appliedAt: -1 })
+        .limit(5)
+        .lean();
 
       stats = {
         totalApplications,
         activeApplications,
         savedJobs: savedJobsCount,
         profileViews,
-        recentApplications,
+        recentApplications: recentApplications.map(app => ({
+          _id: app._id,
+          job: app.job,
+          status: app.status,
+          appliedAt: app.appliedAt,
+        })),
         statusCounts: {
           applied: applications.filter(app => app.status === 'applied').length,
           viewed: applications.filter(app => app.status === 'viewed').length,

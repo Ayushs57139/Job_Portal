@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, ScrollView, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, typography } from '../../styles/theme';
@@ -15,16 +15,26 @@ const MultiSelectField = ({
   maxSelections,
   allowAddNew = false,
   onAddNew,
-  disabled = false
+  disabled = false,
+  onSearch = null // New prop for async search
 }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddNew, setShowAddNew] = useState(false);
   const [newOptionText, setNewOptionText] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [dynamicOptions, setDynamicOptions] = useState(options);
 
-  const filteredOptions = options.filter(option =>
-    option.label.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Update dynamic options when options prop changes
+  useEffect(() => {
+    setDynamicOptions(options);
+  }, [options]);
+
+  const filteredOptions = searchQuery
+    ? dynamicOptions.filter(option =>
+        option.label.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : dynamicOptions;
 
   const handleToggle = (option) => {
     const isSelected = value.some(v => v.value === option.value);
@@ -43,9 +53,13 @@ const MultiSelectField = ({
     onSelect(value.filter(v => v.value !== optionToRemove.value));
   };
 
-  const handleAddNew = () => {
+  const handleAddNew = async () => {
     if (newOptionText.trim() && onAddNew) {
-      onAddNew(newOptionText.trim());
+      if (typeof onAddNew === 'function' && onAddNew.constructor.name === 'AsyncFunction') {
+        await onAddNew(newOptionText.trim());
+      } else {
+        onAddNew(newOptionText.trim());
+      }
       setNewOptionText('');
       setShowAddNew(false);
     }
@@ -136,11 +150,33 @@ const MultiSelectField = ({
               <Ionicons name="search" size={20} color={colors.textSecondary} style={styles.searchIcon} />
               <TextInput
                 style={styles.searchInput}
-                placeholder="Search..."
+                placeholder="Search options..."
                 value={searchQuery}
-                onChangeText={setSearchQuery}
+                onChangeText={async (text) => {
+                  setSearchQuery(text);
+                  // Trigger async search if provided
+                  if (onSearch && text.length >= 2) {
+                    setIsSearching(true);
+                    try {
+                      const results = await onSearch(text);
+                      if (results && Array.isArray(results)) {
+                        setDynamicOptions(results);
+                      }
+                    } catch (error) {
+                      console.error('Search error:', error);
+                    } finally {
+                      setIsSearching(false);
+                    }
+                  } else if (text.length === 0) {
+                    // Reset to original options when search is cleared
+                    setDynamicOptions(options);
+                  }
+                }}
                 placeholderTextColor={colors.textLight}
               />
+              {isSearching && (
+                <Text style={styles.searchingText}>Searching...</Text>
+              )}
             </View>
 
             {allowAddNew && (
@@ -169,6 +205,11 @@ const MultiSelectField = ({
             )}
 
             <ScrollView style={styles.optionsList}>
+              {isSearching && (
+                <View style={styles.searchingContainer}>
+                  <Text style={styles.searchingText}>Searching...</Text>
+                </View>
+              )}
               {filteredOptions.map((option, index) => {
                 const isSelected = value.some(v => v.value === option.value);
                 const isDisabled = maxSelections && value.length >= maxSelections && !isSelected;
@@ -431,6 +472,15 @@ const styles = StyleSheet.create({
     color: colors.textWhite,
     fontWeight: '600',
     fontSize: 16,
+  },
+  searchingContainer: {
+    padding: spacing.md,
+    alignItems: 'center',
+  },
+  searchingText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontStyle: 'italic',
   },
 });
 

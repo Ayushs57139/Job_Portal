@@ -48,13 +48,8 @@ const BlogsScreen = ({ navigation }) => {
 
   const loadUser = async () => {
     try {
-      const token = await AsyncStorage.getItem('token');
-      if (token) {
-        const response = await api.get('/api/auth/me');
-        if (response.data.success) {
-          setUser(response.data.user);
-        }
-      }
+      const userData = await api.getCurrentUserFromStorage();
+      setUser(userData);
     } catch (error) {
       console.error('Error loading user:', error);
     }
@@ -78,11 +73,11 @@ const BlogsScreen = ({ navigation }) => {
         params.search = searchQuery;
       }
 
-      const response = await api.get('/api/blogs', { params });
+      const response = await api.getBlogs(params);
 
-      if (response.data.success) {
-        setBlogs(response.data.blogs);
-        setPagination(response.data.pagination);
+      if (response.success) {
+        setBlogs(response.blogs);
+        setPagination(response.pagination);
       }
     } catch (error) {
       console.error('Error loading blogs:', error);
@@ -109,14 +104,16 @@ const BlogsScreen = ({ navigation }) => {
           style: 'destructive',
           onPress: async () => {
             try {
-              const response = await api.delete(`/api/blogs/${blogId}`);
-              if (response.data.success) {
+              const response = await api.request(`/blogs/${blogId}`, {
+                method: 'DELETE'
+              });
+              if (response.success) {
                 Alert.alert('Success', 'Blog deleted successfully');
                 loadBlogs();
               }
             } catch (error) {
               console.error('Error deleting blog:', error);
-              Alert.alert('Error', error.response?.data?.message || 'Failed to delete blog');
+              Alert.alert('Error', error.message || 'Failed to delete blog');
             }
           },
         },

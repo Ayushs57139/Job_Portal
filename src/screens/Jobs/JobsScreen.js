@@ -29,7 +29,9 @@ const JobsScreen = ({ route }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState(route?.params?.search || '');
   const [locationQuery, setLocationQuery] = useState(route?.params?.location || '');
-  const [selectedExperience, setSelectedExperience] = useState('All Experience');
+  const [selectedExperience, setSelectedExperience] = useState(
+    route?.params?.experience || 'All Experience'
+  );
   const [showExperienceMenu, setShowExperienceMenu] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
 
@@ -38,11 +40,11 @@ const JobsScreen = ({ route }) => {
   const filterType = route?.params?.filterType;
   const filterValue = route?.params?.filterValue;
 
-  // Filter states
+  // Filter states - Initialize from route params if available
   const [datePosted, setDatePosted] = useState('all');
   const [minSalary, setMinSalary] = useState(0);
-  const [workMode, setWorkMode] = useState([]);
-  const [workType, setWorkType] = useState([]);
+  const [workMode, setWorkMode] = useState(route?.params?.workMode ? [route.params.workMode] : []);
+  const [workType, setWorkType] = useState(route?.params?.jobType ? [route.params.jobType] : []);
   const [workShift, setWorkShift] = useState([]);
   const [sortBy, setSortBy] = useState('relevant');
 

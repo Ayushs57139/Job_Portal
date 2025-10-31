@@ -100,6 +100,55 @@ router.get('/popular', async (req, res) => {
   }
 });
 
+// @route   GET /api/job-roles/trending
+// @desc    Get trending job roles with job counts
+// @access  Public
+router.get('/trending', async (req, res) => {
+  try {
+    const { limit = 12 } = req.query;
+    const Job = require('../models/Job');
+    
+    // Get popular job roles
+    const jobRoles = await JobRole.getPopularJobRoles(parseInt(limit));
+    
+    // Get job counts for each role
+    const rolesWithCounts = await Promise.all(jobRoles.map(async (role) => {
+      const jobCount = await Job.countDocuments({
+        status: 'active',
+        $or: [
+          { jobRole: { $in: [new RegExp(role.name, 'i')] } },
+          { keySkills: { $in: [new RegExp(role.name, 'i')] } },
+          { title: { $regex: role.name, $options: 'i' } }
+        ]
+      });
+      
+      return {
+        id: role._id,
+        name: role.name,
+        category: role.category,
+        usageCount: role.usageCount,
+        jobCount: jobCount
+      };
+    }));
+    
+    // Sort by job count and usage count
+    const trendingRoles = rolesWithCounts
+      .sort((a, b) => b.jobCount - a.jobCount || b.usageCount - a.usageCount)
+      .slice(0, parseInt(limit));
+    
+    res.json({
+      success: true,
+      jobRoles: trendingRoles
+    });
+  } catch (error) {
+    console.error('Error fetching trending job roles:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching trending job roles'
+    });
+  }
+});
+
 // @route   PUT /api/job-roles/:id/verify
 // @desc    Verify a job role (admin only)
 // @access  Private (admin)

@@ -31,10 +31,31 @@ router.get('/conversations', auth, async (req, res) => {
       query.conversationType = { $in: ['jobseeker_support', 'employer_support', 'admin_support'] };
     }
 
-    const conversations = await Conversation.find(query)
+    let conversations = await Conversation.find(query)
       .populate('participants.user', 'firstName lastName profile.avatar userType employerType')
       .populate('lastMessage.sender', 'firstName lastName profile.avatar')
       .sort({ 'lastMessage.timestamp': -1 });
+
+    // For jobseekers: Filter conversations to only show those with company, consultancy, or admin
+    if (userType === 'jobseeker') {
+      conversations = conversations.filter(conv => {
+        const otherParticipants = conv.participants.filter(
+          p => p.user && p.user._id.toString() !== userId.toString()
+        );
+        
+        if (otherParticipants.length === 0) return false;
+        
+        const otherUser = otherParticipants[0].user;
+        const ut = otherUser?.userType;
+        
+        // Only show conversations with admin, company, or consultancy
+        return (
+          ut === 'admin' || 
+          ut === 'superadmin' || 
+          (ut === 'employer' && (otherUser?.employerType === 'company' || otherUser?.employerType === 'consultancy'))
+        );
+      });
+    }
 
     // Add unread count for current user
     const conversationsWithUnread = conversations.map(conv => {
@@ -238,8 +259,14 @@ router.get('/chat-partners', auth, async (req, res) => {
 
     // Filter based on user type
     if (userType === 'jobseeker') {
-      // Job seekers can chat with employers and support
-      query.userType = { $in: ['employer', 'admin', 'superadmin'] };
+      // Job seekers can ONLY chat with company, consultancy, and admin users (NO inter-user chat)
+      query.$or = [
+        { userType: { $in: ['admin', 'superadmin'] } },
+        { 
+          userType: 'employer',
+          employerType: { $in: ['company', 'consultancy'] }
+        }
+      ];
     } else if (userType === 'employer') {
       // Employers can chat with job seekers and support
       query.userType = { $in: ['jobseeker', 'admin', 'superadmin'] };
@@ -248,9 +275,24 @@ router.get('/chat-partners', auth, async (req, res) => {
       query.userType = { $in: ['jobseeker', 'employer', 'admin', 'superadmin'] };
     }
 
-    const users = await User.find(query)
+    // Exclude current user
+    query._id = { $ne: userId };
+
+    let users = await User.find(query)
       .select('firstName lastName profile.avatar userType employerType isActive')
       .sort({ firstName: 1 });
+
+    // Additional filtering for jobseekers - ensure only company, consultancy, and admin (double check)
+    if (userType === 'jobseeker') {
+      users = users.filter(user => {
+        const ut = user.userType;
+        return (
+          ut === 'admin' || 
+          ut === 'superadmin' || 
+          (ut === 'employer' && (user.employerType === 'company' || user.employerType === 'consultancy'))
+        );
+      });
+    }
 
     res.json({
       success: true,

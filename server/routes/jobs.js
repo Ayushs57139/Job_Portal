@@ -45,12 +45,24 @@ router.get('/', [
 
     // Text search
     if (search) {
-      filter.$text = { $search: search };
+      filter.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { 'company.name': { $regex: search, $options: 'i' } },
+        { 'location.city': { $regex: search, $options: 'i' } },
+        { 'location.state': { $regex: search, $options: 'i' } }
+      ];
     }
 
-    // Location filter
-    if (location) {
+    // Location filter (only if no search to avoid $or conflict)
+    if (location && !search) {
       filter.$or = [
+        { 'location.city': { $regex: location, $options: 'i' } },
+        { 'location.state': { $regex: location, $options: 'i' } }
+      ];
+    } else if (location) {
+      // If search exists, add location to the existing $or
+      filter.$or = [
+        ...(filter.$or || []),
         { 'location.city': { $regex: location, $options: 'i' } },
         { 'location.state': { $regex: location, $options: 'i' } }
       ];

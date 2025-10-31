@@ -35,11 +35,15 @@ const CompanyDetailsScreen = ({ route, navigation }) => {
     try {
       setLoading(true);
       const data = await api.getCompany(companyId);
+      console.log('Company details loaded:', data);
       setCompany(data);
       
       // Try to load company's jobs
       try {
-        const jobsData = await api.getJobs({ company: data.name });
+        // Use the company name from the loaded data
+        const companyName = data.profile?.company?.name || data.name;
+        console.log('Loading jobs for company:', companyName);
+        const jobsData = await api.getJobs({ search: companyName });
         setJobs(jobsData.jobs || []);
       } catch (error) {
         console.log('Could not load jobs:', error);

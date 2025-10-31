@@ -14,7 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, typography, spacing, borderRadius, shadows } from '../../styles/theme';
 import Header from '../../components/Header';
-import { API_URL } from '../../config/api';
+import api from '../../config/api';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -46,12 +46,10 @@ const PackagesScreen = () => {
       setLoading(true);
       
       // Fetch employer packages (using public endpoint, no auth required)
-      const employerResponse = await fetch(`${API_URL}/api/packages?packageType=employer&isActive=true`);
-      const employerData = await employerResponse.json();
+      const employerData = await api.request(`/packages?packageType=employer&isActive=true`);
       
       // Fetch candidate packages (using public endpoint, no auth required)
-      const candidateResponse = await fetch(`${API_URL}/api/packages?packageType=candidate&isActive=true`);
-      const candidateData = await candidateResponse.json();
+      const candidateData = await api.request(`/packages?packageType=candidate&isActive=true`);
       
       if (employerData.success) {
         // Transform backend data to frontend format
@@ -324,6 +322,36 @@ const PackagesScreen = () => {
             </>
           )}
         </View>
+
+        {/* Referral Program Section */}
+        {selectedTab === 'candidate' && (
+          <View style={styles.referralSection}>
+            <LinearGradient
+              colors={['#ff9a56', '#ff6a88']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.referralGradient}
+            >
+              <Ionicons name="gift" size={48} color="#fff" />
+              <Text style={styles.referralTitle}>🎁 Referral Program</Text>
+              <Text style={styles.referralSubtitle}>
+                Refer 20 Job Seekers & Get Profile Booster Package FREE!
+              </Text>
+              <Text style={styles.referralDescription}>
+                Share with your friends and network. When 20 of them join our platform and create profiles, you'll receive a FREE Profile Booster Package worth ₹499!
+              </Text>
+              <TouchableOpacity style={styles.referralButton}>
+                <LinearGradient
+                  colors={['rgba(255, 255, 255, 0.3)', 'rgba(255, 255, 255, 0.1)']}
+                  style={styles.referralButtonGradient}
+                >
+                  <Ionicons name="share-social" size={20} color="#fff" />
+                  <Text style={styles.referralButtonText}>Invite Friends Now</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </LinearGradient>
+          </View>
+        )}
 
         {/* Footer Info */}
         <View style={styles.footerInfo}>
@@ -635,6 +663,60 @@ const styles = StyleSheet.create({
     ...typography.body2,
     color: colors.textSecondary,
     lineHeight: 20,
+  },
+  referralSection: {
+    marginHorizontal: spacing.lg,
+    marginVertical: spacing.xl,
+    borderRadius: borderRadius.lg,
+    overflow: 'hidden',
+    ...shadows.lg,
+  },
+  referralGradient: {
+    padding: spacing.xxl,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  referralTitle: {
+    ...typography.h3,
+    color: '#fff',
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+    textAlign: 'center',
+    fontWeight: '700',
+  },
+  referralSubtitle: {
+    ...typography.h6,
+    color: '#fff',
+    marginBottom: spacing.md,
+    textAlign: 'center',
+    fontWeight: '600',
+  },
+  referralDescription: {
+    ...typography.body1,
+    color: 'rgba(255, 255, 255, 0.95)',
+    textAlign: 'center',
+    marginBottom: spacing.xl,
+    lineHeight: 24,
+    paddingHorizontal: spacing.md,
+  },
+  referralButton: {
+    borderRadius: borderRadius.lg,
+    overflow: 'hidden',
+    ...shadows.md,
+  },
+  referralButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xxl,
+    paddingVertical: spacing.md,
+    gap: spacing.sm,
+  },
+  referralButtonText: {
+    ...typography.button,
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 16,
   },
 });
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,11 +10,17 @@ import {
   RefreshControl,
   Modal,
   Alert,
+  Platform,
+  Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Header from '../../components/Header';
+import { useFocusEffect } from '@react-navigation/native';
 import { colors, spacing, typography, borderRadius } from '../../styles/theme';
+import UserSidebar from '../../components/UserSidebar';
 import api from '../../config/api';
+
+const isWeb = Platform.OS === 'web';
+const REFRESH_INTERVAL = 10000; // 10 seconds for real-time chat updates
 
 const LiveChatSupportScreen = ({ navigation }) => {
   const [conversations, setConversations] = useState([]);
@@ -23,14 +29,106 @@ const LiveChatSupportScreen = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showNewChatModal, setShowNewChatModal] = useState(false);
   const [availableUsers, setAvailableUsers] = useState([]);
+  const [filteredUsers, setFilteredUsers] = useState([]);
   const [searchingUsers, setSearchingUsers] = useState(false);
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(isWeb);
+  const intervalRef = useRef(null);
+  const fadeAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     loadCurrentUser();
     loadConversations();
   }, []);
+
+  // Load conversations function
+  const loadConversations = useCallback(async (showLoading = false) => {
+    if (showLoading) {
+      Animated.sequence([
+        Animated.timing(fadeAnim, {
+          toValue: 0.7,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+
+    try {
+      const response = await api.getConversations();
+      if (response.success) {
+        const convs = response.conversations || [];
+        // Filter conversations to only show company, consultancy, and admin
+        const filtered = convs.filter(conv => {
+          if (!currentUser) return false;
+          
+          const otherParticipants = conv.participants.filter(
+            p => p.user && p.user._id !== currentUser._id
+          );
+          
+          if (otherParticipants.length === 0) return false;
+          
+          const otherUser = otherParticipants[0].user;
+          const userType = otherUser?.userType;
+          
+          // Only show conversations with company, consultancy, or admin
+          return (
+            userType === 'admin' || 
+            userType === 'superadmin' || 
+            (userType === 'employer' && (otherUser?.employerType === 'company' || otherUser?.employerType === 'consultancy'))
+          );
+        });
+        
+        setConversations(filtered);
+      }
+    } catch (error) {
+      console.error('Error loading conversations:', error);
+      if (showLoading) {
+        Alert.alert('Error', 'Failed to load conversations');
+      }
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [currentUser, fadeAnim]);
+
+  // Auto-refresh interval
+  useEffect(() => {
+    intervalRef.current = setInterval(() => {
+      loadConversations(false); // Silent refresh
+    }, REFRESH_INTERVAL);
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [loadConversations]);
+
+  // Refresh on screen focus
+  useFocusEffect(
+    useCallback(() => {
+      loadConversations(false);
+      
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+      intervalRef.current = setInterval(() => {
+        loadConversations(false);
+      }, REFRESH_INTERVAL);
+
+      return () => {
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+        }
+      };
+    }, [loadConversations])
+  );
 
   const loadCurrentUser = async () => {
     try {
@@ -41,27 +139,25 @@ const LiveChatSupportScreen = ({ navigation }) => {
     }
   };
 
-  const loadConversations = async () => {
-    try {
-      const response = await api.getConversations();
-      if (response.success) {
-        setConversations(response.conversations || []);
-      }
-    } catch (error) {
-      console.error('Error loading conversations:', error);
-      Alert.alert('Error', 'Failed to load conversations');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
   const loadAvailableUsers = async (search = '') => {
     try {
       setSearchingUsers(true);
       const response = await api.getChatPartners(search);
       if (response.success) {
-        setAvailableUsers(response.users || []);
+        const users = response.users || [];
+        
+        // Filter to only show company, consultancy, and admin users
+        const filtered = users.filter(user => {
+          const userType = user.userType;
+          return (
+            userType === 'admin' || 
+            userType === 'superadmin' || 
+            (userType === 'employer' && (user.employerType === 'company' || user.employerType === 'consultancy'))
+          );
+        });
+        
+        setAvailableUsers(filtered);
+        setFilteredUsers(filtered);
       }
     } catch (error) {
       console.error('Error loading users:', error);
@@ -73,7 +169,41 @@ const LiveChatSupportScreen = ({ navigation }) => {
 
   const handleRefresh = () => {
     setRefreshing(true);
-    loadConversations();
+    loadConversations(true);
+  };
+
+  const getUserInitials = () => {
+    if (currentUser?.firstName && currentUser?.lastName) {
+      return `${currentUser.firstName[0]}${currentUser.lastName[0]}`.toUpperCase();
+    }
+    if (currentUser?.firstName) {
+      return currentUser.firstName[0].toUpperCase();
+    }
+    if (currentUser?.email) {
+      return currentUser.email[0].toUpperCase();
+    }
+    return 'U';
+  };
+
+  const handleLogout = async () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            await api.logout();
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'Home' }],
+            });
+          },
+        },
+      ]
+    );
   };
 
   const openConversation = (conversation) => {
@@ -82,6 +212,11 @@ const LiveChatSupportScreen = ({ navigation }) => {
 
   const startNewChat = async (user) => {
     try {
+      if (!currentUser) {
+        Alert.alert('Error', 'User information not available');
+        return;
+      }
+
       // Determine conversation type
       let conversationType = 'jobseeker_employer';
       
@@ -90,12 +225,6 @@ const LiveChatSupportScreen = ({ navigation }) => {
           conversationType = 'jobseeker_employer';
         } else if (user.userType === 'admin' || user.userType === 'superadmin') {
           conversationType = 'jobseeker_support';
-        }
-      } else if (currentUser.userType === 'employer') {
-        if (user.userType === 'jobseeker') {
-          conversationType = 'jobseeker_employer';
-        } else if (user.userType === 'admin' || user.userType === 'superadmin') {
-          conversationType = 'employer_support';
         }
       }
 
@@ -125,14 +254,9 @@ const LiveChatSupportScreen = ({ navigation }) => {
 
   const startSupportChat = async () => {
     try {
-      // Find or create a conversation with support (admin)
-      const conversationType = currentUser.userType === 'employer' 
-        ? 'employer_support' 
-        : 'jobseeker_support';
-
-      // For now, we'll just show the new chat modal with admins
+      // Find admin users first
       setShowNewChatModal(true);
-      loadAvailableUsers();
+      await loadAvailableUsers('');
     } catch (error) {
       console.error('Error starting support chat:', error);
       Alert.alert('Error', 'Failed to start support chat');
@@ -149,17 +273,18 @@ const LiveChatSupportScreen = ({ navigation }) => {
     if (otherParticipants.length > 0) {
       const user = otherParticipants[0].user;
       return {
-        name: `${user.firstName || ''} ${user.lastName || ''}`,
+        name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Unknown',
         type: user.userType === 'employer' 
           ? (user.employerType === 'company' ? 'Company' : 'Consultancy')
           : user.userType === 'admin' || user.userType === 'superadmin'
           ? 'Support'
-          : 'Job Seeker',
+          : 'User',
         avatar: user.profile?.avatar,
+        userType: user.userType,
       };
     }
     
-    return { name: 'Unknown User', type: 'Unknown' };
+    return { name: 'Unknown User', type: 'Unknown', userType: null };
   };
 
   const formatTime = (timestamp) => {
@@ -190,6 +315,21 @@ const LiveChatSupportScreen = ({ navigation }) => {
     return participantName.includes(query) || lastMessage.includes(query);
   });
 
+  // Filter available users by search
+  useEffect(() => {
+    if (!userSearchQuery.trim()) {
+      setFilteredUsers(availableUsers);
+      return;
+    }
+    
+    const query = userSearchQuery.toLowerCase();
+    const filtered = availableUsers.filter(user => {
+      const name = `${user.firstName || ''} ${user.lastName || ''}`.toLowerCase();
+      return name.includes(query);
+    });
+    setFilteredUsers(filtered);
+  }, [userSearchQuery, availableUsers]);
+
   const renderConversationItem = ({ item }) => {
     const participantInfo = getOtherParticipant(item);
     const hasUnread = item.unreadCount > 0;
@@ -198,6 +338,7 @@ const LiveChatSupportScreen = ({ navigation }) => {
       <TouchableOpacity 
         style={[styles.conversationItem, hasUnread && styles.unreadConversation]}
         onPress={() => openConversation(item)}
+        activeOpacity={0.7}
       >
         <View style={styles.avatarContainer}>
           <View style={[styles.avatar, hasUnread && styles.avatarUnread]}>
@@ -240,6 +381,7 @@ const LiveChatSupportScreen = ({ navigation }) => {
     <TouchableOpacity 
       style={styles.userItem}
       onPress={() => startNewChat(item)}
+      activeOpacity={0.7}
     >
       <View style={styles.avatar}>
         <Text style={styles.avatarText}>
@@ -251,12 +393,12 @@ const LiveChatSupportScreen = ({ navigation }) => {
         <Text style={styles.userName}>
           {item.firstName} {item.lastName}
         </Text>
-        <Text style={styles.userType}>
+        <Text style={styles.userTypeText}>
           {item.userType === 'employer' 
             ? (item.employerType === 'company' ? 'Company' : 'Consultancy')
             : item.userType === 'admin' || item.userType === 'superadmin'
-            ? 'Support'
-            : 'Job Seeker'}
+            ? 'Support Admin'
+            : 'User'}
         </Text>
       </View>
 
@@ -284,7 +426,7 @@ const LiveChatSupportScreen = ({ navigation }) => {
             <Ionicons name="search" size={20} color={colors.textSecondary} style={styles.searchIcon} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search users by name..."
+              placeholder="Search companies, consultancies, or support..."
               placeholderTextColor={colors.textSecondary}
               value={userSearchQuery}
               onChangeText={(text) => {
@@ -300,15 +442,15 @@ const LiveChatSupportScreen = ({ navigation }) => {
             </View>
           ) : (
             <FlatList
-              data={availableUsers}
+              data={filteredUsers}
               renderItem={renderUserItem}
               keyExtractor={(item) => item._id}
               style={styles.userList}
               ListEmptyComponent={
                 <View style={styles.emptyState}>
-                  <Ionicons name="people-outline" size={48} color={colors.textLight} />
+                  <Ionicons name="people-outline" size={48} color={colors.textSecondary} />
                   <Text style={styles.emptyText}>
-                    {userSearchQuery ? 'No users found' : 'Search for users to start chatting'}
+                    {userSearchQuery ? 'No users found' : 'Search for companies, consultancies, or support to start chatting'}
                   </Text>
                 </View>
               }
@@ -319,117 +461,156 @@ const LiveChatSupportScreen = ({ navigation }) => {
     </Modal>
   );
 
-  if (loading) {
+  if (loading && conversations.length === 0) {
     return (
-      <View style={styles.container}>
-        <Header />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading conversations...</Text>
-        </View>
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>Loading conversations...</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <Header />
-      
-      <View style={styles.content}>
-        {/* Header with actions */}
-        <View style={styles.contentHeader}>
-          <View>
-            <Text style={styles.title}>Messages</Text>
-            <Text style={styles.subtitle}>
-              {filteredConversations.length} conversation{filteredConversations.length !== 1 ? 's' : ''}
-            </Text>
-          </View>
+      {/* Sidebar */}
+      {sidebarOpen && (
+        <UserSidebar
+          navigation={navigation}
+          activeKey="liveChat"
+          onClose={!isWeb ? () => setSidebarOpen(false) : null}
+          badges={{}}
+        />
+      )}
+
+      {/* Main Content */}
+      <View style={styles.mainContent}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity 
+            onPress={() => setSidebarOpen(!sidebarOpen)}
+            style={styles.menuButton}
+          >
+            <Ionicons name="menu" size={24} color={colors.text} />
+          </TouchableOpacity>
           
-          <View style={styles.headerActions}>
-            <TouchableOpacity 
-              style={styles.supportButton}
-              onPress={startSupportChat}
-            >
-              <Ionicons name="help-circle-outline" size={24} color={colors.primary} />
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.newChatButton}
-              onPress={() => {
-                setShowNewChatModal(true);
-                loadAvailableUsers();
-              }}
-            >
-              <Ionicons name="create-outline" size={24} color={colors.white} />
+          <Text style={styles.headerTitle}>Live Chat</Text>
+          
+          <View style={styles.headerRight}>
+            <View style={styles.userInfo}>
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>{getUserInitials()}</Text>
+              </View>
+              <Text style={styles.userName}>{currentUser?.firstName || 'User'}</Text>
+            </View>
+            <TouchableOpacity style={styles.logoutButtonHeader} onPress={handleLogout}>
+              <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
+              <Text style={styles.logoutTextHeader}>Logout</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Search Bar */}
-        <View style={styles.searchBar}>
-          <Ionicons name="search" size={20} color={colors.textSecondary} style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search conversations..."
-            placeholderTextColor={colors.textSecondary}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {/* Conversations List */}
-        <FlatList
-          data={filteredConversations}
-          renderItem={renderConversationItem}
-          keyExtractor={(item) => item._id}
-          style={styles.conversationsList}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
-              colors={[colors.primary]}
-            />
-          }
-          ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <Ionicons name="chatbubbles-outline" size={64} color={colors.textLight} />
-              <Text style={styles.emptyTitle}>No Messages Yet</Text>
-              <Text style={styles.emptyText}>
-                {searchQuery
-                  ? 'No conversations match your search'
-                  : 'Start a conversation or chat with support'}
-              </Text>
-              
-              <View style={styles.emptyActions}>
-                <TouchableOpacity 
-                  style={styles.emptySupportButton}
-                  onPress={startSupportChat}
-                >
-                  <Ionicons name="help-circle-outline" size={20} color={colors.white} />
-                  <Text style={styles.emptySupportButtonText}>Contact Support</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity 
-                  style={styles.emptyNewChatButton}
-                  onPress={() => {
-                    setShowNewChatModal(true);
-                    loadAvailableUsers();
-                  }}
-                >
-                  <Ionicons name="create-outline" size={20} color={colors.primary} />
-                  <Text style={styles.emptyNewChatButtonText}>New Chat</Text>
-                </TouchableOpacity>
+        <View style={styles.content}>
+          {/* Header with actions */}
+          <View style={styles.contentHeader}>
+            <View>
+              <Text style={styles.title}>Messages</Text>
+              <View style={styles.liveIndicatorHeader}>
+                <View style={styles.liveDot} />
+                <Text style={styles.liveText}>Live</Text>
+                <Text style={styles.subtitle}>
+                  {filteredConversations.length} conversation{filteredConversations.length !== 1 ? 's' : ''}
+                </Text>
               </View>
             </View>
-          }
-        />
+            
+            <View style={styles.headerActions}>
+              <TouchableOpacity 
+                style={styles.supportButton}
+                onPress={startSupportChat}
+              >
+                <Ionicons name="help-circle-outline" size={24} color={colors.primary} />
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.newChatButton}
+                onPress={() => {
+                  setShowNewChatModal(true);
+                  loadAvailableUsers('');
+                }}
+              >
+                <Ionicons name="create-outline" size={24} color={colors.white} />
+              </TouchableOpacity>
+            </View>
+          </View>
 
-        <NewChatModal />
+          {/* Search Bar */}
+          <View style={styles.searchBar}>
+            <Ionicons name="search" size={20} color={colors.textSecondary} style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search conversations..."
+              placeholderTextColor={colors.textSecondary}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Conversations List */}
+          <Animated.View style={[styles.conversationsListContainer, { opacity: fadeAnim }]}>
+            <FlatList
+              data={filteredConversations}
+              renderItem={renderConversationItem}
+              keyExtractor={(item) => item._id}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={handleRefresh}
+                  colors={[colors.primary]}
+                  tintColor={colors.primary}
+                />
+              }
+              ListEmptyComponent={
+                <View style={styles.emptyState}>
+                  <Ionicons name="chatbubbles-outline" size={64} color={colors.textSecondary} />
+                  <Text style={styles.emptyTitle}>No Messages Yet</Text>
+                  <Text style={styles.emptyText}>
+                    {searchQuery
+                      ? 'No conversations match your search'
+                      : 'Start a conversation with companies, consultancies, or support'}
+                  </Text>
+                  
+                  <View style={styles.emptyActions}>
+                    <TouchableOpacity 
+                      style={styles.emptySupportButton}
+                      onPress={startSupportChat}
+                    >
+                      <Ionicons name="help-circle-outline" size={20} color={colors.white} />
+                      <Text style={styles.emptySupportButtonText}>Contact Support</Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity 
+                      style={styles.emptyNewChatButton}
+                      onPress={() => {
+                        setShowNewChatModal(true);
+                        loadAvailableUsers('');
+                      }}
+                    >
+                      <Ionicons name="create-outline" size={20} color={colors.primary} />
+                      <Text style={styles.emptyNewChatButtonText}>New Chat</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              }
+            />
+          </Animated.View>
+
+          <NewChatModal />
+        </View>
       </View>
     </View>
   );
@@ -438,20 +619,86 @@ const LiveChatSupportScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    flexDirection: 'row',
     backgroundColor: colors.background,
-  },
-  content: {
-    flex: 1,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: colors.background,
   },
   loadingText: {
     marginTop: spacing.md,
     ...typography.body1,
     color: colors.textSecondary,
+  },
+  mainContent: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    backgroundColor: '#FFFFFF',
+  },
+  menuButton: {
+    marginRight: spacing.md,
+  },
+  headerTitle: {
+    ...typography.h4,
+    color: colors.text,
+    fontWeight: '700',
+    flex: 1,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  userInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  avatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#4A90E2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  userName: {
+    ...typography.body2,
+    color: colors.text,
+    fontWeight: '500',
+  },
+  logoutButtonHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ef4444',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
+    gap: spacing.xs,
+  },
+  logoutTextHeader: {
+    ...typography.body2,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  content: {
+    flex: 1,
   },
   contentHeader: {
     flexDirection: 'row',
@@ -463,9 +710,27 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   title: {
-    ...typography.h2,
+    ...typography.h4,
     color: colors.text,
     marginBottom: spacing.xs,
+  },
+  liveIndicatorHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  liveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#10b981',
+  },
+  liveText: {
+    ...typography.caption,
+    color: '#10b981',
+    fontWeight: '600',
+    fontSize: 11,
+    marginRight: spacing.xs,
   },
   subtitle: {
     ...typography.body2,
@@ -513,7 +778,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     height: '100%',
   },
-  conversationsList: {
+  conversationsListContainer: {
     flex: 1,
   },
   conversationItem: {
@@ -531,22 +796,9 @@ const styles = StyleSheet.create({
     position: 'relative',
     marginRight: spacing.md,
   },
-  avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   avatarUnread: {
     borderWidth: 2,
     borderColor: colors.success,
-  },
-  avatarText: {
-    ...typography.h3,
-    color: colors.white,
-    fontWeight: 'bold',
   },
   unreadBadge: {
     position: 'absolute',
@@ -569,7 +821,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   participantName: {
-    ...typography.subtitle1,
+    ...typography.body1,
     color: colors.text,
     fontWeight: '600',
   },
@@ -602,7 +854,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
   },
   emptyTitle: {
-    ...typography.h3,
+    ...typography.h5,
     color: colors.text,
     marginTop: spacing.lg,
     marginBottom: spacing.sm,
@@ -667,8 +919,9 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   modalTitle: {
-    ...typography.h3,
+    ...typography.h4,
     color: colors.text,
+    fontWeight: '600',
   },
   searchContainer: {
     flexDirection: 'row',
@@ -696,12 +949,15 @@ const styles = StyleSheet.create({
     marginLeft: spacing.md,
   },
   userName: {
-    ...typography.subtitle1,
+    ...typography.body1,
     color: colors.text,
     fontWeight: '600',
     marginBottom: spacing.xs,
   },
+  userTypeText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+  },
 });
 
 export default LiveChatSupportScreen;
-

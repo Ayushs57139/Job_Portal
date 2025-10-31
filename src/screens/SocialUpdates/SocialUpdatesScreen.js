@@ -12,11 +12,17 @@ import {
   RefreshControl,
   Modal,
   ScrollView,
+  Platform,
+  Dimensions,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, typography, spacing, borderRadius, shadows } from '../../styles/theme';
 import Header from '../../components/Header';
 import api from '../../config/api';
+
+const { width } = Dimensions.get('window');
+const isWeb = Platform.OS === 'web';
 
 const SocialUpdatesScreen = ({ navigation }) => {
   const [posts, setPosts] = useState([]);
@@ -439,6 +445,20 @@ const SocialUpdatesScreen = ({ navigation }) => {
         renderItem={renderPostItem}
         keyExtractor={(item) => item._id}
         contentContainerStyle={styles.listContent}
+        ListHeaderComponent={() => (
+          <LinearGradient
+            colors={['#667eea', '#764ba2']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.heroSection}
+          >
+            <Ionicons name="megaphone" size={48} color="#fff" />
+            <Text style={styles.heroTitle}>Social Updates</Text>
+            <Text style={styles.heroSubtitle}>
+              Stay connected with the latest from companies and consultancies
+            </Text>
+          </LinearGradient>
+        )}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -647,15 +667,41 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: spacing.md,
   },
+  heroSection: {
+    paddingVertical: spacing.xxl,
+    paddingHorizontal: spacing.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.lg,
+  },
+  heroTitle: {
+    ...typography.h2,
+    color: '#fff',
+    marginTop: spacing.md,
+    textAlign: 'center',
+    fontWeight: '700',
+  },
+  heroSubtitle: {
+    ...typography.body1,
+    color: 'rgba(255, 255, 255, 0.9)',
+    marginTop: spacing.sm,
+    textAlign: 'center',
+  },
   listContent: {
     padding: spacing.md,
     paddingBottom: spacing.xxl,
   },
   postCard: {
     backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.md,
-    marginBottom: spacing.md,
-    ...shadows.sm,
+    borderRadius: borderRadius.lg,
+    marginBottom: spacing.lg,
+    overflow: 'hidden',
+    ...shadows.md,
+    ...(isWeb && {
+      cursor: 'pointer',
+      userSelect: 'none',
+      transition: 'all 0.3s ease',
+    }),
   },
   postHeader: {
     flexDirection: 'row',
@@ -676,11 +722,15 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: borderRadius.full,
+    borderWidth: 2,
+    borderColor: colors.primary + '20',
   },
   avatarPlaceholder: {
-    backgroundColor: colors.border,
+    backgroundColor: colors.primary + '10',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 2,
+    borderColor: colors.primary + '30',
   },
   authorDetails: {
     flex: 1,
@@ -709,10 +759,12 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   postTypeBadge: {
-    backgroundColor: `${colors.primary}15`,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.sm,
+    backgroundColor: '#667eea15',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: '#667eea30',
   },
   postTypeText: {
     ...typography.caption,
@@ -750,15 +802,17 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   tag: {
-    backgroundColor: colors.background,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.sm,
+    backgroundColor: '#667eea10',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+    borderColor: '#667eea20',
   },
   tagText: {
     ...typography.caption,
-    color: colors.info,
-    fontWeight: '500',
+    color: '#667eea',
+    fontWeight: '600',
   },
   engagementStats: {
     flexDirection: 'row',
@@ -783,13 +837,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.md,
     gap: spacing.xs,
+    borderRadius: borderRadius.sm,
   },
   actionButtonText: {
     ...typography.body2,
     color: colors.textSecondary,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   likedText: {
     color: colors.error,
@@ -825,19 +880,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: spacing.xxl * 2,
+    backgroundColor: colors.cardBackground,
+    borderRadius: borderRadius.lg,
+    margin: spacing.lg,
+    padding: spacing.xxl,
   },
   emptyTitle: {
     ...typography.h5,
     color: colors.text,
-    fontWeight: '600',
+    fontWeight: '700',
     marginTop: spacing.lg,
-    marginBottom: spacing.xs,
+    marginBottom: spacing.sm,
   },
   emptyText: {
     ...typography.body2,
     color: colors.textSecondary,
     textAlign: 'center',
     paddingHorizontal: spacing.xl,
+    lineHeight: 24,
   },
   footerLoader: {
     paddingVertical: spacing.md,
@@ -890,6 +950,14 @@ const styles = StyleSheet.create({
     color: colors.text,
     minHeight: 100,
     marginBottom: spacing.md,
+  },
+  postImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: borderRadius.lg,
+    marginTop: spacing.sm,
+    backgroundColor: colors.border,
+    ...shadows.sm,
   },
   submitButton: {
     backgroundColor: colors.primary,

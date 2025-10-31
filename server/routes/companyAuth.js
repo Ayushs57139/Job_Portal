@@ -126,11 +126,28 @@ router.post('/login', async (req, res) => {
     }
 });
 
+// Get Company Profile (Authenticated) - Must be before /:id
+router.get('/me', employerAuth, async (req, res) => {
+    try {
+        const company = await User.findById(req.user._id).select('-password');
+        
+        if (!company) {
+            return res.status(404).json({ message: 'Company not found' });
+        }
+
+        res.json(company);
+    } catch (error) {
+        console.error('Get company profile error:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
 // Get Companies List
 router.get('/', async (req, res) => {
     try {
         const limit = parseInt(req.query.limit) || 10;
         const skip = parseInt(req.query.skip) || 0;
+        const Job = require('../models/Job');
 
         const companies = await User.find({ 
             userType: 'employer',
@@ -149,9 +166,17 @@ router.get('/', async (req, res) => {
         });
 
         // Transform companies to include profile.company data at root for easy access
-        const transformedCompanies = companies.map(company => {
+        // and add job counts
+        const transformedCompanies = await Promise.all(companies.map(async (company) => {
             const profile = company.profile || {};
             const companyData = profile.company || {};
+            
+            // Count active jobs for this company
+            const jobCount = await Job.countDocuments({
+                'company.name': companyData.name,
+                status: 'active'
+            });
+            
             return {
                 _id: company._id,
                 firstName: company.firstName,
@@ -166,10 +191,12 @@ router.get('/', async (req, res) => {
                 size: companyData.size,
                 description: companyData.description,
                 location: companyData.location,
+                // Add job count
+                openPositions: jobCount,
                 // Also include full structure
                 profile: profile
             };
-        });
+        }));
 
         res.json({
             companies: transformedCompanies,
@@ -183,18 +210,24 @@ router.get('/', async (req, res) => {
     }
 });
 
-// Get Company Profile
-router.get('/me', employerAuth, async (req, res) => {
+// Get Company by ID (Public) - Must be last
+router.get('/:id', async (req, res) => {
     try {
-        const company = await User.findById(req.user._id).select('-password');
+        const company = await User.findById(req.params.id)
+            .select('-password -verificationToken -verificationTokenExpires');
         
         if (!company) {
             return res.status(404).json({ message: 'Company not found' });
         }
 
+        // Only return verified companies publicly
+        if (!company.isEmployerVerified) {
+            return res.status(403).json({ message: 'Company profile not available' });
+        }
+
         res.json(company);
     } catch (error) {
-        console.error('Get company profile error:', error);
+        console.error('Get company by ID error:', error);
         res.status(500).json({ message: 'Server error' });
     }
 });

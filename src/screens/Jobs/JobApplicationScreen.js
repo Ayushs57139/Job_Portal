@@ -1400,10 +1400,63 @@ const JobApplicationScreen = ({ route, navigation }) => {
     'Other',
   ];
 
-  // Load job details
+  // Load job details and user profile
   useEffect(() => {
     loadJobDetails();
+    loadUserProfile();
   }, [jobId]);
+
+  const loadUserProfile = async () => {
+    try {
+      const response = await api.getUserProfile();
+      if (response.success && response.profile) {
+        const profile = response.profile;
+        
+        // Auto-populate form data from profile
+        setFormData(prev => ({
+          ...prev,
+          // Personal Information
+          fullName: profile.personalInfo?.fullName || prev.fullName,
+          mobileNumber: profile.personalInfo?.phone || prev.mobileNumber,
+          email: profile.personalInfo?.email || prev.email,
+          dateOfBirth: profile.personalInfo?.dateOfBirth ? new Date(profile.personalInfo.dateOfBirth) : prev.dateOfBirth,
+          gender: profile.personalInfo?.gender || prev.gender,
+          maritalStatus: profile.personalInfo?.maritalStatus || prev.maritalStatus,
+          englishFluency: profile.locationInfo?.englishFluencyLevel || prev.englishFluency,
+          
+          // Professional Information
+          experienceLevel: profile.professional?.experienceLevel || prev.experienceLevel,
+          yearsOfExperience: profile.professional?.totalExperience || prev.yearsOfExperience,
+          jobStatus: profile.professional?.jobStatus || prev.jobStatus,
+          currentJobTitle: profile.professional?.currentJobTitle ? [profile.professional.currentJobTitle] : prev.currentJobTitle,
+          keySkills: profile.professional?.keySkills || prev.keySkills,
+          currentCompany: profile.professional?.currentCompany || prev.currentCompany,
+          currentSalary: profile.professional?.currentSalary?.toString() || prev.currentSalary,
+          currentIndustry: profile.professional?.industries?.[0] || prev.currentIndustry,
+          industries: profile.professional?.industries || prev.industries,
+          currentDepartment: profile.professional?.departmentCategory?.[0] || prev.currentDepartment,
+          departments: profile.professional?.departmentCategory || prev.departments,
+          currentJobRoles: profile.professional?.jobRoles || prev.currentJobRoles,
+          preferredLocations: profile.locationInfo?.preferredJobLocations?.map(loc => `${loc.city || ''}, ${loc.state || ''}`).join(', ') || prev.preferredLocations,
+          noticePeriod: profile.professional?.noticePeriod || prev.noticePeriod,
+          
+          // Education
+          educationLevel: profile.education?.map(e => e.educationLevel).filter(Boolean) || prev.educationLevel,
+          course: profile.education?.map(e => e.degree).filter(Boolean) || prev.course,
+          specialization: profile.education?.map(e => e.specialization).filter(Boolean) || prev.specialization,
+          
+          // Additional Details
+          currentAddress: profile.locationInfo?.currentAddress || profile.locationInfo?.currentLocality || prev.currentAddress,
+          bikeAvailable: profile.personalInfo?.bikeScootyAvailable?.includes('Yes') ? 'Yes' : 
+                        profile.personalInfo?.bikeScootyAvailable?.includes('No') ? 'No' : prev.bikeAvailable,
+          drivingLicense: profile.personalInfo?.drivingLicense?.length > 0 ? 'Yes' : 'No'
+        }));
+      }
+    } catch (error) {
+      console.error('Error loading user profile:', error);
+      // Profile doesn't exist or error - continue with empty form
+    }
+  };
 
   const loadJobDetails = async () => {
     try {

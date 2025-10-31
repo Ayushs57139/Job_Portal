@@ -24,6 +24,58 @@ import { RESUME_TEMPLATES } from '../../components/ResumeTemplates';
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
 
+// Resume Themes Configuration
+const RESUME_THEMES = [
+  { 
+    id: 'blue', 
+    name: 'Ocean Blue', 
+    gradient: ['#667eea', '#764ba2'], 
+    accent: '#667eea', 
+    icon: '🏊',
+    description: 'Professional and calming'
+  },
+  { 
+    id: 'purple', 
+    name: 'Royal Purple', 
+    gradient: ['#9D50BB', '#6E48AA'], 
+    accent: '#9D50BB', 
+    icon: '👑',
+    description: 'Elegant and sophisticated'
+  },
+  { 
+    id: 'teal', 
+    name: 'Mint Teal', 
+    gradient: ['#11998e', '#38ef7d'], 
+    accent: '#11998e', 
+    icon: '🌿',
+    description: 'Fresh and modern'
+  },
+  { 
+    id: 'orange', 
+    name: 'Sunset Orange', 
+    gradient: ['#f093fb', '#f5576c'], 
+    accent: '#f5576c', 
+    icon: '🌅',
+    description: 'Vibrant and energetic'
+  },
+  { 
+    id: 'dark', 
+    name: 'Midnight Dark', 
+    gradient: ['#2c3e50', '#34495e'], 
+    accent: '#3498db', 
+    icon: '🌙',
+    description: 'Professional and bold'
+  },
+  { 
+    id: 'green', 
+    name: 'Forest Green', 
+    gradient: ['#134e5e', '#71b280'], 
+    accent: '#71b280', 
+    icon: '🌲',
+    description: 'Trustworthy and natural'
+  },
+];
+
 // Multi-step configuration
 const STEPS = [
   { id: 'personal', title: 'Personal Info', icon: 'person', description: 'Tell us about yourself' },
@@ -57,6 +109,7 @@ const ResumeBuilderScreen = () => {
 
   // UI State
   const [selectedTemplate, setSelectedTemplate] = useState(RESUME_TEMPLATES[0]);
+  const [selectedTheme, setSelectedTheme] = useState(RESUME_THEMES[0]);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
@@ -392,42 +445,89 @@ const ResumeBuilderScreen = () => {
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Choose Template</Text>
+            <Text style={styles.modalTitle}>Choose Template & Theme</Text>
             <TouchableOpacity onPress={() => setShowTemplateModal(false)}>
               <Ionicons name="close" size={24} color={colors.text} />
             </TouchableOpacity>
           </View>
           
-          <ScrollView style={styles.templateList}>
-            {RESUME_TEMPLATES.map((template) => (
-              <TouchableOpacity
-                key={template.id}
-                style={[
-                  styles.templateItem,
-                  selectedTemplate.id === template.id && styles.templateItemSelected,
-                ]}
-                onPress={() => {
-                  setSelectedTemplate(template);
-                  setShowTemplateModal(false);
-                }}
-              >
-                <View style={styles.templateIcon}>
-                  <Ionicons 
-                    name="document-text" 
-                    size={24} 
-                    color={selectedTemplate.id === template.id ? colors.primary : colors.textSecondary} 
-                  />
-                </View>
-                <View style={styles.templateInfo}>
-                  <Text style={styles.templateName}>{template.name}</Text>
-                  <Text style={styles.templateCategory}>{template.category}</Text>
-                  <Text style={styles.templateDescription}>{template.description}</Text>
-                </View>
-                {selectedTemplate.id === template.id && (
-                  <Ionicons name="checkmark-circle" size={24} color={colors.primary} />
-                )}
-              </TouchableOpacity>
-            ))}
+          <ScrollView style={styles.templateList} showsVerticalScrollIndicator={false}>
+            {/* Themes Section */}
+            <View style={styles.modalSection}>
+              <View style={styles.modalSectionHeader}>
+                <Ionicons name="color-palette" size={20} color={selectedTheme.accent} />
+                <Text style={styles.modalSectionTitle}>Theme Colors</Text>
+              </View>
+              <View style={styles.themesGrid}>
+                {RESUME_THEMES.map((theme) => (
+                  <TouchableOpacity
+                    key={theme.id}
+                    style={[
+                      styles.themeCard,
+                      selectedTheme.id === theme.id && { 
+                        borderColor: theme.accent,
+                        borderWidth: 3,
+                      }
+                    ]}
+                    onPress={() => setSelectedTheme(theme)}
+                  >
+                    <LinearGradient
+                      colors={theme.gradient}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.themeGradient}
+                    >
+                      <Text style={styles.themeIcon}>{theme.icon}</Text>
+                    </LinearGradient>
+                    <Text style={styles.themeName} numberOfLines={1}>{theme.name}</Text>
+                    {selectedTheme.id === theme.id && (
+                      <View style={[styles.checkmarkBadge, { backgroundColor: theme.accent }]}>
+                        <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Templates Section */}
+            <View style={styles.modalSection}>
+              <View style={styles.modalSectionHeader}>
+                <Ionicons name="document-text" size={20} color={selectedTheme.accent} />
+                <Text style={styles.modalSectionTitle}>Resume Templates</Text>
+              </View>
+              {RESUME_TEMPLATES.map((template) => (
+                <TouchableOpacity
+                  key={template.id}
+                  style={[
+                    styles.templateItem,
+                    selectedTemplate.id === template.id && styles.templateItemSelected,
+                  ]}
+                  onPress={() => {
+                    setSelectedTemplate(template);
+                    setShowTemplateModal(false);
+                  }}
+                >
+                  <View style={[styles.templateIcon, { backgroundColor: selectedTheme.accent + '15' }]}>
+                    <Ionicons 
+                      name="document-text" 
+                      size={24} 
+                      color={selectedTemplate.id === template.id ? selectedTheme.accent : colors.textSecondary} 
+                    />
+                  </View>
+                  <View style={styles.templateInfo}>
+                    <Text style={styles.templateName}>{template.name}</Text>
+                    <Text style={styles.templateCategory}>{template.category}</Text>
+                    <Text style={styles.templateDescription}>{template.description}</Text>
+                  </View>
+                  {selectedTemplate.id === template.id && (
+                    <View style={[styles.checkmarkBadgeSmall, { backgroundColor: selectedTheme.accent }]}>
+                      <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                    </View>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
           </ScrollView>
         </View>
       </View>
@@ -598,10 +698,15 @@ const ResumeBuilderScreen = () => {
           placeholderTextColor={colors.textLight}
         />
         
-        <TouchableOpacity style={styles.addButton} onPress={addExperience}>
-          <Ionicons name="add-circle" size={20} color={colors.textWhite} />
-          <Text style={styles.addButtonText}>Add Experience</Text>
-        </TouchableOpacity>
+        <LinearGradient colors={selectedTheme.gradient} style={styles.addButton}>
+          <TouchableOpacity 
+            style={styles.addButtonInner}
+            onPress={addExperience}
+          >
+            <Ionicons name="add-circle" size={20} color={colors.textWhite} />
+            <Text style={styles.addButtonText}>Add Experience</Text>
+          </TouchableOpacity>
+        </LinearGradient>
       </View>
     </View>
   );
@@ -652,10 +757,15 @@ const ResumeBuilderScreen = () => {
           placeholderTextColor={colors.textLight}
         />
         
-        <TouchableOpacity style={styles.addButton} onPress={addEducation}>
-          <Ionicons name="add-circle" size={20} color={colors.textWhite} />
-          <Text style={styles.addButtonText}>Add Education</Text>
-        </TouchableOpacity>
+        <LinearGradient colors={selectedTheme.gradient} style={styles.addButton}>
+          <TouchableOpacity 
+            style={styles.addButtonInner}
+            onPress={addEducation}
+          >
+            <Ionicons name="add-circle" size={20} color={colors.textWhite} />
+            <Text style={styles.addButtonText}>Add Education</Text>
+          </TouchableOpacity>
+        </LinearGradient>
       </View>
     </View>
   );
@@ -667,12 +777,12 @@ const ResumeBuilderScreen = () => {
       
       <View style={styles.skillsContainer}>
         {resumeData.skills.map((skill, index) => (
-          <View key={index} style={styles.skillChip}>
+          <LinearGradient key={index} colors={selectedTheme.gradient} style={styles.skillChip}>
             <Text style={styles.skillText}>{skill}</Text>
             <TouchableOpacity onPress={() => removeSkill(index)}>
               <Ionicons name="close-circle" size={18} color={colors.textWhite} />
             </TouchableOpacity>
-          </View>
+          </LinearGradient>
         ))}
       </View>
       
@@ -685,9 +795,14 @@ const ResumeBuilderScreen = () => {
           onSubmitEditing={addSkill}
           placeholderTextColor={colors.textLight}
         />
-        <TouchableOpacity style={styles.skillAddButton} onPress={addSkill}>
-          <Ionicons name="add" size={24} color={colors.textWhite} />
-        </TouchableOpacity>
+        <LinearGradient colors={selectedTheme.gradient} style={styles.skillAddButton}>
+          <TouchableOpacity 
+            style={{ width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}
+            onPress={addSkill}
+          >
+            <Ionicons name="add" size={24} color={colors.textWhite} />
+          </TouchableOpacity>
+        </LinearGradient>
       </View>
     </View>
   );
@@ -702,7 +817,7 @@ const ResumeBuilderScreen = () => {
     return (
       <View style={styles.progressContainer}>
         <View style={styles.progressBar}>
-          <Animated.View style={[styles.progressFill, { width: progressWidth }]} />
+          <Animated.View style={[styles.progressFill, { width: progressWidth, backgroundColor: selectedTheme.accent }]} />
         </View>
         
         <View style={styles.stepsIndicator}>
@@ -721,7 +836,7 @@ const ResumeBuilderScreen = () => {
                 <View
                   style={[
                     styles.stepIndicator,
-                    isActive && styles.stepIndicatorActive,
+                    isActive && { backgroundColor: selectedTheme.accent, borderColor: selectedTheme.accent, ...shadows.md },
                     (isPast || isCompleted) && styles.stepIndicatorCompleted,
                   ]}
                 >
@@ -740,7 +855,7 @@ const ResumeBuilderScreen = () => {
                 </View>
                 <Text style={[
                   styles.stepLabel,
-                  isActive && styles.stepLabelActive,
+                  isActive && { color: selectedTheme.accent, fontWeight: '600' },
                   (isPast || isCompleted) && styles.stepLabelCompleted,
                 ]}>
                   {step.title}
@@ -787,14 +902,17 @@ const ResumeBuilderScreen = () => {
       >
         {/* Hero Header with Gradient */}
         <LinearGradient
-          colors={[colors.primary, colors.primaryDark]}
+          colors={selectedTheme.gradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.heroHeader}
         >
           <View style={styles.heroContent}>
             <View style={styles.heroTextContainer}>
-              <Text style={styles.heroTitle}>Resume Builder</Text>
+              <View style={styles.heroTitleRow}>
+                <Ionicons name="document-text" size={28} color={colors.textWhite} style={{ marginRight: 12 }} />
+                <Text style={styles.heroTitle}>Resume Builder</Text>
+              </View>
               <Text style={styles.heroSubtitle}>
                 Step {currentStep + 1} of {STEPS.length} - {STEPS[currentStep].description}
               </Text>
@@ -804,14 +922,25 @@ const ResumeBuilderScreen = () => {
               style={styles.templateButtonHero}
               onPress={() => setShowTemplateModal(true)}
             >
-              <Ionicons name="color-palette-outline" size={24} color={colors.textWhite} />
+              <LinearGradient
+                colors={['rgba(255, 255, 255, 0.3)', 'rgba(255, 255, 255, 0.1)']}
+                style={styles.themeButtonGradient}
+              >
+                <Ionicons name="color-palette" size={24} color={colors.textWhite} />
+              </LinearGradient>
             </TouchableOpacity>
           </View>
 
-          {/* Current Template Badge */}
-          <View style={styles.templateBadge}>
-            <Ionicons name="document-text" size={14} color={colors.primary} />
-            <Text style={styles.templateBadgeText}>{selectedTemplate.name}</Text>
+          {/* Current Template & Theme Badges */}
+          <View style={styles.badgesContainer}>
+            <View style={[styles.templateBadge, { borderColor: selectedTheme.accent }]}>
+              <Ionicons name="document-text" size={14} color={selectedTheme.accent} />
+              <Text style={[styles.templateBadgeText, { color: selectedTheme.accent }]}>{selectedTemplate.name}</Text>
+            </View>
+            <View style={[styles.themeBadge, { backgroundColor: selectedTheme.accent + '20' }]}>
+              <Text style={styles.themeBadgeIcon}>{selectedTheme.icon}</Text>
+              <Text style={[styles.themeBadgeText, { color: selectedTheme.accent }]}>{selectedTheme.name}</Text>
+            </View>
           </View>
         </LinearGradient>
 
@@ -822,9 +951,12 @@ const ResumeBuilderScreen = () => {
         <View style={styles.contentWrapper}>
           <View style={styles.stepContentCard}>
             <View style={styles.stepHeader}>
-              <View style={styles.stepIconContainer}>
-                <Ionicons name={STEPS[currentStep].icon} size={32} color={colors.primary} />
-              </View>
+              <LinearGradient
+                colors={[selectedTheme.accent + '20', selectedTheme.accent + '10']}
+                style={styles.stepIconContainer}
+              >
+                <Ionicons name={STEPS[currentStep].icon} size={32} color={selectedTheme.accent} />
+              </LinearGradient>
               <View style={styles.stepHeaderText}>
                 <Text style={styles.stepTitle}>{STEPS[currentStep].title}</Text>
                 <Text style={styles.stepDescription}>{STEPS[currentStep].description}</Text>
@@ -840,22 +972,27 @@ const ResumeBuilderScreen = () => {
           <View style={styles.navigationButtons}>
             {currentStep > 0 && (
               <TouchableOpacity
-                style={styles.navButton}
+                style={[styles.navButton, { borderColor: selectedTheme.accent }]}
                 onPress={prevStep}
               >
-                <Ionicons name="arrow-back" size={20} color={colors.primary} />
-                <Text style={styles.navButtonTextSecondary}>Previous</Text>
+                <Ionicons name="arrow-back" size={20} color={selectedTheme.accent} />
+                <Text style={[styles.navButtonTextSecondary, { color: selectedTheme.accent }]}>Previous</Text>
               </TouchableOpacity>
             )}
 
             {currentStep < STEPS.length - 1 ? (
-              <TouchableOpacity
-                style={[styles.navButton, styles.navButtonPrimary]}
-                onPress={handleNext}
+              <LinearGradient
+                colors={selectedTheme.gradient}
+                style={{ flex: 1, borderRadius: borderRadius.lg }}
               >
-                <Text style={styles.navButtonTextPrimary}>Next Step</Text>
-                <Ionicons name="arrow-forward" size={20} color={colors.textWhite} />
-              </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.navButtonGradient}
+                  onPress={handleNext}
+                >
+                  <Text style={styles.navButtonTextPrimary}>Next Step</Text>
+                  <Ionicons name="arrow-forward" size={20} color={colors.textWhite} />
+                </TouchableOpacity>
+              </LinearGradient>
             ) : (
               <TouchableOpacity
                 style={[styles.navButton, styles.navButtonSuccess]}
@@ -906,6 +1043,10 @@ const styles = StyleSheet.create({
   heroTextContainer: {
     flex: 1,
   },
+  heroTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   heroTitle: {
     ...typography.h2,
     color: colors.textWhite,
@@ -924,6 +1065,19 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  themeButtonGradient: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
   },
   templateBadge: {
     flexDirection: 'row',
@@ -932,12 +1086,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
     borderRadius: borderRadius.round,
-    alignSelf: 'flex-start',
+    borderWidth: 2,
     gap: spacing.xs,
   },
   templateBadgeText: {
     ...typography.caption,
-    color: colors.primary,
+    fontWeight: '600',
+  },
+  themeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.round,
+    gap: spacing.xs,
+  },
+  themeBadgeIcon: {
+    fontSize: 16,
+  },
+  themeBadgeText: {
+    ...typography.caption,
     fontWeight: '600',
   },
 
@@ -957,7 +1125,6 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height: '100%',
-    backgroundColor: colors.primary,
     borderRadius: borderRadius.sm,
   },
   stepsIndicator: {
@@ -978,11 +1145,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.xs,
-  },
-  stepIndicatorActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-    ...shadows.md,
   },
   stepIndicatorCompleted: {
     backgroundColor: colors.success,
@@ -1097,15 +1259,16 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   addButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.primary,
     paddingVertical: spacing.lg,
     borderRadius: borderRadius.lg,
     marginTop: spacing.md,
     ...shadows.md,
+  },
+  addButtonInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
   },
   addButtonText: {
     color: colors.textWhite,
@@ -1152,7 +1315,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-    backgroundColor: colors.primary,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.round,
@@ -1169,12 +1331,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   skillAddButton: {
-    backgroundColor: colors.primary,
     width: 56,
     height: 56,
     borderRadius: borderRadius.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
     ...shadows.md,
   },
 
@@ -1201,12 +1360,13 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
     backgroundColor: colors.background,
     borderWidth: 2,
-    borderColor: colors.primary,
   },
-  navButtonPrimary: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-    ...shadows.md,
+  navButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.lg,
   },
   navButtonSuccess: {
     backgroundColor: colors.success,
@@ -1249,6 +1409,72 @@ const styles = StyleSheet.create({
     ...typography.h4,
     fontWeight: '800',
     color: colors.text,
+  },
+  modalSection: {
+    marginBottom: spacing.xl,
+  },
+  modalSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+    paddingHorizontal: spacing.lg,
+  },
+  modalSectionTitle: {
+    ...typography.h6,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  themesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
+  },
+  themeCard: {
+    width: '30%',
+    minWidth: 80,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    borderRadius: borderRadius.lg,
+    overflow: 'hidden',
+    ...shadows.xs,
+  },
+  themeGradient: {
+    width: '100%',
+    aspectRatio: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  themeIcon: {
+    fontSize: 32,
+  },
+  themeName: {
+    ...typography.caption,
+    color: colors.text,
+    fontWeight: '600',
+    textAlign: 'center',
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.background,
+  },
+  checkmarkBadge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.sm,
+  },
+  checkmarkBadgeSmall: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   templateList: {
     padding: spacing.lg,

@@ -10,14 +10,9 @@ const router = express.Router();
 // @desc    Create or update user profile
 // @access  Private
 router.post('/', auth, [
-    body('personalInfo.fullName').notEmpty().withMessage('Full name is required'),
-    body('personalInfo.dateOfBirth').isISO8601().withMessage('Valid date of birth is required'),
-    body('personalInfo.gender').isIn(['male', 'female', 'other', 'prefer-not-to-say']).withMessage('Valid gender is required'),
-    body('personalInfo.email').isEmail().withMessage('Valid email is required'),
-    body('education.educationLevel').isIn(['high-school', 'diploma', 'bachelor', 'master', 'phd', 'other']).withMessage('Valid education level is required'),
-    body('professional.experience').notEmpty().withMessage('Experience is required'),
-    body('preferences.currentCity').notEmpty().withMessage('Current city is required'),
-    body('preferences.jobTypePreference').isIn(['fulltime', 'parttime', 'contract', 'internship', 'freelance']).withMessage('Valid job type preference is required')
+    body('personalInfo.fullName').optional().notEmpty().withMessage('Full name is required'),
+    body('personalInfo.dateOfBirth').optional().isISO8601().withMessage('Valid date of birth is required'),
+    body('personalInfo.email').optional().isEmail().withMessage('Valid email is required')
 ], async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -32,12 +27,25 @@ router.post('/', auth, [
         let profile = await UserProfile.findOne({ userId });
 
         if (profile) {
-            // Update existing profile
-            Object.keys(profileData).forEach(key => {
-                if (profileData[key] !== undefined) {
-                    profile[key] = profileData[key];
-                }
-            });
+            // Update existing profile - merge nested objects properly
+            if (profileData.personalInfo) {
+                Object.assign(profile.personalInfo, profileData.personalInfo);
+            }
+            if (profileData.locationInfo) {
+                Object.assign(profile.locationInfo, profileData.locationInfo);
+            }
+            if (profileData.professional) {
+                Object.assign(profile.professional, profileData.professional);
+            }
+            if (profileData.preferences) {
+                Object.assign(profile.preferences, profileData.preferences);
+            }
+            if (profileData.additionalInfo) {
+                Object.assign(profile.additionalInfo, profileData.additionalInfo);
+            }
+            if (profileData.education !== undefined) {
+                profile.education = profileData.education;
+            }
             await profile.save();
         } else {
             // Create new profile
@@ -51,11 +59,11 @@ router.post('/', auth, [
         res.status(200).json({
             success: true,
             message: 'Profile saved successfully',
-            profile: profile.getProfileSummary()
+            profile: profile
         });
     } catch (error) {
         console.error('Error saving profile:', error);
-        res.status(500).json({ success: false, message: 'Error saving profile' });
+        res.status(500).json({ success: false, message: 'Error saving profile', error: error.message });
     }
 });
 

@@ -16,7 +16,7 @@ import { colors, typography, spacing, borderRadius, shadows } from '../../styles
 import api from '../../config/api';
 
 const BlogDetailScreen = ({ route, navigation }) => {
-  const { blogId } = route.params;
+  const { blogId, slug } = route.params || {};
   const [blog, setBlog] = useState(null);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
@@ -24,7 +24,7 @@ const BlogDetailScreen = ({ route, navigation }) => {
   useEffect(() => {
     loadUser();
     loadBlog();
-  }, [blogId]);
+  }, [blogId, slug]);
 
   const loadUser = async () => {
     try {
@@ -43,7 +43,9 @@ const BlogDetailScreen = ({ route, navigation }) => {
   const loadBlog = async () => {
     try {
       setLoading(true);
-      const response = await api.get(`/api/blogs/${blogId}`);
+      // Use slug if provided, otherwise use blogId
+      const identifier = slug || blogId;
+      const response = await api.get(`/api/blogs/${identifier}`);
       if (response.data.success) {
         setBlog(response.data.blog);
       }
@@ -78,7 +80,9 @@ const BlogDetailScreen = ({ route, navigation }) => {
           style: 'destructive',
           onPress: async () => {
             try {
-              const response = await api.delete(`/api/blogs/${blogId}`);
+              // Use slug if provided, otherwise use blogId
+              const identifier = slug || blogId;
+              const response = await api.delete(`/api/blogs/${identifier}`);
               if (response.data.success) {
                 Alert.alert('Success', 'Blog deleted successfully');
                 navigation.goBack();
