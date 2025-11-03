@@ -6,17 +6,13 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "seed": "node seed-all-data.js",
-    "seed:experience": "node seed-experience-data.js",
-    "seed:skills": "node seed-key-skills.js",
-    "seed:titles": "node seed-job-titles.js",
-    "seed:roles": "node seed-job-roles.js",
-    "seed:industries": "node seed-industries.js",
-    "seed:detailed-industries": "node seed-detailed-industries.js",
-    "seed:certifications": "node seed-certifications.js",
-    "seed:departments": "node seed-departments.js",
-    "seed-custom-fields": "node seed-custom-fields.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "prod": "pm2 start ecosystem.config.js --env production",
+    "pm2:start": "pm2 start ecosystem.config.js",
+    "pm2:stop": "pm2 stop jobwala-server",
+    "pm2:restart": "pm2 restart jobwala-server",
+    "pm2:delete": "pm2 delete jobwala-server",
+    "pm2:logs": "pm2 logs jobwala-server",
+    "pm2:status": "pm2 status"
   },
   "dependencies": {
     "archiver": "^6.0.2",
@@ -45,6 +41,9 @@
   },
   "devDependencies": {
     "nodemon": "^3.0.2"
+  },
+  "optionalDependencies": {
+    "pm2": "^5.3.0"
   },
   "keywords": [
     "job-portal",

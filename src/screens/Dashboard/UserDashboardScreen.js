@@ -185,11 +185,16 @@ const UserDashboardScreen = ({ navigation }) => {
           text: 'Logout',
           style: 'destructive',
           onPress: async () => {
-            await api.logout();
-            navigation.reset({
-              index: 0,
-              routes: [{ name: 'Home' }],
-            });
+            try {
+              await api.logout();
+            } catch (error) {
+              console.log('Logout error:', error);
+            } finally {
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'Home' }],
+              });
+            }
           },
         },
       ]

@@ -1,0 +1,77 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		2B0000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 1500;
+			};
+			buildConfigurationList = 2B0000000000000000000002 /* Build configuration list for PBXProject "FreeJobWala" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 2B0000000000000000000003;
+			productRefGroup = 2B0000000000000000000004 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				2B0000000000000000000005 /* FreeJobWala */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin XCBuildConfiguration section */
+		2B0000000000000000000006 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+			};
+			name = Debug;
+		};
+		2B0000000000000000000007 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		2B0000000000000000000002 /* Build configuration list for PBXProject "FreeJobWala" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2B0000000000000000000006 /* Debug */,
+				2B0000000000000000000007 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 2B0000000000000000000001 /* Project object */;
+}
+

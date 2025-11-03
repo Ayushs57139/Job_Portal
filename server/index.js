@@ -20,22 +20,40 @@ const io = socketIo(server, {
   }
 });
 
+// CORS configuration - MUST be before other middleware
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    // Allow all localhost origins and common development ports
+    if (origin.includes('localhost') || origin.includes('127.0.0.1') || origin.includes('192.168.')) {
+      return callback(null, true);
+    }
+    // Allow all origins in development (you can restrict this in production)
+    callback(null, true);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range'],
+  optionsSuccessStatus: 200,
+  preflightContinue: false
+}));
+
 // Security middleware
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginEmbedderPolicy: false
+}));
 app.use(compression());
 
-// Rate limiting
+// Rate limiting (skip OPTIONS requests for CORS preflight)
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
+  max: 100, // limit each IP to 100 requests per windowMs
+  skip: (req) => req.method === 'OPTIONS' // Skip rate limiting for OPTIONS requests
 });
 app.use(limiter);
-
-// CORS configuration - Allow all origins for development
-app.use(cors({
-  origin: true,
-  credentials: true
-}));
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
@@ -53,6 +71,9 @@ app.use(morgan('combined'));
 // MongoDB connection
 const connectDB = require('./config/database');
 connectDB();
+
+// Import error handler middleware
+const errorHandler = require('./middleware/errorHandler');
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
@@ -263,19 +284,13 @@ app.get('/favicon.png', (req, res) => {
   res.status(204).end(); // No content
 });
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ 
-    message: 'Something went wrong!',
-    error: process.env.NODE_ENV === 'development' ? err.message : {}
-  });
-});
-
-// 404 handler
+// 404 handler (must be before error handler)
 app.use('*', (req, res) => {
   res.status(404).json({ message: 'Route not found' });
 });
+
+// Error handling middleware (must be after all routes and 404 handler)
+app.use(errorHandler);
 
 // WebSocket authentication middleware
 io.use(async (socket, next) => {
@@ -426,6 +441,16 @@ io.on('connection', (socket) => {
       userId: socket.userId
     });
   });
+
+  // Handle socket errors
+  socket.on('error', (error) => {
+    console.error('Socket error:', error);
+  });
+});
+
+// Handle Socket.IO server errors
+io.on('error', (error) => {
+  console.error('Socket.IO server error:', error);
 });
 
 // Make io available to routes
@@ -436,6 +461,64 @@ const jobNotificationService = require('./services/jobNotificationService');
 jobNotificationService.start();
 
 const PORT = process.env.PORT || 5000;
+
+// Global process error handlers - MUST be after server creation
+process.on('uncaughtException', (error) => {
+  console.error('='.repeat(100));
+  console.error('UNCAUGHT EXCEPTION! Application shutting down...');
+  console.error('Error:', error.name, ':', error.message);
+  console.error('Stack:', error.stack);
+  console.error('='.repeat(100));
+  
+  // Close server gracefully
+  server.close(() => {
+    console.log('Server closed due to uncaught exception');
+    process.exit(1);
+  });
+  
+  // Force exit after 10 seconds if graceful shutdown fails
+  setTimeout(() => {
+    console.error('Forced exit after timeout');
+    process.exit(1);
+  }, 10000);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('='.repeat(100));
+  console.error('UNHANDLED REJECTION! Application shutting down...');
+  console.error('Promise:', promise);
+  console.error('Reason:', reason);
+  console.error('='.repeat(100));
+  
+  // Close server gracefully
+  server.close(() => {
+    console.log('Server closed due to unhandled rejection');
+    process.exit(1);
+  });
+  
+  // Force exit after 10 seconds if graceful shutdown fails
+  setTimeout(() => {
+    console.error('Forced exit after timeout');
+    process.exit(1);
+  }, 10000);
+});
+
+// SIGTERM handler (graceful shutdown)
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received. Shutting down gracefully...');
+  server.close(() => {
+    console.log('Server closed');
+    mongoose.connection.close(false, () => {
+      console.log('MongoDB connection closed');
+      process.exit(0);
+    });
+  });
+  
+  setTimeout(() => {
+    console.error('Forced shutdown after timeout');
+    process.exit(1);
+  }, 10000);
+});
 
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

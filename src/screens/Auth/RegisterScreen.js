@@ -16,11 +16,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { colors, spacing, borderRadius, typography } from '../../styles/theme';
+import { colors, spacing, borderRadius, typography, shadows } from '../../styles/theme';
 import Header from '../../components/Header';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
-import api from '../../config/api';
+import api, { API_URL } from '../../config/api';
 
 const REFERRAL_SOURCES = [
   'Freejobwala YouTube Channel',
@@ -84,6 +84,48 @@ const RegisterScreen = ({ navigation }) => {
     return `${day}-${month}-${year}`;
   };
 
+  // Parse date string to Date object
+  const parseDate = (dateString) => {
+    if (!dateString) return new Date();
+    // Try different date formats
+    const formats = [
+      /(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})/, // DD/MM/YYYY or DD-MM-YYYY or DD.MM.YYYY
+      /(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2})/,  // DD/MM/YY or DD-MM-YY or DD.MM.YY
+      /(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})/,  // YYYY/MM/DD or YYYY-MM-DD or YYYY.MM.DD
+      /(\d{2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})/,    // YY/MM/YYYY or YY-MM-YYYY or YY.MM.YYYY
+    ];
+    
+    for (const format of formats) {
+      const match = dateString.match(format);
+      if (match) {
+        let day, month, year;
+        if (format.source.includes('\\d{4}') && format.source.indexOf('\\d{4}') === 0) {
+          // YYYY/MM/DD format
+          year = match[1];
+          month = match[2];
+          day = match[3];
+        } else {
+          // DD/MM/YYYY format (most common in India)
+          day = match[1];
+          month = match[2];
+          year = match[3];
+        }
+        
+        // Handle 2-digit years
+        if (year.length === 2) {
+          year = parseInt(year) > 50 ? `19${year}` : `20${year}`;
+        }
+        
+        const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+        if (!isNaN(date.getTime())) {
+          return date;
+        }
+      }
+    }
+    
+    return new Date();
+  };
+
   const updateFormData = (key, value) => {
     setFormData({ ...formData, [key]: value });
     setErrors({ ...errors, [key]: null });
@@ -102,6 +144,7 @@ const RegisterScreen = ({ navigation }) => {
           uri: asset.uri,
           type: asset.mimeType,
           name: asset.name,
+          file: asset.file || null, // Store the File object if available (web)
         };
         
         updateFormData('resume', resumeFile);
@@ -119,13 +162,36 @@ const RegisterScreen = ({ navigation }) => {
     setParsingResume(true);
     try {
       const formDataToSend = new FormData();
-      formDataToSend.append('resume', {
-        uri: resumeFile.uri,
-        type: resumeFile.type,
-        name: resumeFile.name,
-      });
+      
+      // Handle file upload differently for web vs mobile
+      if (Platform.OS === 'web') {
+        // For web, use the File object directly if available, otherwise create one
+        if (resumeFile.file instanceof File) {
+          formDataToSend.append('resume', resumeFile.file);
+        } else if (resumeFile.uri instanceof File) {
+          formDataToSend.append('resume', resumeFile.uri);
+        } else {
+          // Fetch the file and create a File object
+          try {
+            const fileResponse = await fetch(resumeFile.uri);
+            const blob = await fileResponse.blob();
+            const file = new File([blob], resumeFile.name, { type: resumeFile.type });
+            formDataToSend.append('resume', file);
+          } catch (fileError) {
+            console.error('Error creating file from URI:', fileError);
+            throw new Error('Failed to process resume file');
+          }
+        }
+      } else {
+        // For mobile (React Native), use the object format
+        formDataToSend.append('resume', {
+          uri: resumeFile.uri,
+          type: resumeFile.type,
+          name: resumeFile.name,
+        });
+      }
 
-      const response = await fetch('http://10.0.2.2:5000/api/resume/parse', {
+      const response = await fetch(`${API_URL}/resume/parse`, {
         method: 'POST',
         body: formDataToSend,
       });
@@ -148,10 +214,24 @@ const RegisterScreen = ({ navigation }) => {
         if (parsedData.phone && !formData.phone) {
           updateFormData('phone', parsedData.phone);
         }
+        if (parsedData.dateOfBirth && !formData.dateOfBirth) {
+          try {
+            const dobDate = parseDate(parsedData.dateOfBirth);
+            updateFormData('dateOfBirth', dobDate);
+          } catch (e) {
+            console.log('Failed to parse date of birth:', e);
+          }
+        }
         
         Alert.alert(
           'Resume Parsed',
           'Resume has been parsed successfully. Form fields have been auto-filled.'
+        );
+      } else {
+        console.error('Resume parsing failed:', data);
+        Alert.alert(
+          'Parsing Failed',
+          'Could not parse resume automatically, but the file has been uploaded. Please fill the form manually.'
         );
       }
     } catch (error) {
@@ -226,13 +306,31 @@ const RegisterScreen = ({ navigation }) => {
         if (formData.resume) {
           try {
             const formDataToSend = new FormData();
-            formDataToSend.append('resume', {
-              uri: formData.resume.uri,
-              type: formData.resume.type,
-              name: formData.resume.name,
-            });
             
-            await fetch(`http://10.0.2.2:5000/api/users/upload-resume`, {
+            // Handle file upload differently for web vs mobile
+            if (Platform.OS === 'web') {
+              // For web, use the File object directly if available, otherwise create one
+              if (formData.resume.file instanceof File) {
+                formDataToSend.append('resume', formData.resume.file);
+              } else if (formData.resume.uri instanceof File) {
+                formDataToSend.append('resume', formData.resume.uri);
+              } else {
+                // Fetch the file and create a File object
+                const fileResponse = await fetch(formData.resume.uri);
+                const blob = await fileResponse.blob();
+                const file = new File([blob], formData.resume.name, { type: formData.resume.type });
+                formDataToSend.append('resume', file);
+              }
+            } else {
+              // For mobile (React Native), use the object format
+              formDataToSend.append('resume', {
+                uri: formData.resume.uri,
+                type: formData.resume.type,
+                name: formData.resume.name,
+              });
+            }
+            
+            await fetch(`${API_URL}/users/upload-resume`, {
               method: 'POST',
               headers: {
                 'Authorization': `Bearer ${response.token}`,
@@ -245,21 +343,11 @@ const RegisterScreen = ({ navigation }) => {
           }
         }
 
-        Alert.alert(
-          'Success',
-          'Registration successful! Redirecting to your dashboard...',
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                navigation.reset({
-                  index: 0,
-                  routes: [{ name: 'UserDashboard' }],
-                });
-              },
-            },
-          ]
-        );
+        // Redirect immediately without alert
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'UserDashboard' }],
+        });
       }
     } catch (error) {
       Alert.alert(
@@ -284,7 +372,8 @@ const RegisterScreen = ({ navigation }) => {
           <Text style={styles.headerSubtitle}>Let's Get Started, Tell us about Yourself.</Text>
         </LinearGradient>
 
-        <View style={styles.formContainer}>
+        <View style={styles.formCard}>
+          <View style={styles.formContainer}>
           {/* Upload Resume Section */}
           <View style={styles.uploadContainer}>
             <Text style={styles.label}>Upload Resume</Text>
@@ -516,6 +605,7 @@ const RegisterScreen = ({ navigation }) => {
               <Text style={styles.loginLink}>Login here</Text>
             </TouchableOpacity>
           </View>
+          </View>
         </View>
       </ScrollView>
 
@@ -616,44 +706,64 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
+    paddingBottom: spacing.xl,
   },
   header: {
-    padding: spacing.xl,
+    padding: spacing.xl + 8,
     alignItems: 'center',
+    paddingBottom: spacing.xl,
   },
   headerTitle: {
     ...typography.h2,
     color: colors.textWhite,
     textAlign: 'center',
-    marginBottom: spacing.xs,
+    marginBottom: spacing.sm,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   headerSubtitle: {
     ...typography.body1,
     color: colors.textWhite,
-    opacity: 0.9,
+    opacity: 0.95,
     textAlign: 'center',
+    fontSize: 15,
+    fontWeight: '400',
   },
   formContainer: {
     padding: spacing.lg,
+    maxWidth: 600,
+    width: '100%',
+    alignSelf: 'center',
+  },
+  formCard: {
+    backgroundColor: colors.cardBackground,
+    borderRadius: borderRadius.xl,
+    padding: spacing.xl,
+    marginHorizontal: spacing.md,
+    ...shadows.md,
+    marginBottom: spacing.xl,
   },
   uploadContainer: {
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
   },
   uploadButton: {
     borderWidth: 2,
     borderColor: colors.border,
     borderStyle: 'dashed',
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     padding: spacing.xl,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.cardBackground,
+    backgroundColor: colors.primaryLight,
     marginTop: spacing.xs,
+    minHeight: 120,
+    transition: 'all 0.3s ease',
   },
   uploadButtonText: {
     ...typography.body2,
-    color: colors.text,
+    color: colors.primary,
     marginTop: spacing.sm,
+    fontWeight: '600',
   },
   separatorContainer: {
     flexDirection: 'row',
@@ -669,45 +779,55 @@ const styles = StyleSheet.create({
     ...typography.body2,
     color: colors.textSecondary,
     marginHorizontal: spacing.md,
+    fontWeight: '500',
+    fontSize: 13,
   },
   checkboxContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     marginBottom: spacing.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.background,
   },
   checkboxLabel: {
     ...typography.body2,
     color: colors.text,
   },
   dobContainer: {
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
   },
   webDatePickerContainer: {
     position: 'relative',
     width: '100%',
   },
   genderContainer: {
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
   },
   referralContainer: {
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
   },
   label: {
     ...typography.body2,
     fontWeight: '600',
     color: colors.text,
-    marginBottom: spacing.xs,
+    marginBottom: spacing.sm,
+    fontSize: 15,
+    letterSpacing: 0.2,
   },
   pickerButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.cardBackground,
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: colors.border,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     padding: spacing.md,
     gap: spacing.sm,
+    minHeight: 52,
+    ...shadows.xs,
   },
   pickerText: {
     flex: 1,
@@ -723,13 +843,16 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   gradientButton: {
-    borderRadius: borderRadius.md,
-    marginTop: spacing.md,
+    borderRadius: borderRadius.lg,
+    marginTop: spacing.lg,
+    ...shadows.md,
+    overflow: 'hidden',
   },
   registerButton: {
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.md + 4,
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 56,
   },
   registerButtonText: {
     ...typography.button,

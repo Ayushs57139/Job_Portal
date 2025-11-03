@@ -64,6 +64,9 @@ web-build/
 # Logs
 logs
 *.log
+server/logs/
+server/pm2-error.log
+server/pm2-out.log
 
 # Runtime data
 pids

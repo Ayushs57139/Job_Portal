@@ -1,34 +1,139 @@
 // API Configuration and Service for React Native
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Platform } from 'react-native';
+// Import Platform - use try-catch wrapper in case it's not ready during module evaluation
+import { Platform as RNPlatform } from 'react-native';
 
-// Auto-detect API URL based on platform and environment
+// Safely assign Platform with fallback
+const Platform = (typeof RNPlatform !== 'undefined' && RNPlatform) 
+  ? RNPlatform 
+  : { OS: 'android' };
+
+// Lazy API URL resolution - only resolve when actually needed
+let _cachedApiUrl = null;
+
 const getApiUrl = () => {
-  if (Platform.OS === 'web') {
-    // For web, use relative URL or localhost
-    return window.location.origin.includes('localhost') 
-      ? 'http://localhost:5000/api' 
-      : '/api';
-  } else if (Platform.OS === 'android') {
-    // For Android emulator, use 10.0.2.2 to access host machine
-    return 'http://10.0.2.2:5000/api';
-  } else {
-    // For iOS simulator and physical devices, use localhost or your server IP
-    return 'http://localhost:5000/api';
+  // Return cached value if already computed
+  if (_cachedApiUrl !== null) {
+    return _cachedApiUrl;
+  }
+
+  try {
+    // Check for explicit API URL in environment variable (highest priority)
+    if (typeof process !== 'undefined' && process.env && process.env.EXPO_PUBLIC_API_URL) {
+      _cachedApiUrl = process.env.EXPO_PUBLIC_API_URL;
+      return _cachedApiUrl;
+    }
+    
+    // Safely get platform OS with extensive error handling
+    // Never access Platform.OS if Platform might not be ready
+    let platformOS = 'android'; // default fallback - safest for most cases
+    try {
+      // Check if Platform exists and is an object before accessing
+      if (Platform && typeof Platform === 'object' && Platform !== null) {
+        try {
+          const osValue = Platform.OS;
+          if (osValue && typeof osValue === 'string') {
+            platformOS = osValue;
+          }
+        } catch (osError) {
+          // Platform.OS access failed, use default
+          console.warn('Could not access Platform.OS, using default android');
+        }
+      }
+    } catch (e) {
+      // Platform itself might not be ready, use default
+      console.warn('Platform not ready, using default android');
+      platformOS = 'android';
+    }
+    
+    if (platformOS === 'web') {
+      // For web, use relative URL or localhost
+      // Safely check for window object
+      if (typeof window !== 'undefined' && window !== null && window.location && window.location.origin) {
+        _cachedApiUrl = window.location.origin.includes('localhost') 
+          ? 'http://localhost:5000/api' 
+          : '/api';
+        return _cachedApiUrl;
+      }
+      _cachedApiUrl = 'http://localhost:5000/api';
+      return _cachedApiUrl;
+    } else if (platformOS === 'android') {
+      // For Android: Try to detect if running on emulator or physical device
+      // Emulator uses 10.0.2.2, physical device needs actual server IP
+      // For Expo Go, use your computer's IP address (find via ipconfig on Windows)
+      const API_HOST = (typeof process !== 'undefined' && process.env && process.env.EXPO_PUBLIC_API_HOST) 
+        ? process.env.EXPO_PUBLIC_API_HOST 
+        : '10.0.2.2';
+      _cachedApiUrl = `http://${API_HOST}:5000/api`;
+      return _cachedApiUrl;
+    } else {
+      // For iOS simulator and physical devices, use localhost or your server IP
+      // For Expo Go on physical device, use your computer's IP address
+      const API_HOST = (typeof process !== 'undefined' && process.env && process.env.EXPO_PUBLIC_API_HOST) 
+        ? process.env.EXPO_PUBLIC_API_HOST 
+        : 'localhost';
+      _cachedApiUrl = `http://${API_HOST}:5000/api`;
+      return _cachedApiUrl;
+    }
+  } catch (error) {
+    console.warn('Error in getApiUrl, using default:', error);
+    _cachedApiUrl = 'http://localhost:5000/api';
+    return _cachedApiUrl;
   }
 };
 
-const API_BASE_URL = getApiUrl();
+// Get API URL - lazy initialization (only called when needed)
+const getAPIBaseURL = () => {
+  if (_cachedApiUrl === null) {
+    try {
+      getApiUrl();
+    } catch (error) {
+      // If getApiUrl fails, use safe default for Android
+      console.warn('Error in getApiUrl, using safe default:', error);
+      _cachedApiUrl = 'http://10.0.2.2:5000/api';
+    }
+  }
+  return _cachedApiUrl || 'http://10.0.2.2:5000/api';
+};
 
 class JobWalaAPI {
   constructor() {
-    this.baseURL = API_BASE_URL;
+    // Don't resolve API URL in constructor - resolve lazily when needed
+    this._baseURL = null;
     this.token = null;
-    this.init();
+    // Don't call init in constructor - make it lazy
+    this._initPromise = null;
+  }
+
+  // Lazy getter for baseURL
+  get baseURL() {
+    if (this._baseURL === null) {
+      this._baseURL = getAPIBaseURL();
+    }
+    return this._baseURL;
+  }
+
+  set baseURL(value) {
+    this._baseURL = value;
   }
 
   async init() {
-    this.token = await AsyncStorage.getItem('token');
+    if (this._initPromise) {
+      return this._initPromise;
+    }
+    this._initPromise = this._doInit();
+    return this._initPromise;
+  }
+
+  async _doInit() {
+    try {
+      if (AsyncStorage && typeof AsyncStorage.getItem === 'function') {
+        this.token = await AsyncStorage.getItem('token');
+      }
+    } catch (error) {
+      console.warn('Error initializing token from storage:', error);
+      this.token = null;
+    }
   }
   
   // Set custom API URL (useful for production)
@@ -93,20 +198,31 @@ class JobWalaAPI {
 
   // Make API request
   async request(endpoint, options = {}) {
-    const url = `${this.baseURL}${endpoint}`;
-    const config = {
-      headers: this.getHeaders(),
-      ...options,
-    };
+    // Ensure init is called before making requests
+    if (!this.token && AsyncStorage) {
+      await this.init();
+    }
 
     try {
-      const response = await fetch(url, config);
-      const data = await response.json();
+      const url = `${this.baseURL}${endpoint}`;
+      const config = {
+        headers: this.getHeaders(),
+        ...options,
+      };
 
+      const response = await fetch(url, config);
+      
       if (!response.ok) {
-        throw new Error(data.message || 'API request failed');
+        const errorData = await response.json().catch(() => ({ message: 'API request failed' }));
+        // Handle validation errors array
+        if (errorData.errors && Array.isArray(errorData.errors)) {
+          const errorMessages = errorData.errors.map(err => err.msg || err.message || JSON.stringify(err)).join(', ');
+          throw new Error(errorMessages);
+        }
+        throw new Error(errorData.message || 'API request failed');
       }
 
+      const data = await response.json();
       return data;
     } catch (error) {
       console.error('API Error:', error);
@@ -1250,10 +1366,45 @@ class JobWalaAPI {
   }
 }
 
-const apiInstance = new JobWalaAPI();
+// Create API instance safely
+let apiInstance;
+try {
+  apiInstance = new JobWalaAPI();
+} catch (error) {
+  console.error('Error creating API instance:', error);
+  // Create a minimal fallback instance to prevent crashes
+  apiInstance = {
+    _baseURL: null,
+    get baseURL() {
+      if (this._baseURL === null) {
+        this._baseURL = getAPIBaseURL();
+      }
+      return this._baseURL;
+    },
+    set baseURL(value) { this._baseURL = value; },
+    token: null,
+    async init() {},
+    async request() { throw new Error('API not initialized'); },
+    getHeaders: () => ({ 'Content-Type': 'application/json' })
+  };
+}
 
 // Export both the API instance and the base URL for direct use
+// Use a safe default that doesn't require Platform to be initialized
+// The actual URL will be computed lazily when getAPIBaseURL() is called
+const API_URL = (() => {
+  try {
+    // Try to get the API URL, but don't fail if Platform isn't ready
+    const url = getAPIBaseURL();
+    return url;
+  } catch (error) {
+    // If anything fails, use a safe default for Android (most common case)
+    // This will work for emulator and can be overridden via environment variable
+    return 'http://10.0.2.2:5000/api';
+  }
+})();
+
 export default apiInstance;
-export const API_URL = API_BASE_URL;
+export { API_URL };
 export const api = apiInstance;
 

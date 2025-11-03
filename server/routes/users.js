@@ -21,7 +21,8 @@ const storage = multer.diskStorage({
   filename: function (req, file, cb) {
     // Generate unique filename with timestamp
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'profile-' + req.user._id + '-' + uniqueSuffix + path.extname(file.originalname));
+    const userId = req.user ? req.user._id : 'temp';
+    cb(null, 'profile-' + userId + '-' + uniqueSuffix + path.extname(file.originalname));
   }
 });
 
@@ -129,7 +130,8 @@ const resumeStorage = multer.diskStorage({
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'resume-' + req.user._id + '-' + uniqueSuffix + path.extname(file.originalname));
+    const userId = req.user ? req.user._id : 'temp';
+    cb(null, 'resume-' + userId + '-' + uniqueSuffix + path.extname(file.originalname));
   }
 });
 

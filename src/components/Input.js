@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, TextInput, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, borderRadius, typography } from '../styles/theme';
+import { colors, spacing, borderRadius, typography, shadows } from '../styles/theme';
 
 const Input = ({
   label,
@@ -77,25 +77,29 @@ const Input = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
   },
   label: {
     ...typography.body2,
     fontWeight: '600',
     color: colors.text,
-    marginBottom: spacing.xs,
+    marginBottom: spacing.sm,
+    fontSize: 15,
+    letterSpacing: 0.2,
   },
   inputContainer: {
     position: 'relative',
   },
   input: {
     backgroundColor: colors.cardBackground,
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: colors.border,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    fontSize: 16,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md + 2,
+    fontSize: 15,
     color: colors.text,
+    minHeight: 52,
+    ...shadows.xs,
   },
   inputWithIcon: {
     paddingLeft: 48,
@@ -115,14 +119,16 @@ const styles = StyleSheet.create({
   },
   icon: {
     position: 'absolute',
-    left: spacing.md,
-    top: spacing.md,
+    left: spacing.md + 2,
+    top: '50%',
+    transform: [{ translateY: -10 }],
     zIndex: 1,
   },
   iconRight: {
     position: 'absolute',
-    right: spacing.md,
-    top: spacing.md,
+    right: spacing.md + 2,
+    top: '50%',
+    transform: [{ translateY: -10 }],
     zIndex: 1,
   },
   errorText: {

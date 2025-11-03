@@ -148,7 +148,7 @@ const AppNavigator = () => {
     'CompanyPackages', 'CompanyAnalytics', 'CompanySettings',
     'ConsultancyLogin', 'ConsultancyDashboard', 'ConsultancyJobs', 'ConsultancyApplications', 'ConsultancyProfile',
     'ConsultancyTeam', 'ConsultancyPackages', 'ConsultancyAnalytics', 'ConsultancySettings',
-    'JobseekerDashboard', 'JobseekerProfile', 'JobseekerApplications', 'JobseekerSettings',
+    'UserDashboard', 'JobseekerDashboard', 'JobseekerProfile', 'JobseekerApplications', 'JobseekerSettings',
     'EmployerDashboard', 'EmployerProfile'
   ];
 
