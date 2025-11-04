@@ -135,11 +135,14 @@ const AdminLoginScreen = ({ navigation, route }) => {
               {/* User ID / Email Input */}
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>User ID or Email</Text>
-                <View style={styles.inputWrapper}>
+                <View style={[
+                  styles.inputWrapper,
+                  loginId && styles.inputWrapperFilled
+                ]}>
                   <Ionicons
                     name="person-circle-outline"
                     size={22}
-                    color={colors.textSecondary}
+                    color={loginId ? colors.primary : colors.textSecondary}
                     style={styles.inputIcon}
                   />
                   <TextInput
@@ -158,11 +161,14 @@ const AdminLoginScreen = ({ navigation, route }) => {
               {/* Password Input */}
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Password</Text>
-                <View style={styles.inputWrapper}>
+                <View style={[
+                  styles.inputWrapper,
+                  password && styles.inputWrapperFilled
+                ]}>
                   <Ionicons
                     name="lock-closed-outline"
                     size={22}
-                    color={colors.textSecondary}
+                    color={password ? colors.primary : colors.textSecondary}
                     style={styles.inputIcon}
                   />
                   <TextInput
@@ -177,11 +183,12 @@ const AdminLoginScreen = ({ navigation, route }) => {
                   <TouchableOpacity
                     style={styles.eyeIcon}
                     onPress={() => setShowPassword(!showPassword)}
+                    activeOpacity={0.7}
                   >
                     <Ionicons
                       name={showPassword ? 'eye-outline' : 'eye-off-outline'}
                       size={22}
-                      color={colors.textSecondary}
+                      color={password ? colors.primary : colors.textSecondary}
                     />
                   </TouchableOpacity>
                 </View>
@@ -268,63 +275,104 @@ const styles = StyleSheet.create({
   headerCard: {
     padding: spacing.xxl,
     alignItems: 'center',
-    paddingTop: spacing.xxl * 1.5,
+    paddingTop: spacing.xxl * 2,
+    paddingBottom: spacing.xxl * 2,
+    minHeight: 320,
+    justifyContent: 'center',
   },
   iconContainer: {
-    width: 120,
-    height: 120,
+    width: 140,
+    height: 140,
     borderRadius: borderRadius.full,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xl,
+    borderWidth: 3,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 10,
   },
   headerTitle: {
     ...typography.h2,
     color: colors.textWhite,
-    fontWeight: '700',
-    marginBottom: spacing.xs,
+    fontWeight: '800',
+    marginBottom: spacing.sm,
+    fontSize: 36,
+    letterSpacing: 0.5,
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
   headerSubtitle: {
     ...typography.body1,
     color: colors.textWhite,
-    opacity: 0.9,
+    opacity: 0.95,
     textAlign: 'center',
+    fontSize: 16,
+    fontWeight: '500',
+    letterSpacing: 0.3,
   },
   formContainer: {
     padding: spacing.lg,
-    marginTop: -spacing.xl,
+    marginTop: -spacing.xxl * 1.5,
+    paddingBottom: spacing.xxl,
   },
   formCard: {
     backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.lg,
-    padding: spacing.xl,
-    ...shadows.md,
+    borderRadius: borderRadius.xl,
+    padding: spacing.xxl,
+    ...shadows.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.05)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 12,
   },
   formTitle: {
     ...typography.h5,
     color: colors.text,
     fontWeight: '700',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xl,
     textAlign: 'center',
+    fontSize: 24,
+    letterSpacing: 0.3,
   },
   inputGroup: {
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xl,
   },
   inputLabel: {
     ...typography.subtitle2,
     color: colors.text,
     fontWeight: '600',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
+    fontSize: 14,
+    letterSpacing: 0.2,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.background,
-    borderRadius: borderRadius.sm,
-    borderWidth: 1,
+    borderRadius: borderRadius.md,
+    borderWidth: 1.5,
     borderColor: colors.border,
     paddingHorizontal: spacing.md,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  inputWrapperFilled: {
+    borderColor: colors.primary,
+    backgroundColor: `${colors.primary}05`,
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
   },
   inputIcon: {
     marginRight: spacing.sm,
@@ -333,28 +381,40 @@ const styles = StyleSheet.create({
     flex: 1,
     ...typography.body1,
     color: colors.text,
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.md + 2,
+    fontSize: 16,
   },
   passwordInput: {
     paddingRight: spacing.md,
   },
   eyeIcon: {
-    padding: spacing.xs,
+    padding: spacing.sm,
+    borderRadius: borderRadius.sm,
   },
   forgotPasswordButton: {
     alignSelf: 'flex-end',
-    marginBottom: spacing.lg,
-    padding: spacing.xs,
+    marginBottom: spacing.xl,
+    marginTop: -spacing.sm,
+    padding: spacing.sm,
+    borderRadius: borderRadius.sm,
   },
   forgotPasswordText: {
     ...typography.body2,
     color: colors.primary,
     fontWeight: '600',
+    fontSize: 14,
   },
   loginButton: {
-    borderRadius: borderRadius.sm,
+    borderRadius: borderRadius.md,
     overflow: 'hidden',
-    ...shadows.sm,
+    ...shadows.md,
+    marginTop: spacing.md,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 8,
+    transform: [{ scale: 1 }],
   },
   loginButtonDisabled: {
     opacity: 0.6,
@@ -363,40 +423,50 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.md,
-    gap: spacing.sm,
+    paddingVertical: spacing.lg,
+    gap: spacing.md,
+    minHeight: 56,
   },
   loginButtonText: {
     ...typography.button,
     color: colors.textWhite,
     fontWeight: '700',
+    fontSize: 16,
+    letterSpacing: 0.5,
   },
   securityNotice: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: spacing.lg,
-    padding: spacing.md,
-    backgroundColor: `${colors.info}15`,
-    borderRadius: borderRadius.sm,
-    gap: spacing.sm,
+    marginTop: spacing.xl,
+    padding: spacing.md + 4,
+    backgroundColor: `${colors.info}12`,
+    borderRadius: borderRadius.md,
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: `${colors.info}30`,
   },
   securityNoticeText: {
     ...typography.caption,
     color: colors.info,
     flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
   },
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: spacing.lg,
+    marginTop: spacing.xl,
     padding: spacing.md,
-    gap: spacing.xs,
+    gap: spacing.sm,
+    borderRadius: borderRadius.md,
+    backgroundColor: 'rgba(0, 0, 0, 0.02)',
   },
   backButtonText: {
     ...typography.body1,
     color: colors.primary,
     fontWeight: '600',
+    fontSize: 15,
   },
 });
 

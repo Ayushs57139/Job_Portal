@@ -28,8 +28,7 @@ const chatbotConversationSchema = new mongoose.Schema({
   sessionId: {
     type: String,
     required: true,
-    unique: true,
-    index: true
+    unique: true
   },
   
   // Messages in the conversation
@@ -98,7 +97,7 @@ const chatbotConversationSchema = new mongoose.Schema({
 });
 
 // Indexes
-chatbotConversationSchema.index({ sessionId: 1 });
+// Note: sessionId already has an index from unique: true
 chatbotConversationSchema.index({ userId: 1 });
 chatbotConversationSchema.index({ status: 1 });
 chatbotConversationSchema.index({ lastActivity: -1 });

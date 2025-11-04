@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
-import { AdMobBanner, setTestDeviceIDAsync } from 'expo-ads-admob';
 
 /**
  * Google AdMob Component - Fully Integrated
@@ -27,6 +26,8 @@ const AdMobComponent = ({
   const [adError, setAdError] = useState(null);
   const [isAdReady, setIsAdReady] = useState(false);
   const [showAd, setShowAd] = useState(false);
+  const [AdMobBanner, setAdMobBanner] = useState(null);
+  const [setTestDeviceIDAsync, setSetTestDeviceIDAsync] = useState(null);
 
   // Google AdMob Test IDs
   const TEST_AD_UNIT_IDS = {
@@ -59,6 +60,17 @@ const AdMobComponent = ({
       return;
     }
 
+    // Dynamically require expo-ads-admob only on native platforms
+    try {
+      const admob = require('expo-ads-admob');
+      setAdMobBanner(() => admob.AdMobBanner);
+      setSetTestDeviceIDAsync(() => admob.setTestDeviceIDAsync);
+    } catch (error) {
+      console.warn('expo-ads-admob not available:', error);
+      setAdError('AdMob module not available');
+      return;
+    }
+
     if (!adUnitId) {
       setAdError('AdMob Ad Unit ID is required');
       return;
@@ -70,7 +82,7 @@ const AdMobComponent = ({
   const initializeAdMob = async () => {
     try {
       // Set test device ID in development mode
-      if (testMode || __DEV__) {
+      if (setTestDeviceIDAsync && (testMode || __DEV__)) {
         await setTestDeviceIDAsync('EMULATOR');
       }
 
@@ -156,6 +168,11 @@ const AdMobComponent = ({
 
   // Don't render until ready
   if (!showAd) {
+    return null;
+  }
+
+  // Don't render if AdMobBanner is not available (e.g., on web)
+  if (!AdMobBanner) {
     return null;
   }
 

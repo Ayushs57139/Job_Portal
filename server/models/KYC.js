@@ -197,7 +197,7 @@ const kycSchema = new mongoose.Schema({
 });
 
 // Index for efficient queries
-kycSchema.index({ userId: 1 });
+// Note: userId already has an index from unique: true
 kycSchema.index({ submissionStatus: 1 });
 kycSchema.index({ userType: 1 });
 
