@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { colors, spacing, borderRadius, shadows, typography } from '../styles/theme';
 import api from '../config/api';
 
+const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
+const isWideScreen = width > 768;
+const isTablet = width > 600 && width <= 768;
+const isMobile = width <= 600;
 
 const JobCard = ({ job }) => {
   const navigation = useNavigation();
@@ -177,7 +181,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.cardBackground,
     borderRadius: borderRadius.lg,
-    padding: spacing.lg,
+    padding: isWideScreen ? spacing.lg : spacing.md,
     marginBottom: spacing.md,
     ...shadows.md,
     borderWidth: 1,
@@ -200,8 +204,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   companyLogo: {
-    width: 50,
-    height: 50,
+    width: isMobile ? 44 : 50,
+    height: isMobile ? 44 : 50,
     borderRadius: borderRadius.md,
     backgroundColor: colors.background,
     justifyContent: 'center',
@@ -217,11 +221,12 @@ const styles = StyleSheet.create({
     ...typography.body1,
     color: colors.text,
     fontWeight: '600',
+    fontSize: isWideScreen ? 16 : 14,
   },
   postedDate: {
     ...typography.caption,
     color: colors.textLight,
-    fontSize: 12,
+    fontSize: isWideScreen ? 12 : 11,
   },
   saveButton: {
     padding: spacing.xs,
@@ -232,23 +237,24 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontWeight: '700',
     marginBottom: spacing.md,
-    lineHeight: 26,
+    lineHeight: isWideScreen ? 26 : 24,
+    fontSize: isWideScreen ? 18 : 16,
   },
   detailsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.md,
+    gap: isWideScreen ? spacing.md : spacing.sm,
     marginBottom: spacing.md,
   },
   detailItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    minWidth: '45%',
+    minWidth: isMobile ? '100%' : '45%',
   },
   detailIcon: {
-    width: 32,
-    height: 32,
+    width: isMobile ? 28 : 32,
+    height: isMobile ? 28 : 32,
     borderRadius: borderRadius.sm,
     backgroundColor: colors.background,
     justifyContent: 'center',
@@ -261,7 +267,7 @@ const styles = StyleSheet.create({
   detailLabel: {
     ...typography.caption,
     color: colors.textLight,
-    fontSize: 11,
+    fontSize: isWideScreen ? 11 : 10,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -269,13 +275,14 @@ const styles = StyleSheet.create({
     ...typography.body2,
     color: colors.text,
     fontWeight: '600',
+    fontSize: isWideScreen ? 14 : 13,
   },
   salaryBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     backgroundColor: '#ECFDF5',
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: isWideScreen ? spacing.md : spacing.sm,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.md,
     alignSelf: 'flex-start',
@@ -287,6 +294,7 @@ const styles = StyleSheet.create({
     ...typography.body2,
     color: '#059669',
     fontWeight: '700',
+    fontSize: isWideScreen ? 14 : 13,
   },
   skills: {
     flexDirection: 'row',
@@ -296,7 +304,7 @@ const styles = StyleSheet.create({
   },
   skill: {
     backgroundColor: colors.background,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: isWideScreen ? spacing.md : spacing.sm,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.xl,
     borderWidth: 1,
@@ -306,7 +314,7 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.primary,
     fontWeight: '600',
-    fontSize: 12,
+    fontSize: isWideScreen ? 12 : 11,
   },
   footer: {
     flexDirection: 'row',
@@ -322,17 +330,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: spacing.sm,
     backgroundColor: colors.primary,
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: isWideScreen ? spacing.xl : spacing.lg,
     paddingVertical: spacing.md,
     borderRadius: borderRadius.md,
     ...shadows.sm,
-    minWidth: 140,
+    minWidth: isMobile ? 120 : 140,
   },
   applyButtonText: {
     ...typography.button,
     color: colors.textWhite,
     fontWeight: '700',
-    fontSize: 15,
+    fontSize: isWideScreen ? 15 : 14,
   },
 });
 

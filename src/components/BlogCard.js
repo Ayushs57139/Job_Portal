@@ -1,11 +1,14 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { colors, spacing, borderRadius, shadows, typography } from '../styles/theme';
 
+const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
+const isWideScreen = width > 768;
+const isMobile = width <= 600;
 
 const BlogCard = ({ blog }) => {
   const navigation = useNavigation();
@@ -71,7 +74,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.cardBackground,
     borderRadius: borderRadius.lg,
     marginRight: spacing.md,
-    width: 320,
+    width: isMobile ? width - spacing.lg * 2 : isWideScreen ? 320 : 280,
     overflow: 'hidden',
     ...shadows.md,
     ...(isWeb && {
@@ -80,12 +83,12 @@ const styles = StyleSheet.create({
     }),
   },
   imageContainer: {
-    height: 180,
+    height: isMobile ? 150 : 180,
     justifyContent: 'center',
     alignItems: 'center',
   },
   content: {
-    padding: spacing.lg,
+    padding: isWideScreen ? spacing.lg : spacing.md,
   },
   categoryBadge: {
     alignSelf: 'flex-start',
@@ -98,17 +101,20 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textWhite,
     fontWeight: '600',
+    fontSize: isWideScreen ? 12 : 11,
   },
   title: {
     ...typography.h4,
     color: colors.text,
     marginBottom: spacing.sm,
+    fontSize: isWideScreen ? 20 : 18,
   },
   excerpt: {
     ...typography.body2,
     color: colors.textSecondary,
     marginBottom: spacing.md,
-    lineHeight: 20,
+    lineHeight: isWideScreen ? 20 : 18,
+    fontSize: isWideScreen ? 14 : 13,
   },
   footer: {
     flexDirection: 'row',
@@ -123,6 +129,7 @@ const styles = StyleSheet.create({
   metaText: {
     ...typography.caption,
     color: colors.textSecondary,
+    fontSize: isWideScreen ? 12 : 11,
   },
   readMore: {
     flexDirection: 'row',
@@ -133,6 +140,7 @@ const styles = StyleSheet.create({
     ...typography.body2,
     color: colors.primary,
     fontWeight: '600',
+    fontSize: isWideScreen ? 14 : 13,
   },
 });
 

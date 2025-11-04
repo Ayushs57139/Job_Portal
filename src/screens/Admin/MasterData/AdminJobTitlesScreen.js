@@ -30,12 +30,39 @@ const AdminJobTitlesScreen = ({ navigation }) => {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const response = await fetch(`${API_URL}/admin/master-data/job-titles`, { headers });
+      const fullUrl = `${API_URL}/admin/master-data/job-titles`;
+      console.log('[AdminJobTitlesScreen] Fetching from:', fullUrl);
+      
+      const response = await fetch(fullUrl, { 
+        headers,
+        method: 'GET',
+        credentials: 'include'
+      });
+      
+      console.log('[AdminJobTitlesScreen] Response status:', response.status, response.statusText);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[AdminJobTitlesScreen] Error response:', errorText);
+        throw new Error(`API returned status ${response.status}: ${errorText}`);
+      }
+      
       const data = await response.json();
-      setJobTitles(data.data || []);
+      console.log('[AdminJobTitlesScreen] Response data:', data);
+      const fetchedItems = data.success && data.data ? data.data : (data.data || data.jobTitles || []);
+      
+      // Normalize id fields: ensure both _id and id are available
+      const normalizedItems = fetchedItems.map(item => ({
+        ...item,
+        _id: item._id || item.id,
+        id: item.id || item._id
+      }));
+      
+      setJobTitles(normalizedItems);
     } catch (error) {
       console.error('Error fetching job titles:', error);
-      Alert.alert('Error', 'Failed to fetch job titles');
+      Alert.alert('Error', `Failed to fetch job titles: ${error.message || error}`);
+      setJobTitles([]);
     } finally {
       setLoading(false);
     }
@@ -83,7 +110,8 @@ const AdminJobTitlesScreen = ({ navigation }) => {
   };
 
   const handleEdit = (item) => {
-    setCurrentItem({ id: item._id, name: item.name });
+    const itemId = item._id || item.id;
+    setCurrentItem({ id: itemId, name: item.name });
     setEditMode(true);
     setModalVisible(true);
   };
@@ -185,25 +213,28 @@ const AdminJobTitlesScreen = ({ navigation }) => {
           <ScrollView style={styles.listContainer} showsVerticalScrollIndicator={false}>
             <View style={styles.listWrapper}>
               {filteredJobTitles.length > 0 ? (
-                filteredJobTitles.map((item, index) => (
-                  <View key={item._id || index} style={styles.listItem}>
-                    <Text style={styles.itemName}>{item.name}</Text>
-                    <View style={styles.itemActions}>
-                      <TouchableOpacity
-                        style={styles.editButton}
-                        onPress={() => handleEdit(item)}
-                      >
-                        <Ionicons name="create-outline" size={18} color="#4A90E2" />
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={styles.deleteButton}
-                        onPress={() => handleDelete(item._id)}
-                      >
-                        <Ionicons name="trash-outline" size={18} color="#E74C3C" />
-                      </TouchableOpacity>
+                                filteredJobTitles.map((item, index) => {
+                  const itemId = item._id || item.id;
+                  return (
+                    <View key={itemId || index} style={styles.listItem}>        
+                      <Text style={styles.itemName}>{item.name}</Text>
+                      <View style={styles.itemActions}>
+                        <TouchableOpacity
+                          style={styles.editButton}
+                          onPress={() => handleEdit(item)}
+                        >
+                          <Ionicons name="create-outline" size={18} color="#4A90E2" />                                                                            
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.deleteButton}
+                          onPress={() => handleDelete(itemId)}
+                        >
+                          <Ionicons name="trash-outline" size={18} color="#E74C3C" />                                                                             
+                        </TouchableOpacity>
+                      </View>
                     </View>
-                  </View>
-                ))
+                  );
+                })
               ) : (
                 <View style={styles.emptyState}>
                   <Ionicons name="folder-open-outline" size={64} color="#CCC" />

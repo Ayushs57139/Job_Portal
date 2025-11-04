@@ -1,7 +1,12 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, View } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, View, Dimensions, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, shadows, typography } from '../styles/theme';
+
+const { width } = Dimensions.get('window');
+const isWeb = Platform.OS === 'web';
+const isWideScreen = width > 768;
+const isMobile = width <= 600;
 
 const Button = ({ 
   title, 
@@ -77,16 +82,18 @@ const styles = StyleSheet.create({
   button: {
     backgroundColor: colors.primary,
     borderRadius: borderRadius.md,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
+    paddingVertical: isWideScreen ? spacing.md : spacing.sm + 2,
+    paddingHorizontal: isWideScreen ? spacing.lg : spacing.md,
     alignItems: 'center',
     justifyContent: 'center',
     ...shadows.sm,
+    minHeight: isMobile ? 44 : 48,
   },
   buttonContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: spacing.xs,
   },
   buttonIcon: {
     marginLeft: spacing.xs,
@@ -105,9 +112,11 @@ const styles = StyleSheet.create({
   buttonText: {
     ...typography.button,
     color: colors.textWhite,
+    fontSize: isWideScreen ? 16 : 14,
   },
   buttonSecondaryText: {
     color: colors.primary,
+    fontSize: isWideScreen ? 16 : 14,
   },
 });
 

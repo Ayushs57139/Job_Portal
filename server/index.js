@@ -209,7 +209,7 @@ app.use('/api/blogs', require('./routes/blogs'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/applications', require('./routes/applications'));
 app.use('/api/employers', require('./routes/employers'));
-app.use('/api/admin', require('./admin'));
+app.use('/api/admin', require('./routes/admin'));
 app.use('/api/admin/logos', require('./routes/logos'));
 app.use('/api/logos', require('./routes/logos'));
 app.use('/api/bulk', require('./routes/bulkImportExport'));

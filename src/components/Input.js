@@ -1,7 +1,12 @@
 import React, { useState } from 'react';
-import { View, TextInput, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, TextInput, Text, StyleSheet, TouchableOpacity, Dimensions, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, typography, shadows } from '../styles/theme';
+
+const { width } = Dimensions.get('window');
+const isWeb = Platform.OS === 'web';
+const isWideScreen = width > 768;
+const isMobile = width <= 600;
 
 const Input = ({
   label,
@@ -84,7 +89,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.text,
     marginBottom: spacing.sm,
-    fontSize: 15,
+    fontSize: isWideScreen ? 15 : 14,
     letterSpacing: 0.2,
   },
   inputContainer: {
@@ -95,17 +100,17 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: colors.border,
     borderRadius: borderRadius.lg,
-    padding: spacing.md + 2,
-    fontSize: 15,
+    padding: isWideScreen ? spacing.md + 2 : spacing.md,
+    fontSize: isWideScreen ? 15 : 14,
     color: colors.text,
-    minHeight: 52,
+    minHeight: isMobile ? 48 : 52,
     ...shadows.xs,
   },
   inputWithIcon: {
-    paddingLeft: 48,
+    paddingLeft: isMobile ? 44 : 48,
   },
   inputWithIconRight: {
-    paddingRight: 48,
+    paddingRight: isMobile ? 44 : 48,
   },
   inputFocused: {
     borderColor: colors.primary,
@@ -114,19 +119,19 @@ const styles = StyleSheet.create({
     borderColor: colors.error,
   },
   inputMultiline: {
-    minHeight: 100,
+    minHeight: isMobile ? 90 : 100,
     textAlignVertical: 'top',
   },
   icon: {
     position: 'absolute',
-    left: spacing.md + 2,
+    left: isMobile ? spacing.md : spacing.md + 2,
     top: '50%',
     transform: [{ translateY: -10 }],
     zIndex: 1,
   },
   iconRight: {
     position: 'absolute',
-    right: spacing.md + 2,
+    right: isMobile ? spacing.md : spacing.md + 2,
     top: '50%',
     transform: [{ translateY: -10 }],
     zIndex: 1,
@@ -134,7 +139,7 @@ const styles = StyleSheet.create({
   errorText: {
     ...typography.caption,
     color: colors.error,
-    marginTop: spacing.xs,
+    fontSize: isWideScreen ? 12 : 11,
   },
 });
 

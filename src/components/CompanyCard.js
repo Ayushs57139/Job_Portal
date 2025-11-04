@@ -1,10 +1,13 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { colors, spacing, borderRadius, shadows, typography } from '../styles/theme';
 
+const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
+const isWideScreen = width > 768;
+const isMobile = width <= 600;
 
 const CompanyCard = ({ company }) => {
   const navigation = useNavigation();
@@ -111,7 +114,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.cardBackground,
     borderRadius: borderRadius.xl,
-    padding: spacing.lg,
+    padding: isWideScreen ? spacing.lg : spacing.md,
     ...shadows.lg,
     borderWidth: 1,
     borderColor: colors.borderLight,
@@ -127,14 +130,14 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: isMobile ? 48 : 56,
+    height: isMobile ? 48 : 56,
+    borderRadius: isMobile ? 24 : 28,
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarText: {
-    fontSize: 24,
+    fontSize: isMobile ? 20 : 24,
     fontWeight: '700',
     color: colors.textWhite,
   },
@@ -142,7 +145,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   companyName: {
-    fontSize: 18,
+    fontSize: isWideScreen ? 18 : 16,
     fontWeight: '700',
     color: colors.text,
     marginBottom: spacing.xs,
@@ -155,7 +158,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   industryText: {
-    fontSize: 12,
+    fontSize: isWideScreen ? 12 : 11,
     fontWeight: '600',
     color: '#4F46E5',
   },
@@ -169,7 +172,7 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.borderLight,
   },
   openPositions: {
-    fontSize: 14,
+    fontSize: isWideScreen ? 14 : 13,
     color: colors.text,
     fontWeight: '500',
   },
@@ -183,15 +186,15 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   ratingText: {
-    fontSize: 13,
+    fontSize: isWideScreen ? 13 : 12,
     color: colors.text,
     fontWeight: '600',
   },
   description: {
-    fontSize: 14,
+    fontSize: isWideScreen ? 14 : 13,
     color: colors.textSecondary,
     marginBottom: spacing.md,
-    lineHeight: 20,
+    lineHeight: isWideScreen ? 20 : 18,
   },
   viewJobsButton: {
     backgroundColor: '#6366F1',
@@ -202,7 +205,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   viewJobsText: {
-    fontSize: 15,
+    fontSize: isWideScreen ? 15 : 14,
     fontWeight: '600',
     color: colors.textWhite,
   },

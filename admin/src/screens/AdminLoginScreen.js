@@ -10,12 +10,19 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, typography, spacing, borderRadius, shadows } from '../styles/theme';
 // Header component removed - admin app doesn't need main site header
 import api from '../config/api';
+
+const { width, height } = Dimensions.get('window');
+const isWeb = Platform.OS === 'web';
+const isWideScreen = width > 768;
+const isTablet = width > 600 && width <= 768;
+const isMobile = width <= 600;
 
 const AdminLoginScreen = ({ navigation, route }) => {
   const [loginId, setLoginId] = useState('');
@@ -262,8 +269,11 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingBottom: spacing.xxl,
+    alignItems: 'center',
     ...(Platform.OS === 'web' && {
       width: '100%',
+      maxWidth: isWideScreen ? 600 : '100%',
+      alignSelf: 'center',
     }),
   },
   loadingContainer: {
@@ -278,16 +288,17 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   headerCard: {
-    padding: spacing.xxl,
+    padding: isWideScreen ? spacing.xxl : spacing.lg,
     alignItems: 'center',
-    paddingTop: spacing.xxl * 2,
-    paddingBottom: spacing.xxl * 2,
-    minHeight: 320,
+    paddingTop: isWideScreen ? spacing.xxl * 2 : spacing.xxl * 1.5,
+    paddingBottom: isWideScreen ? spacing.xxl * 2 : spacing.xxl * 1.5,
+    minHeight: isWideScreen ? 320 : 280,
+    width: '100%',
     justifyContent: 'center',
   },
   iconContainer: {
-    width: 140,
-    height: 140,
+    width: isWideScreen ? 140 : width > 400 ? 120 : 100,
+    height: isWideScreen ? 140 : width > 400 ? 120 : 100,
     borderRadius: borderRadius.full,
     backgroundColor: 'rgba(255, 255, 255, 0.25)',
     justifyContent: 'center',
@@ -306,30 +317,37 @@ const styles = StyleSheet.create({
     color: colors.textWhite,
     fontWeight: '800',
     marginBottom: spacing.sm,
-    fontSize: 36,
+    fontSize: isWideScreen ? 36 : width > 400 ? 32 : 28,
     letterSpacing: 0.5,
     textShadowColor: 'rgba(0, 0, 0, 0.2)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,
+    textAlign: 'center',
+    paddingHorizontal: spacing.md,
   },
   headerSubtitle: {
     ...typography.body1,
     color: colors.textWhite,
     opacity: 0.95,
     textAlign: 'center',
-    fontSize: 16,
+    fontSize: isWideScreen ? 16 : 14,
     fontWeight: '500',
     letterSpacing: 0.3,
+    paddingHorizontal: spacing.md,
   },
   formContainer: {
-    padding: spacing.lg,
-    marginTop: -spacing.xxl * 1.5,
+    padding: isWideScreen ? spacing.xl : spacing.lg,
+    marginTop: isWideScreen ? -spacing.xxl * 1.5 : -spacing.xxl,
     paddingBottom: spacing.xxl,
+    width: '100%',
+    ...(isWideScreen && {
+      maxWidth: 600,
+    }),
   },
   formCard: {
     backgroundColor: colors.cardBackground,
     borderRadius: borderRadius.xl,
-    padding: spacing.xxl,
+    padding: isWideScreen ? spacing.xxl : spacing.lg,
     ...shadows.lg,
     borderWidth: 1,
     borderColor: 'rgba(0, 0, 0, 0.05)',
@@ -338,6 +356,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 24,
     elevation: 12,
+    width: '100%',
   },
   formTitle: {
     ...typography.h5,
@@ -345,7 +364,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginBottom: spacing.xl,
     textAlign: 'center',
-    fontSize: 24,
+    fontSize: isWideScreen ? 24 : width > 400 ? 22 : 20,
     letterSpacing: 0.3,
   },
   inputGroup: {
@@ -356,7 +375,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontWeight: '600',
     marginBottom: spacing.md,
-    fontSize: 14,
+    fontSize: isWideScreen ? 14 : 13,
     letterSpacing: 0.2,
   },
   inputWrapper: {
@@ -387,7 +406,7 @@ const styles = StyleSheet.create({
     ...typography.body1,
     color: colors.text,
     paddingVertical: spacing.md + 2,
-    fontSize: 16,
+    fontSize: isWideScreen ? 16 : 15,
   },
   passwordInput: {
     paddingRight: spacing.md,
@@ -407,7 +426,7 @@ const styles = StyleSheet.create({
     ...typography.body2,
     color: colors.primary,
     fontWeight: '600',
-    fontSize: 14,
+    fontSize: isWideScreen ? 14 : 13,
   },
   loginButton: {
     borderRadius: borderRadius.md,
@@ -420,6 +439,7 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 8,
     transform: [{ scale: 1 }],
+    width: '100%',
   },
   loginButtonDisabled: {
     opacity: 0.6,
@@ -430,13 +450,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: spacing.lg,
     gap: spacing.md,
-    minHeight: 56,
+    minHeight: isWideScreen ? 56 : 52,
   },
   loginButtonText: {
     ...typography.button,
     color: colors.textWhite,
     fontWeight: '700',
-    fontSize: 16,
+    fontSize: isWideScreen ? 16 : 15,
     letterSpacing: 0.5,
   },
   securityNotice: {
@@ -454,8 +474,8 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.info,
     flex: 1,
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: isWideScreen ? 13 : 12,
+    lineHeight: isWideScreen ? 18 : 16,
   },
   backButton: {
     flexDirection: 'row',
@@ -466,12 +486,16 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     borderRadius: borderRadius.md,
     backgroundColor: 'rgba(0, 0, 0, 0.02)',
+    width: '100%',
+    ...(isWideScreen && {
+      maxWidth: 600,
+    }),
   },
   backButtonText: {
     ...typography.body1,
     color: colors.primary,
     fontWeight: '600',
-    fontSize: 15,
+    fontSize: isWideScreen ? 15 : 14,
   },
 });
 

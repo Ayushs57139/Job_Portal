@@ -1,7 +1,12 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Linking } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Linking, Dimensions, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { colors, spacing, typography } from '../styles/theme';
+
+const { width } = Dimensions.get('window');
+const isWeb = Platform.OS === 'web';
+const isWideScreen = width > 768;
+const isMobile = width <= 600;
 
 const Footer = () => {
   const navigation = useNavigation();
@@ -72,24 +77,24 @@ const Footer = () => {
 const styles = StyleSheet.create({
   footer: {
     backgroundColor: '#2D3748',
-    paddingTop: spacing.xxl,
+    paddingTop: isWideScreen ? spacing.xxl : spacing.xl,
   },
   footerContent: {
-    flexDirection: 'row',
+    flexDirection: isMobile ? 'column' : 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: isWideScreen ? spacing.lg : spacing.md,
     paddingBottom: spacing.xl,
-    gap: spacing.xl,
+    gap: isWideScreen ? spacing.xl : spacing.lg,
     maxWidth: 1200,
     marginHorizontal: 'auto',
     width: '100%',
   },
   companySection: {
-    flex: 1,
-    minWidth: 200,
+    flex: isMobile ? 1 : 1,
+    minWidth: isMobile ? '100%' : 200,
   },
   companyName: {
-    fontSize: 24,
+    fontSize: isWideScreen ? 24 : 20,
     fontWeight: '700',
     color: colors.textWhite,
     marginBottom: spacing.sm,
@@ -97,17 +102,19 @@ const styles = StyleSheet.create({
   tagline: {
     ...typography.body1,
     color: '#A0AEC0',
-    lineHeight: 24,
+    lineHeight: isWideScreen ? 24 : 22,
+    fontSize: isWideScreen ? 16 : 14,
   },
   section: {
-    flex: 1,
-    minWidth: 150,
+    flex: isMobile ? 1 : 1,
+    minWidth: isMobile ? '100%' : 150,
   },
   sectionTitle: {
     ...typography.h5,
     color: colors.textWhite,
     marginBottom: spacing.md,
     fontWeight: '600',
+    fontSize: isWideScreen ? 18 : 16,
   },
   linkButton: {
     paddingVertical: spacing.xs,
@@ -115,18 +122,21 @@ const styles = StyleSheet.create({
   linkText: {
     ...typography.body2,
     color: '#A0AEC0',
-    lineHeight: 24,
+    lineHeight: isWideScreen ? 24 : 22,
+    fontSize: isWideScreen ? 14 : 13,
   },
   bottomBar: {
     borderTopWidth: 1,
     borderTopColor: '#4A5568',
     paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: isWideScreen ? spacing.lg : spacing.md,
     alignItems: 'center',
   },
   copyright: {
     ...typography.body2,
     color: '#A0AEC0',
+    fontSize: isWideScreen ? 14 : 12,
+    textAlign: 'center',
   },
 });
 

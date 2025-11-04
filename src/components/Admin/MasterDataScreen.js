@@ -40,30 +40,45 @@ const MasterDataScreen = ({
       }
 
       const endpoint = fetchEndpoint || apiEndpoint;
-      const response = await fetch(`${API_URL}${endpoint}`, { headers });
+      const fullUrl = `${API_URL}${endpoint}`;
+      console.log(`[MasterDataScreen] Fetching ${title} from: ${fullUrl}`);
+      
+      const response = await fetch(fullUrl, { 
+        headers,
+        method: 'GET',
+        credentials: 'include'
+      });
+      
+      console.log(`[MasterDataScreen] Response status for ${title}:`, response.status, response.statusText);
       
       if (!response.ok) {
-        throw new Error(`API returned status ${response.status}`);
+        const errorText = await response.text();
+        console.error(`[MasterDataScreen] Error response for ${title}:`, errorText);
+        throw new Error(`API returned status ${response.status}: ${errorText}`);
       }
       
       const data = await response.json();
-      
+      console.log(`[MasterDataScreen] Response data for ${title}:`, data);
+
       // Try to find the data array in the response
       let fetchedItems = null;
-      
-      // Common key names for data arrays
-      const possibleKeys = [
-        title.toLowerCase(),
-        title.toLowerCase() + 's',
-        'data',
-        'items',
-        'results'
-      ];
-      
+
       // First, check if the response itself is an array
       if (Array.isArray(data)) {
         fetchedItems = data;
+      } else if (data.success && data.data && Array.isArray(data.data)) {
+        // Handle standard API response format: { success: true, data: [...] }
+        fetchedItems = data.data;
       } else {
+        // Common key names for data arrays
+        const possibleKeys = [
+          title.toLowerCase(),
+          title.toLowerCase() + 's',
+          'data',
+          'items',
+          'results'
+        ];
+
         // Look for array values in the response object
         for (const key of possibleKeys) {
           if (data[key] && Array.isArray(data[key])) {
@@ -71,7 +86,7 @@ const MasterDataScreen = ({
             break;
           }
         }
-        
+
         // If still not found, try to find any array in the response
         if (!fetchedItems) {
           const keys = Object.keys(data);
@@ -83,18 +98,24 @@ const MasterDataScreen = ({
           }
         }
       }
-      
-      // Ensure items is always an array
+
+      // Ensure items is always an array and normalize id/_id fields
       if (Array.isArray(fetchedItems)) {
-        setItems(fetchedItems);
+        // Normalize id fields: ensure both _id and id are available
+        const normalizedItems = fetchedItems.map(item => ({
+          ...item,
+          _id: item._id || item.id,
+          id: item.id || item._id
+        }));
+        setItems(normalizedItems);
       } else {
-        console.warn(`Expected array for ${title}, got:`, typeof fetchedItems);
+        console.warn(`Expected array for ${title}, got:`, typeof fetchedItems); 
         setItems([]);
       }
     } catch (error) {
       console.error(`Error fetching ${title}:`, error);
       setItems([]); // Ensure items is always an array even on error
-      Alert.alert('Error', `Failed to fetch ${title}`);
+      Alert.alert('Error', `Failed to fetch ${title}: ${error.message || error}`);
     } finally {
       setLoading(false);
     }
@@ -169,7 +190,8 @@ const MasterDataScreen = ({
   };
 
   const handleEdit = (item) => {
-    const editItem = { id: item._id, [fieldName]: item[fieldName] };
+    const itemId = item._id || item.id;
+    const editItem = { id: itemId, _id: itemId, [fieldName]: item[fieldName] || item.name };
     additionalFields.forEach(field => {
       editItem[field.key] = item[field.key] || field.defaultValue || '';
     });
@@ -284,38 +306,41 @@ const MasterDataScreen = ({
           <ScrollView style={styles.listContainer} showsVerticalScrollIndicator={false}>
             <View style={styles.listWrapper}>
               {filteredItems.length > 0 ? (
-                filteredItems.map((item, index) => (
-                  <View key={item._id || index} style={styles.listItem}>
-                    <View style={styles.itemContent}>
-                      <Text style={styles.itemName}>{item[fieldName]}</Text>
-                      {additionalFields.map(field => (
-                        field.displayInList && (
-                          <Text key={field.key} style={styles.itemSubtext}>
-                            {field.label}: {item[field.key]}
-                          </Text>
-                        )
-                      ))}
+                filteredItems.map((item, index) => {
+                  const itemId = item._id || item.id;
+                  return (
+                    <View key={itemId || index} style={styles.listItem}>        
+                      <View style={styles.itemContent}>
+                        <Text style={styles.itemName}>{item[fieldName] || item.name}</Text>    
+                        {additionalFields.map(field => (
+                          field.displayInList && (
+                            <Text key={field.key} style={styles.itemSubtext}>     
+                              {field.label}: {item[field.key]}
+                            </Text>
+                          )
+                        ))}
+                      </View>
+                      <View style={styles.itemActions}>
+                        <TouchableOpacity
+                          style={styles.editButton}
+                          onPress={() => handleEdit(item)}
+                        >
+                          <Ionicons name="create-outline" size={18} color="#4A90E2" />                                                                            
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.deleteButton}
+                          onPress={() => handleDelete(itemId)}
+                        >
+                          <Ionicons name="trash-outline" size={18} color="#E74C3C" />                                                                             
+                        </TouchableOpacity>
+                      </View>
                     </View>
-                    <View style={styles.itemActions}>
-                      <TouchableOpacity
-                        style={styles.editButton}
-                        onPress={() => handleEdit(item)}
-                      >
-                        <Ionicons name="create-outline" size={18} color="#4A90E2" />
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={styles.deleteButton}
-                        onPress={() => handleDelete(item._id)}
-                      >
-                        <Ionicons name="trash-outline" size={18} color="#E74C3C" />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                ))
+                  );
+                })
               ) : (
                 <View style={styles.emptyState}>
                   <Ionicons name="folder-open-outline" size={64} color="#CCC" />
-                  <Text style={styles.emptyStateText}>No {title.toLowerCase()} found</Text>
+                  <Text style={styles.emptyStateText}>No {title.toLowerCase()} found</Text>                                                                     
                 </View>
               )}
             </View>
