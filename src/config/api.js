@@ -50,9 +50,21 @@ const getApiUrl = () => {
       // For web, use relative URL or localhost
       // Safely check for window object
       if (typeof window !== 'undefined' && window !== null && window.location && window.location.origin) {
-        _cachedApiUrl = window.location.origin.includes('localhost') 
-          ? 'http://localhost:5000/api' 
-          : '/api';
+        const origin = window.location.origin;
+        // If localhost, use localhost:5000
+        if (origin.includes('localhost')) {
+          _cachedApiUrl = 'http://localhost:5000/api';
+          return _cachedApiUrl;
+        }
+        // If accessing via IP address (like 192.168.x.x), extract host and use port 5000 for API
+        const hostname = window.location.hostname;
+        const isIPAddress = /^(\d{1,3}\.){3}\d{1,3}$/.test(hostname);
+        if (isIPAddress) {
+          _cachedApiUrl = `http://${hostname}:5000/api`;
+          return _cachedApiUrl;
+        }
+        // For other domains, use relative path
+        _cachedApiUrl = '/api';
         return _cachedApiUrl;
       }
       _cachedApiUrl = 'http://localhost:5000/api';

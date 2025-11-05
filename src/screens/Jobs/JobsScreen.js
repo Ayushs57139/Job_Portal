@@ -22,6 +22,8 @@ import api from '../../config/api';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
+const isMobile = width <= 600;
+const isTablet = width > 600 && width <= 768;
 
 const JobsScreen = ({ route }) => {
   const [jobs, setJobs] = useState([]);
@@ -606,19 +608,20 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   hero: {
-    paddingVertical: spacing.xxl,
-    paddingHorizontal: spacing.lg,
+    paddingVertical: isMobile ? spacing.xl : spacing.xxl,
+    paddingHorizontal: isMobile ? spacing.md : spacing.lg,
     alignItems: 'center',
   },
   searchContainerGradient: {
     paddingTop: spacing.lg,
   },
   heroTitle: {
-    fontSize: isWeb ? 42 : 32,
+    fontSize: isMobile ? 26 : (isTablet ? 32 : 42),
     fontWeight: '700',
     color: colors.textWhite,
     textAlign: 'center',
     marginBottom: spacing.sm,
+    paddingHorizontal: isMobile ? spacing.md : 0,
   },
   heroSubtitle: {
     fontSize: isWeb ? 18 : 16,
@@ -645,7 +648,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   searchContainer: {
-    padding: spacing.lg,
+    padding: isMobile ? spacing.md : spacing.lg,
     gap: spacing.md,
   },
   searchRow: {

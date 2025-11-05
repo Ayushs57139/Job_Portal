@@ -14,6 +14,8 @@ import api from '../config/api';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
+const isMobile = width <= 600;
+const isTablet = width > 600 && width <= 768;
 
 const TrendingJobRoles = ({ navigation }) => {
   const [jobRoles, setJobRoles] = useState([]);
@@ -131,7 +133,7 @@ const TrendingJobRoles = ({ navigation }) => {
         <View style={[styles.iconBackground, { backgroundColor: getColorForCategory(item.category) + '20' }]}>
           <Ionicons 
             name={getIconForCategory(item.category)} 
-            size={24} 
+            size={isMobile ? 20 : 24} 
             color={getColorForCategory(item.category)} 
           />
         </View>
@@ -145,7 +147,7 @@ const TrendingJobRoles = ({ navigation }) => {
         </Text>
       </View>
       <View style={styles.cardArrow}>
-        <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+        <Ionicons name="chevron-forward" size={isMobile ? 18 : 20} color={colors.textSecondary} />
       </View>
     </TouchableOpacity>
   );
@@ -158,9 +160,9 @@ const TrendingJobRoles = ({ navigation }) => {
     return null;
   }
 
-  const numColumns = isWeb 
-    ? (width > 1200 ? 4 : width > 768 ? 3 : 2)
-    : 2;
+  const numColumns = isMobile 
+    ? 2 
+    : (width > 1200 ? 4 : width > 768 ? 3 : 2);
 
   return (
     <View style={styles.container}>
@@ -194,8 +196,8 @@ const TrendingJobRoles = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: spacing.xxl,
-    paddingHorizontal: spacing.lg,
+    paddingVertical: isMobile ? spacing.xl : spacing.xxl,
+    paddingHorizontal: isMobile ? spacing.md : spacing.lg,
     maxWidth: 1200,
     width: '100%',
     alignSelf: 'center',
@@ -206,10 +208,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   title: {
-    fontSize: isWeb ? 36 : 28,
+    fontSize: isMobile ? 24 : (isTablet ? 28 : 36),
     fontWeight: '700',
     color: '#2D3748',
     textAlign: 'center',
+    paddingHorizontal: isMobile ? spacing.md : 0,
   },
   cardsContainer: {
     width: '100%',
@@ -217,19 +220,21 @@ const styles = StyleSheet.create({
   row: {
     justifyContent: 'space-between',
     marginBottom: spacing.md,
+    gap: isMobile ? spacing.xs : 0,
   },
   card: {
     flex: 1,
     backgroundColor: colors.cardBackground,
     borderRadius: borderRadius.md,
-    padding: spacing.md,
-    marginHorizontal: spacing.xs,
+    padding: isMobile ? spacing.sm : spacing.md,
+    marginHorizontal: isMobile ? spacing.xs / 2 : spacing.xs,
     marginBottom: spacing.md,
     borderWidth: 1,
     borderColor: colors.borderLight,
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 80,
+    minHeight: isMobile ? 70 : 80,
+    maxWidth: isMobile ? '48%' : undefined,
     ...shadows.sm,
     ...(isWeb && {
       cursor: 'pointer',
@@ -240,8 +245,8 @@ const styles = StyleSheet.create({
     marginRight: spacing.sm,
   },
   iconBackground: {
-    width: 48,
-    height: 48,
+    width: isMobile ? 40 : 48,
+    height: isMobile ? 40 : 48,
     borderRadius: borderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',
@@ -255,11 +260,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.text,
     marginBottom: spacing.xs,
+    fontSize: isMobile ? 13 : 16,
+    lineHeight: isMobile ? 18 : 24,
   },
   cardCount: {
     ...typography.body2,
     color: colors.textSecondary,
-    fontSize: 12,
+    fontSize: isMobile ? 11 : 12,
   },
   cardArrow: {
     marginLeft: spacing.sm,
@@ -271,11 +278,12 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     marginTop: spacing.lg,
     paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: isMobile ? spacing.lg : spacing.xl,
     borderWidth: 2,
     borderColor: '#10B981',
     borderRadius: borderRadius.md,
     alignSelf: 'center',
+    minWidth: isMobile ? '100%' : undefined,
     ...(isWeb && {
       cursor: 'pointer',
     }),

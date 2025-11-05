@@ -1,12 +1,21 @@
 // Common styles used across the app
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Platform, Dimensions } from 'react-native';
 import { colors, spacing, typography, borderRadius, shadows } from './theme';
+
+const { width } = Dimensions.get('window');
+const isWeb = Platform.OS === 'web';
+const isMobile = width <= 600;
+const isTablet = width > 600 && width <= 768;
 
 export const commonStyles = StyleSheet.create({
   // Containers
   container: {
     flex: 1,
     backgroundColor: colors.background,
+    ...(isWeb && {
+      width: '100%',
+      height: '100%',
+    }),
   },
   scrollContainer: {
     flexGrow: 1,
@@ -23,16 +32,22 @@ export const commonStyles = StyleSheet.create({
   card: {
     backgroundColor: colors.cardBackground,
     borderRadius: borderRadius.md,
-    padding: spacing.md,
+    padding: isMobile ? spacing.sm : spacing.md,
     marginBottom: spacing.md,
     ...shadows.sm,
+    ...(isWeb && {
+      width: '100%',
+    }),
   },
   cardElevated: {
     backgroundColor: colors.cardBackground,
     borderRadius: borderRadius.lg,
-    padding: spacing.lg,
+    padding: isMobile ? spacing.md : spacing.lg,
     marginBottom: spacing.md,
     ...shadows.md,
+    ...(isWeb && {
+      width: '100%',
+    }),
   },
   
   // Inputs
@@ -82,18 +97,22 @@ export const commonStyles = StyleSheet.create({
   heading1: {
     ...typography.h1,
     color: colors.text,
+    fontSize: isMobile ? 28 : (isTablet ? 30 : typography.h1.fontSize),
   },
   heading2: {
     ...typography.h2,
     color: colors.text,
+    fontSize: isMobile ? 24 : (isTablet ? 26 : typography.h2.fontSize),
   },
   heading3: {
     ...typography.h3,
     color: colors.text,
+    fontSize: isMobile ? 20 : (isTablet ? 22 : typography.h3.fontSize),
   },
   heading4: {
     ...typography.h4,
     color: colors.text,
+    fontSize: isMobile ? 18 : (isTablet ? 19 : typography.h4.fontSize),
   },
   bodyText: {
     ...typography.body1,
@@ -110,13 +129,15 @@ export const commonStyles = StyleSheet.create({
   
   // Layout
   row: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: isMobile ? 'column' : 'row',
+    alignItems: isMobile ? 'stretch' : 'center',
+    gap: isMobile ? spacing.sm : 0,
   },
   rowBetween: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: isMobile ? 'column' : 'row',
+    alignItems: isMobile ? 'stretch' : 'center',
+    justifyContent: isMobile ? 'flex-start' : 'space-between',
+    gap: isMobile ? spacing.sm : 0,
   },
   
   // Spacing

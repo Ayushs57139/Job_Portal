@@ -23,6 +23,9 @@ import api from '../../config/api';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
+const isMobile = width <= 600;
+const isPhone = width <= 480; // Specific breakpoint for phones
+const isTablet = width > 600 && width <= 768;
 
 const HomeScreen = ({ navigation }) => {
   const [latestJobs, setLatestJobs] = useState([]);
@@ -104,10 +107,10 @@ const HomeScreen = ({ navigation }) => {
         <View style={styles.searchRow}>
           {/* Skills/Designations Input */}
           <View style={[styles.searchInputContainer, styles.flexInput]}>
-            <Ionicons name="search-outline" size={20} color={colors.textSecondary} />
+            <Ionicons name="search-outline" size={isPhone ? 18 : 20} color={colors.textSecondary} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Enter skills / designations / companies"
+              placeholder={isPhone ? "Enter skills / companies" : "Enter skills / designations / companies"}
               value={searchQuery}
               onChangeText={setSearchQuery}
               placeholderTextColor={colors.textLight}
@@ -125,10 +128,12 @@ const HomeScreen = ({ navigation }) => {
                   styles.experienceText,
                   experience === 'Select experience' && styles.placeholderText,
                 ]}
+                numberOfLines={1}
+                ellipsizeMode="tail"
               >
                 {experience}
               </Text>
-              <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
+              <Ionicons name="chevron-down" size={isPhone ? 18 : 20} color={colors.textSecondary} />
             </TouchableOpacity>
             
             {showExperienceMenu && (
@@ -151,7 +156,7 @@ const HomeScreen = ({ navigation }) => {
 
           {/* Location Input */}
           <View style={[styles.searchInputContainer, styles.locationInput]}>
-            <Ionicons name="location-outline" size={20} color={colors.textSecondary} />
+            <Ionicons name="location-outline" size={isPhone ? 18 : 20} color={colors.textSecondary} />
             <TextInput
               style={styles.searchInput}
               placeholder="Enter location"
@@ -173,19 +178,19 @@ const HomeScreen = ({ navigation }) => {
             style={styles.popularTag}
             onPress={() => setSearchQuery('business development, delhi')}
           >
-            <Text style={styles.popularTagText}>business development, delhi</Text>
+            <Text style={styles.popularTagText} numberOfLines={isPhone ? 1 : undefined} ellipsizeMode="tail">business development, delhi</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.popularTag}
             onPress={() => setSearchQuery('software developer, noida')}
           >
-            <Text style={styles.popularTagText}>software developer, noida</Text>
+            <Text style={styles.popularTagText} numberOfLines={isPhone ? 1 : undefined} ellipsizeMode="tail">software developer, noida</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.popularTag}
             onPress={() => setSearchQuery('web development, delhi')}
           >
-            <Text style={styles.popularTagText}>web development, delhi</Text>
+            <Text style={styles.popularTagText} numberOfLines={isPhone ? 1 : undefined} ellipsizeMode="tail">web development, delhi</Text>
           </TouchableOpacity>
         </View>
 
@@ -195,7 +200,7 @@ const HomeScreen = ({ navigation }) => {
             style={styles.jobAlertButton}
             onPress={() => navigation.navigate('JobAlertForm')}
           >
-            <Ionicons name="notifications" size={20} color={colors.textWhite} />
+            <Ionicons name="notifications" size={isPhone ? 18 : 20} color={colors.textWhite} />
             <Text style={styles.jobAlertButtonText}>Job Alert</Text>
           </TouchableOpacity>
           <Text style={styles.jobAlertSubtext}>
@@ -400,30 +405,41 @@ const styles = StyleSheet.create({
   },
   hero: {
     backgroundColor: colors.cardBackground,
-    paddingVertical: spacing.xxl * 1.5,
-    paddingHorizontal: spacing.lg,
+    paddingVertical: isPhone ? spacing.lg : (isMobile ? spacing.xl : spacing.xxl * 1.5),
+    paddingHorizontal: isPhone ? spacing.sm : (isMobile ? spacing.md : spacing.lg),
     alignItems: 'center',
   },
   heroTitle: {
-    fontSize: isWeb ? 48 : 36,
+    fontSize: isPhone ? 24 : (isMobile ? 28 : (isTablet ? 36 : 48)),
     fontWeight: '700',
     color: '#2D3748',
     textAlign: 'center',
     marginBottom: spacing.sm,
+    paddingHorizontal: isPhone ? spacing.sm : (isMobile ? spacing.md : 0),
+    lineHeight: isPhone ? 32 : (isMobile ? 36 : undefined),
+    ...(isPhone && {
+      maxWidth: '100%',
+    }),
   },
   heroSubtitle: {
     ...typography.h5,
+    fontSize: isPhone ? 16 : typography.h5.fontSize,
     color: colors.textSecondary,
     textAlign: 'center',
-    marginBottom: spacing.xl,
+    marginBottom: isPhone ? spacing.lg : spacing.xl,
+    paddingHorizontal: isPhone ? spacing.sm : 0,
+    ...(isPhone && {
+      maxWidth: '100%',
+    }),
   },
   searchContainer: {
     width: '100%',
     maxWidth: 1000,
+    paddingHorizontal: isPhone ? spacing.xs : 0,
   },
   searchRow: {
-    flexDirection: isWeb ? 'row' : 'column',
-    gap: spacing.sm,
+    flexDirection: isMobile ? 'column' : 'row',
+    gap: isPhone ? spacing.xs : spacing.sm,
     alignItems: 'stretch',
   },
   searchInputContainer: {
@@ -431,11 +447,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.cardBackground,
     borderRadius: borderRadius.md,
-    paddingHorizontal: spacing.md,
-    gap: spacing.sm,
+    paddingHorizontal: isPhone ? spacing.sm : spacing.md,
+    gap: isPhone ? spacing.xs : spacing.sm,
     borderWidth: 1,
     borderColor: colors.border,
-    height: 50,
+    height: isPhone ? 44 : 50,
+    minWidth: 0,
   },
   flexInput: {
     flex: isWeb ? 2 : 1,
@@ -446,8 +463,10 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     ...typography.body1,
+    fontSize: isPhone ? 14 : typography.body1.fontSize,
     color: colors.text,
     outlineStyle: 'none',
+    minWidth: 0,
   },
   experienceContainer: {
     position: 'relative',
@@ -459,14 +478,20 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     backgroundColor: colors.cardBackground,
     borderRadius: borderRadius.md,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: isPhone ? spacing.sm : spacing.md,
     borderWidth: 1,
     borderColor: colors.border,
-    height: 50,
+    height: isPhone ? 44 : 50,
+    minWidth: 0,
   },
   experienceText: {
     ...typography.body1,
+    fontSize: isPhone ? 14 : typography.body1.fontSize,
     color: colors.text,
+    flex: 1,
+    ...(isPhone && {
+      marginRight: spacing.xs,
+    }),
   },
   placeholderText: {
     color: colors.textLight,
@@ -485,24 +510,26 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   experienceOption: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
+    paddingHorizontal: isPhone ? spacing.sm : spacing.md,
+    paddingVertical: isPhone ? spacing.sm : spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.borderLight,
   },
   experienceOptionText: {
     ...typography.body1,
+    fontSize: isPhone ? 14 : typography.body1.fontSize,
     color: colors.text,
   },
   searchButton: {
     backgroundColor: colors.primary,
     borderRadius: borderRadius.md,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
+    paddingVertical: isPhone ? spacing.sm : spacing.md,
+    paddingHorizontal: isPhone ? spacing.md : (isMobile ? spacing.lg : spacing.xl),
     alignItems: 'center',
     justifyContent: 'center',
-    height: 50,
-    minWidth: isWeb ? 120 : undefined,
+    height: isPhone ? 44 : 50,
+    minWidth: isMobile ? '100%' : (isWeb ? 120 : undefined),
+    width: isMobile ? '100%' : undefined,
   },
   searchButtonText: {
     ...typography.button,
@@ -511,77 +538,88 @@ const styles = StyleSheet.create({
   popularSearches: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginTop: spacing.md,
+    gap: isPhone ? spacing.xs : spacing.sm,
+    marginTop: isPhone ? spacing.sm : spacing.md,
     justifyContent: 'center',
+    paddingHorizontal: isPhone ? spacing.xs : 0,
   },
   popularTag: {
     backgroundColor: colors.background,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingHorizontal: isPhone ? spacing.sm : spacing.md,
+    paddingVertical: isPhone ? spacing.xs : spacing.sm,
     borderRadius: borderRadius.sm,
     borderWidth: 1,
     borderColor: colors.border,
+    maxWidth: isPhone ? '48%' : undefined,
   },
   popularTagText: {
     ...typography.body2,
+    fontSize: isPhone ? 12 : typography.body2.fontSize,
     color: colors.textSecondary,
   },
   jobAlertContainer: {
-    marginTop: spacing.lg,
+    marginTop: isPhone ? spacing.md : spacing.lg,
     alignItems: 'center',
+    paddingHorizontal: isPhone ? spacing.sm : 0,
   },
   jobAlertButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: isPhone ? spacing.xs : spacing.sm,
     backgroundColor: colors.primary,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
+    paddingVertical: isPhone ? spacing.sm : spacing.md,
+    paddingHorizontal: isPhone ? spacing.md : spacing.xl,
     borderRadius: borderRadius.md,
     ...shadows.md,
   },
   jobAlertButtonText: {
     ...typography.button,
+    fontSize: isPhone ? 14 : typography.button.fontSize,
     color: colors.textWhite,
   },
   jobAlertSubtext: {
     ...typography.body2,
+    fontSize: isPhone ? 12 : typography.body2.fontSize,
     color: colors.textSecondary,
     marginTop: spacing.sm,
     textAlign: 'center',
-    maxWidth: 400,
+    maxWidth: isPhone ? '100%' : 400,
+    paddingHorizontal: isPhone ? spacing.sm : 0,
   },
   section: {
-    paddingVertical: spacing.xxl,
-    paddingHorizontal: spacing.lg,
+    paddingVertical: isPhone ? spacing.lg : (isMobile ? spacing.xl : spacing.xxl),
+    paddingHorizontal: isPhone ? spacing.sm : (isMobile ? spacing.md : spacing.lg),
     maxWidth: 1200,
     width: '100%',
     alignSelf: 'center',
   },
   sectionHeader: {
-    marginBottom: spacing.xl,
+    marginBottom: isPhone ? spacing.lg : spacing.xl,
     alignItems: 'center',
   },
   sectionTitle: {
-    fontSize: isWeb ? 36 : 28,
+    fontSize: isPhone ? 20 : (isMobile ? 24 : (isTablet ? 28 : 36)),
     fontWeight: '700',
     color: '#2D3748',
     textAlign: 'center',
     marginBottom: spacing.xs,
+    paddingHorizontal: isPhone ? spacing.sm : (isMobile ? spacing.md : 0),
+    lineHeight: isPhone ? 28 : undefined,
   },
   sectionSubtitle: {
     ...typography.body1,
+    fontSize: isPhone ? 14 : typography.body1.fontSize,
     color: colors.textSecondary,
     textAlign: 'center',
+    paddingHorizontal: isPhone ? spacing.sm : 0,
   },
   jobsGrid: {
-    flexDirection: isWeb ? 'row' : 'column',
+    flexDirection: isMobile ? 'column' : 'row',
     flexWrap: 'wrap',
     gap: spacing.md,
   },
   jobCardWrapper: {
-    width: isWeb ? (width > 1200 ? '32%' : width > 768 ? '48%' : '100%') : '100%',
+    width: isMobile ? '100%' : (width > 1200 ? '32%' : width > 768 ? '48%' : '100%'),
   },
   horizontalScroll: {
     paddingRight: spacing.lg,
@@ -599,8 +637,8 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xl,
   },
   resumeSection: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.xxl,
+    paddingHorizontal: isPhone ? spacing.sm : (isMobile ? spacing.md : spacing.lg),
+    paddingVertical: isPhone ? spacing.lg : (isMobile ? spacing.xl : spacing.xxl),
     backgroundColor: '#10B981',
   },
   resumeCTA: {
@@ -610,34 +648,39 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   resumeTitle: {
-    fontSize: isWeb ? 32 : 24,
+    fontSize: isPhone ? 20 : (isMobile ? 22 : (isTablet ? 24 : 32)),
     fontWeight: '700',
     color: colors.textWhite,
     textAlign: 'center',
     marginBottom: spacing.sm,
+    paddingHorizontal: isPhone ? spacing.sm : (isMobile ? spacing.md : 0),
+    lineHeight: isPhone ? 28 : undefined,
   },
   resumeSubtitle: {
     ...typography.h6,
+    fontSize: isPhone ? 14 : typography.h6.fontSize,
     color: colors.textWhite,
     textAlign: 'center',
-    marginBottom: spacing.lg,
+    marginBottom: isPhone ? spacing.md : spacing.lg,
+    paddingHorizontal: isPhone ? spacing.sm : 0,
   },
   resumeButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: isPhone ? spacing.xs : spacing.sm,
     backgroundColor: colors.textWhite,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
+    paddingVertical: isPhone ? spacing.sm : spacing.md,
+    paddingHorizontal: isPhone ? spacing.md : spacing.xl,
     borderRadius: borderRadius.md,
   },
   resumeButtonText: {
     ...typography.button,
+    fontSize: isPhone ? 14 : typography.button.fontSize,
     color: '#10B981',
   },
   adContainer: {
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.lg,
+    paddingVertical: isPhone ? spacing.md : spacing.lg,
+    paddingHorizontal: isPhone ? spacing.sm : spacing.lg,
     alignItems: 'center',
     backgroundColor: colors.background,
   },

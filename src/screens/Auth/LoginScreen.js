@@ -18,6 +18,7 @@ import api from '../../config/api';
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
 const isWideScreen = width > 768;
+const isMobile = width <= 600;
 
 const LoginScreen = ({ navigation }) => {
   const [userType] = useState('jobseeker');
@@ -246,8 +247,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   leftScrollContent: {
-    padding: isWideScreen ? 48 : 24,
-    paddingTop: isWideScreen ? 32 : 24,
+    padding: isMobile ? 16 : (isWideScreen ? 48 : 24),
+    paddingTop: isMobile ? 16 : (isWideScreen ? 32 : 24),
   },
   
   // Logo

@@ -26,7 +26,16 @@
       "package": "com.freejobwala.app"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "output": "static",
+      "build": {
+        "babel": {
+          "include": [
+            "@expo/vector-icons"
+          ]
+        }
+      }
     },
     "sdkVersion": "54.0.0"
   }

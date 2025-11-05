@@ -7,6 +7,9 @@ import api from '../config/api';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
+const isMobile = width <= 600;
+const isPhone = width <= 480; // Specific breakpoint for phones
+const isTablet = width > 600 && width <= 768;
 
 const Header = ({ showBack = false, title }) => {
   const navigation = useNavigation();
@@ -265,7 +268,7 @@ const Header = ({ showBack = false, title }) => {
             )}
 
             {/* Navigation Menu - Desktop/Tablet (only show if not showing back button) */}
-            {!showBack && (isWeb || width > 768) && (
+            {!showBack && !isMobile && (
               <View style={styles.navMenu}>
                 {menuItems.map((item, index) => renderMenuItem(item, index))}
               </View>
@@ -355,7 +358,7 @@ const Header = ({ showBack = false, title }) => {
             )}
 
             {/* Mobile Menu Button */}
-            {!isWeb && width <= 768 && (
+            {isMobile && (
               <TouchableOpacity
                 style={styles.mobileMenuButton}
                 onPress={() => setMobileMenuOpen(true)}
@@ -482,9 +485,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    minHeight: 70,
+    paddingHorizontal: isPhone ? spacing.sm : (isMobile ? spacing.md : spacing.lg),
+    paddingVertical: isPhone ? spacing.xs : (isMobile ? spacing.sm : spacing.md),
+    minHeight: isPhone ? 56 : (isMobile ? 60 : 70),
     maxWidth: 1400,
     width: '100%',
     alignSelf: 'center',
@@ -495,7 +498,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logoText: {
-    fontSize: isWeb ? 32 : 28,
+    fontSize: isPhone ? 20 : (isMobile ? 24 : (isTablet ? 28 : 32)),
     fontWeight: '700',
     letterSpacing: -0.5,
   },
@@ -621,17 +624,18 @@ const styles = StyleSheet.create({
   },
   authButtons: {
     flexDirection: 'row',
-    gap: spacing.sm,
+    gap: isMobile ? spacing.xs : spacing.sm,
     alignItems: 'center',
+    flexWrap: 'wrap',
   },
   loginButton: {
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: isMobile ? spacing.md : spacing.lg,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.md,
     backgroundColor: 'transparent',
     borderWidth: 1.5,
     borderColor: '#E0E7FF',
-    minWidth: 80,
+    minWidth: isMobile ? 70 : 80,
     alignItems: 'center',
   },
   loginButtonText: {
@@ -640,11 +644,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   postJobButton: {
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: isMobile ? spacing.md : spacing.lg,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.md,
     backgroundColor: '#4F46E5',
-    minWidth: 100,
+    minWidth: isMobile ? 80 : 100,
     alignItems: 'center',
   },
   postJobButtonText: {
@@ -653,14 +657,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   employersButton: {
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: isMobile ? spacing.md : spacing.lg,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.md,
     backgroundColor: 'transparent',
     borderWidth: 1.5,
     borderColor: '#E0E7FF',
-    minWidth: 120,
+    minWidth: isMobile ? 100 : 120,
     alignItems: 'center',
+    ...(isMobile && {
+      display: 'none', // Hide on mobile to save space
+    }),
   },
   employersButtonText: {
     color: '#4F46E5',
@@ -701,7 +708,11 @@ const styles = StyleSheet.create({
   userName: {
     color: colors.text,
     fontWeight: '600',
-    maxWidth: isWeb ? 150 : 100,
+    maxWidth: isMobile ? 80 : (isTablet ? 120 : 150),
+    fontSize: isMobile ? 12 : 14,
+    ...(isMobile && {
+      display: 'none', // Hide on mobile to save space
+    }),
   },
   logoutButton: {
     width: 32,
