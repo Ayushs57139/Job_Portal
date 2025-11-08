@@ -13,6 +13,14 @@ export default {
   assetBundlePatterns: [
     "**/*"
   ],
+  extra: {
+    // API Configuration
+    // For Expo Go on physical device, set this to your computer's IP address
+    // Find your IP: Windows (ipconfig), Mac/Linux (ifconfig)
+    // Example: if Expo shows exp://192.168.1.19:8081, set apiHost to "192.168.1.19"
+    apiHost: process.env.EXPO_PUBLIC_API_HOST || "192.168.1.19",
+    apiPort: process.env.EXPO_PUBLIC_API_PORT || "5000"
+  },
   ios: {
     supportsTablet: true,
     bundleIdentifier: "com.freejobwala.app",

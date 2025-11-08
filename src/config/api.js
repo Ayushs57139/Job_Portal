@@ -10,6 +10,90 @@ const Platform = (typeof RNPlatform !== 'undefined' && RNPlatform)
 
 // Lazy API URL resolution - only resolve when actually needed
 let _cachedApiUrl = null;
+let _apiHostDetectionAttempted = false;
+
+// Function to detect API host from Expo connection (called lazily)
+const detectApiHostFromExpo = () => {
+  if (_apiHostDetectionAttempted) {
+    return null;
+  }
+  _apiHostDetectionAttempted = true;
+  
+  try {
+    // Try to get from expo-constants
+    const Constants = require('expo-constants');
+    console.log('[API Config] Attempting to detect API host from Expo Constants...');
+    
+    // Log what's available for debugging
+    if (Constants) {
+      console.log('[API Config] Constants available');
+      console.log('[API Config] executionEnvironment:', Constants.executionEnvironment);
+      
+      // Try expoConfig.extra first (from app.config.js)
+      if (Constants.expoConfig && Constants.expoConfig.extra) {
+        console.log('[API Config] expoConfig.extra:', JSON.stringify(Constants.expoConfig.extra));
+        if (Constants.expoConfig.extra.apiHost) {
+          const apiHost = Constants.expoConfig.extra.apiHost;
+          console.log(`[API Config] ✅ Using API host from app.config.js: ${apiHost}`);
+          return apiHost;
+        }
+      }
+      
+      // Try to get from manifest (Expo SDK 49+ uses manifest2, older uses manifest)
+      if (Constants.manifest2) {
+        console.log('[API Config] Found manifest2');
+        const manifest = Constants.manifest2;
+        // Try various locations in manifest2
+        const hostInfo = manifest.extra?.expoGo?.debuggerHost || 
+                        manifest.hostUri ||
+                        manifest.debuggerHost;
+        if (hostInfo) {
+          console.log('[API Config] manifest2 hostInfo:', hostInfo);
+          const ipMatch = hostInfo.match(/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/);
+          if (ipMatch) {
+            console.log(`[API Config] ✅ Detected API host from manifest2: ${ipMatch[1]}`);
+            return ipMatch[1];
+          }
+        }
+      }
+      
+      // Try legacy manifest
+      if (Constants.manifest) {
+        console.log('[API Config] Found legacy manifest');
+        const manifest = Constants.manifest;
+        // Try multiple properties that might contain the host
+        const hostInfo = manifest.debuggerHost || 
+                        manifest.hostUri || 
+                        manifest.manifest?.debuggerHost ||
+                        manifest.manifest?.hostUri ||
+                        (manifest.extra && manifest.extra.expoGo && manifest.extra.expoGo.debuggerHost);
+        
+        if (hostInfo) {
+          console.log('[API Config] manifest hostInfo:', hostInfo);
+          const ipMatch = hostInfo.match(/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/);
+          if (ipMatch) {
+            const detectedIP = ipMatch[1];
+            console.log(`[API Config] ✅ Detected API host from Expo manifest: ${detectedIP}`);
+            return detectedIP;
+          }
+        } else {
+          console.log('[API Config] No hostInfo found in manifest');
+        }
+      } else {
+        console.log('[API Config] No manifest found');
+      }
+    } else {
+      console.log('[API Config] Constants not available');
+    }
+  } catch (e) {
+    // expo-constants not available or error reading
+    console.log(`[API Config] Error detecting from expo-constants: ${e.message}`);
+    console.log('[API Config] Stack:', e.stack);
+  }
+  
+  console.log('[API Config] ❌ Could not auto-detect API host');
+  return null;
+};
 
 const getApiUrl = () => {
   // Return cached value if already computed
@@ -21,6 +105,7 @@ const getApiUrl = () => {
     // Check for explicit API URL in environment variable (highest priority)
     if (typeof process !== 'undefined' && process.env && process.env.EXPO_PUBLIC_API_URL) {
       _cachedApiUrl = process.env.EXPO_PUBLIC_API_URL;
+      console.log(`[API Config] Using API URL from EXPO_PUBLIC_API_URL: ${_cachedApiUrl}`);
       return _cachedApiUrl;
     }
     
@@ -70,21 +155,99 @@ const getApiUrl = () => {
       _cachedApiUrl = 'http://localhost:5000/api';
       return _cachedApiUrl;
     } else if (platformOS === 'android') {
-      // For Android: Try to detect if running on emulator or physical device
-      // Emulator uses 10.0.2.2, physical device needs actual server IP
-      // For Expo Go, use your computer's IP address (find via ipconfig on Windows)
-      const API_HOST = (typeof process !== 'undefined' && process.env && process.env.EXPO_PUBLIC_API_HOST) 
-        ? process.env.EXPO_PUBLIC_API_HOST 
-        : '10.0.2.2';
-      _cachedApiUrl = `http://${API_HOST}:5000/api`;
+      // For Android: Check multiple sources for API host
+      let API_HOST = null;
+      let API_PORT = '5000';
+      
+      // 1. Check environment variable (highest priority)
+      if (typeof process !== 'undefined' && process.env && process.env.EXPO_PUBLIC_API_HOST) {
+        API_HOST = process.env.EXPO_PUBLIC_API_HOST;
+        if (process.env.EXPO_PUBLIC_API_PORT) {
+          API_PORT = process.env.EXPO_PUBLIC_API_PORT;
+        }
+      }
+      
+      // 2. Try to detect from Expo connection (lazy detection)
+      if (!API_HOST) {
+        const detectedHost = detectApiHostFromExpo();
+        if (detectedHost) {
+          API_HOST = detectedHost;
+        }
+        
+        // Also try to get port from expo-constants if available
+        if (!API_PORT || API_PORT === '5000') {
+          try {
+            const Constants = require('expo-constants');
+            if (Constants && Constants.expoConfig && Constants.expoConfig.extra && Constants.expoConfig.extra.apiPort) {
+              API_PORT = Constants.expoConfig.extra.apiPort;
+            }
+          } catch (e) {
+            // Ignore
+          }
+        }
+      }
+      
+      // 3. For development, try multiple fallbacks
+      if (!API_HOST) {
+        if (__DEV__) {
+          // Try to read from app.config.js via expo-constants one more time
+          // Sometimes Constants.expoConfig.extra is available here
+          try {
+            const Constants = require('expo-constants');
+            if (Constants && Constants.expoConfig && Constants.expoConfig.extra && Constants.expoConfig.extra.apiHost) {
+              API_HOST = Constants.expoConfig.extra.apiHost;
+              console.log(`[API Config] ✅ Found API host from Constants.expoConfig.extra: ${API_HOST}`);
+            }
+          } catch (e) {
+            // Ignore
+          }
+          
+          // If still no host, default to your computer's IP for development
+          // This works for both Expo Go on physical device and can be overridden for emulator
+          if (!API_HOST) {
+            // Default to your computer's IP address (works for Expo Go on physical device)
+            // For Android emulator, user can set EXPO_PUBLIC_API_HOST=10.0.2.2 if needed
+            API_HOST = '192.168.1.19';
+            console.log('[API Config] ✅ Using default API host: 192.168.1.19');
+            console.log('[API Config] ℹ️ For Android emulator, set EXPO_PUBLIC_API_HOST=10.0.2.2');
+          }
+        } else {
+          // In production, use localhost (assuming backend is on same server)
+          API_HOST = 'localhost';
+        }
+      }
+      
+      _cachedApiUrl = `http://${API_HOST}:${API_PORT}/api`;
+      console.log(`[API Config] Android - Final API URL: ${_cachedApiUrl}`);
       return _cachedApiUrl;
     } else {
-      // For iOS simulator and physical devices, use localhost or your server IP
-      // For Expo Go on physical device, use your computer's IP address
-      const API_HOST = (typeof process !== 'undefined' && process.env && process.env.EXPO_PUBLIC_API_HOST) 
-        ? process.env.EXPO_PUBLIC_API_HOST 
-        : 'localhost';
-      _cachedApiUrl = `http://${API_HOST}:5000/api`;
+      // For iOS simulator and physical devices
+      let API_HOST = null;
+      let API_PORT = '5000';
+      
+      // 1. Check environment variable
+      if (typeof process !== 'undefined' && process.env && process.env.EXPO_PUBLIC_API_HOST) {
+        API_HOST = process.env.EXPO_PUBLIC_API_HOST;
+        if (process.env.EXPO_PUBLIC_API_PORT) {
+          API_PORT = process.env.EXPO_PUBLIC_API_PORT;
+        }
+      }
+      
+      // 2. Try to detect from Expo connection
+      if (!API_HOST) {
+        const detectedHost = detectApiHostFromExpo();
+        if (detectedHost) {
+          API_HOST = detectedHost;
+        }
+      }
+      
+      // 3. Fallback to localhost
+      if (!API_HOST) {
+        API_HOST = 'localhost';
+      }
+      
+      _cachedApiUrl = `http://${API_HOST}:${API_PORT}/api`;
+      console.log(`[API Config] iOS - Final API URL: ${_cachedApiUrl}`);
       return _cachedApiUrl;
     }
   } catch (error) {
@@ -222,6 +385,8 @@ class JobWalaAPI {
         ...options,
       };
 
+      console.log(`[API] Making request to: ${url}`);
+      
       const response = await fetch(url, config);
       
       if (!response.ok) {
@@ -237,7 +402,22 @@ class JobWalaAPI {
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error('API Error:', error);
+      console.error('[API Error] Request failed:', error.message);
+      console.error('[API Error] URL:', `${this.baseURL}${endpoint}`);
+      console.error('[API Error] Full error:', error);
+      
+      // Provide helpful error message for connection issues
+      if (error.message.includes('Network request failed') || 
+          error.message.includes('Failed to fetch') ||
+          error.message.includes('ECONNREFUSED')) {
+        console.error('[API Error] Connection failed! Make sure:');
+        console.error('  1. Backend server is running on port 5000');
+        console.error(`  2. API URL is correct: ${this.baseURL}`);
+        console.error('  3. For Expo Go on physical device, set EXPO_PUBLIC_API_HOST to your computer IP');
+        console.error('  4. Check firewall settings');
+        throw new Error(`Cannot connect to backend server at ${this.baseURL}. Please check if the server is running.`);
+      }
+      
       throw error;
     }
   }
