@@ -348,6 +348,46 @@ export const distanceOptions = [
   { value: 'any', label: 'Any Distance' },
 ];
 
+// Indian States options
+export const stateOptions = [
+  { value: 'andhra_pradesh', label: 'Andhra Pradesh' },
+  { value: 'arunachal_pradesh', label: 'Arunachal Pradesh' },
+  { value: 'assam', label: 'Assam' },
+  { value: 'bihar', label: 'Bihar' },
+  { value: 'chhattisgarh', label: 'Chhattisgarh' },
+  { value: 'goa', label: 'Goa' },
+  { value: 'gujarat', label: 'Gujarat' },
+  { value: 'haryana', label: 'Haryana' },
+  { value: 'himachal_pradesh', label: 'Himachal Pradesh' },
+  { value: 'jharkhand', label: 'Jharkhand' },
+  { value: 'karnataka', label: 'Karnataka' },
+  { value: 'kerala', label: 'Kerala' },
+  { value: 'madhya_pradesh', label: 'Madhya Pradesh' },
+  { value: 'maharashtra', label: 'Maharashtra' },
+  { value: 'manipur', label: 'Manipur' },
+  { value: 'meghalaya', label: 'Meghalaya' },
+  { value: 'mizoram', label: 'Mizoram' },
+  { value: 'nagaland', label: 'Nagaland' },
+  { value: 'odisha', label: 'Odisha' },
+  { value: 'punjab', label: 'Punjab' },
+  { value: 'rajasthan', label: 'Rajasthan' },
+  { value: 'sikkim', label: 'Sikkim' },
+  { value: 'tamil_nadu', label: 'Tamil Nadu' },
+  { value: 'telangana', label: 'Telangana' },
+  { value: 'tripura', label: 'Tripura' },
+  { value: 'uttar_pradesh', label: 'Uttar Pradesh' },
+  { value: 'uttarakhand', label: 'Uttarakhand' },
+  { value: 'west_bengal', label: 'West Bengal' },
+  { value: 'andaman_and_nicobar_islands', label: 'Andaman and Nicobar Islands' },
+  { value: 'chandigarh', label: 'Chandigarh' },
+  { value: 'dadra_and_nagar_haveli_and_daman_and_diu', label: 'Dadra and Nagar Haveli and Daman and Diu' },
+  { value: 'delhi', label: 'Delhi' },
+  { value: 'jammu_and_kashmir', label: 'Jammu and Kashmir' },
+  { value: 'ladakh', label: 'Ladakh' },
+  { value: 'lakshadweep', label: 'Lakshadweep' },
+  { value: 'puducherry', label: 'Puducherry' },
+];
+
 // Job Titles from job application form
 export const jobTitleOptions = [
   'Fresher', 'AC-Air Conditioner Sales', 'AC-Air Conditioner Technician', 'Accountant', 'Accounting', 'Accounts / Finance', 'Accounts clerk', 'Accounts Executive', 'Admin', 'Admin Executive', 'Advisory Services', 'Aea Head', 'Agency Channel', 'Agribusiness / Marketing', 'Agriculture Loan Sales', 'Analyst', 'Android Developer', 'Apprentice carpenter', 'Assembly line worker', 'ATM Engineer', 'ATM Staff', 'Auditing', 'Auto Driver', 'Auto Loan Sales', 'Automated Metering', 'Automobiles Sales', 'Automotive Parts Sales', 'B2B Sales', 'B2C Sales', 'Background Verification', 'Banca Channel', 'Banking', 'Banking Operations', 'Banking Sales', 'Beauty Parlour', 'Bidding Officer', 'Bike Insurance Sales', 'Bike Loan Sales', 'Bike Mechanic', 'Billing / Cashier', 'Branch Manager', 'Brand Promoter', 'Broadband Installation Engineer', 'Broking Services', 'Building Materials Sales', 'Bus Driver', 'Bus Mechanic', 'Bus Sales', 'Business Development', 'Business Development Executive', 'Business Head', 'Business Loan Sales', 'CA- Chartered Accountant', 'Call Center Agent', 'Calling', 'Camera assistant', 'Camera Sales', 'Camera Technician', 'Car Insurance Sales', 'Car Loan Sales', 'Car Mechanic', 'Caregiver', 'Cargo', 'Carpenter', 'CASA Sales', 'Cashier', 'Cement Sales', 'Channel Sales', 'Chef', 'Chemical Engineer', 'Chemical Engineering', 'Civil Engineer', 'Civil Sales', 'Cleaner', 'Clerk', 'Collection', 'Commissioning Support Services', 'Consulting', 'Content creator', 'Content moderator', 'Content Writer', 'Cook', 'Corporate Lawyer', 'Corporate Salary Account Sales', 'Country Head', 'Courier', 'Crane Driver', 'Credit Card Sales', 'Credit Operations', 'Current Account Sales', 'Current Affairs', 'Customer Service Executive', 'Customer service representative', 'Customer Support', 'Cybersecurity Analyst', 'D2C Sales', 'Dairy assistant', 'Data annotator', 'Data Entry', 'Data entry operator', 'Data Scientist', 'Delivery', 'Delivery Boy', 'Digital Payment Engineer', 'Director', 'Distribution', 'Dj', 'Doctor', 'Doctor Loan Sales', 'Doctors', 'Draughtsman', 'Drill operator', 'Driver', 'Drone Engineer', 'Drone Flying', 'Drone Operator', 'Drone Pilot', 'DT Metering', 'Education Loan Sales', 'Electric Four Wheeler Sales', 'Electric Three Wheeler Sales', 'Electric Two Wheeler Sales', 'Electric Vehicle Sales', 'Electrical Engineer', 'Electricals Product Sales', 'Electrician', 'Electronics Sales', 'Energy / Power', 'Engineering', 'Environmental Service', 'Event planner', 'Executive Assistant', 'Eye Optometrist', 'Eye Optometrist- Fresher', 'Facility Management', 'Farm worker', 'Farmer', 'Field agent', 'Field officer', 'Field Operations', 'Field researcher', 'Field Sales', 'Field technician', 'Finance Officer', 'Finance Sales', 'Financial Analyst', 'Fire / Safety Manager', 'Fire / Safety Officer', 'Fire / Safety Supervisor', 'Fish processor', 'Fitter', 'FMCG Sales', 'Food Delivery', 'Forestry technician', 'Freight', 'Fridge-Refrigerator Sales', 'Fridge-Refrigerator Technician', 'Front desk staff', 'Front Office', 'Gallery assistant', 'General Trading', 'Geographic Information System- GIS', 'GIS Engineer', 'GIS Executive', 'Gold Appraisal', 'Gold Loan Sales', 'Government Affairs', 'Government Tendering', 'Graphic Designer', 'Grid Operations', 'Grocery Delivery', 'Hair Dresser', 'Hatchery worker', 'Health Insurance Sales', 'Heavy Equipment Sales', 'Heavy Machinery Sales', 'Heavy Vehicle Sales', 'Help desk technician', 'Helper', 'Home Loan Sales', 'Hospitality Management', 'Hotel Management', 'Hotel Manager', 'Hotel Sales', 'Housekeeping', 'Housekeeping Supervisor', 'HR Admin', 'Hr Executive', 'HR Generalist', 'HR Head', 'HR Manager', 'HR Operations', 'Hr Recruiter', 'HR Recruitment', 'HRBP', 'Human Resource', 'Hydrocarbon Engineering', 'Ice Cream Parlour', 'Illustrator', 'Import / Export', 'Import / Export Executive', 'Inspection Engineer', 'Installation Engineer', 'Insurance Sales', 'Intern', 'iOS Developer', 'IT- Information Technology', 'IT Recruitment', 'ITI Electricals', 'ITI Fitter', 'ITI Wireman', 'Java Developer', 'JCB Driver', 'Jewellery Sales', 'Junior consultant', 'Junior data analyst', 'Junior designer', 'Junior developer', 'Junior marketer', 'Lab Assistant', 'Lab Chemist', 'Lab Technician', 'Labourer', 'Laptop Sales', 'Laptop-PC Technician', 'Large Appliances Sales', 'Law Enforcement', 'Law Firm', 'Leasing agent', 'LED Light Sales', 'LED TV Sales', 'LED TV Technician', 'Legal', 'Legal assistant', 'Liaison Executive', 'Life Insurance Sales', 'Lighting Technician', 'Loader', 'Logger', 'Logistics Operations', 'Machine Operator', 'Machinery Loan Sales', 'Maintenance', 'Management', 'Manpower Hiring', 'Manufacturing', 'Market Research', 'Marketing', 'Matrimonial Services', 'Mechanic', 'Mechanical', 'Mechanical Engineer', 'Medical Assistant', 'Medical Billing', 'Medical Coder', 'Medical coordinator', 'Medical Lab Technician', 'Medical Officer', 'Medical Representative', 'Medical Technician', 'Medical Transcriptionist', 'Metal Testing', 'Meter reader', 'Micro Finance Sales', 'Micro Loan Sales', 'Milk Delivery', 'Milk Supply', 'MIS Executive', 'MIS Executive- Advance Excel', 'MIS Executive- Basic Excel', 'Mobile Accessories Sales', 'Mobile Sales', 'Mobile Technician', 'Movers', 'Mutual Fund Sales', 'Network Engineer', 'NGO', 'Non IT Recruitment', 'Nurse', 'Nurses', 'Nursing', 'Nursing Staff', 'O&M Executive', 'Operations', 'Operations Executive', 'Operator Assembling Line', 'Outreach worker', 'Over Draft Sales', 'Packers', 'Paints Sales', 'Paralegal', 'Parking', 'Payroll / Compliances', 'Peon', 'Personal Loan Sales', 'Pharmacist', 'Plant Maintenance', 'Plant Management', 'Plumber', 'Procurement', 'Procurement Officer', 'Production', 'Property assistant', 'Property Manager', 'Property Sales', 'Public Relations (PR)', 'Purchase', 'Python Developer', 'QSR Sales', 'Quality Assurance Inspector', 'Quality Checker', 'Quality Control', 'Quality Engineer', 'Quality inspector', 'Real Estate', 'Receptionist', 'Recovery', 'Recruiter', 'Recruitment / RPO', 'Repairing', 'Research intern', 'Research Scientist', 'Restaurant Manager', 'Restaurant Sales', 'Retail', 'Retail Sales', 'Retail Store', 'Rig hand', 'RMC Plant', 'Safety Supervisor', 'Sales / Business Development', 'Sales associate', 'Sales Engineer', 'Sales Manager', 'Sales Promoter', 'Sales Promotion', 'Sales/Marketing', 'SAP Executive', 'Saving Account Sales', 'Security', 'Security Guard', 'Security Officer', 'Security Services', 'Security System', 'SEO Specialist', 'Servant', 'Services', 'Shipping', 'Shop keeper', 'Site Engineer', 'Site Supervisor', 'Smart Grids', 'Smart Metering', 'Social media assistant', 'Social Services', 'Software Developer', 'Software Sales', 'Solar technician', 'Sourcing', 'Staffing', 'Steward', 'Stock clerk', 'Stock Maintaining', 'Store keeper', 'Store Operations', 'Store Sales', 'Structural Engineer', 'Supervisor', 'Supply Chain', 'Supply Chain Analyst', 'Support staff', 'Sweeper', 'Switches/Wire Sales', 'Tally', 'Taxi Driver', 'Teacher', 'Teaching assistant', 'Team Leader', 'Technical Sales', 'Technical Support', 'Technician',
@@ -471,7 +511,7 @@ export const formSteps = [
         placeholder: 'Select state',
         icon: 'map-outline',
         required: true,
-        options: [],
+        options: stateOptions,
       },
       {
         name: 'jobCity',
@@ -1018,5 +1058,6 @@ export default {
   distanceOptions,
   generateAgeOptions,
   jobRolesOptions,
+  stateOptions,
 };
 

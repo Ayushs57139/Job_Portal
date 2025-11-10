@@ -1,9 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, Alert, Dimensions } from 'react-native';
 import AdminLayout from '../../components/Admin/AdminLayout';
 import StatCard from '../../components/Admin/StatCard';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../../config/api';
+
+const { width } = Dimensions.get('window');
+const isMobile = width <= 600;
+const isTablet = width > 600 && width <= 1024;
+const isDesktop = width > 1024;
 
 const AdminDashboardScreen = ({ navigation, route }) => {
   const [loading, setLoading] = useState(true);
@@ -156,55 +161,64 @@ const AdminDashboardScreen = ({ navigation, route }) => {
 
         <View style={styles.recentUsersSection}>
           <Text style={styles.sectionTitle}>Recent Users</Text>
-          <View style={styles.tableContainer}>
-            <View style={styles.tableHeader}>
-              <Text style={[styles.tableHeaderText, styles.nameColumn]}>Name</Text>
-              <Text style={[styles.tableHeaderText, styles.emailColumn]}>Email</Text>
-              <Text style={[styles.tableHeaderText, styles.typeColumn]}>Type</Text>
-              <Text style={[styles.tableHeaderText, styles.statusColumn]}>Status</Text>
-              <Text style={[styles.tableHeaderText, styles.joinedColumn]}>Joined</Text>
-            </View>
-            {recentUsers.length > 0 ? (
-              recentUsers.map((user, index) => (
-                <View key={user._id || index} style={styles.tableRow}>
-                  <Text style={[styles.tableCellText, styles.nameColumn, styles.nameText]}>
-                    {user.name || 'N/A'}
-                  </Text>
-                  <Text style={[styles.tableCellText, styles.emailColumn, styles.emailText]}>
-                    {user.email || 'N/A'}
-                  </Text>
-                  <View style={[styles.typeColumn]}>
-                    <View style={[
-                      styles.typeBadge,
-                      user.role === 'JOBSEEKER' && styles.jobseekerBadge,
-                      user.role === 'EMPLOYER' && styles.employerBadge,
-                    ]}>
-                      <Text style={styles.typeBadgeText}>
-                        {user.role || 'N/A'}
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={[styles.statusColumn]}>
-                    <View style={[
-                      styles.statusBadge,
-                      user.isActive ? styles.activeBadge : styles.inactiveBadge,
-                    ]}>
-                      <Text style={styles.statusBadgeText}>
-                        {user.isActive ? 'ACTIVE' : 'INACTIVE'}
-                      </Text>
-                    </View>
-                  </View>
-                  <Text style={[styles.tableCellText, styles.joinedColumn]}>
-                    {formatDate(user.createdAt)}
-                  </Text>
+          <ScrollView horizontal={isMobile} showsHorizontalScrollIndicator={isMobile}>
+            <View style={styles.tableContainer}>
+              {!isMobile && (
+                <View style={styles.tableHeader}>
+                  <Text style={[styles.tableHeaderText, styles.nameColumn]}>Name</Text>
+                  <Text style={[styles.tableHeaderText, styles.emailColumn]}>Email</Text>
+                  <Text style={[styles.tableHeaderText, styles.typeColumn]}>Type</Text>
+                  <Text style={[styles.tableHeaderText, styles.statusColumn]}>Status</Text>
+                  <Text style={[styles.tableHeaderText, styles.joinedColumn]}>Joined</Text>
                 </View>
-              ))
-            ) : (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyStateText}>No recent users found</Text>
-              </View>
-            )}
-          </View>
+              )}
+              {recentUsers.length > 0 ? (
+                recentUsers.map((user, index) => (
+                  <View key={user._id || index} style={styles.tableRow}>
+                    {isMobile && <Text style={[styles.tableCellText, { fontWeight: '600', color: '#666', marginBottom: 4 }]}>Name:</Text>}
+                    <Text style={[styles.tableCellText, styles.nameColumn, styles.nameText]}>
+                      {user.name || 'N/A'}
+                    </Text>
+                    {isMobile && <Text style={[styles.tableCellText, { fontWeight: '600', color: '#666', marginBottom: 4, marginTop: 4 }]}>Email:</Text>}
+                    <Text style={[styles.tableCellText, styles.emailColumn, styles.emailText]}>
+                      {user.email || 'N/A'}
+                    </Text>
+                    {isMobile && <Text style={[styles.tableCellText, { fontWeight: '600', color: '#666', marginBottom: 4, marginTop: 4 }]}>Type:</Text>}
+                    <View style={[styles.typeColumn]}>
+                      <View style={[
+                        styles.typeBadge,
+                        user.role === 'JOBSEEKER' && styles.jobseekerBadge,
+                        user.role === 'EMPLOYER' && styles.employerBadge,
+                      ]}>
+                        <Text style={styles.typeBadgeText}>
+                          {user.role || 'N/A'}
+                        </Text>
+                      </View>
+                    </View>
+                    {isMobile && <Text style={[styles.tableCellText, { fontWeight: '600', color: '#666', marginBottom: 4, marginTop: 4 }]}>Status:</Text>}
+                    <View style={[styles.statusColumn]}>
+                      <View style={[
+                        styles.statusBadge,
+                        user.isActive ? styles.activeBadge : styles.inactiveBadge,
+                      ]}>
+                        <Text style={styles.statusBadgeText}>
+                          {user.isActive ? 'ACTIVE' : 'INACTIVE'}
+                        </Text>
+                      </View>
+                    </View>
+                    {isMobile && <Text style={[styles.tableCellText, { fontWeight: '600', color: '#666', marginBottom: 4, marginTop: 4 }]}>Joined:</Text>}
+                    <Text style={[styles.tableCellText, styles.joinedColumn]}>
+                      {formatDate(user.createdAt)}
+                    </Text>
+                  </View>
+                ))
+              ) : (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyStateText}>No recent users found</Text>
+                </View>
+              )}
+            </View>
+          </ScrollView>
         </View>
       </ScrollView>
     </AdminLayout>
@@ -223,40 +237,42 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   welcomeSection: {
-    marginBottom: 20,
+    marginBottom: isMobile ? 16 : isTablet ? 18 : 20,
   },
   welcomeTitle: {
-    fontSize: 28,
+    fontSize: isMobile ? 22 : isTablet ? 24 : 28,
     fontWeight: 'bold',
     color: '#333',
   },
   welcomeSubtitle: {
-    fontSize: 14,
+    fontSize: isMobile ? 12 : isTablet ? 13 : 14,
     color: '#666',
     marginTop: 4,
   },
   statsContainer: {
-    flexDirection: 'row',
-    marginHorizontal: -8,
+    flexDirection: isMobile ? 'column' : 'row',
+    marginHorizontal: isMobile ? 0 : -8,
+    gap: isMobile ? 12 : 8,
   },
   recentUsersSection: {
-    marginTop: 20,
+    marginTop: isMobile ? 16 : isTablet ? 18 : 20,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: isMobile ? 18 : isTablet ? 19 : 20,
     fontWeight: '600',
     color: '#333',
-    marginBottom: 15,
+    marginBottom: isMobile ? 12 : 15,
   },
   tableContainer: {
     backgroundColor: '#FFF',
     borderRadius: 12,
-    padding: 20,
+    padding: isMobile ? 12 : isTablet ? 16 : 20,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+    overflow: 'scroll',
   },
   tableHeader: {
     flexDirection: 'row',
@@ -266,35 +282,49 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   tableHeaderText: {
-    fontSize: 14,
+    fontSize: isMobile ? 12 : isTablet ? 13 : 14,
     fontWeight: '600',
     color: '#666',
   },
   tableRow: {
-    flexDirection: 'row',
-    paddingVertical: 12,
+    flexDirection: isMobile ? 'column' : 'row',
+    paddingVertical: isMobile ? 16 : 12,
     borderBottomWidth: 1,
     borderBottomColor: '#F5F5F5',
-    alignItems: 'center',
+    alignItems: isMobile ? 'flex-start' : 'center',
+    marginBottom: isMobile ? 12 : 0,
+    backgroundColor: isMobile ? '#F9F9F9' : 'transparent',
+    borderRadius: isMobile ? 8 : 0,
+    padding: isMobile ? 12 : 0,
   },
   tableCellText: {
-    fontSize: 14,
+    fontSize: isMobile ? 13 : isTablet ? 13.5 : 14,
     color: '#333',
+    marginBottom: isMobile ? 8 : 0,
   },
   nameColumn: {
-    flex: 2,
+    flex: isMobile ? 0 : 2,
+    width: isMobile ? '100%' : 'auto',
+    marginBottom: isMobile ? 4 : 0,
   },
   emailColumn: {
-    flex: 3,
+    flex: isMobile ? 0 : 3,
+    width: isMobile ? '100%' : 'auto',
+    marginBottom: isMobile ? 4 : 0,
   },
   typeColumn: {
-    flex: 1.5,
+    flex: isMobile ? 0 : 1.5,
+    width: isMobile ? '100%' : 'auto',
+    marginBottom: isMobile ? 4 : 0,
   },
   statusColumn: {
-    flex: 1.5,
+    flex: isMobile ? 0 : 1.5,
+    width: isMobile ? '100%' : 'auto',
+    marginBottom: isMobile ? 4 : 0,
   },
   joinedColumn: {
-    flex: 1.5,
+    flex: isMobile ? 0 : 1.5,
+    width: isMobile ? '100%' : 'auto',
   },
   nameText: {
     fontWeight: '500',

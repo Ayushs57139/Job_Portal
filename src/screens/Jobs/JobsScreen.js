@@ -22,8 +22,10 @@ import api from '../../config/api';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
+const isPhone = width <= 480;
 const isMobile = width <= 600;
-const isTablet = width > 600 && width <= 768;
+const isTablet = width > 600 && width <= 1024;
+const isDesktop = width > 1024;
 
 const JobsScreen = ({ route }) => {
   const [jobs, setJobs] = useState([]);
@@ -49,6 +51,14 @@ const JobsScreen = ({ route }) => {
   const [workType, setWorkType] = useState(route?.params?.jobType ? [route.params.jobType] : []);
   const [workShift, setWorkShift] = useState([]);
   const [sortBy, setSortBy] = useState('relevant');
+  
+  // Industries and Departments filters
+  const [industries, setIndustries] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [selectedIndustries, setSelectedIndustries] = useState([]);
+  const [selectedDepartments, setSelectedDepartments] = useState([]);
+  const [industrySearchQuery, setIndustrySearchQuery] = useState('');
+  const [departmentSearchQuery, setDepartmentSearchQuery] = useState('');
 
   const experienceOptions = [
     'All Experience',
@@ -94,8 +104,14 @@ const JobsScreen = ({ route }) => {
     if (filterType && filterValue) {
       applyRouteFilter();
     }
+    loadMasterData();
     loadJobs();
   }, []);
+
+  useEffect(() => {
+    // Reload jobs when filters change
+    loadJobs();
+  }, [selectedIndustries, selectedDepartments, datePosted, minSalary, workMode, workType, workShift, sortBy, searchQuery, locationQuery, selectedExperience]);
 
   useEffect(() => {
     // Reload when route params change
@@ -105,6 +121,24 @@ const JobsScreen = ({ route }) => {
       loadJobs();
     }
   }, [route?.params]);
+
+  const loadMasterData = async () => {
+    try {
+      // Load industries
+      const industriesRes = await api.getAllIndustries();
+      if (industriesRes && industriesRes.success && industriesRes.data) {
+        setIndustries(industriesRes.data);
+      }
+      
+      // Load departments
+      const departmentsRes = await api.getAllDepartments();
+      if (departmentsRes && departmentsRes.success && departmentsRes.data) {
+        setDepartments(departmentsRes.data);
+      }
+    } catch (error) {
+      console.error('Error loading master data:', error);
+    }
+  };
 
   const applyRouteFilter = () => {
     if (!filterType || !filterValue) return;
@@ -150,11 +184,71 @@ const JobsScreen = ({ route }) => {
         if (workType.length > 0) filters.workType = workType.join(',');
         if (workShift.length > 0) filters.workShift = workShift.join(',');
         if (selectedExperience !== 'All Experience') filters.experience = selectedExperience;
+        if (selectedIndustries.length > 0) filters.industries = selectedIndustries.join(',');
+        if (selectedDepartments.length > 0) filters.departments = selectedDepartments.join(',');
 
         const response = await api.getJobs(filters);
         
         // Apply client-side filtering based on route params
         let filteredJobs = response.jobs || [];
+      
+        // Apply industries filter
+        if (selectedIndustries.length > 0) {
+          filteredJobs = filteredJobs.filter(job => {
+            const jobIndustries = [];
+            // Check company.industry
+            if (job.company?.industry) {
+              jobIndustries.push(job.company.industry);
+            }
+            // Check industries array
+            if (job.industries && Array.isArray(job.industries)) {
+              jobIndustries.push(...job.industries.map(ind => ind.name || ind));
+            }
+            // Check industry field (if exists)
+            if (job.industry) {
+              if (Array.isArray(job.industry)) {
+                jobIndustries.push(...job.industry);
+              } else {
+                jobIndustries.push(job.industry);
+              }
+            }
+            
+            return selectedIndustries.some(selectedIndustry => 
+              jobIndustries.some(jobIndustry => {
+                const jobInd = (jobIndustry?.name || jobIndustry || '').toString().toLowerCase();
+                const selectedInd = selectedIndustry.toLowerCase();
+                return jobInd.includes(selectedInd) || selectedInd.includes(jobInd);
+              })
+            );
+          });
+        }
+        
+        // Apply departments filter
+        if (selectedDepartments.length > 0) {
+          filteredJobs = filteredJobs.filter(job => {
+            const jobDepartments = [];
+            // Check departments array
+            if (job.departments && Array.isArray(job.departments)) {
+              jobDepartments.push(...job.departments.map(dept => dept.name || dept));
+            }
+            // Check department field (if exists)
+            if (job.department) {
+              if (Array.isArray(job.department)) {
+                jobDepartments.push(...job.department);
+              } else {
+                jobDepartments.push(job.department);
+              }
+            }
+            
+            return selectedDepartments.some(selectedDepartment => 
+              jobDepartments.some(jobDepartment => {
+                const jobDept = (jobDepartment?.name || jobDepartment || '').toString().toLowerCase();
+                const selectedDept = selectedDepartment.toLowerCase();
+                return jobDept.includes(selectedDept) || selectedDept.includes(jobDept);
+              })
+            );
+          });
+        }
       
         if (filterType && filterValue) {
           filteredJobs = filteredJobs.filter(job => {
@@ -225,6 +319,22 @@ const JobsScreen = ({ route }) => {
     }
   };
 
+  const toggleIndustry = (industryName) => {
+    if (selectedIndustries.includes(industryName)) {
+      setSelectedIndustries(selectedIndustries.filter(i => i !== industryName));
+    } else {
+      setSelectedIndustries([...selectedIndustries, industryName]);
+    }
+  };
+
+  const toggleDepartment = (departmentName) => {
+    if (selectedDepartments.includes(departmentName)) {
+      setSelectedDepartments(selectedDepartments.filter(d => d !== departmentName));
+    } else {
+      setSelectedDepartments([...selectedDepartments, departmentName]);
+    }
+  };
+
   const clearAllFilters = () => {
     setDatePosted('all');
     setMinSalary(0);
@@ -235,6 +345,10 @@ const JobsScreen = ({ route }) => {
     setSearchQuery('');
     setLocationQuery('');
     setSelectedExperience('All Experience');
+    setSelectedIndustries([]);
+    setSelectedDepartments([]);
+    setIndustrySearchQuery('');
+    setDepartmentSearchQuery('');
     setActiveFilter(null);
     loadJobs();
   };
@@ -275,10 +389,10 @@ const JobsScreen = ({ route }) => {
       <View style={styles.searchContainer}>
       <View style={styles.searchRow}>
         <View style={styles.searchInputWrapper}>
-          <Ionicons name="search-outline" size={20} color={colors.textSecondary} />
+          <Ionicons name="search-outline" size={isPhone ? 18 : (isMobile ? 18 : (isTablet ? 20 : 22))} color={colors.textSecondary} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search jobs by title, company..."
+            placeholder={isPhone ? "Search jobs..." : "Search jobs by title, company..."}
             value={searchQuery}
             onChangeText={setSearchQuery}
             placeholderTextColor={colors.textLight}
@@ -290,30 +404,53 @@ const JobsScreen = ({ route }) => {
             style={styles.experienceDropdown}
             onPress={() => setShowExperienceMenu(!showExperienceMenu)}
           >
-            <Text style={styles.experienceText}>{selectedExperience}</Text>
-            <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
+            <Text style={styles.experienceText} numberOfLines={1} ellipsizeMode="tail">{selectedExperience}</Text>
+            <Ionicons name="chevron-down" size={isPhone ? 18 : (isMobile ? 18 : (isTablet ? 20 : 22))} color={colors.textSecondary} />
           </TouchableOpacity>
           
-          {showExperienceMenu && (
-            <View style={styles.experienceMenu}>
-              {experienceOptions.map((option, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={styles.experienceOption}
-                  onPress={() => {
-                    setSelectedExperience(option);
-                    setShowExperienceMenu(false);
-                  }}
+          {showExperienceMenu && !isPhone && !isMobile && (
+            <>
+              <TouchableOpacity
+                style={styles.dropdownBackdrop}
+                activeOpacity={1}
+                onPress={() => setShowExperienceMenu(false)}
+              />
+              <View style={styles.experienceMenu}>
+                <ScrollView
+                  style={styles.experienceMenuScroll}
+                  nestedScrollEnabled={true}
+                  showsVerticalScrollIndicator={false}
                 >
-                  <Text style={styles.experienceOptionText}>{option}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+                  {experienceOptions.map((option, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={[
+                        styles.experienceOption,
+                        index === experienceOptions.length - 1 && styles.experienceOptionLast,
+                        selectedExperience === option && styles.experienceOptionActive,
+                      ]}
+                      onPress={() => {
+                        setSelectedExperience(option);
+                        setShowExperienceMenu(false);
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[
+                        styles.experienceOptionText,
+                        selectedExperience === option && styles.experienceOptionTextActive,
+                      ]}>
+                        {option}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            </>
           )}
         </View>
 
         <View style={styles.searchInputWrapper}>
-          <Ionicons name="location-outline" size={20} color={colors.textSecondary} />
+          <Ionicons name="location-outline" size={isPhone ? 18 : (isMobile ? 18 : (isTablet ? 20 : 22))} color={colors.textSecondary} />
           <TextInput
             style={styles.searchInput}
             placeholder="Enter location"
@@ -324,7 +461,7 @@ const JobsScreen = ({ route }) => {
         </View>
 
         <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
-          <Ionicons name="search" size={20} color={colors.textWhite} />
+          <Ionicons name="search" size={isPhone ? 18 : (isMobile ? 18 : (isTablet ? 20 : 22))} color={colors.textWhite} />
           <Text style={styles.searchButtonText}>Search</Text>
         </TouchableOpacity>
       </View>
@@ -356,6 +493,94 @@ const JobsScreen = ({ route }) => {
             <Text style={styles.radioLabel}>{option.label}</Text>
           </TouchableOpacity>
         ))}
+      </View>
+
+      {/* Industries Filter */}
+      <View style={styles.filterSection}>
+        <Text style={styles.filterSectionTitle}>Industries</Text>
+        <View style={styles.searchInputContainer}>
+          <Ionicons name="search-outline" size={16} color={colors.textSecondary} />
+          <TextInput
+            style={styles.filterSearchInput}
+            placeholder="Search industries..."
+            value={industrySearchQuery}
+            onChangeText={setIndustrySearchQuery}
+            placeholderTextColor={colors.textLight}
+          />
+        </View>
+        <ScrollView 
+          style={styles.filterOptionsContainer}
+          nestedScrollEnabled={true}
+          showsVerticalScrollIndicator={false}
+        >
+          {industries
+            .filter(industry => {
+              const name = industry.name || industry;
+              return name.toLowerCase().includes(industrySearchQuery.toLowerCase());
+            })
+            .map((industry, index) => {
+              const industryName = industry.name || industry;
+              const isSelected = selectedIndustries.includes(industryName);
+              return (
+                <TouchableOpacity
+                  key={index}
+                  style={styles.checkboxOption}
+                  onPress={() => toggleIndustry(industryName)}
+                >
+                  <View style={styles.checkbox}>
+                    {isSelected && (
+                      <Ionicons name="checkmark" size={16} color={colors.primary} />
+                    )}
+                  </View>
+                  <Text style={styles.checkboxLabel}>{industryName}</Text>
+                </TouchableOpacity>
+              );
+            })}
+        </ScrollView>
+      </View>
+
+      {/* Departments Filter */}
+      <View style={styles.filterSection}>
+        <Text style={styles.filterSectionTitle}>Departments</Text>
+        <View style={styles.searchInputContainer}>
+          <Ionicons name="search-outline" size={16} color={colors.textSecondary} />
+          <TextInput
+            style={styles.filterSearchInput}
+            placeholder="Search departments..."
+            value={departmentSearchQuery}
+            onChangeText={setDepartmentSearchQuery}
+            placeholderTextColor={colors.textLight}
+          />
+        </View>
+        <ScrollView 
+          style={styles.filterOptionsContainer}
+          nestedScrollEnabled={true}
+          showsVerticalScrollIndicator={false}
+        >
+          {departments
+            .filter(department => {
+              const name = department.name || department;
+              return name.toLowerCase().includes(departmentSearchQuery.toLowerCase());
+            })
+            .map((department, index) => {
+              const departmentName = department.name || department;
+              const isSelected = selectedDepartments.includes(departmentName);
+              return (
+                <TouchableOpacity
+                  key={index}
+                  style={styles.checkboxOption}
+                  onPress={() => toggleDepartment(departmentName)}
+                >
+                  <View style={styles.checkbox}>
+                    {isSelected && (
+                      <Ionicons name="checkmark" size={16} color={colors.primary} />
+                    )}
+                  </View>
+                  <Text style={styles.checkboxLabel}>{departmentName}</Text>
+                </TouchableOpacity>
+              );
+            })}
+        </ScrollView>
       </View>
 
       {/* Salary Filter */}
@@ -595,6 +820,59 @@ const JobsScreen = ({ route }) => {
       </ScrollView>
 
       {renderFilterModal()}
+      
+      {/* Experience Dropdown Modal for Mobile */}
+      <Modal
+        visible={showExperienceMenu && (isPhone || isMobile)}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowExperienceMenu(false)}
+      >
+        <TouchableOpacity
+          style={styles.experienceModalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowExperienceMenu(false)}
+        >
+          <View style={styles.experienceModalContent}>
+            <View style={styles.experienceModalHeader}>
+              <Text style={styles.experienceModalTitle}>Select Experience</Text>
+              <TouchableOpacity onPress={() => setShowExperienceMenu(false)}>
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView
+              style={styles.experienceModalScroll}
+              showsVerticalScrollIndicator={false}
+            >
+              {experienceOptions.map((option, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.experienceModalOption,
+                    index === experienceOptions.length - 1 && styles.experienceModalOptionLast,
+                    selectedExperience === option && styles.experienceModalOptionActive,
+                  ]}
+                  onPress={() => {
+                    setSelectedExperience(option);
+                    setShowExperienceMenu(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[
+                    styles.experienceModalOptionText,
+                    selectedExperience === option && styles.experienceModalOptionTextActive,
+                  ]}>
+                    {option}
+                  </Text>
+                  {selectedExperience === option && (
+                    <Ionicons name="checkmark" size={20} color={colors.primary} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 };
@@ -606,6 +884,9 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+    ...(isWeb && {
+      overflow: 'visible',
+    }),
   },
   hero: {
     paddingVertical: isMobile ? spacing.xl : spacing.xxl,
@@ -613,7 +894,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   searchContainerGradient: {
-    paddingTop: spacing.lg,
+    paddingTop: isPhone ? spacing.md : (isMobile ? spacing.lg : isTablet ? spacing.lg : spacing.xl),
+    position: 'relative',
+    zIndex: 1,
+    overflow: 'visible',
+    ...(isWeb && {
+      overflow: 'visible',
+    }),
   },
   heroTitle: {
     fontSize: isMobile ? 26 : (isTablet ? 32 : 42),
@@ -648,34 +935,58 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   searchContainer: {
-    padding: isMobile ? spacing.md : spacing.lg,
-    gap: spacing.md,
+    padding: isPhone ? spacing.sm : (isMobile ? spacing.md : isTablet ? spacing.lg : spacing.xl),
+    gap: isPhone ? spacing.sm : spacing.md,
+    maxWidth: isDesktop ? 1400 : '100%',
+    alignSelf: 'center',
+    width: '100%',
+    overflow: 'visible',
+    ...(isWeb && {
+      overflow: 'visible',
+    }),
   },
   searchRow: {
-    flexDirection: isWeb ? 'row' : 'column',
-    gap: spacing.sm,
-    alignItems: isWeb ? 'center' : 'stretch',
+    flexDirection: isPhone ? 'column' : (isMobile ? 'column' : 'row'),
+    gap: isPhone ? spacing.xs : (isMobile ? spacing.sm : spacing.md),
+    alignItems: isPhone ? 'stretch' : (isMobile ? 'stretch' : 'center'),
+    position: 'relative',
+    zIndex: 1,
+    overflow: 'visible',
+    ...(isWeb && {
+      overflow: 'visible',
+    }),
   },
   searchInputWrapper: {
-    flex: isWeb ? 2 : 1,
+    flex: isPhone ? 1 : (isMobile ? 1 : isDesktop ? 2 : 1.5),
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.background,
     borderRadius: borderRadius.md,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: isPhone ? spacing.sm : (isMobile ? spacing.md : isTablet ? spacing.md : spacing.lg),
     borderWidth: 1,
     borderColor: colors.border,
-    gap: spacing.sm,
+    gap: isPhone ? spacing.xs : spacing.sm,
+    height: isPhone ? 44 : (isMobile ? 46 : (isTablet ? 48 : 50)),
+    minWidth: isPhone ? '100%' : (isMobile ? '100%' : (isTablet ? 150 : 180)),
   },
   searchInput: {
     flex: 1,
-    paddingVertical: spacing.sm,
+    paddingVertical: isPhone ? spacing.xs : spacing.sm,
     ...typography.body1,
+    fontSize: isPhone ? 14 : (isMobile ? 15 : (isTablet ? 16 : 16)),
     color: colors.text,
+    minWidth: 0,
   },
   experienceDropdownWrapper: {
-    flex: isWeb ? 1.5 : 1,
+    flex: isPhone ? 1 : (isMobile ? 1 : isDesktop ? 1.5 : 1.2),
     position: 'relative',
+    zIndex: 99999,
+    elevation: 15,
+    minWidth: isPhone ? '100%' : (isMobile ? '100%' : (isTablet ? 140 : 160)),
+    overflow: 'visible',
+    ...(isWeb && {
+      overflow: 'visible',
+    }),
   },
   experienceDropdown: {
     flexDirection: 'row',
@@ -683,37 +994,93 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     backgroundColor: colors.background,
     borderRadius: borderRadius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingHorizontal: isPhone ? spacing.sm : (isMobile ? spacing.md : isTablet ? spacing.md : spacing.lg),
+    paddingVertical: isPhone ? spacing.sm : (isMobile ? spacing.sm : spacing.md),
     borderWidth: 1,
     borderColor: colors.border,
+    height: isPhone ? 44 : (isMobile ? 46 : (isTablet ? 48 : 50)),
+    minWidth: 0,
   },
   experienceText: {
     ...typography.body1,
+    fontSize: isPhone ? 14 : (isMobile ? 15 : (isTablet ? 15 : 16)),
     color: colors.text,
+    flex: 1,
+    marginRight: spacing.xs,
+  },
+  dropdownBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'transparent',
+    zIndex: 99998,
+    elevation: 14,
+    ...(isWeb && {
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      width: '100vw',
+      height: '100vh',
+    }),
   },
   experienceMenu: {
     position: 'absolute',
-    top: '110%',
+    top: '100%',
     left: 0,
     right: 0,
     backgroundColor: colors.cardBackground,
     borderRadius: borderRadius.md,
+    marginTop: spacing.xs,
     ...shadows.lg,
-    zIndex: 1000,
-    maxHeight: 250,
-    borderWidth: 1,
-    borderColor: colors.border,
+    zIndex: 99999,
+    elevation: 15,
+    maxHeight: isTablet ? 300 : 320,
+    borderWidth: 2,
+    borderColor: '#E2E8F0',
+    overflow: 'hidden',
+    ...(isWeb && {
+      boxShadow: '0 10px 25px rgba(0, 0, 0, 0.15)',
+      position: 'absolute',
+    }),
+  },
+  experienceMenuScroll: {
+    maxHeight: isTablet ? 300 : 320,
   },
   experienceOption: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
+    paddingHorizontal: isPhone ? spacing.md : (isMobile ? spacing.md : spacing.lg),
+    paddingVertical: isPhone ? spacing.md : (isMobile ? spacing.md : spacing.lg),
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: '#F1F5F9',
+    backgroundColor: colors.cardBackground,
+    minHeight: isPhone ? 48 : (isMobile ? 50 : 54),
+    justifyContent: 'center',
+    ...(isWeb && {
+      cursor: 'pointer',
+      transition: 'background-color 0.2s ease',
+    }),
+  },
+  experienceOptionLast: {
+    borderBottomWidth: 0,
+  },
+  experienceOptionActive: {
+    backgroundColor: '#F0F4FF',
+    borderLeftWidth: 3,
+    borderLeftColor: colors.primary,
   },
   experienceOptionText: {
     ...typography.body1,
-    color: colors.text,
+    fontSize: isPhone ? 15 : (isMobile ? 15 : (isTablet ? 16 : 16)),
+    color: '#2D3748',
+    fontWeight: '500',
+    lineHeight: isPhone ? 20 : 22,
+  },
+  experienceOptionTextActive: {
+    color: colors.primary,
+    fontWeight: '600',
   },
   searchButton: {
     flexDirection: 'row',
@@ -721,13 +1088,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.primary,
     borderRadius: borderRadius.md,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
-    gap: spacing.xs,
-    minWidth: isWeb ? 120 : undefined,
+    paddingVertical: isPhone ? spacing.sm : spacing.md,
+    paddingHorizontal: isPhone ? spacing.md : (isMobile ? spacing.lg : isTablet ? spacing.lg : spacing.xl),
+    gap: isPhone ? spacing.xs : spacing.xs,
+    minWidth: isPhone ? '100%' : (isMobile ? '100%' : (isDesktop ? 120 : 100)),
+    width: isPhone ? '100%' : (isMobile ? '100%' : undefined),
+    height: isPhone ? 44 : (isMobile ? 46 : (isTablet ? 48 : 50)),
+    zIndex: 1,
+    elevation: 1,
   },
   searchButtonText: {
     ...typography.button,
+    fontSize: isPhone ? 14 : (isMobile ? 15 : (isTablet ? 16 : 16)),
     color: colors.textWhite,
     fontWeight: '600',
   },
@@ -737,6 +1109,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
     gap: 0,
     alignItems: 'flex-start',
+    zIndex: 1,
+    position: 'relative',
   },
   sidebarWrapper: {
     width: isWeb && width > 768 ? 280 : '100%',
@@ -774,6 +1148,28 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.lg,
     borderBottomWidth: 1,
     borderBottomColor: colors.borderLight,
+  },
+  searchInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: spacing.xs,
+  },
+  filterSearchInput: {
+    flex: 1,
+    ...typography.body2,
+    fontSize: isPhone ? 13 : (isMobile ? 14 : 14),
+    color: colors.text,
+    paddingVertical: spacing.xs,
+  },
+  filterOptionsContainer: {
+    maxHeight: isPhone ? 200 : (isMobile ? 250 : 300),
   },
   filterSectionTitle: {
     ...typography.body1,
@@ -924,10 +1320,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.primary,
     borderRadius: borderRadius.md,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
+    paddingVertical: isPhone ? spacing.sm : spacing.md,
+    paddingHorizontal: isPhone ? spacing.md : spacing.lg,
     gap: spacing.sm,
     marginBottom: spacing.md,
+    zIndex: 1,
+    elevation: 1,
   },
   mobileFilterText: {
     ...typography.button,
@@ -975,6 +1373,66 @@ const styles = StyleSheet.create({
   modalApplyText: {
     ...typography.button,
     color: colors.textWhite,
+    fontWeight: '600',
+  },
+  experienceModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: isPhone ? spacing.md : spacing.lg,
+  },
+  experienceModalContent: {
+    backgroundColor: colors.cardBackground,
+    borderRadius: borderRadius.xl,
+    width: '100%',
+    maxWidth: isPhone ? '100%' : 400,
+    maxHeight: '80%',
+    ...shadows.lg,
+  },
+  experienceModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: isPhone ? spacing.md : spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  experienceModalTitle: {
+    fontSize: isPhone ? 18 : (isMobile ? 20 : 22),
+    fontWeight: '700',
+    color: colors.text,
+  },
+  experienceModalScroll: {
+    maxHeight: isPhone ? 400 : 450,
+  },
+  experienceModalOption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: isPhone ? spacing.md : spacing.lg,
+    paddingVertical: isPhone ? spacing.md : spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    minHeight: isPhone ? 52 : 56,
+  },
+  experienceModalOptionLast: {
+    borderBottomWidth: 0,
+  },
+  experienceModalOptionActive: {
+    backgroundColor: '#F0F4FF',
+    borderLeftWidth: 3,
+    borderLeftColor: colors.primary,
+  },
+  experienceModalOptionText: {
+    ...typography.body1,
+    fontSize: isPhone ? 15 : (isMobile ? 16 : 16),
+    color: '#2D3748',
+    fontWeight: '500',
+    flex: 1,
+  },
+  experienceModalOptionTextActive: {
+    color: colors.primary,
     fontWeight: '600',
   },
   adContainer: {

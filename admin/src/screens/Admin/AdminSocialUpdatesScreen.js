@@ -49,8 +49,10 @@ const AdminSocialUpdatesScreen = ({ navigation }) => {
 
   // Modal States
   const [createModalVisible, setCreateModalVisible] = useState(false);
+  const [editModalVisible, setEditModalVisible] = useState(false);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [selectedPost, setSelectedPost] = useState(null);
+  const [editingPost, setEditingPost] = useState(null);
   const [saving, setSaving] = useState(false);
 
   // Form State
@@ -116,7 +118,22 @@ const AdminSocialUpdatesScreen = ({ navigation }) => {
       visibility: 'public',
     });
     setSelectedImages([]);
+    setEditingPost(null);
     setCreateModalVisible(true);
+  };
+
+  const openEditModal = (post) => {
+    setEditingPost(post);
+    setFormData({
+      title: post.title || '',
+      content: post.content || '',
+      postType: post.postType || 'general',
+      category: post.category || '',
+      tags: post.tags ? (Array.isArray(post.tags) ? post.tags.join(', ') : post.tags) : '',
+      visibility: post.visibility || 'public',
+    });
+    setSelectedImages([]);
+    setEditModalVisible(true);
   };
 
   const handlePickImage = async () => {
@@ -202,6 +219,63 @@ const AdminSocialUpdatesScreen = ({ navigation }) => {
     } catch (error) {
       console.error('Error creating post:', error);
       Alert.alert('Error', error.message || 'Failed to create post');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleUpdatePost = async () => {
+    if (!editingPost) return;
+
+    try {
+      // Validation
+      if (!formData.title.trim()) {
+        Alert.alert('Validation Error', 'Please enter a title');
+        return;
+      }
+      if (!formData.content.trim()) {
+        Alert.alert('Validation Error', 'Please enter content');
+        return;
+      }
+
+      setSaving(true);
+
+      const formDataToSend = new FormData();
+      formDataToSend.append('title', formData.title.trim());
+      formDataToSend.append('content', formData.content.trim());
+      formDataToSend.append('postType', formData.postType);
+      formDataToSend.append('category', formData.category.trim());
+      formDataToSend.append('tags', formData.tags);
+      formDataToSend.append('visibility', formData.visibility);
+
+      // Add images to form data
+      if (selectedImages.length > 0) {
+        selectedImages.forEach((image, index) => {
+          const uriParts = image.uri.split('.');
+          const fileType = uriParts[uriParts.length - 1];
+          
+          formDataToSend.append('media', {
+            uri: image.uri,
+            name: `image_${index}.${fileType}`,
+            type: `image/${fileType}`,
+          });
+        });
+      }
+
+      const response = await api.updateSocialUpdate(editingPost._id, formDataToSend);
+
+      if (response && response.socialUpdate) {
+        Alert.alert('Success', 'Social update updated successfully');
+        setEditModalVisible(false);
+        setEditingPost(null);
+        setSelectedImages([]);
+        loadData();
+      } else {
+        Alert.alert('Error', response.message || 'Failed to update post');
+      }
+    } catch (error) {
+      console.error('Error updating post:', error);
+      Alert.alert('Error', error.message || 'Failed to update post');
     } finally {
       setSaving(false);
     }
@@ -392,6 +466,16 @@ const AdminSocialUpdatesScreen = ({ navigation }) => {
         >
           <Ionicons name="eye-outline" size={18} color={colors.primary} />
           <Text style={styles.actionButtonText}>View Details</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={(e) => {
+            e.stopPropagation();
+            openEditModal(post);
+          }}
+        >
+          <Ionicons name="create-outline" size={18} color={colors.success} />
+          <Text style={styles.actionButtonText}>Edit</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.actionButton}
@@ -731,6 +815,163 @@ const AdminSocialUpdatesScreen = ({ navigation }) => {
                 <ActivityIndicator size="small" color="#FFF" />
               ) : (
                 <Text style={styles.saveButtonText}>Publish Post</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Edit Post Modal */}
+      <Modal
+        visible={editModalVisible}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => setEditModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Edit Social Update</Text>
+            <TouchableOpacity onPress={() => setEditModalVisible(false)}>
+              <Ionicons name="close" size={28} color={colors.text} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.modalContent}>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Title *</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.title}
+                onChangeText={(text) => setFormData({ ...formData, title: text })}
+                placeholder="Enter post title..."
+                placeholderTextColor={colors.textSecondary}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Content *</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                value={formData.content}
+                onChangeText={(text) => setFormData({ ...formData, content: text })}
+                placeholder="Write your post content..."
+                placeholderTextColor={colors.textSecondary}
+                multiline
+                numberOfLines={8}
+                textAlignVertical="top"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Post Type</Text>
+              <View style={styles.picker}>
+                <Picker
+                  selectedValue={formData.postType}
+                  onValueChange={(value) => setFormData({ ...formData, postType: value })}
+                  style={styles.pickerInput}
+                >
+                  <Picker.Item label="General" value="general" />
+                  <Picker.Item label="Job Announcement" value="job_announcement" />
+                  <Picker.Item label="Company Update" value="company_update" />
+                  <Picker.Item label="Industry News" value="industry_news" />
+                  <Picker.Item label="Career Tips" value="career_tips" />
+                  <Picker.Item label="Event Announcement" value="event_announcement" />
+                </Picker>
+              </View>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Category (Optional)</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.category}
+                onChangeText={(text) => setFormData({ ...formData, category: text })}
+                placeholder="e.g., Technology, Healthcare"
+                placeholderTextColor={colors.textSecondary}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Tags (Optional)</Text>
+              <TextInput
+                style={styles.input}
+                value={formData.tags}
+                onChangeText={(text) => setFormData({ ...formData, tags: text })}
+                placeholder="e.g., hiring, remote, tech (comma separated)"
+                placeholderTextColor={colors.textSecondary}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Visibility</Text>
+              <View style={styles.picker}>
+                <Picker
+                  selectedValue={formData.visibility}
+                  onValueChange={(value) => setFormData({ ...formData, visibility: value })}
+                  style={styles.pickerInput}
+                >
+                  <Picker.Item label="Public" value="public" />
+                  <Picker.Item label="Followers Only" value="followers_only" />
+                  <Picker.Item label="Private" value="private" />
+                </Picker>
+              </View>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Images (Optional)</Text>
+              <Text style={styles.hint}>Add up to 5 images to your post</Text>
+              
+              {/* Image Preview */}
+              {selectedImages.length > 0 && (
+                <View style={styles.imagesPreviewContainer}>
+                  {selectedImages.map((image, index) => (
+                    <View key={index} style={styles.imagePreviewWrapper}>
+                      <Image source={{ uri: image.uri }} style={styles.imagePreview} />
+                      <TouchableOpacity
+                        style={styles.removeImageButton}
+                        onPress={() => handleRemoveImage(index)}
+                      >
+                        <Ionicons name="close-circle" size={24} color={colors.error} />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {/* Add Image Button */}
+              {selectedImages.length < 5 && (
+                <TouchableOpacity
+                  style={styles.addImageButton}
+                  onPress={handlePickImage}
+                >
+                  <Ionicons name="image-outline" size={24} color={colors.primary} />
+                  <Text style={styles.addImageButtonText}>
+                    {selectedImages.length > 0 ? 'Add More Images' : 'Add Images'}
+                  </Text>
+                  <Text style={styles.addImageButtonSubtext}>
+                    {selectedImages.length}/5 images
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </ScrollView>
+
+          <View style={styles.modalFooter}>
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => setEditModalVisible(false)}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.saveButton}
+              onPress={handleUpdatePost}
+              disabled={saving}
+            >
+              {saving ? (
+                <ActivityIndicator size="small" color="#FFF" />
+              ) : (
+                <Text style={styles.saveButtonText}>Update Post</Text>
               )}
             </TouchableOpacity>
           </View>

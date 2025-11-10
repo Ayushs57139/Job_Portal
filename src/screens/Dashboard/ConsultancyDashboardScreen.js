@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, RefreshControl, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, spacing, borderRadius, typography, shadows } from '../../styles/theme';
@@ -57,29 +57,45 @@ const ConsultancyDashboardScreen = ({ navigation }) => {
   };
 
   const handleLogout = async () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.logout();
-            } catch (error) {
-              console.log('Logout error:', error);
-            } finally {
-              navigation.reset({
-                index: 0,
-                routes: [{ name: 'Home' }],
-              });
-            }
+    if (Platform.OS === 'web') {
+      // For web, use window.confirm
+      if (window.confirm('Are you sure you want to logout?')) {
+        try {
+          await api.logout();
+        } catch (error) {
+          console.log('Logout error:', error);
+        }
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Home' }],
+        });
+      }
+    } else {
+      // For mobile, use Alert
+      Alert.alert(
+        'Logout',
+        'Are you sure you want to logout?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Logout',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await api.logout();
+              } catch (error) {
+                console.log('Logout error:', error);
+              } finally {
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: 'Home' }],
+                });
+              }
+            },
           },
-        },
-      ]
-    );
+        ]
+      );
+    }
   };
 
   const menuItems = [
@@ -136,7 +152,15 @@ const ConsultancyDashboardScreen = ({ navigation }) => {
               Welcome, {user?.firstName || 'User'}
           </Text>
           </View>
-          <TouchableOpacity style={styles.headerLogoutButton} onPress={handleLogout}>
+          <TouchableOpacity 
+            style={styles.headerLogoutButton} 
+            onPress={() => {
+              console.log('Logout button clicked');
+              handleLogout();
+            }}
+            activeOpacity={0.7}
+            disabled={false}
+          >
             <Ionicons name="log-out-outline" size={18} color={'#FFF'} />
             <Text style={styles.headerLogoutText}>Logout</Text>
           </TouchableOpacity>
@@ -240,6 +264,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     borderRadius: borderRadius.md,
     gap: 6,
+    cursor: 'pointer',
+    zIndex: 10,
   },
   headerLogoutText: {
     color: '#FFF',

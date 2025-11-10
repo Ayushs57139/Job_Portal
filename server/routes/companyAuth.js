@@ -84,13 +84,56 @@ router.post('/login', async (req, res) => {
         // Find company
         const company = await User.findOne({ email });
         if (!company) {
-            return res.status(400).json({ message: 'Invalid credentials' });
+            return res.status(400).json({ message: 'No account found with this email address' });
         }
 
-        // Check password
+        // STRICT VALIDATION: ONLY company accounts can login here
+        // Explicitly reject admin, superadmin, jobseeker, and other account types
+        if (company.userType === 'admin' || company.userType === 'superadmin') {
+            return res.status(403).json({ 
+                message: 'Access denied. Admin accounts cannot login through company login. Please use the admin login page.' 
+            });
+        }
+        
+        if (company.userType === 'jobseeker') {
+            return res.status(403).json({ 
+                message: 'Access denied. This is a jobseeker account. Please use the jobseeker login page.' 
+            });
+        }
+        
+        // Check BOTH conditions must be true - reject if either fails
+        const isCompanyAccount = company.userType === 'employer' && company.employerType === 'company';
+        
+        if (!isCompanyAccount) {
+            // Determine account type for error message
+            let accountType = company.userType;
+            if (company.userType === 'employer' && company.employerType) {
+                accountType = company.employerType;
+            } else if (company.userType === 'employer') {
+                accountType = 'unknown employer type';
+            }
+            
+            return res.status(400).json({ 
+                message: `This account is a ${accountType} account, not a company account. Please use the correct login page` 
+            });
+        }
+
+        // Check if account is active
+        if (!company.isActive) {
+            return res.status(400).json({ message: 'Account is deactivated. Please contact support' });
+        }
+
+        // Check password (only after user type validation passes)
         const isMatch = await company.comparePassword(password);
         if (!isMatch) {
-            return res.status(400).json({ message: 'Invalid credentials' });
+            return res.status(400).json({ message: 'Incorrect password. Please try again' });
+        }
+
+        // Final safeguard: Double-check account type before generating token
+        if (company.userType !== 'employer' || company.employerType !== 'company') {
+            return res.status(403).json({ 
+                message: 'Access denied: This account is not authorized for company login' 
+            });
         }
 
         // Update last login

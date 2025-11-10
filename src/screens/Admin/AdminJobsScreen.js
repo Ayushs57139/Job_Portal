@@ -1,10 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, TextInput, Alert, Platform } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, TextInput, Alert, Platform, Dimensions } from 'react-native';
 import AdminLayout from '../../components/Admin/AdminLayout';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../../config/api';
 import * as DocumentPicker from 'expo-document-picker';
+
+const { width } = Dimensions.get('window');
+const isMobile = width <= 600;
+const isTablet = width > 600 && width <= 1024;
+const isDesktop = width > 1024;
 
 const AdminJobsScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
@@ -355,29 +360,35 @@ const AdminJobsScreen = ({ navigation }) => {
 
           <View style={styles.tableContainer}>
             <View style={styles.table}>
-              <View style={styles.tableHeader}>
-                <Text style={[styles.tableHeaderText, styles.titleColumn]}>Job Title</Text>
-                <Text style={[styles.tableHeaderText, styles.companyColumn]}>Company</Text>
-                <Text style={[styles.tableHeaderText, styles.locationColumn]}>Location</Text>
-                <Text style={[styles.tableHeaderText, styles.statusColumn]}>Status</Text>
-                <Text style={[styles.tableHeaderText, styles.postedColumn]}>Posted</Text>
-                <Text style={[styles.tableHeaderText, styles.actionsColumn]}>Actions</Text>
-              </View>
+              {!isMobile && (
+                <View style={styles.tableHeader}>
+                  <Text style={[styles.tableHeaderText, styles.titleColumn]}>Job Title</Text>
+                  <Text style={[styles.tableHeaderText, styles.companyColumn]}>Company</Text>
+                  <Text style={[styles.tableHeaderText, styles.locationColumn]}>Location</Text>
+                  <Text style={[styles.tableHeaderText, styles.statusColumn]}>Status</Text>
+                  <Text style={[styles.tableHeaderText, styles.postedColumn]}>Posted</Text>
+                  <Text style={[styles.tableHeaderText, styles.actionsColumn]}>Actions</Text>
+                </View>
+              )}
 
               {filteredJobs.length > 0 ? (
                 filteredJobs.map((job, index) => (
                   <View key={job._id || index} style={styles.tableRow}>
+                    {isMobile && <Text style={[styles.tableCellText, { fontWeight: '600', color: '#666', marginBottom: 4 }]}>Job Title:</Text>}
                     <Text style={[styles.tableCellText, styles.titleColumn, styles.jobTitle]}>
                       {job.title || 'N/A'}
                     </Text>
+                    {isMobile && <Text style={[styles.tableCellText, { fontWeight: '600', color: '#666', marginBottom: 4, marginTop: 4 }]}>Company:</Text>}
                     <Text style={[styles.tableCellText, styles.companyColumn]}>
                       {typeof job.company === 'object' ? (job.company?.name || 'N/A') : (job.company || job.postedBy?.companyName || 'N/A')}
                     </Text>
+                    {isMobile && <Text style={[styles.tableCellText, { fontWeight: '600', color: '#666', marginBottom: 4, marginTop: 4 }]}>Location:</Text>}
                     <Text style={[styles.tableCellText, styles.locationColumn]}>
                       {typeof job.location === 'object' 
                         ? `${job.location?.city || ''}${job.location?.city && job.location?.state ? ', ' : ''}${job.location?.state || ''}`.trim() || 'N/A'
                         : (job.location || 'N/A')}
                     </Text>
+                    {isMobile && <Text style={[styles.tableCellText, { fontWeight: '600', color: '#666', marginBottom: 4, marginTop: 4 }]}>Status:</Text>}
                     <View style={styles.statusColumn}>
                       <TouchableOpacity
                         style={[
@@ -391,28 +402,30 @@ const AdminJobsScreen = ({ navigation }) => {
                         </Text>
                       </TouchableOpacity>
                     </View>
+                    {isMobile && <Text style={[styles.tableCellText, { fontWeight: '600', color: '#666', marginBottom: 4, marginTop: 4 }]}>Posted:</Text>}
                     <Text style={[styles.tableCellText, styles.postedColumn]}>
                       {formatDate(job.createdAt)}
                     </Text>
+                    {isMobile && <Text style={[styles.tableCellText, { fontWeight: '600', color: '#666', marginBottom: 4, marginTop: 4 }]}>Actions:</Text>}
                     <View style={styles.actionsColumn}>
                       <TouchableOpacity
                         style={styles.actionButton}
                         onPress={() => navigation.navigate('AdminJobDetails', { jobId: job._id })}
                       >
-                        <Ionicons name="eye-outline" size={18} color="#4A90E2" />
+                        <Ionicons name="eye-outline" size={isMobile ? 16 : 18} color="#4A90E2" />
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={[styles.actionButton, styles.deleteButton]}
                         onPress={() => deleteJob(job._id)}
                       >
-                        <Ionicons name="trash-outline" size={18} color="#E74C3C" />
+                        <Ionicons name="trash-outline" size={isMobile ? 16 : 18} color="#E74C3C" />
                       </TouchableOpacity>
                     </View>
                   </View>
                 ))
               ) : (
                 <View style={styles.emptyState}>
-                  <Ionicons name="briefcase-outline" size={64} color="#CCC" />
+                  <Ionicons name="briefcase-outline" size={isMobile ? 48 : 64} color="#CCC" />
                   <Text style={styles.emptyStateText}>No jobs found</Text>
                 </View>
               )}
@@ -427,9 +440,11 @@ const AdminJobsScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   scrollContainer: {
     flex: 1,
+    width: '100%',
   },
   container: {
-    padding: 20,
+    padding: isMobile ? 0 : isTablet ? 8 : 12,
+    width: '100%',
   },
   loadingContainer: {
     flex: 1,
@@ -438,27 +453,27 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 10,
-    fontSize: 16,
+    fontSize: isMobile ? 14 : 16,
     color: '#666',
   },
   headerSection: {
-    marginBottom: 20,
+    marginBottom: isMobile ? 16 : isTablet ? 18 : 20,
   },
   pageTitle: {
-    fontSize: 28,
+    fontSize: isMobile ? 22 : isTablet ? 24 : 28,
     fontWeight: 'bold',
     color: '#333',
   },
   pageSubtitle: {
-    fontSize: 14,
+    fontSize: isMobile ? 12 : isTablet ? 13 : 14,
     color: '#666',
     marginTop: 4,
   },
   filterSection: {
     backgroundColor: '#FFF',
     borderRadius: 12,
-    padding: 15,
-    marginBottom: 15,
+    padding: isMobile ? 12 : isTablet ? 14 : 15,
+    marginBottom: isMobile ? 12 : 15,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -470,35 +485,38 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#F5F6FA',
     borderRadius: 8,
-    paddingHorizontal: 12,
-    marginBottom: 15,
+    paddingHorizontal: isMobile ? 10 : 12,
+    marginBottom: isMobile ? 12 : 15,
   },
   searchIcon: {
-    marginRight: 8,
+    marginRight: isMobile ? 6 : 8,
   },
   searchInput: {
     flex: 1,
-    paddingVertical: 12,
-    fontSize: 14,
+    paddingVertical: isMobile ? 10 : 12,
+    fontSize: isMobile ? 13 : isTablet ? 13.5 : 14,
     color: '#333',
   },
   filterButtons: {
     flexDirection: 'row',
-    gap: 10,
+    gap: isMobile ? 8 : 10,
+    flexWrap: isMobile ? 'wrap' : 'nowrap',
   },
   filterButton: {
-    flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 15,
+    flex: isMobile ? 0 : 1,
+    paddingVertical: isMobile ? 8 : 10,
+    paddingHorizontal: isMobile ? 12 : 15,
     borderRadius: 8,
     backgroundColor: '#F5F6FA',
     alignItems: 'center',
+    minWidth: isMobile ? '48%' : 'auto',
+    marginBottom: isMobile ? 8 : 0,
   },
   activeFilter: {
     backgroundColor: '#4A90E2',
   },
   filterButtonText: {
-    fontSize: 14,
+    fontSize: isMobile ? 13 : isTablet ? 13.5 : 14,
     fontWeight: '500',
     color: '#666',
   },
@@ -506,19 +524,19 @@ const styles = StyleSheet.create({
     color: '#FFF',
   },
   bulkActionsBar: {
-    flexDirection: 'row',
+    flexDirection: isMobile ? 'column' : 'row',
     justifyContent: 'space-between',
-    gap: 10,
-    marginBottom: 15,
+    gap: isMobile ? 8 : 10,
+    marginBottom: isMobile ? 12 : 15,
   },
   bulkActionButton: {
-    flex: 1,
+    flex: isMobile ? 0 : 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingVertical: isMobile ? 10 : 12,
+    paddingHorizontal: isMobile ? 12 : 16,
     backgroundColor: '#FFF',
     borderRadius: 8,
     borderWidth: 1,
@@ -528,79 +546,99 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
+    width: isMobile ? '100%' : 'auto',
   },
   bulkActionButtonText: {
-    fontSize: 13,
+    fontSize: isMobile ? 12 : isTablet ? 12.5 : 13,
     fontWeight: '600',
     color: '#374151',
   },
   statsBar: {
     backgroundColor: '#FFF',
     borderRadius: 8,
-    padding: 12,
-    marginBottom: 15,
+    padding: isMobile ? 10 : 12,
+    marginBottom: isMobile ? 12 : 15,
     elevation: 1,
   },
   statsText: {
-    fontSize: 14,
+    fontSize: isMobile ? 13 : isTablet ? 13.5 : 14,
     fontWeight: '600',
     color: '#333',
   },
   tableContainer: {
     flex: 1,
+    width: '100%',
   },
   table: {
     backgroundColor: '#FFF',
     borderRadius: 12,
-    padding: 20,
+    padding: isMobile ? 12 : isTablet ? 16 : 20,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+    width: '100%',
   },
   tableHeader: {
-    flexDirection: 'row',
+    flexDirection: isMobile ? 'column' : 'row',
     borderBottomWidth: 2,
     borderBottomColor: '#E0E0E0',
-    paddingBottom: 12,
-    marginBottom: 12,
+    paddingBottom: isMobile ? 8 : 12,
+    marginBottom: isMobile ? 8 : 12,
   },
   tableHeaderText: {
-    fontSize: 14,
+    fontSize: isMobile ? 12 : isTablet ? 13 : 14,
     fontWeight: '600',
     color: '#666',
   },
   tableRow: {
-    flexDirection: 'row',
-    paddingVertical: 12,
+    flexDirection: isMobile ? 'column' : 'row',
+    paddingVertical: isMobile ? 16 : 12,
     borderBottomWidth: 1,
     borderBottomColor: '#F5F5F5',
-    alignItems: 'center',
+    alignItems: isMobile ? 'flex-start' : 'center',
+    marginBottom: isMobile ? 12 : 0,
+    backgroundColor: isMobile ? '#F9F9F9' : 'transparent',
+    borderRadius: isMobile ? 8 : 0,
+    padding: isMobile ? 12 : 0,
   },
   tableCellText: {
-    fontSize: 14,
+    fontSize: isMobile ? 13 : isTablet ? 13.5 : 14,
     color: '#333',
+    marginBottom: isMobile ? 8 : 0,
   },
   titleColumn: {
-    flex: 2.5,
+    flex: isMobile ? 0 : 2.5,
+    width: isMobile ? '100%' : 'auto',
+    marginBottom: isMobile ? 4 : 0,
   },
   companyColumn: {
-    flex: 2,
+    flex: isMobile ? 0 : 2,
+    width: isMobile ? '100%' : 'auto',
+    marginBottom: isMobile ? 4 : 0,
   },
   locationColumn: {
-    flex: 1.5,
+    flex: isMobile ? 0 : 1.5,
+    width: isMobile ? '100%' : 'auto',
+    marginBottom: isMobile ? 4 : 0,
   },
   statusColumn: {
-    flex: 1.2,
+    flex: isMobile ? 0 : 1.2,
+    width: isMobile ? '100%' : 'auto',
+    marginBottom: isMobile ? 4 : 0,
   },
   postedColumn: {
-    flex: 1.5,
+    flex: isMobile ? 0 : 1.5,
+    width: isMobile ? '100%' : 'auto',
+    marginBottom: isMobile ? 4 : 0,
   },
   actionsColumn: {
-    flex: 1.2,
+    flex: isMobile ? 0 : 1.2,
     flexDirection: 'row',
     gap: 8,
+    width: isMobile ? '100%' : 'auto',
+    marginTop: isMobile ? 8 : 0,
   },
   jobTitle: {
     fontWeight: '500',

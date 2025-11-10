@@ -14,8 +14,10 @@ import api from '../config/api';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
+const isPhone = width <= 480;
 const isMobile = width <= 600;
-const isTablet = width > 600 && width <= 768;
+const isTablet = width > 600 && width <= 1024;
+const isDesktop = width > 1024;
 
 const TrendingJobRoles = ({ navigation }) => {
   const [jobRoles, setJobRoles] = useState([]);
@@ -160,9 +162,15 @@ const TrendingJobRoles = ({ navigation }) => {
     return null;
   }
 
-  const numColumns = isMobile 
+  const numColumns = isPhone 
     ? 2 
-    : (width > 1200 ? 4 : width > 768 ? 3 : 2);
+    : isMobile 
+    ? 2 
+    : isTablet 
+    ? (width > 900 ? 3 : 2)
+    : isDesktop 
+    ? (width > 1400 ? 4 : width > 1200 ? 4 : 3)
+    : 2;
 
   return (
     <View style={styles.container}>
@@ -196,45 +204,45 @@ const TrendingJobRoles = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: isMobile ? spacing.xl : spacing.xxl,
-    paddingHorizontal: isMobile ? spacing.md : spacing.lg,
-    maxWidth: 1200,
+    paddingVertical: isPhone ? spacing.lg : (isMobile ? spacing.xl : isTablet ? spacing.xl : spacing.xxl),
+    paddingHorizontal: isPhone ? spacing.sm : (isMobile ? spacing.md : isTablet ? spacing.lg : spacing.xl),
+    maxWidth: isDesktop ? (width > 1400 ? 1400 : 1200) : '100%',
     width: '100%',
     alignSelf: 'center',
     backgroundColor: colors.background,
   },
   header: {
-    marginBottom: spacing.xl,
+    marginBottom: isPhone ? spacing.lg : spacing.xl,
     alignItems: 'center',
   },
   title: {
-    fontSize: isMobile ? 24 : (isTablet ? 28 : 36),
+    fontSize: isPhone ? 20 : (isMobile ? 24 : (isTablet ? 28 : (isDesktop ? 36 : 32))),
     fontWeight: '700',
     color: '#2D3748',
     textAlign: 'center',
-    paddingHorizontal: isMobile ? spacing.md : 0,
+    paddingHorizontal: isPhone ? spacing.sm : (isMobile ? spacing.md : 0),
   },
   cardsContainer: {
     width: '100%',
   },
   row: {
     justifyContent: 'space-between',
-    marginBottom: spacing.md,
-    gap: isMobile ? spacing.xs : 0,
+    marginBottom: isPhone ? spacing.sm : spacing.md,
+    gap: isPhone ? spacing.xs : (isMobile ? spacing.xs : spacing.sm),
   },
   card: {
     flex: 1,
     backgroundColor: colors.cardBackground,
     borderRadius: borderRadius.md,
-    padding: isMobile ? spacing.sm : spacing.md,
-    marginHorizontal: isMobile ? spacing.xs / 2 : spacing.xs,
-    marginBottom: spacing.md,
+    padding: isPhone ? spacing.sm : (isMobile ? spacing.sm : spacing.md),
+    marginHorizontal: isPhone ? spacing.xs / 2 : (isMobile ? spacing.xs / 2 : spacing.xs),
+    marginBottom: isPhone ? spacing.sm : spacing.md,
     borderWidth: 1,
     borderColor: colors.borderLight,
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: isMobile ? 70 : 80,
-    maxWidth: isMobile ? '48%' : undefined,
+    minHeight: isPhone ? 65 : (isMobile ? 70 : 80),
+    maxWidth: isPhone ? '48%' : (isMobile ? '48%' : undefined),
     ...shadows.sm,
     ...(isWeb && {
       cursor: 'pointer',
@@ -245,8 +253,8 @@ const styles = StyleSheet.create({
     marginRight: spacing.sm,
   },
   iconBackground: {
-    width: isMobile ? 40 : 48,
-    height: isMobile ? 40 : 48,
+    width: isPhone ? 36 : (isMobile ? 40 : 48),
+    height: isPhone ? 36 : (isMobile ? 40 : 48),
     borderRadius: borderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',
@@ -260,13 +268,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.text,
     marginBottom: spacing.xs,
-    fontSize: isMobile ? 13 : 16,
-    lineHeight: isMobile ? 18 : 24,
+    fontSize: isPhone ? 12 : (isMobile ? 13 : (isTablet ? 15 : 16)),
+    lineHeight: isPhone ? 16 : (isMobile ? 18 : 24),
   },
   cardCount: {
     ...typography.body2,
     color: colors.textSecondary,
-    fontSize: isMobile ? 11 : 12,
+    fontSize: isPhone ? 10 : (isMobile ? 11 : 12),
   },
   cardArrow: {
     marginLeft: spacing.sm,
@@ -276,14 +284,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.xs,
-    marginTop: spacing.lg,
-    paddingVertical: spacing.md,
-    paddingHorizontal: isMobile ? spacing.lg : spacing.xl,
+    marginTop: isPhone ? spacing.md : spacing.lg,
+    paddingVertical: isPhone ? spacing.sm : spacing.md,
+    paddingHorizontal: isPhone ? spacing.md : (isMobile ? spacing.lg : spacing.xl),
     borderWidth: 2,
     borderColor: '#10B981',
     borderRadius: borderRadius.md,
     alignSelf: 'center',
-    minWidth: isMobile ? '100%' : undefined,
+    minWidth: isPhone ? '100%' : (isMobile ? '100%' : undefined),
     ...(isWeb && {
       cursor: 'pointer',
     }),

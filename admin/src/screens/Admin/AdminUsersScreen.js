@@ -25,7 +25,8 @@ const AdminUsersScreen = ({ navigation }) => {
     email: '',
     phone: '',
     password: '',
-    role: 'JOBSEEKER'
+    role: 'JOBSEEKER',
+    employerType: ''
   });
 
   useEffect(() => {
@@ -70,7 +71,17 @@ const AdminUsersScreen = ({ navigation }) => {
     }
 
     if (filterRole !== 'ALL') {
-      filtered = filtered.filter(user => user.role === filterRole);
+      if (filterRole === 'COMPANY') {
+        filtered = filtered.filter(user => 
+          user.role === 'EMPLOYER' && user.employerType === 'company'
+        );
+      } else if (filterRole === 'CONSULTANCY') {
+        filtered = filtered.filter(user => 
+          user.role === 'EMPLOYER' && user.employerType === 'consultancy'
+        );
+      } else {
+        filtered = filtered.filter(user => user.role === filterRole);
+      }
     }
 
     setFilteredUsers(filtered);
@@ -157,8 +168,7 @@ const AdminUsersScreen = ({ navigation }) => {
 
               const response = await fetch(`${API_URL}/admin/users/${userId}/verify`, {
                 method: 'PATCH',
-                headers,
-                body: JSON.stringify({ isVerified: true })
+                headers
               });
 
               const data = await response.json();
@@ -167,8 +177,33 @@ const AdminUsersScreen = ({ navigation }) => {
                 throw new Error(data.message || 'Failed to verify user');
               }
 
+              // Update the user in the local state immediately - this will trigger useEffect to update filteredUsers
+              setUsers(prevUsers => {
+                const updated = prevUsers.map(user => {
+                  if (user._id === userId || user.id === userId) {
+                    return { ...user, isVerified: true, verifiedAt: data.user?.verifiedAt || new Date() };
+                  }
+                  return user;
+                });
+                return updated;
+              });
+
+              // Also update filteredUsers directly to ensure immediate UI update
+              setFilteredUsers(prevFiltered => {
+                return prevFiltered.map(user => {
+                  if (user._id === userId || user.id === userId) {
+                    return { ...user, isVerified: true, verifiedAt: data.user?.verifiedAt || new Date() };
+                  }
+                  return user;
+                });
+              });
+
               Alert.alert('Success', 'User verified successfully');
-              fetchUsers();
+              
+              // Refresh to ensure data is in sync with backend (after a delay to let UI update first)
+              setTimeout(() => {
+                fetchUsers();
+              }, 1000);
             } catch (error) {
               console.error('Error verifying user:', error);
               Alert.alert('Error', error.message || 'Failed to verify user');
@@ -189,6 +224,12 @@ const AdminUsersScreen = ({ navigation }) => {
       // Validate required fields
       if (!newUserData.firstName || !newUserData.lastName || !newUserData.email || !newUserData.password || !newUserData.role) {
         Alert.alert('Error', 'Please fill in all required fields');
+        return;
+      }
+
+      // Validate employerType if role is EMPLOYER
+      if (newUserData.role === 'EMPLOYER' && !newUserData.employerType) {
+        Alert.alert('Error', 'Please select Company or Consultancy for Employer role');
         return;
       }
 
@@ -223,7 +264,8 @@ const AdminUsersScreen = ({ navigation }) => {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Failed to create user');
+        console.error('Create user error response:', data);
+        throw new Error(data.message || data.error || 'Failed to create user');
       }
 
       Alert.alert('Success', 'User created successfully');
@@ -234,12 +276,14 @@ const AdminUsersScreen = ({ navigation }) => {
         email: '',
         phone: '',
         password: '',
-        role: 'JOBSEEKER'
+        role: 'JOBSEEKER',
+        employerType: ''
       });
       fetchUsers();
     } catch (error) {
       console.error('Error creating user:', error);
-      Alert.alert('Error', error.message || 'Failed to create user');
+      const errorMessage = error.message || 'Failed to create user';
+      Alert.alert('Error', errorMessage);
     }
   };
 
@@ -523,6 +567,22 @@ Mike Johnson,mike@example.com,JOBSEEKER,Password123!`;
             >
               <Text style={[styles.filterButtonText, filterRole === 'EMPLOYER' && styles.activeFilterText]}>
                 Employers
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.filterButton, filterRole === 'COMPANY' && styles.activeFilter]}
+              onPress={() => setFilterRole('COMPANY')}
+            >
+              <Text style={[styles.filterButtonText, filterRole === 'COMPANY' && styles.activeFilterText]}>
+                Company
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.filterButton, filterRole === 'CONSULTANCY' && styles.activeFilter]}
+              onPress={() => setFilterRole('CONSULTANCY')}
+            >
+              <Text style={[styles.filterButtonText, filterRole === 'CONSULTANCY' && styles.activeFilterText]}>
+                Consultancy
               </Text>
             </TouchableOpacity>
           </View>
@@ -831,7 +891,7 @@ Mike Johnson,mike@example.com,JOBSEEKER,Password123!`;
                         styles.roleOption,
                         newUserData.role === 'EMPLOYER' && styles.roleOptionActive
                       ]}
-                      onPress={() => setNewUserData({...newUserData, role: 'EMPLOYER'})}
+                      onPress={() => setNewUserData({...newUserData, role: 'EMPLOYER', employerType: newUserData.employerType || ''})}
                     >
                       <Text style={[
                         styles.roleOptionText,
@@ -842,6 +902,42 @@ Mike Johnson,mike@example.com,JOBSEEKER,Password123!`;
                     </TouchableOpacity>
                   </View>
                 </View>
+
+                {newUserData.role === 'EMPLOYER' && (
+                  <View style={styles.formGroup}>
+                    <Text style={styles.formLabel}>Employer Type *</Text>
+                    <View style={styles.roleSelector}>
+                      <TouchableOpacity
+                        style={[
+                          styles.roleOption,
+                          newUserData.employerType === 'company' && styles.roleOptionActive
+                        ]}
+                        onPress={() => setNewUserData({...newUserData, employerType: 'company'})}
+                      >
+                        <Text style={[
+                          styles.roleOptionText,
+                          newUserData.employerType === 'company' && styles.roleOptionTextActive
+                        ]}>
+                          Company
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.roleOption,
+                          newUserData.employerType === 'consultancy' && styles.roleOptionActive
+                        ]}
+                        onPress={() => setNewUserData({...newUserData, employerType: 'consultancy'})}
+                      >
+                        <Text style={[
+                          styles.roleOptionText,
+                          newUserData.employerType === 'consultancy' && styles.roleOptionTextActive
+                        ]}>
+                          Consultancy
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
 
                 <TouchableOpacity
                   style={styles.submitButton}

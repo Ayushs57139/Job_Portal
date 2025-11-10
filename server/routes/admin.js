@@ -140,7 +140,7 @@ router.get('/users/recent', async (req, res) => {
 // @route   PATCH /api/admin/users/:id/verify
 // @desc    Verify user
 // @access  Private (Admin)
-router.patch('/users/:id/verify', async (req, res) => {
+router.patch('/users/:id/verify', requirePermission('canManageUsers'), async (req, res) => {
   try {
     const user = await User.findByIdAndUpdate(
       req.params.id,
@@ -155,7 +155,7 @@ router.patch('/users/:id/verify', async (req, res) => {
     res.json({ user, message: 'User verified successfully' });
   } catch (error) {
     console.error('Verify user error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
@@ -186,7 +186,7 @@ router.patch('/users/:id/unverify', async (req, res) => {
 // @access  Private (Admin)
 router.post('/users/create', requirePermission('canManageUsers'), async (req, res) => {
   try {
-    const { firstName, lastName, email, phone, password, role } = req.body;
+    const { firstName, lastName, email, phone, password, role, employerType } = req.body;
 
     // Validate required fields
     if (!firstName || !lastName || !email || !password || !role) {
@@ -199,6 +199,17 @@ router.post('/users/create', requirePermission('canManageUsers'), async (req, re
       return res.status(400).json({ message: 'Invalid role. Must be JOBSEEKER or EMPLOYER' });
     }
 
+    // Validate employerType if role is EMPLOYER
+    if (role.toUpperCase() === 'EMPLOYER') {
+      if (!employerType) {
+        return res.status(400).json({ message: 'Employer type is required for employer role. Must be "company" or "consultancy"' });
+      }
+      const validEmployerTypes = ['company', 'consultancy'];
+      if (!validEmployerTypes.includes(employerType.toLowerCase())) {
+        return res.status(400).json({ message: 'Invalid employer type. Must be "company" or "consultancy"' });
+      }
+    }
+
     // Check if user already exists
     const existingUser = await User.findOne({ email: email.toLowerCase() });
     if (existingUser) {
@@ -209,26 +220,54 @@ router.post('/users/create', requirePermission('canManageUsers'), async (req, re
     const userType = role.toUpperCase() === 'JOBSEEKER' ? 'jobseeker' : 'employer';
 
     // Create new user
-    const newUser = new User({
+    const userData = {
       firstName,
       lastName,
       email: email.toLowerCase(),
       phone: phone || '',
-      password,
+      password, // Password will be hashed by pre-save hook
       userType,
       role: role.toUpperCase(),
       isActive: true,
-      isVerified: false
-    });
+      isVerified: false,
+      isEmailVerified: false // Add email verification status
+    };
+
+    // Add employerType if role is EMPLOYER
+    if (role.toUpperCase() === 'EMPLOYER' && employerType) {
+      userData.employerType = employerType.toLowerCase();
+    }
+
+    const newUser = new User(userData);
 
     await newUser.save();
+    
+    // Remove password from response
+    const userResponse = newUser.toObject();
+    delete userResponse.password;
 
     res.status(201).json({ 
-      user: newUser, 
+      user: userResponse, 
       message: 'User created successfully' 
     });
   } catch (error) {
     console.error('Create user error:', error);
+    
+    // Handle Mongoose validation errors
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map(err => err.message).join(', ');
+      return res.status(400).json({ message: `Validation error: ${errors}`, error: errors });
+    }
+    
+    // Handle duplicate key errors (e.g., duplicate email)
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern)[0];
+      return res.status(400).json({ 
+        message: `User with this ${field} already exists`, 
+        error: `Duplicate ${field}` 
+      });
+    }
+    
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
@@ -351,7 +390,10 @@ router.get('/users', requirePermission('canManageUsers'), async (req, res) => {
       return {
         ...userObj,
         name: `${userObj.firstName || ''} ${userObj.lastName || ''}`.trim() || 'N/A',
-        role: userObj.userType ? userObj.userType.toUpperCase() : 'N/A',
+        role: userObj.role || (userObj.userType ? userObj.userType.toUpperCase() : 'N/A'),
+        employerType: userObj.employerType || null,
+        isVerified: userObj.isVerified || false,
+        verifiedAt: userObj.verifiedAt || null,
         lastActive: userObj.userProfile?.profileStatus?.lastActive || userObj.lastLogin,
         lastModified: userObj.userProfile?.profileStatus?.lastModified || userObj.updatedAt,
         teamLimit: userObj.teamMemberLimits?.maxTeamMembers || 0,

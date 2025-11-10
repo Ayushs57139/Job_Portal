@@ -1,10 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, RefreshControl, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, spacing, borderRadius, typography, shadows } from '../../styles/theme';
 import Header from '../../components/Header';
 import api from '../../config/api';
+
+const { width } = Dimensions.get('window');
+const isMobile = width <= 600;
+const isTablet = width > 600 && width <= 1024;
+const isDesktop = width > 1024;
 
 const AdminDashboardScreen = ({ navigation }) => {
   const [user, setUser] = useState(null);
@@ -286,51 +291,57 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   scrollContent: { 
-    padding: spacing.md,
+    padding: isMobile ? spacing.sm : isTablet ? spacing.md : spacing.md,
     paddingBottom: spacing.xxl,
   },
   welcomeCard: { 
     borderRadius: borderRadius.lg, 
-    padding: spacing.xl, 
-    marginBottom: spacing.lg,
+    padding: isMobile ? spacing.lg : isTablet ? spacing.xl : spacing.xl, 
+    marginBottom: isMobile ? spacing.md : spacing.lg,
     alignItems: 'center',
   },
   adminIcon: {
     marginBottom: spacing.md,
+    fontSize: isMobile ? 40 : isTablet ? 44 : 48,
   },
   welcomeText: { 
     ...typography.body1, 
     color: colors.textWhite, 
     opacity: 0.9,
     marginBottom: spacing.xs,
+    fontSize: isMobile ? 14 : 16,
   },
   adminName: {
     ...typography.h2,
     color: colors.textWhite,
     fontWeight: '700',
     marginBottom: spacing.xs,
+    fontSize: isMobile ? 20 : isTablet ? 24 : 28,
+    textAlign: 'center',
   },
   userType: {
     ...typography.body2,
     color: colors.textWhite,
     opacity: 0.8,
+    fontSize: isMobile ? 12 : 14,
   },
   statsContainer: {
-    flexDirection: 'row',
-    gap: spacing.sm,
+    flexDirection: isMobile ? 'column' : 'row',
+    gap: isMobile ? spacing.md : spacing.sm,
     marginBottom: spacing.sm,
   },
   statCard: {
-    flex: 1,
+    flex: isMobile ? 0 : 1,
     backgroundColor: colors.cardBackground,
     borderRadius: borderRadius.md,
-    padding: spacing.md,
+    padding: isMobile ? spacing.md : spacing.md,
     alignItems: 'center',
     ...shadows.sm,
+    width: isMobile ? '100%' : 'auto',
   },
   statIconContainer: {
-    width: 48,
-    height: 48,
+    width: isMobile ? 44 : isTablet ? 46 : 48,
+    height: isMobile ? 44 : isTablet ? 46 : 48,
     borderRadius: borderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',
@@ -341,36 +352,39 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontWeight: '700',
     marginTop: spacing.xs,
+    fontSize: isMobile ? 24 : isTablet ? 26 : 28,
   },
   statLabel: {
     ...typography.caption,
     color: colors.textSecondary,
     textAlign: 'center',
+    fontSize: isMobile ? 12 : 13,
   },
   sectionTitle: {
     ...typography.h5,
     color: colors.text,
     fontWeight: '700',
-    marginTop: spacing.lg,
+    marginTop: isMobile ? spacing.md : spacing.lg,
     marginBottom: spacing.md,
+    fontSize: isMobile ? 18 : isTablet ? 20 : 22,
   },
   menuGrid: { 
     flexDirection: 'row', 
     flexWrap: 'wrap', 
-    gap: spacing.md,
+    gap: isMobile ? spacing.sm : spacing.md,
     marginBottom: spacing.lg,
   },
   menuItem: { 
-    width: '47%', 
+    width: isMobile ? '100%' : isTablet ? '48%' : '47%', 
     backgroundColor: colors.cardBackground, 
     borderRadius: borderRadius.lg, 
-    padding: spacing.lg, 
+    padding: isMobile ? spacing.md : isTablet ? spacing.lg : spacing.lg, 
     alignItems: 'center', 
     ...shadows.md 
   },
   menuIcon: { 
-    width: 60, 
-    height: 60, 
+    width: isMobile ? 52 : isTablet ? 56 : 60, 
+    height: isMobile ? 52 : isTablet ? 56 : 60, 
     borderRadius: borderRadius.md, 
     alignItems: 'center', 
     justifyContent: 'center', 
@@ -380,7 +394,8 @@ const styles = StyleSheet.create({
     ...typography.body2, 
     color: colors.text, 
     fontWeight: '600', 
-    textAlign: 'center' 
+    textAlign: 'center',
+    fontSize: isMobile ? 13 : isTablet ? 14 : 15,
   },
   logoutButton: {
     flexDirection: 'row',

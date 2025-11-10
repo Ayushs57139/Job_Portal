@@ -7,9 +7,10 @@ import api from '../config/api';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
-const isMobile = width <= 600;
-const isPhone = width <= 480; // Specific breakpoint for phones
-const isTablet = width > 600 && width <= 768;
+const isPhone = width <= 480; // Phones
+const isMobile = width <= 600; // Small phones and small tablets
+const isTablet = width > 600 && width <= 1024; // Tablets
+const isDesktop = width > 1024; // Desktop and large screens
 
 const Header = ({ showBack = false, title }) => {
   const navigation = useNavigation();
@@ -485,10 +486,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: isPhone ? spacing.sm : (isMobile ? spacing.md : spacing.lg),
+    paddingHorizontal: isPhone ? spacing.sm : (isMobile ? spacing.md : isTablet ? spacing.lg : spacing.xl),
     paddingVertical: isPhone ? spacing.xs : (isMobile ? spacing.sm : spacing.md),
-    minHeight: isPhone ? 56 : (isMobile ? 60 : 70),
-    maxWidth: 1400,
+    minHeight: isPhone ? 56 : (isMobile ? 60 : isTablet ? 65 : 70),
+    maxWidth: isDesktop ? (width > 1400 ? 1400 : 1200) : '100%',
     width: '100%',
     alignSelf: 'center',
     overflow: 'visible',
@@ -498,7 +499,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logoText: {
-    fontSize: isPhone ? 20 : (isMobile ? 24 : (isTablet ? 28 : 32)),
+    fontSize: isPhone ? 18 : (isMobile ? 22 : (isTablet ? 26 : (isDesktop ? 32 : 28))),
     fontWeight: '700',
     letterSpacing: -0.5,
   },
@@ -539,10 +540,11 @@ const styles = StyleSheet.create({
   navMenu: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
+    gap: isTablet ? spacing.xs : spacing.sm,
     flex: 1,
     justifyContent: 'center',
     overflow: 'visible',
+    flexWrap: 'wrap',
   },
   menuItemWrapper: {
     position: 'relative',
@@ -555,7 +557,7 @@ const styles = StyleSheet.create({
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: isTablet ? spacing.sm : spacing.md,
     paddingVertical: spacing.sm,
     gap: spacing.xs,
     ...(isWeb && {
@@ -563,7 +565,7 @@ const styles = StyleSheet.create({
     }),
   },
   menuItemText: {
-    fontSize: 15,
+    fontSize: isTablet ? 14 : 15,
     fontWeight: '500',
     color: colors.text,
   },

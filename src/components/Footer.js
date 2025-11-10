@@ -5,8 +5,10 @@ import { colors, spacing, typography } from '../styles/theme';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
-const isWideScreen = width > 768;
+const isPhone = width <= 480;
 const isMobile = width <= 600;
+const isTablet = width > 600 && width <= 1024;
+const isDesktop = width > 1024;
 
 const Footer = () => {
   const navigation = useNavigation();
@@ -77,15 +79,15 @@ const Footer = () => {
 const styles = StyleSheet.create({
   footer: {
     backgroundColor: '#2D3748',
-    paddingTop: isWideScreen ? spacing.xxl : spacing.xl,
+    paddingTop: isPhone ? spacing.lg : (isMobile ? spacing.xl : isTablet ? spacing.xl : spacing.xxl),
   },
   footerContent: {
-    flexDirection: isMobile ? 'column' : 'row',
+    flexDirection: isPhone ? 'column' : (isMobile ? 'column' : 'row'),
     flexWrap: 'wrap',
-    paddingHorizontal: isWideScreen ? spacing.lg : spacing.md,
-    paddingBottom: spacing.xl,
-    gap: isWideScreen ? spacing.xl : spacing.lg,
-    maxWidth: 1200,
+    paddingHorizontal: isPhone ? spacing.sm : (isMobile ? spacing.md : isTablet ? spacing.lg : spacing.xl),
+    paddingBottom: isPhone ? spacing.lg : spacing.xl,
+    gap: isPhone ? spacing.md : (isMobile ? spacing.lg : isTablet ? spacing.lg : spacing.xl),
+    maxWidth: isDesktop ? (width > 1400 ? 1400 : 1200) : '100%',
     marginHorizontal: 'auto',
     width: '100%',
   },
@@ -94,7 +96,7 @@ const styles = StyleSheet.create({
     minWidth: isMobile ? '100%' : 200,
   },
   companyName: {
-    fontSize: isWideScreen ? 24 : 20,
+    fontSize: isPhone ? 18 : (isMobile ? 20 : (isTablet ? 22 : (isDesktop ? 24 : 22))),
     fontWeight: '700',
     color: colors.textWhite,
     marginBottom: spacing.sm,
@@ -102,19 +104,20 @@ const styles = StyleSheet.create({
   tagline: {
     ...typography.body1,
     color: '#A0AEC0',
-    lineHeight: isWideScreen ? 24 : 22,
-    fontSize: isWideScreen ? 16 : 14,
+    lineHeight: isPhone ? 20 : (isMobile ? 22 : (isTablet ? 22 : 24)),
+    fontSize: isPhone ? 13 : (isMobile ? 14 : (isTablet ? 15 : (isDesktop ? 16 : 15))),
   },
   section: {
-    flex: isMobile ? 1 : 1,
-    minWidth: isMobile ? '100%' : 150,
+    flex: isPhone ? 1 : (isMobile ? 1 : 1),
+    minWidth: isPhone ? '100%' : (isMobile ? '100%' : 150),
+    marginBottom: isPhone ? spacing.md : 0,
   },
   sectionTitle: {
     ...typography.h5,
     color: colors.textWhite,
     marginBottom: spacing.md,
     fontWeight: '600',
-    fontSize: isWideScreen ? 18 : 16,
+    fontSize: isPhone ? 14 : (isMobile ? 16 : (isTablet ? 17 : (isDesktop ? 18 : 17))),
   },
   linkButton: {
     paddingVertical: spacing.xs,
@@ -122,20 +125,20 @@ const styles = StyleSheet.create({
   linkText: {
     ...typography.body2,
     color: '#A0AEC0',
-    lineHeight: isWideScreen ? 24 : 22,
-    fontSize: isWideScreen ? 14 : 13,
+    lineHeight: isPhone ? 20 : (isMobile ? 22 : (isTablet ? 22 : 24)),
+    fontSize: isPhone ? 12 : (isMobile ? 13 : (isTablet ? 13 : (isDesktop ? 14 : 13))),
   },
   bottomBar: {
     borderTopWidth: 1,
     borderTopColor: '#4A5568',
-    paddingVertical: spacing.md,
-    paddingHorizontal: isWideScreen ? spacing.lg : spacing.md,
+    paddingVertical: isPhone ? spacing.sm : spacing.md,
+    paddingHorizontal: isPhone ? spacing.sm : (isMobile ? spacing.md : isTablet ? spacing.lg : spacing.xl),
     alignItems: 'center',
   },
   copyright: {
     ...typography.body2,
     color: '#A0AEC0',
-    fontSize: isWideScreen ? 14 : 12,
+    fontSize: isPhone ? 11 : (isMobile ? 12 : (isTablet ? 13 : (isDesktop ? 14 : 13))),
     textAlign: 'center',
   },
 });

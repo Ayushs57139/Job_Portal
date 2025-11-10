@@ -7,9 +7,10 @@ import api from '../config/api';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
-const isWideScreen = width > 768;
-const isTablet = width > 600 && width <= 768;
+const isPhone = width <= 480;
 const isMobile = width <= 600;
+const isTablet = width > 600 && width <= 1024;
+const isDesktop = width > 1024;
 
 const JobCard = ({ job }) => {
   const navigation = useNavigation();
@@ -181,8 +182,8 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.cardBackground,
     borderRadius: borderRadius.lg,
-    padding: isWideScreen ? spacing.lg : spacing.md,
-    marginBottom: spacing.md,
+    padding: isPhone ? spacing.sm : (isMobile ? spacing.md : isTablet ? spacing.md : spacing.lg),
+    marginBottom: isPhone ? spacing.sm : spacing.md,
     ...shadows.md,
     borderWidth: 1,
     borderColor: colors.border,
@@ -204,8 +205,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   companyLogo: {
-    width: isMobile ? 44 : 50,
-    height: isMobile ? 44 : 50,
+    width: isPhone ? 40 : (isMobile ? 44 : (isTablet ? 48 : 50)),
+    height: isPhone ? 40 : (isMobile ? 44 : (isTablet ? 48 : 50)),
     borderRadius: borderRadius.md,
     backgroundColor: colors.background,
     justifyContent: 'center',
@@ -221,12 +222,12 @@ const styles = StyleSheet.create({
     ...typography.body1,
     color: colors.text,
     fontWeight: '600',
-    fontSize: isWideScreen ? 16 : 14,
+    fontSize: isPhone ? 13 : (isMobile ? 14 : (isTablet ? 15 : (isDesktop ? 16 : 15))),
   },
   postedDate: {
     ...typography.caption,
     color: colors.textLight,
-    fontSize: isWideScreen ? 12 : 11,
+    fontSize: isPhone ? 10 : (isMobile ? 11 : (isTablet ? 11 : (isDesktop ? 12 : 11))),
   },
   saveButton: {
     padding: spacing.xs,
@@ -236,25 +237,26 @@ const styles = StyleSheet.create({
     ...typography.h5,
     color: colors.text,
     fontWeight: '700',
-    marginBottom: spacing.md,
-    lineHeight: isWideScreen ? 26 : 24,
-    fontSize: isWideScreen ? 18 : 16,
+    marginBottom: isPhone ? spacing.sm : spacing.md,
+    lineHeight: isPhone ? 20 : (isMobile ? 22 : (isTablet ? 24 : (isDesktop ? 26 : 24))),
+    fontSize: isPhone ? 14 : (isMobile ? 16 : (isTablet ? 17 : (isDesktop ? 18 : 17))),
   },
   detailsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: isWideScreen ? spacing.md : spacing.sm,
-    marginBottom: spacing.md,
+    gap: isPhone ? spacing.xs : (isMobile ? spacing.sm : isTablet ? spacing.sm : spacing.md),
+    marginBottom: isPhone ? spacing.sm : spacing.md,
   },
   detailItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    minWidth: isMobile ? '100%' : '45%',
+    minWidth: isPhone ? '100%' : (isMobile ? '100%' : '45%'),
+    flex: isPhone ? 1 : (isMobile ? 1 : 0),
   },
   detailIcon: {
-    width: isMobile ? 28 : 32,
-    height: isMobile ? 28 : 32,
+    width: isPhone ? 26 : (isMobile ? 28 : (isTablet ? 30 : 32)),
+    height: isPhone ? 26 : (isMobile ? 28 : (isTablet ? 30 : 32)),
     borderRadius: borderRadius.sm,
     backgroundColor: colors.background,
     justifyContent: 'center',
@@ -267,7 +269,7 @@ const styles = StyleSheet.create({
   detailLabel: {
     ...typography.caption,
     color: colors.textLight,
-    fontSize: isWideScreen ? 11 : 10,
+    fontSize: isPhone ? 9 : (isMobile ? 10 : (isTablet ? 10 : (isDesktop ? 11 : 10))),
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -275,18 +277,18 @@ const styles = StyleSheet.create({
     ...typography.body2,
     color: colors.text,
     fontWeight: '600',
-    fontSize: isWideScreen ? 14 : 13,
+    fontSize: isPhone ? 12 : (isMobile ? 13 : (isTablet ? 13 : (isDesktop ? 14 : 13))),
   },
   salaryBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     backgroundColor: '#ECFDF5',
-    paddingHorizontal: isWideScreen ? spacing.md : spacing.sm,
-    paddingVertical: spacing.sm,
+    paddingHorizontal: isPhone ? spacing.sm : (isMobile ? spacing.sm : isTablet ? spacing.md : spacing.md),
+    paddingVertical: isPhone ? spacing.xs : spacing.sm,
     borderRadius: borderRadius.md,
     alignSelf: 'flex-start',
-    marginBottom: spacing.md,
+    marginBottom: isPhone ? spacing.sm : spacing.md,
     borderWidth: 1,
     borderColor: '#A7F3D0',
   },
@@ -294,18 +296,18 @@ const styles = StyleSheet.create({
     ...typography.body2,
     color: '#059669',
     fontWeight: '700',
-    fontSize: isWideScreen ? 14 : 13,
+    fontSize: isPhone ? 12 : (isMobile ? 13 : (isTablet ? 13 : (isDesktop ? 14 : 13))),
   },
   skills: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.xs,
-    marginBottom: spacing.lg,
+    gap: isPhone ? spacing.xs : spacing.xs,
+    marginBottom: isPhone ? spacing.md : spacing.lg,
   },
   skill: {
     backgroundColor: colors.background,
-    paddingHorizontal: isWideScreen ? spacing.md : spacing.sm,
-    paddingVertical: spacing.sm,
+    paddingHorizontal: isPhone ? spacing.sm : (isMobile ? spacing.sm : isTablet ? spacing.md : spacing.md),
+    paddingVertical: isPhone ? spacing.xs : spacing.sm,
     borderRadius: borderRadius.xl,
     borderWidth: 1,
     borderColor: colors.border,
@@ -314,7 +316,7 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.primary,
     fontWeight: '600',
-    fontSize: isWideScreen ? 12 : 11,
+    fontSize: isPhone ? 10 : (isMobile ? 11 : (isTablet ? 11 : (isDesktop ? 12 : 11))),
   },
   footer: {
     flexDirection: 'row',
@@ -330,17 +332,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: spacing.sm,
     backgroundColor: colors.primary,
-    paddingHorizontal: isWideScreen ? spacing.xl : spacing.lg,
-    paddingVertical: spacing.md,
+    paddingHorizontal: isPhone ? spacing.md : (isMobile ? spacing.lg : isTablet ? spacing.lg : spacing.xl),
+    paddingVertical: isPhone ? spacing.sm : spacing.md,
     borderRadius: borderRadius.md,
     ...shadows.sm,
-    minWidth: isMobile ? 120 : 140,
+    minWidth: isPhone ? 100 : (isMobile ? 120 : (isTablet ? 130 : 140)),
   },
   applyButtonText: {
     ...typography.button,
     color: colors.textWhite,
     fontWeight: '700',
-    fontSize: isWideScreen ? 15 : 14,
+    fontSize: isPhone ? 13 : (isMobile ? 14 : (isTablet ? 14 : (isDesktop ? 15 : 14))),
   },
 });
 

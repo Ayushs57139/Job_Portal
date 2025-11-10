@@ -42,6 +42,7 @@ const AdminLoginScreen = ({ navigation, route }) => {
       const response = await api.login({
         loginId: loginId.trim(),
         password: password.trim(),
+        userType: 'admin', // Specify admin userType for admin login
       });
 
       if (response && response.user) {

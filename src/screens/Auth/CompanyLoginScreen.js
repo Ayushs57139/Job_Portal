@@ -24,6 +24,8 @@ const CompanyLoginScreen = ({ navigation }) => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [generalError, setGeneralError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async () => {
     // Validate inputs
@@ -38,6 +40,7 @@ const CompanyLoginScreen = ({ navigation }) => {
 
     setLoading(true);
     setErrors({});
+    setGeneralError('');
 
     try {
       const loginData = {
@@ -48,16 +51,28 @@ const CompanyLoginScreen = ({ navigation }) => {
       const response = await api.companyLogin(loginData);
 
       if (response.token) {
-        Alert.alert('Success', 'Login successful!');
-        
-        // Navigate to company dashboard
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'CompanyDashboard' }],
-        });
+        // STRICT VALIDATION: Only allow company accounts to proceed
+        if (response.user && response.user.userType === 'company') {
+          Alert.alert('Success', 'Login successful!');
+          
+          // Navigate to company dashboard
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'CompanyDashboard' }],
+          });
+        } else {
+          // Invalid user type - logout and show error
+          await api.logout();
+          Alert.alert(
+            'Access Denied', 
+            'This account is not authorized for company login. Please use the correct login page.'
+          );
+        }
       }
     } catch (error) {
-      Alert.alert('Login Failed', error.message || 'Please check your credentials and try again');
+      const errorMessage = error.message || 'Please check your credentials and try again';
+      setGeneralError(errorMessage);
+      Alert.alert('Login Failed', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -101,6 +116,7 @@ const CompanyLoginScreen = ({ navigation }) => {
               onChangeText={(text) => {
                 setEmail(text);
                 setErrors({ ...errors, email: null });
+                setGeneralError('');
               }}
               autoCapitalize="none"
               keyboardType="email-address"
@@ -121,12 +137,30 @@ const CompanyLoginScreen = ({ navigation }) => {
               onChangeText={(text) => {
                 setPassword(text);
                 setErrors({ ...errors, password: null });
+                setGeneralError('');
               }}
-              secureTextEntry
+              secureTextEntry={!showPassword}
             />
+            <TouchableOpacity
+              style={styles.eyeIcon}
+              onPress={() => setShowPassword(!showPassword)}
+            >
+              <Ionicons
+                name={showPassword ? 'eye-off' : 'eye'}
+                size={20}
+                color="#64748b"
+              />
+            </TouchableOpacity>
           </View>
           {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
         </View>
+
+        {/* General Error Message */}
+        {generalError && (
+          <View style={styles.generalErrorContainer}>
+            <Text style={styles.generalErrorText}>{generalError}</Text>
+          </View>
+        )}
 
         {/* Sign In Button */}
         <TouchableOpacity 
@@ -309,17 +343,37 @@ const styles = StyleSheet.create({
     borderColor: '#e2e8f0',
     borderRadius: 8,
     backgroundColor: '#ffffff',
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   input: {
+    flex: 1,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 15,
     color: '#1e293b',
   },
+  eyeIcon: {
+    padding: 12,
+    paddingRight: 16,
+  },
   errorText: {
     fontSize: 12,
     color: '#ef4444',
     marginTop: 6,
+  },
+  generalErrorContainer: {
+    backgroundColor: '#fee2e2',
+    borderWidth: 1,
+    borderColor: '#ef4444',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+  },
+  generalErrorText: {
+    fontSize: 14,
+    color: '#dc2626',
+    textAlign: 'center',
   },
   
   // Sign In Button

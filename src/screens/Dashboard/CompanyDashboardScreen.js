@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, RefreshControl, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, spacing, borderRadius, typography, shadows } from '../../styles/theme';
@@ -20,14 +20,85 @@ const CompanyDashboardScreen = ({ navigation }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
-    loadDashboardData();
+    validateAndLoad();
   }, []);
+
+  const validateAndLoad = async () => {
+    try {
+      // Get current user from storage
+      const userData = await api.getCurrentUserFromStorage();
+      
+      // STRICT VALIDATION: Only company accounts can access this dashboard
+      // Check userType - must be 'company' (not 'admin', 'superadmin', 'jobseeker', or 'consultancy')
+      if (!userData) {
+        await handleUnauthorizedAccess('No user data found. Please login.');
+        return;
+      }
+
+      // Explicitly reject admin, superadmin, jobseeker, and consultancy accounts
+      if (userData.userType === 'admin' || userData.userType === 'superadmin') {
+        await handleUnauthorizedAccess('Admin accounts cannot access company dashboard. Please use admin login.');
+        return;
+      }
+
+      if (userData.userType === 'jobseeker') {
+        await handleUnauthorizedAccess('Jobseeker accounts cannot access company dashboard. Please use jobseeker login.');
+        return;
+      }
+
+      if (userData.userType === 'consultancy') {
+        await handleUnauthorizedAccess('Consultancy accounts cannot access company dashboard. Please use consultancy login.');
+        return;
+      }
+
+      if (userData.userType !== 'company') {
+        await handleUnauthorizedAccess(`Invalid account type: ${userData.userType}. Only company accounts can access this dashboard.`);
+        return;
+      }
+
+      // Verify with backend API to ensure token is valid and user is still a company
+      try {
+        const currentUser = await api.getCurrentUser();
+        if (!currentUser || (currentUser.userType !== 'employer' || currentUser.employerType !== 'company')) {
+          await handleUnauthorizedAccess('Your account is not authorized for company dashboard access.');
+          return;
+        }
+        setUser({ ...currentUser, userType: 'company' });
+      } catch (apiError) {
+        // If API call fails, use stored data but still validate
+        setUser(userData);
+      }
+      
+      // Load dashboard data
+      await loadDashboardData();
+    } catch (error) {
+      console.error('Error in validateAndLoad:', error);
+      await handleUnauthorizedAccess('Failed to validate access. Please login again.');
+    }
+  };
+
+  const handleUnauthorizedAccess = async (message) => {
+    Alert.alert(
+      'Access Denied',
+      message,
+      [
+        {
+          text: 'OK',
+          onPress: async () => {
+            await api.logout();
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'Home' }],
+            });
+          },
+        },
+      ]
+    );
+    setLoading(false);
+  };
 
   const loadDashboardData = async () => {
     try {
-      // Get current user
-      const userData = await api.getCurrentUserFromStorage();
-      setUser(userData);
 
       // Fetch employer dashboard (dynamic)
       try {
@@ -57,29 +128,45 @@ const CompanyDashboardScreen = ({ navigation }) => {
   };
 
   const handleLogout = async () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.logout();
-            } catch (error) {
-              console.log('Logout error:', error);
-            } finally {
-              navigation.reset({
-                index: 0,
-                routes: [{ name: 'Home' }],
-              });
-            }
+    if (Platform.OS === 'web') {
+      // For web, use window.confirm
+      if (window.confirm('Are you sure you want to logout?')) {
+        try {
+          await api.logout();
+        } catch (error) {
+          console.log('Logout error:', error);
+        }
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Home' }],
+        });
+      }
+    } else {
+      // For mobile, use Alert
+      Alert.alert(
+        'Logout',
+        'Are you sure you want to logout?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Logout',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await api.logout();
+              } catch (error) {
+                console.log('Logout error:', error);
+              } finally {
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: 'Home' }],
+                });
+              }
+            },
           },
-        },
-      ]
-    );
+        ]
+      );
+    }
   };
 
   const menuItems = [
@@ -134,7 +221,15 @@ const CompanyDashboardScreen = ({ navigation }) => {
               Welcome, {user?.firstName || 'User'}
           </Text>
           </View>
-          <TouchableOpacity style={styles.headerLogoutButton} onPress={handleLogout}>
+          <TouchableOpacity 
+            style={styles.headerLogoutButton} 
+            onPress={() => {
+              console.log('Logout button clicked');
+              handleLogout();
+            }}
+            activeOpacity={0.7}
+            disabled={false}
+          >
             <Ionicons name="log-out-outline" size={18} color={'#FFF'} />
             <Text style={styles.headerLogoutText}>Logout</Text>
           </TouchableOpacity>
@@ -238,6 +333,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     borderRadius: borderRadius.md,
     gap: 6,
+    cursor: 'pointer',
+    zIndex: 10,
   },
   headerLogoutText: {
     color: '#FFF',

@@ -7,8 +7,10 @@ import { colors, spacing, borderRadius, shadows, typography } from '../styles/th
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
-const isWideScreen = width > 768;
+const isPhone = width <= 480;
 const isMobile = width <= 600;
+const isTablet = width > 600 && width <= 1024;
+const isDesktop = width > 1024;
 
 const BlogCard = ({ blog }) => {
   const navigation = useNavigation();
@@ -73,8 +75,8 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.cardBackground,
     borderRadius: borderRadius.lg,
-    marginRight: spacing.md,
-    width: isMobile ? width - spacing.lg * 2 : isWideScreen ? 320 : 280,
+    marginRight: isPhone ? spacing.sm : spacing.md,
+    width: isPhone ? width - spacing.lg * 2 : (isMobile ? width - spacing.lg * 2 : (isTablet ? 280 : (isDesktop ? 320 : 300))),
     overflow: 'hidden',
     ...shadows.md,
     ...(isWeb && {
@@ -83,16 +85,16 @@ const styles = StyleSheet.create({
     }),
   },
   imageContainer: {
-    height: isMobile ? 150 : 180,
+    height: isPhone ? 140 : (isMobile ? 150 : (isTablet ? 170 : 180)),
     justifyContent: 'center',
     alignItems: 'center',
   },
   content: {
-    padding: isWideScreen ? spacing.lg : spacing.md,
+    padding: isPhone ? spacing.sm : (isMobile ? spacing.md : isTablet ? spacing.md : spacing.lg),
   },
   categoryBadge: {
     alignSelf: 'flex-start',
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: isPhone ? spacing.xs : spacing.sm,
     paddingVertical: spacing.xs,
     borderRadius: borderRadius.sm,
     marginBottom: spacing.sm,
@@ -101,20 +103,20 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textWhite,
     fontWeight: '600',
-    fontSize: isWideScreen ? 12 : 11,
+    fontSize: isPhone ? 10 : (isMobile ? 11 : (isTablet ? 11 : (isDesktop ? 12 : 11))),
   },
   title: {
     ...typography.h4,
     color: colors.text,
     marginBottom: spacing.sm,
-    fontSize: isWideScreen ? 20 : 18,
+    fontSize: isPhone ? 16 : (isMobile ? 18 : (isTablet ? 19 : (isDesktop ? 20 : 19))),
   },
   excerpt: {
     ...typography.body2,
     color: colors.textSecondary,
-    marginBottom: spacing.md,
-    lineHeight: isWideScreen ? 20 : 18,
-    fontSize: isWideScreen ? 14 : 13,
+    marginBottom: isPhone ? spacing.sm : spacing.md,
+    lineHeight: isPhone ? 18 : (isMobile ? 18 : (isTablet ? 19 : 20)),
+    fontSize: isPhone ? 12 : (isMobile ? 13 : (isTablet ? 13 : (isDesktop ? 14 : 13))),
   },
   footer: {
     flexDirection: 'row',
@@ -129,7 +131,7 @@ const styles = StyleSheet.create({
   metaText: {
     ...typography.caption,
     color: colors.textSecondary,
-    fontSize: isWideScreen ? 12 : 11,
+    fontSize: isPhone ? 10 : (isMobile ? 11 : (isTablet ? 11 : (isDesktop ? 12 : 11))),
   },
   readMore: {
     flexDirection: 'row',
@@ -140,7 +142,7 @@ const styles = StyleSheet.create({
     ...typography.body2,
     color: colors.primary,
     fontWeight: '600',
-    fontSize: isWideScreen ? 14 : 13,
+    fontSize: isPhone ? 12 : (isMobile ? 13 : (isTablet ? 13 : (isDesktop ? 14 : 13))),
   },
 });
 

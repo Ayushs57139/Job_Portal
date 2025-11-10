@@ -1,8 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-const AdminSidebar = ({ activeScreen, onNavigate }) => {
+const { width } = Dimensions.get('window');
+const isMobile = width <= 600;
+const isTablet = width > 600 && width <= 1024;
+const isDesktop = width > 1024;
+
+const AdminSidebar = ({ activeScreen, onNavigate, onClose }) => {
   const [expandedMenus, setExpandedMenus] = useState({});
 
   const menuItems = [
@@ -80,7 +85,7 @@ const AdminSidebar = ({ activeScreen, onNavigate }) => {
         >
           <Ionicons 
             name={item.icon} 
-            size={isSubItem ? 16 : 20} 
+            size={isSubItem ? (isMobile ? 14 : 16) : (isMobile ? 18 : isTablet ? 19 : 20)} 
             color={isActive ? '#4A90E2' : '#B0B0B0'} 
           />
           <Text style={[
@@ -111,7 +116,14 @@ const AdminSidebar = ({ activeScreen, onNavigate }) => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.brandTitle}>Free job wala</Text>
+        <View style={styles.headerTop}>
+          <Text style={styles.brandTitle}>Free job wala</Text>
+          {isMobile && onClose && (
+            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <Ionicons name="close" size={24} color="#FFF" />
+            </TouchableOpacity>
+          )}
+        </View>
         <Text style={styles.brandSubtitle}>Admin Panel</Text>
       </View>
       <ScrollView style={styles.menuContainer} showsVerticalScrollIndicator={false}>
@@ -123,48 +135,58 @@ const AdminSidebar = ({ activeScreen, onNavigate }) => {
 
 const styles = StyleSheet.create({
   container: {
-    width: 240,
+    width: isMobile ? Math.min(width * 0.8, 300) : isTablet ? 220 : 240,
     backgroundColor: '#2C3E50',
     height: '100%',
   },
   header: {
-    padding: 20,
+    padding: isMobile ? 16 : isTablet ? 18 : 20,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.1)',
   },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   brandTitle: {
-    fontSize: 20,
+    fontSize: isMobile ? 18 : isTablet ? 19 : 20,
     fontWeight: 'bold',
     color: '#4A90E2',
+    flex: 1,
   },
   brandSubtitle: {
-    fontSize: 12,
+    fontSize: isMobile ? 11 : 12,
     color: '#B0B0B0',
     marginTop: 4,
   },
+  closeButton: {
+    padding: 4,
+    marginLeft: 8,
+  },
   menuContainer: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: isMobile ? 8 : 10,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    marginHorizontal: 8,
+    paddingVertical: isMobile ? 10 : isTablet ? 11 : 12,
+    paddingHorizontal: isMobile ? 16 : isTablet ? 18 : 20,
+    marginHorizontal: isMobile ? 6 : 8,
     borderRadius: 6,
   },
   activeMenuItem: {
     backgroundColor: 'rgba(74, 144, 226, 0.15)',
   },
   subMenuItem: {
-    paddingLeft: 50,
-    paddingVertical: 10,
+    paddingLeft: isMobile ? 40 : isTablet ? 45 : 50,
+    paddingVertical: isMobile ? 8 : 10,
   },
   menuLabel: {
-    fontSize: 14,
+    fontSize: isMobile ? 13 : isTablet ? 13.5 : 14,
     color: '#E0E0E0',
-    marginLeft: 12,
+    marginLeft: isMobile ? 10 : 12,
     flex: 1,
   },
   activeMenuLabel: {
@@ -172,7 +194,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   subMenuLabel: {
-    fontSize: 13,
+    fontSize: isMobile ? 12 : 13,
   },
   expandIcon: {
     marginLeft: 'auto',

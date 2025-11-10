@@ -21,16 +21,42 @@ const io = socketIo(server, {
 });
 
 // CORS configuration - MUST be before other middleware
-app.use(cors({
+const corsOptions = {
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-    // Allow all localhost origins and common development ports
-    if (origin.includes('localhost') || origin.includes('127.0.0.1') || origin.includes('192.168.')) {
-      return callback(null, true);
+    
+    // In production, use CORS_ORIGINS environment variable
+    if (process.env.NODE_ENV === 'production') {
+      const allowedOrigins = process.env.CORS_ORIGINS 
+        ? process.env.CORS_ORIGINS.split(',').map(origin => origin.trim())
+        : [];
+      
+      // Allow localhost in production only for health checks and admin access
+      if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+        return callback(null, true);
+      }
+      
+      // Check if origin is in allowed list
+      if (allowedOrigins.length > 0 && allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      
+      // If no CORS_ORIGINS set, allow all (not recommended for production)
+      if (allowedOrigins.length === 0) {
+        console.warn('⚠️  WARNING: CORS_ORIGINS not set in production. Allowing all origins.');
+        return callback(null, true);
+      }
+      
+      return callback(new Error('Not allowed by CORS'));
+    } else {
+      // Development: Allow all localhost origins and common development ports
+      if (origin.includes('localhost') || origin.includes('127.0.0.1') || origin.includes('192.168.')) {
+        return callback(null, true);
+      }
+      // Allow all origins in development
+      callback(null, true);
     }
-    // Allow all origins in development (you can restrict this in production)
-    callback(null, true);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
@@ -38,7 +64,9 @@ app.use(cors({
   exposedHeaders: ['Content-Range', 'X-Content-Range'],
   optionsSuccessStatus: 200,
   preflightContinue: false
-}));
+};
+
+app.use(cors(corsOptions));
 
 // Security middleware
 app.use(helmet({

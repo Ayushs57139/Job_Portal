@@ -84,13 +84,43 @@ router.post('/login', async (req, res) => {
         // Find consultancy
         const consultancy = await User.findOne({ email });
         if (!consultancy) {
-            return res.status(400).json({ message: 'Invalid credentials' });
+            return res.status(400).json({ message: 'No account found with this email address' });
         }
 
-        // Check password
+        // STRICT VALIDATION: ONLY consultancy accounts can login here
+        // Explicitly reject admin, superadmin, jobseeker, and other account types
+        if (consultancy.userType === 'admin' || consultancy.userType === 'superadmin') {
+            return res.status(403).json({ 
+                message: 'Access denied. Admin accounts cannot login through consultancy login. Please use the admin login page.' 
+            });
+        }
+        
+        if (consultancy.userType === 'jobseeker') {
+            return res.status(403).json({ 
+                message: 'Access denied. This is a jobseeker account. Please use the jobseeker login page.' 
+            });
+        }
+        
+        // Strict validation: MUST be a consultancy account - check BEFORE anything else
+        // Reject immediately if not exactly a consultancy account
+        if (consultancy.userType !== 'employer' || consultancy.employerType !== 'consultancy') {
+            const accountType = consultancy.userType === 'employer' 
+                ? (consultancy.employerType || 'unknown employer type')
+                : consultancy.userType;
+            return res.status(400).json({ 
+                message: `This account is a ${accountType} account, not a consultancy account. Please use the correct login page` 
+            });
+        }
+
+        // Check if account is active
+        if (!consultancy.isActive) {
+            return res.status(400).json({ message: 'Account is deactivated. Please contact support' });
+        }
+
+        // Check password (only after user type validation passes)
         const isMatch = await consultancy.comparePassword(password);
         if (!isMatch) {
-            return res.status(400).json({ message: 'Invalid credentials' });
+            return res.status(400).json({ message: 'Incorrect password. Please try again' });
         }
 
         // Update last login

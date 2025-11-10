@@ -9,8 +9,10 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as DocumentPicker from 'expo-document-picker';
 import AdminLayout from '../../components/Admin/AdminLayout';
 import api from '../../config/api';
 
@@ -33,6 +35,10 @@ const AdminJobAlertsScreen = ({ navigation }) => {
     pages: 1,
     total: 0,
   });
+  const [showBulkImportModal, setShowBulkImportModal] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importResults, setImportResults] = useState(null);
+  const [selectedFile, setSelectedFile] = useState(null);
 
   const handleLogout = () => navigation.replace('AdminLogin');
   const handleNavigate = (screen) => navigation.navigate(screen);
@@ -121,13 +127,123 @@ const AdminJobAlertsScreen = ({ navigation }) => {
 
   const handleExport = async () => {
     try {
-      Alert.alert('Info', 'CSV export functionality coming soon');
-      // const blob = await api.exportJobAlerts();
-      // Handle blob download in web
+      if (Platform.OS === 'web') {
+        const blob = await api.exportJobAlerts();
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = `job-alerts-${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(downloadUrl);
+        Alert.alert('Success', 'Job alerts exported successfully');
+      } else {
+        Alert.alert('Info', 'CSV export is available on web platform');
+      }
     } catch (error) {
       console.error('Error exporting alerts:', error);
       Alert.alert('Error', 'Failed to export job alerts');
     }
+  };
+
+  const handleSelectFile = async () => {
+    try {
+      if (Platform.OS === 'web') {
+        // For web, use input element
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.csv,text/csv';
+        input.onchange = (e) => {
+          const file = e.target.files[0];
+          if (file) {
+            setSelectedFile({
+              name: file.name,
+              uri: URL.createObjectURL(file),
+              size: file.size,
+              type: file.type,
+              file: file, // Store the actual File object for web
+            });
+          }
+        };
+        input.click();
+      } else {
+        const result = await DocumentPicker.getDocumentAsync({
+          type: 'text/csv',
+          copyToCacheDirectory: true,
+        });
+
+        if (!result.canceled && result.assets && result.assets.length > 0) {
+          setSelectedFile(result.assets[0]);
+        }
+      }
+    } catch (error) {
+      console.error('Error selecting file:', error);
+      Alert.alert('Error', 'Failed to select file');
+    }
+  };
+
+  const handleBulkImport = async () => {
+    if (!selectedFile) {
+      Alert.alert('Error', 'Please select a CSV file');
+      return;
+    }
+
+    try {
+      setImporting(true);
+      setImportResults(null);
+
+      // For web, use the File object directly
+      let fileToUpload = selectedFile;
+      if (Platform.OS === 'web') {
+        if (selectedFile.file) {
+          fileToUpload = selectedFile.file;
+        } else {
+          // Fallback: fetch and create File object
+          const response = await fetch(selectedFile.uri);
+          const blob = await response.blob();
+          fileToUpload = new File([blob], selectedFile.name, { type: 'text/csv' });
+        }
+      }
+
+      const response = await api.bulkImportJobAlertCandidates(fileToUpload);
+
+      if (response.success) {
+        setImportResults(response.results);
+        Alert.alert(
+          'Import Completed',
+          `Success: ${response.results.success}\nFailed: ${response.results.failed}\nSkipped: ${response.results.skipped}`
+        );
+        loadData();
+      } else {
+        Alert.alert('Error', response.message || 'Import failed');
+      }
+    } catch (error) {
+      console.error('Error importing candidates:', error);
+      Alert.alert('Error', error.message || 'Failed to import candidates');
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const handleDownloadSample = async () => {
+    try {
+      if (Platform.OS === 'web') {
+        await api.downloadJobAlertCandidatesSampleCSV();
+        Alert.alert('Success', 'Sample CSV downloaded successfully');
+      } else {
+        Alert.alert('Info', 'Sample CSV download is available on web platform');
+      }
+    } catch (error) {
+      console.error('Error downloading sample:', error);
+      Alert.alert('Error', 'Failed to download sample CSV');
+    }
+  };
+
+  const closeBulkImportModal = () => {
+    setShowBulkImportModal(false);
+    setSelectedFile(null);
+    setImportResults(null);
   };
 
   const renderStats = () => (
@@ -193,6 +309,13 @@ const AdminJobAlertsScreen = ({ navigation }) => {
       <TouchableOpacity style={styles.exportButton} onPress={handleExport}>
         <Ionicons name="download" size={20} color="#FFF" />
         <Text style={styles.exportButtonText}>Export CSV</Text>
+      </TouchableOpacity>
+      <TouchableOpacity 
+        style={styles.bulkImportButton} 
+        onPress={() => setShowBulkImportModal(true)}
+      >
+        <Ionicons name="people" size={20} color="#FFF" />
+        <Text style={styles.bulkImportButtonText}>Bulk Import Candidates</Text>
       </TouchableOpacity>
     </View>
   );
@@ -452,6 +575,123 @@ const AdminJobAlertsScreen = ({ navigation }) => {
             </Text>
           </View>
         )}
+
+        {/* Bulk Import Modal */}
+        <Modal
+          visible={showBulkImportModal}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={closeBulkImportModal}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Bulk Import Candidates</Text>
+                <TouchableOpacity onPress={closeBulkImportModal}>
+                  <Ionicons name="close" size={24} color="#666" />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView style={styles.modalBody}>
+                <Text style={styles.modalDescription}>
+                  Import multiple candidates as job alerts from a CSV file. Download the sample CSV template to see the required format.
+                </Text>
+
+                <TouchableOpacity 
+                  style={styles.downloadSampleButton}
+                  onPress={handleDownloadSample}
+                >
+                  <Ionicons name="download-outline" size={20} color="#3B82F6" />
+                  <Text style={styles.downloadSampleText}>Download Sample CSV</Text>
+                </TouchableOpacity>
+
+                <View style={styles.fileSelectorContainer}>
+                  <TouchableOpacity 
+                    style={styles.fileSelectorButton}
+                    onPress={handleSelectFile}
+                    disabled={importing}
+                  >
+                    <Ionicons name="document-attach" size={24} color="#3B82F6" />
+                    <Text style={styles.fileSelectorText}>
+                      {selectedFile ? selectedFile.name : 'Select CSV File'}
+                    </Text>
+                  </TouchableOpacity>
+                  {selectedFile && (
+                    <TouchableOpacity 
+                      style={styles.removeFileButton}
+                      onPress={() => setSelectedFile(null)}
+                    >
+                      <Ionicons name="close-circle" size={20} color="#EF4444" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                {importResults && (
+                  <View style={styles.importResultsContainer}>
+                    <Text style={styles.importResultsTitle}>Import Results</Text>
+                    <View style={styles.resultsStats}>
+                      <View style={styles.resultStatItem}>
+                        <Text style={styles.resultStatValue}>{importResults.success}</Text>
+                        <Text style={styles.resultStatLabel}>Success</Text>
+                      </View>
+                      <View style={styles.resultStatItem}>
+                        <Text style={[styles.resultStatValue, { color: '#EF4444' }]}>
+                          {importResults.failed}
+                        </Text>
+                        <Text style={styles.resultStatLabel}>Failed</Text>
+                      </View>
+                      <View style={styles.resultStatItem}>
+                        <Text style={[styles.resultStatValue, { color: '#F59E0B' }]}>
+                          {importResults.skipped || 0}
+                        </Text>
+                        <Text style={styles.resultStatLabel}>Skipped</Text>
+                      </View>
+                    </View>
+
+                    {importResults.errors && importResults.errors.length > 0 && (
+                      <View style={styles.errorsContainer}>
+                        <Text style={styles.errorsTitle}>Errors ({importResults.errors.length})</Text>
+                        <ScrollView style={styles.errorsList} nestedScrollEnabled>
+                          {importResults.errors.slice(0, 10).map((error, index) => (
+                            <Text key={index} style={styles.errorText}>
+                              {error}
+                            </Text>
+                          ))}
+                          {importResults.errors.length > 10 && (
+                            <Text style={styles.moreErrorsText}>
+                              ... and {importResults.errors.length - 10} more errors
+                            </Text>
+                          )}
+                        </ScrollView>
+                      </View>
+                    )}
+                  </View>
+                )}
+
+                <TouchableOpacity
+                  style={[
+                    styles.importButton,
+                    (!selectedFile || importing) && styles.importButtonDisabled
+                  ]}
+                  onPress={handleBulkImport}
+                  disabled={!selectedFile || importing}
+                >
+                  {importing ? (
+                    <>
+                      <ActivityIndicator size="small" color="#FFF" />
+                      <Text style={styles.importButtonText}>Importing...</Text>
+                    </>
+                  ) : (
+                    <>
+                      <Ionicons name="cloud-upload" size={20} color="#FFF" />
+                      <Text style={styles.importButtonText}>Import Candidates</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
       </View>
     </AdminLayout>
   );
@@ -770,6 +1010,182 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     marginTop: 8,
     textAlign: 'center',
+  },
+  bulkImportButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#6366F1',
+  },
+  bulkImportButtonText: {
+    fontSize: 14,
+    color: '#FFF',
+    fontWeight: '500',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    width: '100%',
+    maxWidth: 600,
+    maxHeight: '90%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#111827',
+  },
+  modalBody: {
+    padding: 20,
+  },
+  modalDescription: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  downloadSampleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 12,
+    backgroundColor: '#EEF2FF',
+    borderRadius: 8,
+    marginBottom: 20,
+  },
+  downloadSampleText: {
+    fontSize: 14,
+    color: '#3B82F6',
+    fontWeight: '500',
+  },
+  fileSelectorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 20,
+  },
+  fileSelectorButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 16,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    borderStyle: 'dashed',
+  },
+  fileSelectorText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  removeFileButton: {
+    padding: 8,
+  },
+  importButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    padding: 16,
+    backgroundColor: '#10B981',
+    borderRadius: 8,
+    marginTop: 10,
+  },
+  importButtonDisabled: {
+    backgroundColor: '#9CA3AF',
+    opacity: 0.6,
+  },
+  importButtonText: {
+    fontSize: 16,
+    color: '#FFF',
+    fontWeight: '600',
+  },
+  importResultsContainer: {
+    marginTop: 20,
+    padding: 16,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    marginBottom: 20,
+  },
+  importResultsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 12,
+  },
+  resultsStats: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 16,
+  },
+  resultStatItem: {
+    flex: 1,
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: '#FFF',
+    borderRadius: 8,
+  },
+  resultStatValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#10B981',
+    marginBottom: 4,
+  },
+  resultStatLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  errorsContainer: {
+    marginTop: 12,
+  },
+  errorsTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#EF4444',
+    marginBottom: 8,
+  },
+  errorsList: {
+    maxHeight: 200,
+    backgroundColor: '#FFF',
+    borderRadius: 8,
+    padding: 12,
+  },
+  errorText: {
+    fontSize: 12,
+    color: '#991B1B',
+    marginBottom: 4,
+    lineHeight: 16,
+  },
+  moreErrorsText: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontStyle: 'italic',
+    marginTop: 4,
   },
 });
 

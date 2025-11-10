@@ -88,9 +88,30 @@ router.get('/', async (req, res) => {
 // @access  Private (Company Employer)
 router.get('/dashboard', auth, async (req, res) => {
   try {
+    // STRICT VALIDATION: Explicitly reject admin, superadmin, jobseeker, and consultancy accounts
+    if (req.user.userType === 'admin' || req.user.userType === 'superadmin') {
+      return res.status(403).json({ 
+        message: 'Access denied. Admin accounts cannot access company dashboard. Please use admin login.' 
+      });
+    }
+
+    if (req.user.userType === 'jobseeker') {
+      return res.status(403).json({ 
+        message: 'Access denied. Jobseeker accounts cannot access company dashboard.' 
+      });
+    }
+
+    if (req.user.userType === 'employer' && req.user.employerType === 'consultancy') {
+      return res.status(403).json({ 
+        message: 'Access denied. Consultancy accounts cannot access company dashboard. Please use consultancy login.' 
+      });
+    }
+
     // Ensure user is a company employer
     if (req.user.userType !== 'employer' || req.user.employerType !== 'company') {
-      return res.status(403).json({ message: 'Access denied. Company employers only.' });
+      return res.status(403).json({ 
+        message: `Access denied. Company employers only. Your account type is: ${req.user.userType}${req.user.employerType ? ` (${req.user.employerType})` : ''}` 
+      });
     }
 
     // Get company statistics

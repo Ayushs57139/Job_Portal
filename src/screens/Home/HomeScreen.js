@@ -23,9 +23,11 @@ import api from '../../config/api';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
-const isMobile = width <= 600;
-const isPhone = width <= 480; // Specific breakpoint for phones
-const isTablet = width > 600 && width <= 768;
+const isPhone = width <= 480; // Phones
+const isMobile = width <= 600; // Small phones and small tablets
+const isTablet = width > 600 && width <= 1024; // Tablets
+const isDesktop = width > 1024; // Desktop and large screens
+const isLargeDesktop = width > 1400; // Large desktop screens
 
 const HomeScreen = ({ navigation }) => {
   const [latestJobs, setLatestJobs] = useState([]);
@@ -137,20 +139,43 @@ const HomeScreen = ({ navigation }) => {
             </TouchableOpacity>
             
             {showExperienceMenu && (
-              <View style={styles.experienceMenu}>
-                {experienceOptions.map((option, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={styles.experienceOption}
-                    onPress={() => {
-                      setExperience(option);
-                      setShowExperienceMenu(false);
-                    }}
+              <>
+                <View style={styles.experienceMenu}>
+                  <ScrollView
+                    style={styles.experienceMenuScroll}
+                    nestedScrollEnabled={true}
+                    showsVerticalScrollIndicator={false}
                   >
-                    <Text style={styles.experienceOptionText}>{option}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+                    {experienceOptions.map((option, index) => (
+                      <TouchableOpacity
+                        key={index}
+                        style={[
+                          styles.experienceOption,
+                          index === experienceOptions.length - 1 && styles.experienceOptionLast,
+                          experience === option && styles.experienceOptionActive,
+                        ]}
+                        onPress={() => {
+                          setExperience(option);
+                          setShowExperienceMenu(false);
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[
+                          styles.experienceOptionText,
+                          experience === option && styles.experienceOptionTextActive,
+                        ]}>
+                          {option}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+                <TouchableOpacity
+                  style={styles.dropdownBackdrop}
+                  activeOpacity={1}
+                  onPress={() => setShowExperienceMenu(false)}
+                />
+              </>
             )}
           </View>
 
@@ -405,9 +430,12 @@ const styles = StyleSheet.create({
   },
   hero: {
     backgroundColor: colors.cardBackground,
-    paddingVertical: isPhone ? spacing.lg : (isMobile ? spacing.xl : spacing.xxl * 1.5),
-    paddingHorizontal: isPhone ? spacing.sm : (isMobile ? spacing.md : spacing.lg),
+    paddingVertical: isPhone ? spacing.lg : (isMobile ? spacing.xl : isTablet ? spacing.xxl : spacing.xxl * 1.5),
+    paddingHorizontal: isPhone ? spacing.sm : (isMobile ? spacing.md : isTablet ? spacing.lg : spacing.xl),
     alignItems: 'center',
+    maxWidth: isDesktop ? 1400 : '100%',
+    alignSelf: 'center',
+    width: '100%',
   },
   heroTitle: {
     fontSize: isPhone ? 24 : (isMobile ? 28 : (isTablet ? 36 : 48)),
@@ -438,27 +466,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: isPhone ? spacing.xs : 0,
   },
   searchRow: {
-    flexDirection: isMobile ? 'column' : 'row',
-    gap: isPhone ? spacing.xs : spacing.sm,
+    flexDirection: isPhone ? 'column' : (isMobile ? 'column' : 'row'),
+    gap: isPhone ? spacing.xs : (isMobile ? spacing.xs : spacing.sm),
     alignItems: 'stretch',
+    position: 'relative',
+    zIndex: 1,
   },
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.cardBackground,
     borderRadius: borderRadius.md,
-    paddingHorizontal: isPhone ? spacing.sm : spacing.md,
+    paddingHorizontal: isPhone ? spacing.sm : (isMobile ? spacing.sm : spacing.md),
     gap: isPhone ? spacing.xs : spacing.sm,
     borderWidth: 1,
     borderColor: colors.border,
-    height: isPhone ? 44 : 50,
+    height: isPhone ? 44 : (isMobile ? 46 : (isTablet ? 48 : 50)),
     minWidth: 0,
   },
   flexInput: {
-    flex: isWeb ? 2 : 1,
+    flex: isPhone ? 1 : (isMobile ? 1 : isDesktop ? 2 : 1),
   },
   locationInput: {
-    flex: isWeb ? 1 : 1,
+    flex: isPhone ? 1 : (isMobile ? 1 : isDesktop ? 1 : 1),
   },
   searchInput: {
     flex: 1,
@@ -470,7 +500,9 @@ const styles = StyleSheet.create({
   },
   experienceContainer: {
     position: 'relative',
-    flex: isWeb ? 1 : 1,
+    flex: isPhone ? 1 : (isMobile ? 1 : isDesktop ? 1 : 1),
+    zIndex: 10001,
+    elevation: 11,
   },
   experienceDropdown: {
     flexDirection: 'row',
@@ -478,10 +510,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     backgroundColor: colors.cardBackground,
     borderRadius: borderRadius.md,
-    paddingHorizontal: isPhone ? spacing.sm : spacing.md,
+    paddingHorizontal: isPhone ? spacing.sm : (isMobile ? spacing.sm : spacing.md),
     borderWidth: 1,
     borderColor: colors.border,
-    height: isPhone ? 44 : 50,
+    height: isPhone ? 44 : (isMobile ? 46 : (isTablet ? 48 : 50)),
     minWidth: 0,
   },
   experienceText: {
@@ -496,6 +528,19 @@ const styles = StyleSheet.create({
   placeholderText: {
     color: colors.textLight,
   },
+  dropdownBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'transparent',
+    zIndex: 10001,
+    elevation: 11,
+    ...(isWeb && {
+      position: 'fixed',
+    }),
+  },
   experienceMenu: {
     position: 'absolute',
     top: '100%',
@@ -505,31 +550,64 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
     marginTop: spacing.xs,
     ...shadows.lg,
-    zIndex: 1000,
-    borderWidth: 1,
-    borderColor: colors.border,
+    zIndex: 10002,
+    elevation: 12,
+    borderWidth: 2,
+    borderColor: '#E2E8F0',
+    maxHeight: isPhone ? 250 : (isMobile ? 280 : 320),
+    overflow: 'hidden',
+    ...(isWeb && {
+      boxShadow: '0 10px 25px rgba(0, 0, 0, 0.15)',
+      position: 'absolute',
+    }),
+  },
+  experienceMenuScroll: {
+    maxHeight: isPhone ? 250 : (isMobile ? 280 : 320),
   },
   experienceOption: {
-    paddingHorizontal: isPhone ? spacing.sm : spacing.md,
-    paddingVertical: isPhone ? spacing.sm : spacing.md,
+    paddingHorizontal: isPhone ? spacing.md : (isMobile ? spacing.md : spacing.lg),
+    paddingVertical: isPhone ? spacing.md : (isMobile ? spacing.md : spacing.lg),
     borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
+    borderBottomColor: '#F1F5F9',
+    backgroundColor: colors.cardBackground,
+    minHeight: isPhone ? 48 : (isMobile ? 50 : 54),
+    justifyContent: 'center',
+    ...(isWeb && {
+      cursor: 'pointer',
+      transition: 'background-color 0.2s ease',
+    }),
+  },
+  experienceOptionLast: {
+    borderBottomWidth: 0,
+  },
+  experienceOptionActive: {
+    backgroundColor: '#F0F4FF',
+    borderLeftWidth: 3,
+    borderLeftColor: colors.primary,
   },
   experienceOptionText: {
     ...typography.body1,
-    fontSize: isPhone ? 14 : typography.body1.fontSize,
-    color: colors.text,
+    fontSize: isPhone ? 15 : (isMobile ? 15 : (isTablet ? 16 : 16)),
+    color: '#2D3748',
+    fontWeight: '500',
+    lineHeight: isPhone ? 20 : 22,
+  },
+  experienceOptionTextActive: {
+    color: colors.primary,
+    fontWeight: '600',
   },
   searchButton: {
     backgroundColor: colors.primary,
     borderRadius: borderRadius.md,
     paddingVertical: isPhone ? spacing.sm : spacing.md,
-    paddingHorizontal: isPhone ? spacing.md : (isMobile ? spacing.lg : spacing.xl),
+    paddingHorizontal: isPhone ? spacing.md : (isMobile ? spacing.lg : isTablet ? spacing.lg : spacing.xl),
     alignItems: 'center',
     justifyContent: 'center',
-    height: isPhone ? 44 : 50,
-    minWidth: isMobile ? '100%' : (isWeb ? 120 : undefined),
-    width: isMobile ? '100%' : undefined,
+    height: isPhone ? 44 : (isMobile ? 46 : (isTablet ? 48 : 50)),
+    minWidth: isPhone ? '100%' : (isMobile ? '100%' : (isDesktop ? 120 : undefined)),
+    width: isPhone ? '100%' : (isMobile ? '100%' : undefined),
+    zIndex: 1,
+    elevation: 1,
   },
   searchButtonText: {
     ...typography.button,
@@ -571,6 +649,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: isPhone ? spacing.md : spacing.xl,
     borderRadius: borderRadius.md,
     ...shadows.md,
+    zIndex: 1,
+    elevation: 1,
   },
   jobAlertButtonText: {
     ...typography.button,
@@ -587,9 +667,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: isPhone ? spacing.sm : 0,
   },
   section: {
-    paddingVertical: isPhone ? spacing.lg : (isMobile ? spacing.xl : spacing.xxl),
-    paddingHorizontal: isPhone ? spacing.sm : (isMobile ? spacing.md : spacing.lg),
-    maxWidth: 1200,
+    paddingVertical: isPhone ? spacing.lg : (isMobile ? spacing.xl : isTablet ? spacing.xl : spacing.xxl),
+    paddingHorizontal: isPhone ? spacing.sm : (isMobile ? spacing.md : isTablet ? spacing.lg : spacing.xl),
+    maxWidth: isDesktop ? (isLargeDesktop ? 1400 : 1200) : '100%',
     width: '100%',
     alignSelf: 'center',
   },
@@ -616,10 +696,16 @@ const styles = StyleSheet.create({
   jobsGrid: {
     flexDirection: isMobile ? 'column' : 'row',
     flexWrap: 'wrap',
-    gap: spacing.md,
+    gap: isPhone ? spacing.sm : spacing.md,
+    justifyContent: isDesktop ? 'flex-start' : 'center',
   },
   jobCardWrapper: {
-    width: isMobile ? '100%' : (width > 1200 ? '32%' : width > 768 ? '48%' : '100%'),
+    width: isPhone ? '100%' : 
+           isMobile ? '100%' : 
+           isTablet ? (width > 900 ? '48%' : '100%') : 
+           isDesktop ? (width > 1400 ? '32%' : width > 1200 ? '31%' : '48%') : 
+           '100%',
+    maxWidth: isDesktop ? 400 : '100%',
   },
   horizontalScroll: {
     paddingRight: spacing.lg,

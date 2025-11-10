@@ -847,6 +847,45 @@ class JobWalaAPI {
     return await response.blob();
   }
 
+  // Bulk Candidate Import for Job Alerts
+  async bulkImportJobAlertCandidates(file) {
+    const formData = new FormData();
+    formData.append('csvFile', file);
+    
+    const url = `${this.baseURL}/job-alerts/bulk-import-candidates`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': this.token ? `Bearer ${this.token}` : undefined,
+      },
+      body: formData,
+    });
+    return await response.json();
+  }
+
+  async downloadJobAlertCandidatesSampleCSV() {
+    const url = `${this.baseURL}/job-alerts/sample-csv/candidates`;
+    const response = await fetch(url, {
+      headers: this.getHeaders(),
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to download sample CSV');
+    }
+    
+    const blob = await response.blob();
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = 'job-alerts-candidates-sample.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(downloadUrl);
+    
+    return { success: true, message: 'Sample CSV downloaded successfully' };
+  }
+
   // Chat APIs - Live Chat Support
   async getConversations(filters = {}) {
     const params = new URLSearchParams(filters);

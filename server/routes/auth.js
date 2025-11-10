@@ -231,24 +231,31 @@ router.post('/login', [
     }
     
     if (!user) {
-      return res.status(400).json({ message: 'Invalid credentials' });
+      return res.status(400).json({ message: 'No account found with this login ID. Please check your credentials or create a new account' });
     }
 
     // Check if account is active
     if (!user.isActive) {
-      return res.status(400).json({ message: 'Account is deactivated' });
+      return res.status(400).json({ message: 'Account is deactivated. Please contact support' });
     }
 
-    // Check password
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) {
-      return res.status(400).json({ message: 'Invalid credentials' });
+    // Strict validation: Default to jobseeker if userType is not provided
+    // But if user is admin/superadmin, allow them to login (for admin panel)
+    const expectedUserType = userType || (user.userType === 'admin' || user.userType === 'superadmin' ? user.userType : 'jobseeker');
+
+    // If expecting jobseeker, only jobseekers can login
+    if (expectedUserType === 'jobseeker') {
+      if (user.userType !== 'jobseeker') {
+        return res.status(400).json({ 
+          message: `This account is a ${user.userType} account, not a jobseeker account. Please use the correct login page.` 
+        });
+      }
     }
 
     // Strict validation for employer types
-    if (userType === 'employer' && employerType) {
+    if (expectedUserType === 'employer' && employerType) {
       if (user.userType !== 'employer') {
-        return res.status(400).json({ message: 'This account is not an employer account' });
+        return res.status(400).json({ message: 'This account is not an employer account. Please use the correct login page.' });
       }
       
       if (user.employerType !== employerType) {
@@ -258,11 +265,31 @@ router.post('/login', [
       }
     }
 
-    // Validate user type matches
-    if (userType && user.userType !== userType) {
-      return res.status(400).json({ 
-        message: `This account is a ${user.userType} account, not a ${userType} account. Please use the correct login page.` 
-      });
+    // Strict validation for admin types - allow both admin and superadmin when either is specified
+    // This allows admin login page to work for both admin and superadmin accounts
+    if (expectedUserType === 'admin' || expectedUserType === 'superadmin') {
+      // Allow login if user is either admin or superadmin (both are valid for admin panel)
+      // Check if user is NOT an admin type (reject only non-admin accounts)
+      const isAdminType = user.userType === 'admin' || user.userType === 'superadmin';
+      if (!isAdminType) {
+        return res.status(400).json({ 
+          message: `This account is a ${user.userType} account, not an admin account. Please use the correct login page.` 
+        });
+      }
+      // If we reach here, user is admin or superadmin, which is valid - continue to password check
+    } else {
+      // Final validation: user type must match expected type (for non-admin types)
+      if (user.userType !== expectedUserType) {
+        return res.status(400).json({ 
+          message: `This account is a ${user.userType} account, not a ${expectedUserType} account. Please use the correct login page.` 
+        });
+      }
+    }
+
+    // Check password (only after user type validation passes)
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      return res.status(400).json({ message: 'Incorrect password. Please try again' });
     }
 
     // Update last login

@@ -168,18 +168,37 @@ router.post('/login', async (req, res) => {
         }
         
         if (!jobSeeker) {
-            return res.status(400).json({ message: 'Invalid credentials' });
-        }
-        
-        // Check if user is a jobseeker
-        if (jobSeeker.userType !== 'jobseeker') {
-            return res.status(400).json({ message: 'This account is not a jobseeker account' });
+            return res.status(400).json({ message: 'No account found with this login ID. Please check your credentials or create a new account' });
         }
 
-        // Check password
+        // STRICT VALIDATION: ONLY jobseeker accounts can login here
+        // Explicitly reject admin, superadmin, and employer account types
+        if (jobSeeker.userType === 'admin' || jobSeeker.userType === 'superadmin') {
+            return res.status(403).json({ 
+                message: 'Access denied. Admin accounts cannot login through jobseeker login. Please use the admin login page.' 
+            });
+        }
+        
+        if (jobSeeker.userType === 'employer') {
+            return res.status(403).json({ 
+                message: 'Access denied. This is an employer account. Please use the employer login page.' 
+            });
+        }
+        
+        // Check if account is active
+        if (!jobSeeker.isActive) {
+            return res.status(400).json({ message: 'Account is deactivated. Please contact support' });
+        }
+        
+        // Strict validation: Check if user is a jobseeker (before password check)
+        if (jobSeeker.userType !== 'jobseeker') {
+            return res.status(400).json({ message: `This account is a ${jobSeeker.userType} account, not a jobseeker account. Please use the correct login page` });
+        }
+
+        // Check password (only after user type validation passes)
         const isMatch = await jobSeeker.comparePassword(password);
         if (!isMatch) {
-            return res.status(400).json({ message: 'Invalid credentials' });
+            return res.status(400).json({ message: 'Incorrect password. Please try again' });
         }
 
         // Update last login

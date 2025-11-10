@@ -6,8 +6,10 @@ import { colors, spacing, borderRadius, shadows, typography } from '../styles/th
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
-const isWideScreen = width > 768;
+const isPhone = width <= 480;
 const isMobile = width <= 600;
+const isTablet = width > 600 && width <= 1024;
+const isDesktop = width > 1024;
 
 const CompanyCard = ({ company }) => {
   const navigation = useNavigation();
@@ -114,7 +116,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.cardBackground,
     borderRadius: borderRadius.xl,
-    padding: isWideScreen ? spacing.lg : spacing.md,
+    padding: isPhone ? spacing.sm : (isMobile ? spacing.md : isTablet ? spacing.md : spacing.lg),
     ...shadows.lg,
     borderWidth: 1,
     borderColor: colors.borderLight,
@@ -126,18 +128,18 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.md,
-    gap: spacing.md,
+    marginBottom: isPhone ? spacing.sm : spacing.md,
+    gap: isPhone ? spacing.sm : spacing.md,
   },
   avatar: {
-    width: isMobile ? 48 : 56,
-    height: isMobile ? 48 : 56,
-    borderRadius: isMobile ? 24 : 28,
+    width: isPhone ? 44 : (isMobile ? 48 : (isTablet ? 52 : 56)),
+    height: isPhone ? 44 : (isMobile ? 48 : (isTablet ? 52 : 56)),
+    borderRadius: isPhone ? 22 : (isMobile ? 24 : (isTablet ? 26 : 28)),
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarText: {
-    fontSize: isMobile ? 20 : 24,
+    fontSize: isPhone ? 18 : (isMobile ? 20 : (isTablet ? 22 : 24)),
     fontWeight: '700',
     color: colors.textWhite,
   },
@@ -145,20 +147,20 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   companyName: {
-    fontSize: isWideScreen ? 18 : 16,
+    fontSize: isPhone ? 14 : (isMobile ? 16 : (isTablet ? 17 : (isDesktop ? 18 : 17))),
     fontWeight: '700',
     color: colors.text,
     marginBottom: spacing.xs,
   },
   industryBadge: {
     backgroundColor: '#E0E7FF',
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: isPhone ? spacing.xs : spacing.sm,
     paddingVertical: 4,
     borderRadius: borderRadius.sm,
     alignSelf: 'flex-start',
   },
   industryText: {
-    fontSize: isWideScreen ? 12 : 11,
+    fontSize: isPhone ? 10 : (isMobile ? 11 : (isTablet ? 11 : (isDesktop ? 12 : 11))),
     fontWeight: '600',
     color: '#4F46E5',
   },
@@ -172,7 +174,7 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.borderLight,
   },
   openPositions: {
-    fontSize: isWideScreen ? 14 : 13,
+    fontSize: isPhone ? 12 : (isMobile ? 13 : (isTablet ? 13 : (isDesktop ? 14 : 13))),
     color: colors.text,
     fontWeight: '500',
   },
@@ -186,26 +188,26 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   ratingText: {
-    fontSize: isWideScreen ? 13 : 12,
+    fontSize: isPhone ? 11 : (isMobile ? 12 : (isTablet ? 12 : (isDesktop ? 13 : 12))),
     color: colors.text,
     fontWeight: '600',
   },
   description: {
-    fontSize: isWideScreen ? 14 : 13,
+    fontSize: isPhone ? 12 : (isMobile ? 13 : (isTablet ? 13 : (isDesktop ? 14 : 13))),
     color: colors.textSecondary,
-    marginBottom: spacing.md,
-    lineHeight: isWideScreen ? 20 : 18,
+    marginBottom: isPhone ? spacing.sm : spacing.md,
+    lineHeight: isPhone ? 18 : (isMobile ? 18 : (isTablet ? 19 : 20)),
   },
   viewJobsButton: {
     backgroundColor: '#6366F1',
     borderRadius: borderRadius.md,
-    paddingVertical: spacing.md,
+    paddingVertical: isPhone ? spacing.sm : spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
   },
   viewJobsText: {
-    fontSize: isWideScreen ? 15 : 14,
+    fontSize: isPhone ? 13 : (isMobile ? 14 : (isTablet ? 14 : (isDesktop ? 15 : 14))),
     fontWeight: '600',
     color: colors.textWhite,
   },

@@ -584,6 +584,292 @@ router.get('/export/csv', adminAuth, async (req, res) => {
     }
 });
 
+// @route   POST /api/job-alerts/bulk-import-candidates
+// @desc    Import job alerts from candidate data CSV (Bulk Candidates Addon)
+// @access  Admin only
+router.post('/bulk-import-candidates', adminAuth, upload.single('csvFile'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                message: 'CSV file is required'
+            });
+        }
+
+        const results = {
+            success: 0,
+            failed: 0,
+            errors: [],
+            skipped: 0
+        };
+
+        const jobAlerts = [];
+        const User = require('../models/User');
+
+        // Parse CSV file
+        fs.createReadStream(req.file.path)
+            .pipe(csv())
+            .on('data', (row) => {
+                try {
+                    // Parse arrays from CSV
+                    const jobRoles = row.jobRoles ? row.jobRoles.split(',').map(role => role.trim()).filter(r => r) : 
+                                   (row.jobRole ? [row.jobRole.trim()] : []);
+                    const keySkills = row.keySkills ? row.keySkills.split(',').map(skill => skill.trim()).filter(s => s) : 
+                                     (row.skills ? row.skills.split(',').map(s => s.trim()).filter(s => s) : []);
+
+                    // Validate required fields
+                    if (!row.email || !row.mobile || !row.jobTitle) {
+                        results.failed++;
+                        results.errors.push(`Row ${results.success + results.failed + results.skipped + 1}: Missing required fields (email, mobile, or jobTitle)`);
+                        return;
+                    }
+
+                    // Check for duplicate email + jobTitle combination
+                    const duplicate = jobAlerts.find(alert => 
+                        alert.email.toLowerCase() === row.email.toLowerCase() && 
+                        alert.jobTitle === row.jobTitle
+                    );
+                    
+                    if (duplicate) {
+                        results.skipped++;
+                        results.errors.push(`Row ${results.success + results.failed + results.skipped + 1}: Duplicate entry (email: ${row.email}, jobTitle: ${row.jobTitle})`);
+                        return;
+                    }
+
+                    // userId will be set later in the end handler
+                    // We'll do a batch lookup for all emails
+
+                    const jobAlertData = {
+                        jobTitle: row.jobTitle || row['Job Title'] || '',
+                        expectedSalary: parseInt(row.expectedSalary || row['Expected Salary'] || row.salary || '0') || 0,
+                        presentJobStatus: row.presentJobStatus || row['Present Job Status'] || row.jobStatus || 'not-working',
+                        experienceLevel: row.experienceLevel || row['Experience Level'] || (row.totalExperience && row.totalExperience !== 'fresher' ? 'experienced' : 'fresher'),
+                        totalExperience: row.totalExperience || row['Total Experience'] || 'fresher',
+                        workOfficeLocation: row.workOfficeLocation || row['Work Office Location'] || row.location || row.city || '',
+                        industry: row.industry || row['Industry'] || '',
+                        subIndustry: row.subIndustry || row['Sub Industry'] || '',
+                        department: row.department || row['Department'] || '',
+                        jobRoles: jobRoles.length > 0 ? jobRoles : (row.jobRole ? [row.jobRole] : ['']),
+                        keySkills: keySkills.length > 0 ? keySkills : (row.skills ? row.skills.split(',').map(s => s.trim()) : ['']),
+                        email: (row.email || row['Email'] || '').toLowerCase().trim(),
+                        mobile: (row.mobile || row['Mobile'] || row.phone || '').trim().replace(/[^0-9]/g, '').slice(-10),
+                        alertName: row.alertName || row['Alert Name'] || `${row.jobTitle || 'Job Alert'} - ${row.email || 'Alert'}`,
+                        alertFrequency: row.alertFrequency || row['Alert Frequency'] || 'daily',
+                        isActive: row.isActive !== undefined ? row.isActive !== 'false' : true
+                    };
+
+                    // Validate mobile number
+                    if (!jobAlertData.mobile || jobAlertData.mobile.length !== 10) {
+                        results.failed++;
+                        results.errors.push(`Row ${results.success + results.failed + results.skipped + 1}: Invalid mobile number`);
+                        return;
+                    }
+
+                    jobAlerts.push(jobAlertData);
+                } catch (error) {
+                    results.failed++;
+                    results.errors.push(`Row ${results.success + results.failed + results.skipped + 1}: ${error.message}`);
+                }
+            })
+            .on('end', async () => {
+                try {
+                    // Get all unique emails and find users
+                    const uniqueEmails = [...new Set(jobAlerts.map(alert => alert.email.toLowerCase()))];
+                    const users = await User.find({ email: { $in: uniqueEmails } });
+                    const emailToUserIdMap = new Map();
+                    users.forEach(user => {
+                        emailToUserIdMap.set(user.email.toLowerCase(), user._id);
+                    });
+
+                    // Assign userIds to job alerts
+                    jobAlerts.forEach(alert => {
+                        const userId = emailToUserIdMap.get(alert.email.toLowerCase());
+                        if (userId) {
+                            alert.userId = userId;
+                        }
+                    });
+
+                    // Check for existing alerts in database
+                    const existingAlerts = await JobAlert.find({
+                        $or: jobAlerts.map(alert => ({
+                            email: alert.email,
+                            jobTitle: alert.jobTitle
+                        }))
+                    });
+
+                    const existingMap = new Map();
+                    existingAlerts.forEach(alert => {
+                        const key = `${alert.email}_${alert.jobTitle}`;
+                        existingMap.set(key, true);
+                    });
+
+                    // Filter out duplicates
+                    const newAlerts = jobAlerts.filter(alert => {
+                        const key = `${alert.email}_${alert.jobTitle}`;
+                        if (existingMap.has(key)) {
+                            results.skipped++;
+                            results.errors.push(`Duplicate: ${alert.email} - ${alert.jobTitle} already exists`);
+                            return false;
+                        }
+                        return true;
+                    });
+
+                    // Insert job alerts in bulk
+                    if (newAlerts.length > 0) {
+                        try {
+                            const inserted = await JobAlert.insertMany(newAlerts, { ordered: false });
+                            results.success = inserted.length;
+                        } catch (error) {
+                            if (error.name === 'BulkWriteError') {
+                                results.success = error.result.insertedCount || 0;
+                                results.failed += (newAlerts.length - (error.result.insertedCount || 0));
+                                error.result.writeErrors.forEach(err => {
+                                    results.errors.push(`Row error: ${err.errmsg}`);
+                                });
+                            } else {
+                                throw error;
+                            }
+                        }
+                    }
+
+                    // Delete uploaded CSV file
+                    if (fs.existsSync(req.file.path)) {
+                        fs.unlinkSync(req.file.path);
+                    }
+
+                    res.json({
+                        success: true,
+                        message: 'Bulk candidate import completed',
+                        results: {
+                            ...results,
+                            total: results.success + results.failed + results.skipped
+                        }
+                    });
+
+                } catch (error) {
+                    console.error('Error during bulk insert:', error);
+                    
+                    // Delete uploaded CSV file
+                    if (fs.existsSync(req.file.path)) {
+                        fs.unlinkSync(req.file.path);
+                    }
+
+                    res.status(500).json({
+                        success: false,
+                        message: 'Error during bulk import',
+                        error: error.message,
+                        results
+                    });
+                }
+            })
+            .on('error', (error) => {
+                console.error('Error parsing CSV:', error);
+                if (fs.existsSync(req.file.path)) {
+                    fs.unlinkSync(req.file.path);
+                }
+                res.status(500).json({
+                    success: false,
+                    message: 'Error parsing CSV file',
+                    error: error.message
+                });
+            });
+
+    } catch (error) {
+        console.error('Error in bulk candidate import:', error);
+        if (req.file && fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
+        }
+        res.status(500).json({
+            success: false,
+            message: 'Server error during bulk candidate import',
+            error: error.message
+        });
+    }
+});
+
+// @route   GET /api/job-alerts/sample-csv/candidates
+// @desc    Download sample CSV template for bulk candidate import
+// @access  Admin only
+router.get('/sample-csv/candidates', adminAuth, async (req, res) => {
+    try {
+        const sampleData = [
+            {
+                'Email': 'candidate1@example.com',
+                'Mobile': '9876543210',
+                'Job Title': 'Software Developer',
+                'Expected Salary': '800000',
+                'Present Job Status': 'working',
+                'Experience Level': 'experienced',
+                'Total Experience': '3-years',
+                'Work Office Location': 'Mumbai',
+                'Industry': 'Information Technology',
+                'Sub Industry': 'Software Development',
+                'Department': 'Engineering',
+                'Job Roles': 'Software Engineer, Full Stack Developer',
+                'Key Skills': 'JavaScript, React, Node.js, MongoDB',
+                'Alert Name': 'Software Developer Alert',
+                'Alert Frequency': 'daily',
+                'Is Active': 'true'
+            },
+            {
+                'Email': 'candidate2@example.com',
+                'Mobile': '9876543211',
+                'Job Title': 'Data Analyst',
+                'Expected Salary': '600000',
+                'Present Job Status': 'not-working',
+                'Experience Level': 'fresher',
+                'Total Experience': 'fresher',
+                'Work Office Location': 'Bangalore',
+                'Industry': 'Information Technology',
+                'Sub Industry': 'Data Analytics',
+                'Department': 'Analytics',
+                'Job Roles': 'Data Analyst, Business Analyst',
+                'Key Skills': 'Python, SQL, Excel, Tableau',
+                'Alert Name': 'Data Analyst Alert',
+                'Alert Frequency': 'weekly',
+                'Is Active': 'true'
+            }
+        ];
+
+        const headers = [
+            'Email', 'Mobile', 'Job Title', 'Expected Salary', 'Present Job Status',
+            'Experience Level', 'Total Experience', 'Work Office Location',
+            'Industry', 'Sub Industry', 'Department', 'Job Roles', 'Key Skills',
+            'Alert Name', 'Alert Frequency', 'Is Active'
+        ];
+
+        // Generate CSV content
+        const csvRows = [];
+        csvRows.push(headers.join(','));
+        
+        sampleData.forEach(row => {
+            const values = headers.map(header => {
+                const value = row[header] || '';
+                // Escape values containing commas or quotes
+                if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
+                    return `"${value.replace(/"/g, '""')}"`;
+                }
+                return value;
+            });
+            csvRows.push(values.join(','));
+        });
+
+        const csvContent = csvRows.join('\n');
+
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', 'attachment; filename="job-alerts-candidates-sample.csv"');
+        res.send(csvContent);
+
+    } catch (error) {
+        console.error('Error generating sample CSV:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error while generating sample CSV',
+            error: error.message
+        });
+    }
+});
+
 // @route   POST /api/job-alerts/:id/toggle-status
 // @desc    Toggle job alert active status
 // @access  Admin only

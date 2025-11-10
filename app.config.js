@@ -15,11 +15,12 @@ export default {
   ],
   extra: {
     // API Configuration
-    // For Expo Go on physical device, set this to your computer's IP address
+    // Production: Set EXPO_PUBLIC_API_HOST to your production API domain (e.g., "api.yourdomain.com")
+    // Development: Set to your computer's IP address for Expo Go on physical device
     // Find your IP: Windows (ipconfig), Mac/Linux (ifconfig)
     // Example: if Expo shows exp://192.168.1.19:8081, set apiHost to "192.168.1.19"
-    apiHost: process.env.EXPO_PUBLIC_API_HOST || "192.168.1.19",
-    apiPort: process.env.EXPO_PUBLIC_API_PORT || "5000"
+    apiHost: process.env.EXPO_PUBLIC_API_HOST || (process.env.NODE_ENV === 'production' ? "api.yourdomain.com" : "192.168.1.19"),
+    apiPort: process.env.EXPO_PUBLIC_API_PORT || (process.env.NODE_ENV === 'production' ? "443" : "5000")
   },
   ios: {
     supportsTablet: true,

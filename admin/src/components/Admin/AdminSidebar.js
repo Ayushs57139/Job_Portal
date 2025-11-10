@@ -1,9 +1,22 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Platform } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Platform, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-const AdminSidebar = ({ activeScreen, onNavigate }) => {
+const AdminSidebar = ({ activeScreen, onNavigate, onClose }) => {
+  const [dimensions, setDimensions] = useState(() => Dimensions.get('window'));
   const [expandedMenus, setExpandedMenus] = useState({});
+
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setDimensions(window);
+    });
+
+    return () => subscription?.remove();
+  }, []);
+
+  const width = dimensions?.width || Dimensions.get('window').width;
+  const isMobile = width < 768;
+  const isTablet = width >= 768 && width < 1024;
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: 'speedometer-outline', screen: 'AdminDashboard' },
@@ -58,7 +71,7 @@ const AdminSidebar = ({ activeScreen, onNavigate }) => {
     }));
   };
 
-  const renderMenuItem = (item, isSubItem = false) => {
+  const renderMenuItem = (item, isSubItem = false, styles) => {
     const isActive = activeScreen === item.screen;
     const isExpanded = expandedMenus[item.id];
 
@@ -80,7 +93,7 @@ const AdminSidebar = ({ activeScreen, onNavigate }) => {
         >
           <Ionicons 
             name={item.icon} 
-            size={isSubItem ? 16 : 20} 
+            size={isSubItem ? (isMobile ? 15 : 16) : (isMobile ? 18 : isTablet ? 19 : 20)} 
             color={isActive ? '#4A90E2' : '#B0B0B0'} 
           />
           <Text style={[
@@ -101,18 +114,27 @@ const AdminSidebar = ({ activeScreen, onNavigate }) => {
         </TouchableOpacity>
         {item.expandable && isExpanded && item.subItems && (
           <View style={styles.subMenuContainer}>
-            {item.subItems.map(subItem => renderMenuItem(subItem, true))}
+            {item.subItems.map(subItem => renderMenuItem(subItem, true, styles))}
           </View>
         )}
       </View>
     );
   };
 
+  const styles = getStyles(isMobile, isTablet);
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.brandTitle}>Free job wala</Text>
-        <Text style={styles.brandSubtitle}>Admin Panel</Text>
+        <View style={styles.headerContent}>
+          <Text style={styles.brandTitle}>Free job wala</Text>
+          <Text style={styles.brandSubtitle}>Admin Panel</Text>
+        </View>
+        {isMobile && onClose && (
+          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <Ionicons name="close" size={24} color="#E0E0E0" />
+          </TouchableOpacity>
+        )}
       </View>
       <ScrollView 
         style={styles.menuContainer} 
@@ -120,22 +142,22 @@ const AdminSidebar = ({ activeScreen, onNavigate }) => {
         showsVerticalScrollIndicator={true}
         nestedScrollEnabled={true}
       >
-        {menuItems.map(item => renderMenuItem(item))}
+        {menuItems.map(item => renderMenuItem(item, false, styles))}
       </ScrollView>
     </View>
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (isMobile, isTablet) => StyleSheet.create({
   container: {
-    width: 240,
+    width: isMobile ? 280 : isTablet ? 220 : 240,
     backgroundColor: '#2C3E50',
     flexShrink: 0,
     flexDirection: 'column',
     alignSelf: 'stretch',
     height: '100%',
     ...(Platform.OS === 'web' && {
-      position: 'fixed',
+      position: isMobile ? 'relative' : 'fixed',
       left: 0,
       top: 0,
       bottom: 0,
@@ -146,20 +168,30 @@ const styles = StyleSheet.create({
     }),
   },
   header: {
-    padding: 20,
+    padding: isMobile ? 16 : 20,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.1)',
     flexShrink: 0,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  headerContent: {
+    flex: 1,
   },
   brandTitle: {
-    fontSize: 20,
+    fontSize: isMobile ? 18 : isTablet ? 19 : 20,
     fontWeight: 'bold',
     color: '#4A90E2',
   },
   brandSubtitle: {
-    fontSize: 12,
+    fontSize: isMobile ? 11 : 12,
     color: '#B0B0B0',
     marginTop: 4,
+  },
+  closeButton: {
+    padding: 4,
+    marginLeft: 10,
   },
   menuContainer: {
     flex: 1,
@@ -180,9 +212,9 @@ const styles = StyleSheet.create({
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    marginHorizontal: 8,
+    paddingVertical: isMobile ? 14 : 12,
+    paddingHorizontal: isMobile ? 16 : 20,
+    marginHorizontal: isMobile ? 4 : 8,
     borderRadius: 6,
   },
   activeMenuItem: {
@@ -193,9 +225,9 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   menuLabel: {
-    fontSize: 14,
+    fontSize: isMobile ? 13 : isTablet ? 13.5 : 14,
     color: '#E0E0E0',
-    marginLeft: 12,
+    marginLeft: isMobile ? 10 : 12,
     flex: 1,
   },
   activeMenuLabel: {

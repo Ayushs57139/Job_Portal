@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, Alert, Dimensions, Platform } from 'react-native';
 import AdminLayout from '../../components/Admin/AdminLayout';
 import StatCard from '../../components/Admin/StatCard';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../../config/api';
 
 const AdminDashboardScreen = ({ navigation, route }) => {
+  const [dimensions, setDimensions] = useState(() => Dimensions.get('window'));
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -17,8 +18,22 @@ const AdminDashboardScreen = ({ navigation, route }) => {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setDimensions(window);
+    });
+
+    return () => subscription?.remove();
+  }, []);
+
+  const width = dimensions?.width || Dimensions.get('window').width;
+  const isMobile = width < 768;
+  const isTablet = width >= 768 && width < 1024;
+
+  useEffect(() => {
     fetchDashboardData();
   }, []);
+
+  const styles = getStyles(isMobile, isTablet);
 
   const fetchDashboardData = async () => {
     try {
@@ -135,83 +150,146 @@ const AdminDashboardScreen = ({ navigation, route }) => {
             count={stats.totalJobs}
             label="Total Jobs"
           />
+          {!isMobile && (
+            <>
+              <StatCard
+                icon="document-text"
+                iconColor="#F39C12"
+                iconBg="rgba(243, 156, 18, 0.1)"
+                count={stats.applications}
+                label="Applications"
+              />
+              <StatCard
+                icon="checkmark-circle"
+                iconColor="#E74C3C"
+                iconBg="rgba(231, 76, 60, 0.1)"
+                count={stats.activeJobs}
+                label="Active Jobs"
+              />
+            </>
+          )}
         </View>
 
-        <View style={styles.statsContainer}>
-          <StatCard
-            icon="document-text"
-            iconColor="#F39C12"
-            iconBg="rgba(243, 156, 18, 0.1)"
-            count={stats.applications}
-            label="Applications"
-          />
-          <StatCard
-            icon="checkmark-circle"
-            iconColor="#E74C3C"
-            iconBg="rgba(231, 76, 60, 0.1)"
-            count={stats.activeJobs}
-            label="Active Jobs"
-          />
-        </View>
+        {isMobile && (
+          <View style={styles.statsContainer}>
+            <StatCard
+              icon="document-text"
+              iconColor="#F39C12"
+              iconBg="rgba(243, 156, 18, 0.1)"
+              count={stats.applications}
+              label="Applications"
+            />
+            <StatCard
+              icon="checkmark-circle"
+              iconColor="#E74C3C"
+              iconBg="rgba(231, 76, 60, 0.1)"
+              count={stats.activeJobs}
+              label="Active Jobs"
+            />
+          </View>
+        )}
 
         <View style={styles.recentUsersSection}>
           <Text style={styles.sectionTitle}>Recent Users</Text>
-          <View style={styles.tableContainer}>
-            <View style={styles.tableHeader}>
-              <Text style={[styles.tableHeaderText, styles.nameColumn]}>Name</Text>
-              <Text style={[styles.tableHeaderText, styles.emailColumn]}>Email</Text>
-              <Text style={[styles.tableHeaderText, styles.typeColumn]}>Type</Text>
-              <Text style={[styles.tableHeaderText, styles.statusColumn]}>Status</Text>
-              <Text style={[styles.tableHeaderText, styles.joinedColumn]}>Joined</Text>
-            </View>
-            {recentUsers.length > 0 ? (
-              recentUsers.map((user, index) => (
-                <View key={user._id || index} style={styles.tableRow}>
-                  <Text style={[styles.tableCellText, styles.nameColumn, styles.nameText]}>
-                    {user.name || 'N/A'}
-                  </Text>
-                  <Text style={[styles.tableCellText, styles.emailColumn, styles.emailText]}>
-                    {user.email || 'N/A'}
-                  </Text>
-                  <View style={[styles.typeColumn]}>
-                    <View style={[
-                      styles.typeBadge,
-                      user.role === 'JOBSEEKER' && styles.jobseekerBadge,
-                      user.role === 'EMPLOYER' && styles.employerBadge,
-                    ]}>
-                      <Text style={styles.typeBadgeText}>
-                        {user.role || 'N/A'}
+          {isMobile ? (
+            // Mobile: Card-based layout
+            <View style={styles.mobileCardContainer}>
+              {recentUsers.length > 0 ? (
+                recentUsers.map((user, index) => (
+                  <View key={user._id || index} style={styles.mobileCard}>
+                    <View style={styles.mobileCardHeader}>
+                      <Text style={styles.mobileCardName}>{user.name || 'N/A'}</Text>
+                      <View style={[
+                        styles.mobileStatusBadge,
+                        user.isActive ? styles.activeBadge : styles.inactiveBadge,
+                      ]}>
+                        <Text style={styles.mobileStatusBadgeText}>
+                          {user.isActive ? 'ACTIVE' : 'INACTIVE'}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={styles.mobileCardEmail}>{user.email || 'N/A'}</Text>
+                    <View style={styles.mobileCardFooter}>
+                      <View style={[
+                        styles.mobileTypeBadge,
+                        user.role === 'JOBSEEKER' && styles.jobseekerBadge,
+                        user.role === 'EMPLOYER' && styles.employerBadge,
+                      ]}>
+                        <Text style={styles.mobileTypeBadgeText}>
+                          {user.role || 'N/A'}
+                        </Text>
+                      </View>
+                      <Text style={styles.mobileCardDate}>
+                        {formatDate(user.createdAt)}
                       </Text>
                     </View>
                   </View>
-                  <View style={[styles.statusColumn]}>
-                    <View style={[
-                      styles.statusBadge,
-                      user.isActive ? styles.activeBadge : styles.inactiveBadge,
-                    ]}>
-                      <Text style={styles.statusBadgeText}>
-                        {user.isActive ? 'ACTIVE' : 'INACTIVE'}
-                      </Text>
-                    </View>
-                  </View>
-                  <Text style={[styles.tableCellText, styles.joinedColumn]}>
-                    {formatDate(user.createdAt)}
-                  </Text>
+                ))
+              ) : (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyStateText}>No recent users found</Text>
                 </View>
-              ))
-            ) : (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyStateText}>No recent users found</Text>
+              )}
+            </View>
+          ) : (
+            // Desktop/Tablet: Table layout
+            <View style={styles.tableContainer}>
+              <View style={styles.tableHeader}>
+                <Text style={[styles.tableHeaderText, styles.nameColumn]}>Name</Text>
+                <Text style={[styles.tableHeaderText, styles.emailColumn]}>Email</Text>
+                <Text style={[styles.tableHeaderText, styles.typeColumn]}>Type</Text>
+                <Text style={[styles.tableHeaderText, styles.statusColumn]}>Status</Text>
+                <Text style={[styles.tableHeaderText, styles.joinedColumn]}>Joined</Text>
               </View>
-            )}
-          </View>
+              {recentUsers.length > 0 ? (
+                recentUsers.map((user, index) => (
+                  <View key={user._id || index} style={styles.tableRow}>
+                    <Text style={[styles.tableCellText, styles.nameColumn, styles.nameText]} numberOfLines={1}>
+                      {user.name || 'N/A'}
+                    </Text>
+                    <Text style={[styles.tableCellText, styles.emailColumn, styles.emailText]} numberOfLines={1}>
+                      {user.email || 'N/A'}
+                    </Text>
+                    <View style={[styles.typeColumn]}>
+                      <View style={[
+                        styles.typeBadge,
+                        user.role === 'JOBSEEKER' && styles.jobseekerBadge,
+                        user.role === 'EMPLOYER' && styles.employerBadge,
+                      ]}>
+                        <Text style={styles.typeBadgeText}>
+                          {user.role || 'N/A'}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={[styles.statusColumn]}>
+                      <View style={[
+                        styles.statusBadge,
+                        user.isActive ? styles.activeBadge : styles.inactiveBadge,
+                      ]}>
+                        <Text style={styles.statusBadgeText}>
+                          {user.isActive ? 'ACTIVE' : 'INACTIVE'}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={[styles.tableCellText, styles.joinedColumn]}>
+                      {formatDate(user.createdAt)}
+                    </Text>
+                  </View>
+                ))
+              ) : (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyStateText}>No recent users found</Text>
+                </View>
+              )}
+            </View>
+          )}
         </View>
       </ScrollView>
     </AdminLayout>
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (isMobile, isTablet) => StyleSheet.create({
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -223,78 +301,173 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   welcomeSection: {
-    marginBottom: 20,
+    marginBottom: isMobile ? 16 : 20,
   },
   welcomeTitle: {
-    fontSize: 28,
+    fontSize: isMobile ? 22 : isTablet ? 24 : 28,
     fontWeight: 'bold',
     color: '#333',
   },
   welcomeSubtitle: {
-    fontSize: 14,
+    fontSize: isMobile ? 12 : 14,
     color: '#666',
     marginTop: 4,
   },
   statsContainer: {
     flexDirection: 'row',
-    marginHorizontal: -8,
+    flexWrap: isMobile ? 'wrap' : 'nowrap',
+    marginHorizontal: isMobile ? -4 : -8,
+    marginBottom: isMobile ? 12 : 0,
+    ...(Platform.OS === 'web' && {
+      display: 'flex',
+      flexWrap: isMobile ? 'wrap' : 'nowrap',
+    }),
   },
   recentUsersSection: {
-    marginTop: 20,
+    marginTop: isMobile ? 16 : 20,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: isMobile ? 18 : isTablet ? 19 : 20,
     fontWeight: '600',
     color: '#333',
-    marginBottom: 15,
+    marginBottom: isMobile ? 12 : 15,
   },
   tableContainer: {
     backgroundColor: '#FFF',
     borderRadius: 12,
-    padding: 20,
+    padding: isMobile ? 12 : isTablet ? 16 : 20,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    ...(Platform.OS === 'web' && {
+      overflowX: 'auto',
+    }),
+  },
+  tableHeader: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+    paddingBottom: isMobile ? 10 : 12,
+    marginBottom: isMobile ? 10 : 12,
+    ...(Platform.OS === 'web' && {
+      minWidth: isTablet ? 600 : 800,
+    }),
+  },
+  tableHeaderText: {
+    fontSize: isMobile ? 12 : isTablet ? 13 : 14,
+    fontWeight: '600',
+    color: '#666',
+  },
+  tableRow: {
+    flexDirection: 'row',
+    paddingVertical: isMobile ? 10 : 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5F5F5',
+    alignItems: 'center',
+    ...(Platform.OS === 'web' && {
+      minWidth: isTablet ? 600 : 800,
+    }),
+  },
+  tableCellText: {
+    fontSize: isMobile ? 12 : isTablet ? 13 : 14,
+    color: '#333',
+    ...(Platform.OS === 'web' && {
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      whiteSpace: 'nowrap',
+    }),
+  },
+  nameColumn: {
+    flex: isTablet ? 1.8 : 2,
+    ...(Platform.OS === 'web' && {
+      minWidth: isTablet ? 120 : 150,
+    }),
+  },
+  emailColumn: {
+    flex: isTablet ? 2.5 : 3,
+    ...(Platform.OS === 'web' && {
+      minWidth: isTablet ? 150 : 200,
+    }),
+  },
+  typeColumn: {
+    flex: isTablet ? 1.3 : 1.5,
+    ...(Platform.OS === 'web' && {
+      minWidth: isTablet ? 80 : 100,
+    }),
+  },
+  statusColumn: {
+    flex: isTablet ? 1.3 : 1.5,
+    ...(Platform.OS === 'web' && {
+      minWidth: isTablet ? 80 : 100,
+    }),
+  },
+  joinedColumn: {
+    flex: isTablet ? 1.3 : 1.5,
+    ...(Platform.OS === 'web' && {
+      minWidth: isTablet ? 100 : 120,
+    }),
+  },
+  // Mobile Card Styles
+  mobileCardContainer: {
+    gap: 12,
+  },
+  mobileCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    padding: isMobile ? 14 : 16,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
-  tableHeader: {
+  mobileCardHeader: {
     flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-    paddingBottom: 12,
-    marginBottom: 12,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
   },
-  tableHeaderText: {
-    fontSize: 14,
+  mobileCardName: {
+    fontSize: 16,
     fontWeight: '600',
-    color: '#666',
+    color: '#C0392B',
+    flex: 1,
   },
-  tableRow: {
+  mobileStatusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  mobileStatusBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#E74C3C',
+  },
+  mobileCardEmail: {
+    fontSize: 13,
+    color: '#555',
+    marginBottom: 10,
+  },
+  mobileCardFooter: {
     flexDirection: 'row',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F5F5F5',
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
-  tableCellText: {
-    fontSize: 14,
-    color: '#333',
+  mobileTypeBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
   },
-  nameColumn: {
-    flex: 2,
+  mobileTypeBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#3498DB',
   },
-  emailColumn: {
-    flex: 3,
-  },
-  typeColumn: {
-    flex: 1.5,
-  },
-  statusColumn: {
-    flex: 1.5,
-  },
-  joinedColumn: {
-    flex: 1.5,
+  mobileCardDate: {
+    fontSize: 12,
+    color: '#666',
   },
   nameText: {
     fontWeight: '500',

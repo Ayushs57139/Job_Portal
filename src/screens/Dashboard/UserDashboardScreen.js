@@ -176,29 +176,45 @@ const UserDashboardScreen = ({ navigation }) => {
   };
 
   const handleLogout = async () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.logout();
-            } catch (error) {
-              console.log('Logout error:', error);
-            } finally {
-              navigation.reset({
-                index: 0,
-                routes: [{ name: 'Home' }],
-              });
-            }
+    if (Platform.OS === 'web') {
+      // For web, use window.confirm
+      if (window.confirm('Are you sure you want to logout?')) {
+        try {
+          await api.logout();
+        } catch (error) {
+          console.log('Logout error:', error);
+        }
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Home' }],
+        });
+      }
+    } else {
+      // For mobile, use Alert
+      Alert.alert(
+        'Logout',
+        'Are you sure you want to logout?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Logout',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await api.logout();
+              } catch (error) {
+                console.log('Logout error:', error);
+              } finally {
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: 'Home' }],
+                });
+              }
+            },
           },
-        },
-      ]
-    );
+        ]
+      );
+    }
   };
 
   const getUserInitials = () => {
@@ -255,7 +271,15 @@ const UserDashboardScreen = ({ navigation }) => {
               </View>
               <Text style={styles.userName}>{user?.firstName || 'User'}</Text>
             </View>
-            <TouchableOpacity style={styles.logoutButtonHeader} onPress={handleLogout}>
+            <TouchableOpacity 
+              style={styles.logoutButtonHeader} 
+              onPress={() => {
+                console.log('Logout button clicked');
+                handleLogout();
+              }}
+              activeOpacity={0.7}
+              disabled={false}
+            >
               <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
               <Text style={styles.logoutTextHeader}>Logout</Text>
             </TouchableOpacity>
@@ -468,6 +492,8 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.md,
     gap: spacing.xs,
+    cursor: 'pointer',
+    zIndex: 10,
   },
   logoutTextHeader: {
     ...typography.body2,

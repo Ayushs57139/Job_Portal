@@ -14,6 +14,10 @@ import api from '../config/api';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
+const isPhone = width <= 480;
+const isMobile = width <= 600;
+const isTablet = width > 600 && width <= 1024;
+const isDesktop = width > 1024;
 
 const PopularSearches = ({ navigation }) => {
   const [popularSearches, setPopularSearches] = useState([]);
@@ -196,42 +200,45 @@ const PopularSearches = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: spacing.xxl,
-    paddingHorizontal: spacing.lg,
-    maxWidth: 1200,
+    paddingVertical: isPhone ? spacing.lg : (isMobile ? spacing.xl : isTablet ? spacing.xl : spacing.xxl),
+    paddingHorizontal: isPhone ? spacing.sm : (isMobile ? spacing.md : isTablet ? spacing.lg : spacing.xl),
+    maxWidth: isDesktop ? (width > 1400 ? 1400 : 1200) : '100%',
     width: '100%',
     alignSelf: 'center',
     backgroundColor: colors.background,
   },
   header: {
-    marginBottom: spacing.xl,
+    marginBottom: isPhone ? spacing.lg : spacing.xl,
     alignItems: 'center',
   },
   title: {
-    fontSize: isWeb ? 36 : 28,
+    fontSize: isPhone ? 20 : (isMobile ? 24 : (isTablet ? 28 : (isDesktop ? 36 : 32))),
     fontWeight: '700',
     color: '#2D3748',
     textAlign: 'center',
+    paddingHorizontal: isPhone ? spacing.sm : 0,
   },
   cardsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.lg,
-    justifyContent: 'center',
+    gap: isPhone ? spacing.sm : (isMobile ? spacing.md : spacing.lg),
+    justifyContent: isDesktop ? 'flex-start' : 'center',
   },
   card: {
-    width: isWeb 
-      ? (width > 1200 ? '30%' : width > 768 ? '45%' : '100%')
-      : '100%',
+    width: isPhone ? '100%' : 
+           isMobile ? '100%' : 
+           isTablet ? (width > 900 ? '48%' : '100%') : 
+           isDesktop ? (width > 1400 ? '31%' : width > 1200 ? '30%' : '48%') : 
+           '100%',
     backgroundColor: colors.cardBackground,
     borderRadius: borderRadius.lg,
-    padding: spacing.lg,
-    marginBottom: spacing.md,
+    padding: isPhone ? spacing.md : spacing.lg,
+    marginBottom: isPhone ? spacing.sm : spacing.md,
     ...shadows.md,
     borderWidth: 1,
     borderColor: colors.borderLight,
     position: 'relative',
-    minHeight: 200,
+    minHeight: isPhone ? 180 : 200,
     overflow: 'hidden',
     ...(isWeb && {
       cursor: 'pointer',
@@ -257,11 +264,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   cardTitle: {
-    fontSize: isWeb ? 22 : 20,
+    fontSize: isPhone ? 16 : (isMobile ? 18 : (isTablet ? 20 : 22)),
     fontWeight: '700',
     color: '#2D3748',
-    marginBottom: spacing.md,
-    lineHeight: 28,
+    marginBottom: isPhone ? spacing.sm : spacing.md,
+    lineHeight: isPhone ? 22 : 28,
   },
   cardFooter: {
     marginTop: 'auto',

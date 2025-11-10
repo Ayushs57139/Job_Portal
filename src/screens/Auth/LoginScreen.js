@@ -8,24 +8,30 @@ import {
   Alert,
   TextInput,
   Platform,
-  Dimensions
+  useWindowDimensions
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, typography } from '../../styles/theme';
 import api from '../../config/api';
 
-const { width } = Dimensions.get('window');
-const isWeb = Platform.OS === 'web';
-const isWideScreen = width > 768;
-const isMobile = width <= 600;
-
 const LoginScreen = ({ navigation }) => {
+  const { width, height } = useWindowDimensions();
+  
+  // Responsive breakpoints
+  const isPhone = width <= 768;
+  const isTablet = width > 768 && width <= 1024;
+  const isLaptop = width > 1024;
+  const isWideScreen = width > 768;
+  const isMobile = width <= 600;
+  
   const [userType] = useState('jobseeker');
   const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [generalError, setGeneralError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const userTypeConfig = {
     jobseeker: {
@@ -48,6 +54,7 @@ const LoginScreen = ({ navigation }) => {
 
     setLoading(true);
     setErrors({});
+    setGeneralError('');
 
     try {
       const loginData = {
@@ -59,31 +66,48 @@ const LoginScreen = ({ navigation }) => {
       const response = await api.login(loginData);
 
       if (response.token) {
-        Alert.alert('Success', 'Login successful!');
-        
-        // Navigate to job seeker dashboard
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'UserDashboard' }],
-        });
+        // STRICT VALIDATION: Only allow jobseeker accounts to proceed
+        if (response.user && response.user.userType === 'jobseeker') {
+          Alert.alert('Success', 'Login successful!');
+          
+          // Navigate to job seeker dashboard
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'UserDashboard' }],
+          });
+        } else {
+          // Invalid user type - logout and show error
+          await api.logout();
+          Alert.alert(
+            'Access Denied', 
+            'This account is not authorized for jobseeker login. Please use the correct login page.'
+          );
+        }
       }
     } catch (error) {
-      Alert.alert('Login Failed', error.message || 'Please check your credentials and try again');
+      const errorMessage = error.message || 'Please check your credentials and try again';
+      setGeneralError(errorMessage);
+      Alert.alert('Login Failed', errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
   const renderLeftSide = () => (
-    <View style={styles.leftSide}>
+    <View style={[styles.leftSide, isPhone && styles.leftSidePhone, isTablet && styles.leftSideTablet]}>
       <ScrollView 
         style={styles.leftScrollView}
-        contentContainerStyle={styles.leftScrollContent}
+        contentContainerStyle={[
+          styles.leftScrollContent,
+          isPhone && styles.leftScrollContentPhone,
+          isTablet && styles.leftScrollContentTablet,
+          isLaptop && styles.leftScrollContentLaptop
+        ]}
         showsVerticalScrollIndicator={false}
       >
         {/* Logo */}
-        <View style={styles.logoContainer}>
-          <Text style={styles.logoText}>
+        <View style={[styles.logoContainer, isPhone && styles.logoContainerPhone]}>
+          <Text style={[styles.logoText, isPhone && styles.logoTextPhone, isTablet && styles.logoTextTablet]}>
             <Text style={styles.logoPrimary}>Free</Text>
             <Text style={styles.logoSecondary}>job</Text>
             <Text style={styles.logoTertiary}>wala</Text>
@@ -91,14 +115,14 @@ const LoginScreen = ({ navigation }) => {
         </View>
 
         {/* Header Badge */}
-        <View style={styles.headerBadge}>
-          <Ionicons name={userTypeConfig[userType].icon} size={16} color="#fff" />
-          <Text style={styles.headerBadgeText}>{userTypeConfig[userType].title}</Text>
+        <View style={[styles.headerBadge, isPhone && styles.headerBadgePhone]}>
+          <Ionicons name={userTypeConfig[userType].icon} size={isPhone ? 14 : 16} color="#fff" />
+          <Text style={[styles.headerBadgeText, isPhone && styles.headerBadgeTextPhone]}>{userTypeConfig[userType].title}</Text>
         </View>
 
         {/* Welcome */}
-        <Text style={styles.welcomeTitle}>Welcome Back!</Text>
-        <Text style={styles.welcomeSubtitle}>{userTypeConfig[userType].subtitle}</Text>
+        <Text style={[styles.welcomeTitle, isPhone && styles.welcomeTitlePhone, isTablet && styles.welcomeTitleTablet]}>Welcome Back!</Text>
+        <Text style={[styles.welcomeSubtitle, isPhone && styles.welcomeSubtitlePhone]}>{userTypeConfig[userType].subtitle}</Text>
 
 
         {/* Login ID Input */}
@@ -113,6 +137,7 @@ const LoginScreen = ({ navigation }) => {
               onChangeText={(text) => {
                 setLoginId(text);
                 setErrors({ ...errors, loginId: null });
+                setGeneralError('');
               }}
               autoCapitalize="none"
               keyboardType="email-address"
@@ -136,12 +161,30 @@ const LoginScreen = ({ navigation }) => {
               onChangeText={(text) => {
                 setPassword(text);
                 setErrors({ ...errors, password: null });
+                setGeneralError('');
               }}
-              secureTextEntry
+              secureTextEntry={!showPassword}
             />
+            <TouchableOpacity
+              style={styles.eyeIcon}
+              onPress={() => setShowPassword(!showPassword)}
+            >
+              <Ionicons
+                name={showPassword ? 'eye-off' : 'eye'}
+                size={20}
+                color="#64748b"
+              />
+            </TouchableOpacity>
           </View>
           {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
         </View>
+
+        {/* General Error Message */}
+        {generalError && (
+          <View style={styles.generalErrorContainer}>
+            <Text style={styles.generalErrorText}>{generalError}</Text>
+          </View>
+        )}
 
         {/* Sign In Button */}
         <TouchableOpacity 
@@ -170,11 +213,24 @@ const LoginScreen = ({ navigation }) => {
       colors={['#6366f1', '#8b5cf6']}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
-      style={styles.rightSide}
+      style={[
+        styles.rightSide,
+        isTablet && styles.rightSideTablet,
+        isLaptop && styles.rightSideLaptop
+      ]}
     >
-      <View style={styles.rightContent}>
-        <Text style={styles.rightTitle}>Find Your Dream Job</Text>
-        <Text style={styles.rightSubtitle}>
+      <View style={[
+        styles.rightContent,
+        isTablet && styles.rightContentTablet
+      ]}>
+        <Text style={[
+          styles.rightTitle,
+          isTablet && styles.rightTitleTablet
+        ]}>Find Your Dream Job</Text>
+        <Text style={[
+          styles.rightSubtitle,
+          isTablet && styles.rightSubtitleTablet
+        ]}>
           Connect with top employers and discover opportunities that match your skills and aspirations
         </Text>
 
@@ -183,35 +239,50 @@ const LoginScreen = ({ navigation }) => {
             <View style={styles.checkIcon}>
               <Ionicons name="checkmark" size={16} color="#6366f1" />
             </View>
-            <Text style={styles.featureText}>Browse thousands of job listings</Text>
+            <Text style={[
+              styles.featureText,
+              isTablet && styles.featureTextTablet
+            ]}>Browse thousands of job listings</Text>
           </View>
 
           <View style={styles.featureItem}>
             <View style={styles.checkIcon}>
               <Ionicons name="checkmark" size={16} color="#6366f1" />
             </View>
-            <Text style={styles.featureText}>Create professional profiles</Text>
+            <Text style={[
+              styles.featureText,
+              isTablet && styles.featureTextTablet
+            ]}>Create professional profiles</Text>
           </View>
 
           <View style={styles.featureItem}>
             <View style={styles.checkIcon}>
               <Ionicons name="checkmark" size={16} color="#6366f1" />
             </View>
-            <Text style={styles.featureText}>Get matched with relevant jobs</Text>
+            <Text style={[
+              styles.featureText,
+              isTablet && styles.featureTextTablet
+            ]}>Get matched with relevant jobs</Text>
           </View>
 
           <View style={styles.featureItem}>
             <View style={styles.checkIcon}>
               <Ionicons name="checkmark" size={16} color="#6366f1" />
             </View>
-            <Text style={styles.featureText}>Track application status</Text>
+            <Text style={[
+              styles.featureText,
+              isTablet && styles.featureTextTablet
+            ]}>Track application status</Text>
           </View>
 
           <View style={styles.featureItem}>
             <View style={styles.checkIcon}>
               <Ionicons name="checkmark" size={16} color="#6366f1" />
             </View>
-            <Text style={styles.featureText}>Receive job recommendations</Text>
+            <Text style={[
+              styles.featureText,
+              isTablet && styles.featureTextTablet
+            ]}>Receive job recommendations</Text>
           </View>
         </View>
       </View>
@@ -220,7 +291,12 @@ const LoginScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.mainContainer}>
+      <View style={[
+        styles.mainContainer,
+        isPhone && styles.mainContainerPhone,
+        isTablet && styles.mainContainerTablet,
+        isLaptop && styles.mainContainerLaptop
+      ]}>
         {renderLeftSide()}
         {isWideScreen && renderRightSide()}
       </View>
@@ -235,29 +311,67 @@ const styles = StyleSheet.create({
   },
   mainContainer: {
     flex: 1,
-    flexDirection: isWideScreen ? 'row' : 'column',
+    flexDirection: 'row',
+  },
+  mainContainerPhone: {
+    flexDirection: 'column',
+  },
+  mainContainerTablet: {
+    flexDirection: 'row',
+  },
+  mainContainerLaptop: {
+    flexDirection: 'row',
   },
   
   // Left Side Styles
   leftSide: {
-    flex: isWideScreen ? 1 : 1,
+    flex: 1,
     backgroundColor: '#ffffff',
+  },
+  leftSidePhone: {
+    flex: 1,
+    width: '100%',
+  },
+  leftSideTablet: {
+    flex: 1.2,
   },
   leftScrollView: {
     flex: 1,
   },
   leftScrollContent: {
-    padding: isMobile ? 16 : (isWideScreen ? 48 : 24),
-    paddingTop: isMobile ? 16 : (isWideScreen ? 32 : 24),
+    padding: 48,
+    paddingTop: 32,
+  },
+  leftScrollContentPhone: {
+    padding: 20,
+    paddingTop: 20,
+    paddingBottom: 32,
+  },
+  leftScrollContentTablet: {
+    padding: 32,
+    paddingTop: 24,
+  },
+  leftScrollContentLaptop: {
+    padding: 48,
+    paddingTop: 32,
   },
   
   // Logo
   logoContainer: {
     marginBottom: 24,
   },
+  logoContainerPhone: {
+    marginBottom: 20,
+  },
   logoText: {
     fontSize: 28,
     fontWeight: '700',
+  },
+  logoTextPhone: {
+    fontSize: 24,
+  },
+  logoTextTablet: {
+    fontSize: 26,
   },
   logoPrimary: {
     color: '#3b82f6',
@@ -281,10 +395,18 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     gap: 8,
   },
+  headerBadgePhone: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginBottom: 20,
+  },
   headerBadgeText: {
     color: '#ffffff',
     fontSize: 14,
     fontWeight: '600',
+  },
+  headerBadgeTextPhone: {
+    fontSize: 12,
   },
   
   // Welcome
@@ -294,10 +416,21 @@ const styles = StyleSheet.create({
     color: '#1e293b',
     marginBottom: 8,
   },
+  welcomeTitlePhone: {
+    fontSize: 24,
+    marginBottom: 6,
+  },
+  welcomeTitleTablet: {
+    fontSize: 28,
+  },
   welcomeSubtitle: {
     fontSize: 16,
     color: '#64748b',
     marginBottom: 24,
+  },
+  welcomeSubtitlePhone: {
+    fontSize: 14,
+    marginBottom: 20,
   },
   
   // Input Groups
@@ -315,12 +448,19 @@ const styles = StyleSheet.create({
     borderColor: '#e2e8f0',
     borderRadius: 8,
     backgroundColor: '#ffffff',
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   input: {
+    flex: 1,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 15,
     color: '#1e293b',
+  },
+  eyeIcon: {
+    padding: 12,
+    paddingRight: 16,
   },
   inputHelp: {
     fontSize: 12,
@@ -331,6 +471,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#ef4444',
     marginTop: 6,
+  },
+  generalErrorContainer: {
+    backgroundColor: '#fee2e2',
+    borderWidth: 1,
+    borderColor: '#ef4444',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+  },
+  generalErrorText: {
+    fontSize: 14,
+    color: '#dc2626',
+    textAlign: 'center',
   },
   
   // Sign In Button
@@ -372,8 +525,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 48,
   },
+  rightSideTablet: {
+    flex: 0.8,
+    padding: 32,
+  },
+  rightSideLaptop: {
+    flex: 1,
+    padding: 48,
+  },
   rightContent: {
     maxWidth: 500,
+  },
+  rightContentTablet: {
+    maxWidth: 400,
   },
   rightTitle: {
     fontSize: 36,
@@ -381,12 +545,21 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     marginBottom: 16,
   },
+  rightTitleTablet: {
+    fontSize: 30,
+    marginBottom: 14,
+  },
   rightSubtitle: {
     fontSize: 16,
     color: '#ffffff',
     opacity: 0.9,
     marginBottom: 32,
     lineHeight: 24,
+  },
+  rightSubtitleTablet: {
+    fontSize: 15,
+    marginBottom: 28,
+    lineHeight: 22,
   },
   featuresList: {
     gap: 20,
@@ -408,6 +581,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#ffffff',
     flex: 1,
+  },
+  featureTextTablet: {
+    fontSize: 15,
   },
 });
 
