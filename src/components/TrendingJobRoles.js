@@ -36,31 +36,14 @@ const TrendingJobRoles = ({ navigation }) => {
         console.log('Setting job roles:', response.jobRoles);
         setJobRoles(response.jobRoles);
       } else {
-        console.log('No trending job roles found, trying fallback');
-        // Fallback: try to get popular job roles without job counts
-        try {
-          const popularResponse = await api.getJobRoles(12);
-          if (popularResponse.success && popularResponse.jobRoles) {
-            console.log('Fallback job roles loaded:', popularResponse.jobRoles);
-            setJobRoles(popularResponse.jobRoles.map(role => ({ ...role, jobCount: 0 })));
-          }
-        } catch (fallbackError) {
-          console.error('Fallback also failed:', fallbackError);
-        }
+        // No data from API - set empty array for fully dynamic data
+        console.log('No trending job roles found');
+        setJobRoles([]);
       }
     } catch (error) {
       console.error('Error loading trending job roles:', error);
-      // Fallback on error too
-      try {
-        console.log('Error occurred, trying fallback');
-        const popularResponse = await api.getJobRoles(12);
-        if (popularResponse.success && popularResponse.jobRoles) {
-          console.log('Fallback job roles loaded after error:', popularResponse.jobRoles);
-          setJobRoles(popularResponse.jobRoles.map(role => ({ ...role, jobCount: 0 })));
-        }
-      } catch (fallbackError) {
-        console.error('Fallback also failed:', fallbackError);
-      }
+      // Don't use fallback - keep empty array for fully dynamic data
+      setJobRoles([]);
     } finally {
       setLoading(false);
     }

@@ -55,37 +55,42 @@ const HomeScreen = ({ navigation }) => {
     try {
       setLoading(true);
       
-      // Load latest jobs
+      // Clear previous data
+      setLatestJobs([]);
+      setTopCompanies([]);
+      setCareerBlogs([]);
+      
+      // Load latest jobs - fully dynamic from API
       const jobsResponse = await api.getJobs({ limit: 6, sort: '-createdAt' });
-      setLatestJobs(jobsResponse.jobs || []);
+      if (jobsResponse && jobsResponse.jobs) {
+        setLatestJobs(jobsResponse.jobs);
+      } else {
+        setLatestJobs([]);
+      }
 
-      // Load top companies
+      // Load top companies - fully dynamic from API
       const companiesResponse = await api.getCompanies({ limit: 6 });
-      const companies = companiesResponse.companies || [];
-      
-      // Use real data from backend, add rating display
-      const companiesWithData = companies.map((company) => ({
-        ...company,
-        rating: (3.5 + Math.random() * 1.5).toFixed(1), // Display rating
-      }));
-      
-      setTopCompanies(companiesWithData);
+      if (companiesResponse && companiesResponse.companies && companiesResponse.companies.length > 0) {
+        // Use real data from backend only - no static data
+        setTopCompanies(companiesResponse.companies);
+      } else {
+        setTopCompanies([]);
+      }
 
-      // Load career blogs
+      // Load career blogs - fully dynamic from API
       const blogsResponse = await api.getBlogs({ limit: 6 });
-      const blogs = blogsResponse.blogs || [];
-      
-      // Add sample categories for display
-      const categories = ['Networking', 'Workplace Trends', 'Interview Prep', 'Career Tips', 'Skills'];
-      const blogsWithData = blogs.map((blog, index) => ({
-        ...blog,
-        category: categories[index % categories.length],
-        readTime: `${Math.floor(Math.random() * 5) + 3} min read`,
-      }));
-      
-      setCareerBlogs(blogsWithData);
+      if (blogsResponse && blogsResponse.blogs && blogsResponse.blogs.length > 0) {
+        // Use real data from backend only - no static data
+        setCareerBlogs(blogsResponse.blogs);
+      } else {
+        setCareerBlogs([]);
+      }
     } catch (error) {
       console.error('Error loading home data:', error);
+      // On error, ensure all data is cleared
+      setLatestJobs([]);
+      setTopCompanies([]);
+      setCareerBlogs([]);
     } finally {
       setLoading(false);
     }

@@ -46,7 +46,8 @@ const detectApiHostFromExpo = () => {
         // Try various locations in manifest2
         const hostInfo = manifest.extra?.expoGo?.debuggerHost || 
                         manifest.hostUri ||
-                        manifest.debuggerHost;
+                        manifest.debuggerHost ||
+                        manifest.extra?.hostUri;
         if (hostInfo) {
           console.log('[API Config] manifest2 hostInfo:', hostInfo);
           const ipMatch = hostInfo.match(/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/);
@@ -66,7 +67,8 @@ const detectApiHostFromExpo = () => {
                         manifest.hostUri || 
                         manifest.manifest?.debuggerHost ||
                         manifest.manifest?.hostUri ||
-                        (manifest.extra && manifest.extra.expoGo && manifest.extra.expoGo.debuggerHost);
+                        (manifest.extra && manifest.extra.expoGo && manifest.extra.expoGo.debuggerHost) ||
+                        (manifest.extra && manifest.extra.hostUri);
         
         if (hostInfo) {
           console.log('[API Config] manifest hostInfo:', hostInfo);
@@ -81,6 +83,16 @@ const detectApiHostFromExpo = () => {
         }
       } else {
         console.log('[API Config] No manifest found');
+      }
+      
+      // Try to get from Constants.expoConfig.extra (from app.config.js)
+      if (Constants.expoConfig && Constants.expoConfig.extra && Constants.expoConfig.extra.apiHost) {
+        const apiHost = Constants.expoConfig.extra.apiHost;
+        // Only use if it's an IP address (not a domain)
+        if (/^(\d{1,3}\.){3}\d{1,3}$/.test(apiHost)) {
+          console.log(`[API Config] ✅ Using API host from app.config.js: ${apiHost}`);
+          return apiHost;
+        }
       }
     } else {
       console.log('[API Config] Constants not available');
@@ -155,7 +167,7 @@ const getApiUrl = () => {
       _cachedApiUrl = 'http://localhost:5000/api';
       return _cachedApiUrl;
     } else if (platformOS === 'android') {
-      // For Android: Check multiple sources for API host
+      // For Android: Use same backend as web - detect from Expo dev server
       let API_HOST = null;
       let API_PORT = '5000';
       
@@ -167,11 +179,12 @@ const getApiUrl = () => {
         }
       }
       
-      // 2. Try to detect from Expo connection (lazy detection)
+      // 2. Try to detect from Expo connection (lazy detection) - this gets the dev server IP
       if (!API_HOST) {
         const detectedHost = detectApiHostFromExpo();
         if (detectedHost) {
           API_HOST = detectedHost;
+          console.log(`[API Config] ✅ Detected API host from Expo dev server: ${API_HOST}`);
         }
         
         // Also try to get port from expo-constants if available
@@ -187,29 +200,106 @@ const getApiUrl = () => {
         }
       }
       
-      // 3. For development, try multiple fallbacks
+      // 3. For development, try multiple fallbacks to use same backend as web
       if (!API_HOST) {
         if (__DEV__) {
-          // Try to read from app.config.js via expo-constants one more time
-          // Sometimes Constants.expoConfig.extra is available here
+          // FIRST: Try to extract IP from bundle URL (most accurate - same as Expo dev server)
+          // This ensures we use the actual running IP, not a hardcoded one
           try {
-            const Constants = require('expo-constants');
-            if (Constants && Constants.expoConfig && Constants.expoConfig.extra && Constants.expoConfig.extra.apiHost) {
-              API_HOST = Constants.expoConfig.extra.apiHost;
-              console.log(`[API Config] ✅ Found API host from Constants.expoConfig.extra: ${API_HOST}`);
+            // Try multiple ways to get the bundle URL
+            let bundleUrl = null;
+            
+            // Method 1: React Native SourceCode (most reliable)
+            try {
+              const RN = require('react-native');
+              if (RN.SourceCode) {
+                const constants = RN.SourceCode.getConstants ? RN.SourceCode.getConstants() : null;
+                if (constants && constants.scriptURL) {
+                  bundleUrl = constants.scriptURL;
+                  console.log('[API Config] Found bundle URL from SourceCode:', bundleUrl);
+                }
+              }
+            } catch (e) {
+              console.log('[API Config] SourceCode method failed:', e.message);
+            }
+            
+            // Method 2: Try NativeModules (alternative method)
+            if (!bundleUrl) {
+              try {
+                const RN = require('react-native');
+                if (RN.NativeModules && RN.NativeModules.SourceCode) {
+                  const constants = RN.NativeModules.SourceCode.getConstants ? RN.NativeModules.SourceCode.getConstants() : null;
+                  if (constants && constants.scriptURL) {
+                    bundleUrl = constants.scriptURL;
+                    console.log('[API Config] Found bundle URL from NativeModules:', bundleUrl);
+                  }
+                }
+              } catch (e) {
+                // Ignore
+              }
+            }
+            
+            // Method 3: Try to get from global variables
+            if (!bundleUrl && typeof global !== 'undefined') {
+              try {
+                bundleUrl = global.__DEV_BUNDLE_URL__ || global.__METRO_BUNDLE_URL__ || global.__BUNDLE_URL__;
+                if (bundleUrl) {
+                  console.log('[API Config] Found bundle URL from global:', bundleUrl);
+                }
+              } catch (e) {
+                // Ignore
+              }
+            }
+            
+            // Method 4: Try to extract from error stack (fallback)
+            if (!bundleUrl) {
+              try {
+                const error = new Error();
+                if (error.stack) {
+                  const stackMatch = error.stack.match(/http[s]?:\/\/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}):\d+/);
+                  if (stackMatch) {
+                    bundleUrl = stackMatch[0];
+                    console.log('[API Config] Found bundle URL from error stack:', bundleUrl);
+                  }
+                }
+              } catch (e) {
+                // Ignore
+              }
+            }
+            
+            if (bundleUrl) {
+              const ipMatch = bundleUrl.match(/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/);
+              if (ipMatch) {
+                API_HOST = ipMatch[1];
+                console.log(`[API Config] ✅ Detected API host from bundle URL: ${API_HOST}`);
+              } else {
+                console.log('[API Config] Could not extract IP from bundle URL:', bundleUrl);
+              }
+            } else {
+              console.log('[API Config] Could not find bundle URL');
             }
           } catch (e) {
-            // Ignore
+            console.log('[API Config] Error extracting IP from bundle URL:', e.message);
           }
           
-          // If still no host, default to your computer's IP for development
-          // This works for both Expo Go on physical device and can be overridden for emulator
+          // SECOND: Try to read from app.config.js via expo-constants (fallback)
           if (!API_HOST) {
-            // Default to your computer's IP address (works for Expo Go on physical device)
-            // For Android emulator, user can set EXPO_PUBLIC_API_HOST=10.0.2.2 if needed
-            API_HOST = '192.168.1.19';
-            console.log('[API Config] ✅ Using default API host: 192.168.1.19');
-            console.log('[API Config] ℹ️ For Android emulator, set EXPO_PUBLIC_API_HOST=10.0.2.2');
+            try {
+              const Constants = require('expo-constants');
+              if (Constants && Constants.expoConfig && Constants.expoConfig.extra && Constants.expoConfig.extra.apiHost) {
+                API_HOST = Constants.expoConfig.extra.apiHost;
+                console.log(`[API Config] ✅ Found API host from Constants.expoConfig.extra: ${API_HOST}`);
+              }
+            } catch (e) {
+              // Ignore
+            }
+          }
+          
+          // LAST: If still no host, use Android emulator address (10.0.2.2 maps to host's localhost)
+          // This ensures same backend as web when web uses localhost
+          if (!API_HOST) {
+            API_HOST = '10.0.2.2';
+            console.log('[API Config] ✅ Using 10.0.2.2 (maps to host localhost, same as web backend)');
           }
         } else {
           // In production, use localhost (assuming backend is on same server)
@@ -371,8 +461,94 @@ class JobWalaAPI {
     return headers;
   }
 
+  // Test API connection with detailed debugging
+  async testConnection() {
+    const timestamp = new Date().toISOString();
+    console.log(`\n${'='.repeat(80)}`);
+    console.log(`[DEBUG ${timestamp}] Starting API Connection Test`);
+    console.log(`[DEBUG] Base URL: ${this.baseURL}`);
+    console.log(`[DEBUG] Platform: ${Platform?.OS || 'unknown'}`);
+    console.log(`[DEBUG] __DEV__: ${__DEV__}`);
+    
+    try {
+      const testUrl = `${this.baseURL}/health`;
+      console.log(`[DEBUG] Testing connection to: ${testUrl}`);
+      
+      const startTime = Date.now();
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      
+      try {
+        const response = await fetch(testUrl, {
+          method: 'GET',
+          signal: controller.signal,
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+        clearTimeout(timeoutId);
+        const endTime = Date.now();
+        const duration = endTime - startTime;
+        
+        console.log(`[DEBUG] Response received in ${duration}ms`);
+        console.log(`[DEBUG] Status: ${response.status} ${response.statusText}`);
+        console.log(`[DEBUG] Headers:`, JSON.stringify(Object.fromEntries(response.headers.entries())));
+        
+        if (response.ok) {
+          const data = await response.json().catch(() => ({}));
+          console.log(`[DEBUG] ✅ Connection successful!`);
+          console.log(`[DEBUG] Response data:`, JSON.stringify(data).substring(0, 200));
+          return { success: true, duration, status: response.status };
+        } else {
+          console.log(`[DEBUG] ⚠️ Server responded but with error status`);
+          return { success: false, duration, status: response.status, error: 'Server error' };
+        }
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        const endTime = Date.now();
+        const duration = endTime - startTime;
+        
+        console.log(`[DEBUG] ❌ Connection failed after ${duration}ms`);
+        console.log(`[DEBUG] Error name: ${fetchError.name}`);
+        console.log(`[DEBUG] Error message: ${fetchError.message}`);
+        console.log(`[DEBUG] Error stack:`, fetchError.stack?.substring(0, 500));
+        
+        // Try to diagnose the issue
+        if (fetchError.name === 'AbortError') {
+          console.log(`[DEBUG] 🔍 Diagnosis: Request timed out - server not responding`);
+          console.log(`[DEBUG] 🔍 Possible causes:`);
+          console.log(`[DEBUG]    - Server is not running`);
+          console.log(`[DEBUG]    - Firewall blocking connection`);
+          console.log(`[DEBUG]    - Wrong IP address (10.0.2.2 for emulator, your IP for device)`);
+          console.log(`[DEBUG]    - Server crashed or database connection failed`);
+        } else if (fetchError.message.includes('Network request failed')) {
+          console.log(`[DEBUG] 🔍 Diagnosis: Network request failed`);
+          console.log(`[DEBUG] 🔍 Possible causes:`);
+          console.log(`[DEBUG]    - No internet connection`);
+          console.log(`[DEBUG]    - DNS resolution failed`);
+          console.log(`[DEBUG]    - Server unreachable`);
+        } else if (fetchError.message.includes('Failed to fetch')) {
+          console.log(`[DEBUG] 🔍 Diagnosis: Failed to fetch`);
+          console.log(`[DEBUG] 🔍 Possible causes:`);
+          console.log(`[DEBUG]    - CORS issue`);
+          console.log(`[DEBUG]    - SSL/TLS error`);
+          console.log(`[DEBUG]    - Network error`);
+        }
+        
+        return { success: false, duration, error: fetchError.message, errorName: fetchError.name };
+      }
+    } catch (error) {
+      console.log(`[DEBUG] ❌ Test failed with exception:`, error);
+      return { success: false, error: error.message };
+    } finally {
+      console.log(`${'='.repeat(80)}\n`);
+    }
+  }
+
   // Make API request
   async request(endpoint, options = {}) {
+    const requestId = Math.random().toString(36).substring(7);
+    const timestamp = new Date().toISOString();
+    
     // Ensure init is called before making requests
     if (!this.token && AsyncStorage) {
       await this.init();
@@ -385,37 +561,80 @@ class JobWalaAPI {
         ...options,
       };
 
-      console.log(`[API] Making request to: ${url}`);
+      console.log(`[API ${requestId}] [${timestamp}] Making request to: ${url}`);
+      console.log(`[API ${requestId}] Method: ${options.method || 'GET'}`);
+      console.log(`[API ${requestId}] Headers:`, JSON.stringify(config.headers));
       
-      const response = await fetch(url, config);
+      // Add timeout for fetch request (30 seconds)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      const startTime = Date.now();
       
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'API request failed' }));
-        // Handle validation errors array
-        if (errorData.errors && Array.isArray(errorData.errors)) {
-          const errorMessages = errorData.errors.map(err => err.msg || err.message || JSON.stringify(err)).join(', ');
-          throw new Error(errorMessages);
+      try {
+        const response = await fetch(url, {
+          ...config,
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        const endTime = Date.now();
+        const duration = endTime - startTime;
+        
+        console.log(`[API ${requestId}] Response received in ${duration}ms`);
+        console.log(`[API ${requestId}] Status: ${response.status} ${response.statusText}`);
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ message: 'API request failed' }));
+          console.log(`[API ${requestId}] Error response:`, JSON.stringify(errorData).substring(0, 200));
+          // Handle validation errors array
+          if (errorData.errors && Array.isArray(errorData.errors)) {
+            const errorMessages = errorData.errors.map(err => err.msg || err.message || JSON.stringify(err)).join(', ');
+            throw new Error(errorMessages);
+          }
+          throw new Error(errorData.message || 'API request failed');
         }
-        throw new Error(errorData.message || 'API request failed');
-      }
 
-      const data = await response.json();
-      return data;
+        const data = await response.json();
+        console.log(`[API ${requestId}] ✅ Success response from: ${url}`);
+        console.log(`[API ${requestId}] Response size: ${JSON.stringify(data).length} bytes`);
+        return data;
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        const endTime = Date.now();
+        const duration = endTime - startTime;
+        
+        console.log(`[API ${requestId}] ❌ Request failed after ${duration}ms`);
+        console.log(`[API ${requestId}] Error name: ${fetchError.name}`);
+        console.log(`[API ${requestId}] Error message: ${fetchError.message}`);
+        
+        if (fetchError.name === 'AbortError') {
+          console.log(`[API ${requestId}] 🔍 Request timed out - server did not respond`);
+          throw new Error('Request timeout: Server did not respond within 30 seconds');
+        }
+        throw fetchError;
+      }
     } catch (error) {
-      console.error('[API Error] Request failed:', error.message);
-      console.error('[API Error] URL:', `${this.baseURL}${endpoint}`);
-      console.error('[API Error] Full error:', error);
+      const errorTimestamp = new Date().toISOString();
+      console.error(`[API Error ${requestId}] [${errorTimestamp}] Request failed:`, error.message);
+      console.error(`[API Error ${requestId}] URL: ${this.baseURL}${endpoint}`);
+      console.error(`[API Error ${requestId}] Full error:`, error);
+      console.error(`[API Error ${requestId}] Error type:`, error.constructor.name);
+      console.error(`[API Error ${requestId}] Error stack:`, error.stack?.substring(0, 500));
       
       // Provide helpful error message for connection issues
       if (error.message.includes('Network request failed') || 
           error.message.includes('Failed to fetch') ||
-          error.message.includes('ECONNREFUSED')) {
-        console.error('[API Error] Connection failed! Make sure:');
-        console.error('  1. Backend server is running on port 5000');
-        console.error(`  2. API URL is correct: ${this.baseURL}`);
-        console.error('  3. For Expo Go on physical device, set EXPO_PUBLIC_API_HOST to your computer IP');
-        console.error('  4. Check firewall settings');
-        throw new Error(`Cannot connect to backend server at ${this.baseURL}. Please check if the server is running.`);
+          error.message.includes('ECONNREFUSED') ||
+          error.message.includes('timeout') ||
+          error.message.includes('aborted')) {
+        console.error(`[API Error ${requestId}] 🔍 Connection failed! Diagnostic info:`);
+        console.error(`[API Error ${requestId}]   1. Backend server is running on port 5000`);
+        console.error(`[API Error ${requestId}]   2. API URL is correct: ${this.baseURL}`);
+        console.error(`[API Error ${requestId}]   3. For Android emulator, server should be accessible at 10.0.2.2:5000`);
+        console.error(`[API Error ${requestId}]   4. For physical device/APK, set EXPO_PUBLIC_API_HOST to your server IP`);
+        console.error(`[API Error ${requestId}]   5. Check firewall settings and ensure database is connected on server`);
+        console.error(`[API Error ${requestId}]   6. Test server manually: curl ${this.baseURL}/health`);
+        throw new Error(`Cannot connect to backend server at ${this.baseURL}. Please check if the server is running and database is connected.`);
       }
       
       throw error;

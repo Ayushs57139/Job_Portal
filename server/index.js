@@ -548,8 +548,10 @@ process.on('SIGTERM', () => {
   }, 10000);
 });
 
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
+  console.log(`Server accessible at http://localhost:${PORT} and http://0.0.0.0:${PORT}`);
+  console.log(`For Android emulator, use: http://10.0.2.2:${PORT}`);
   console.log('Freejobwala Chat Feature is active');
 });
 

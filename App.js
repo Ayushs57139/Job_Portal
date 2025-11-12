@@ -4,6 +4,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Platform, StyleSheet, View, LogBox } from 'react-native';
 import AppNavigator from './src/navigation/AppNavigator';
 import ErrorBoundary from './src/components/ErrorBoundary';
+import api from './src/config/api';
 
 // Enable LogBox for better error visibility in development
 if (__DEV__) {
@@ -99,6 +100,25 @@ export default function App() {
     };
 
     setupErrorHandlers();
+
+    // Test API connection on app startup for debugging
+    if (__DEV__) {
+      console.log('\n🔍 [APP STARTUP] Testing API connection...');
+      setTimeout(async () => {
+        try {
+          const connectionTest = await api.testConnection();
+          if (connectionTest.success) {
+            console.log('✅ [APP STARTUP] API connection test PASSED');
+          } else {
+            console.error('❌ [APP STARTUP] API connection test FAILED');
+            console.error('   Error:', connectionTest.error);
+            console.error('   Duration:', connectionTest.duration, 'ms');
+          }
+        } catch (error) {
+          console.error('❌ [APP STARTUP] Connection test error:', error.message);
+        }
+      }, 2000); // Wait 2 seconds for app to initialize
+    }
 
     // Add viewport meta tag for responsive web design
     if (Platform.OS === 'web' && typeof document !== 'undefined') {

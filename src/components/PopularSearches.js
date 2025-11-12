@@ -31,87 +31,25 @@ const PopularSearches = ({ navigation }) => {
     try {
       setLoading(true);
       const response = await api.getPopularSearches(5);
-      if (response.success && response.popularSearches) {
+      if (response.success && response.popularSearches && response.popularSearches.length > 0) {
         setPopularSearches(response.popularSearches);
+      } else {
+        // No data from API - set empty array
+        setPopularSearches([]);
       }
     } catch (error) {
       console.error('Error loading popular searches:', error);
-      // Load default popular searches if API fails
-      setPopularSearches(getDefaultPopularSearches());
+      // Don't load static data - keep empty array for fully dynamic data
+      setPopularSearches([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const getDefaultPopularSearches = () => {
-    return [
-      {
-        _id: '1',
-        title: 'Jobs for Freshers',
-        searchQuery: '',
-        searchParams: {
-          search: '',
-          experience: 'Fresher (0-1 year)',
-        },
-        trendingRank: 1,
-        icon: 'school-outline',
-        color: '#FFB84D',
-      },
-      {
-        _id: '2',
-        title: 'Work from Home Jobs',
-        searchQuery: '',
-        searchParams: {
-          search: '',
-          workMode: 'Work From Home',
-        },
-        trendingRank: 2,
-        icon: 'home-outline',
-        color: '#4ECDC4',
-      },
-      {
-        _id: '3',
-        title: 'Part Time Jobs',
-        searchQuery: '',
-        searchParams: {
-          search: '',
-          jobType: 'Part Time',
-        },
-        trendingRank: 3,
-        icon: 'time-outline',
-        color: '#95E1D3',
-      },
-      {
-        _id: '4',
-        title: 'Jobs for Women',
-        searchQuery: 'jobs for women',
-        searchParams: {
-          search: 'jobs for women',
-        },
-        trendingRank: 4,
-        icon: 'people-outline',
-        color: '#F38181',
-      },
-      {
-        _id: '5',
-        title: 'Full Time Jobs',
-        searchQuery: '',
-        searchParams: {
-          search: '',
-          jobType: 'Full Time',
-        },
-        trendingRank: 5,
-        icon: 'briefcase-outline',
-        color: '#AA96DA',
-      },
-    ];
-  };
-
   const handleSearchClick = async (search) => {
     try {
-      // Track click if it's from backend (not default)
-      const isDefault = ['1', '2', '3', '4', '5'].includes(search._id?.toString());
-      if (search._id && !isDefault) {
+      // Track click if it's from backend
+      if (search._id) {
         await api.trackPopularSearchClick(search._id);
       }
     } catch (error) {
@@ -143,11 +81,12 @@ const PopularSearches = ({ navigation }) => {
     navigation.navigate('Jobs', navParams);
   };
 
-  if (loading && popularSearches.length === 0) {
+  // Only show section if we have data or are still loading
+  if (!loading && popularSearches.length === 0) {
     return null;
   }
 
-  const searchesToDisplay = popularSearches.length > 0 ? popularSearches : getDefaultPopularSearches();
+  const searchesToDisplay = popularSearches;
 
   return (
     <View style={styles.container}>
