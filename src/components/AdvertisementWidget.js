@@ -44,8 +44,8 @@ const AdvertisementWidget = ({
   };
 
   const detectDevice = () => {
-    if (Platform.OS === 'web') {
-      const width = typeof window !== 'undefined' ? window.innerWidth : 1024;
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const width = window.innerWidth || 1024;
       if (width < 768) {
         setDevice('mobile');
       } else if (width < 1024) {
@@ -127,7 +127,7 @@ const AdvertisementWidget = ({
           ? ad.content.linkUrl 
           : `https://${ad.content.linkUrl}`;
         
-        if (Platform.OS === 'web') {
+        if (Platform.OS === 'web' && typeof window !== 'undefined') {
           window.open(url, '_blank');
         } else {
           await Linking.openURL(url);
@@ -167,8 +167,8 @@ const AdvertisementWidget = ({
         onPress={() => handleAdClick(ad)}
         activeOpacity={0.8}
       >
-        {content.html && Platform.OS === 'web' && (
-          <div dangerouslySetInnerHTML={{ __html: content.html }} />
+        {content.html && Platform.OS === 'web' && typeof document !== 'undefined' && (
+          React.createElement('div', { dangerouslySetInnerHTML: { __html: content.html } })
         )}
 
         {content.imageUrl && (

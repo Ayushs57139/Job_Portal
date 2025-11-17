@@ -60,23 +60,18 @@ const AdMobComponent = ({
       return;
     }
 
-    // Dynamically require expo-ads-admob only on native platforms
-    try {
-      const admob = require('expo-ads-admob');
-      setAdMobBanner(() => admob.AdMobBanner);
-      setSetTestDeviceIDAsync(() => admob.setTestDeviceIDAsync);
-    } catch (error) {
-      console.warn('expo-ads-admob not available:', error);
-      setAdError('AdMob module not available');
-      return;
-    }
+    // expo-ads-admob is deprecated and incompatible with Expo SDK 54
+    // AdMob functionality is disabled until a compatible package is available
+    console.warn('AdMob is currently disabled. expo-ads-admob is incompatible with Expo SDK 54.');
+    setAdError('AdMob module not available. Please use a compatible AdMob package for Expo SDK 54+.');
+    return;
 
-    if (!adUnitId) {
-      setAdError('AdMob Ad Unit ID is required');
-      return;
-    }
-
-    initializeAdMob();
+    // Note: The code below is commented out until a compatible AdMob package is available
+    // if (!adUnitId) {
+    //   setAdError('AdMob Ad Unit ID is required');
+    //   return;
+    // }
+    // initializeAdMob();
   }, [adUnitId, testMode]);
 
   const initializeAdMob = async () => {

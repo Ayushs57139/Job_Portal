@@ -71,6 +71,7 @@ server/uploads/icons/*
 !server/uploads/icons/.gitkeep
 
 # Android
+/android
 android/app/build/
 android/.gradle/
 android/local.properties
@@ -78,6 +79,7 @@ android/local.properties
 *.aab
 
 # iOS
+/ios
 ios/build/
 ios/Pods/
 ios/*.xcworkspace

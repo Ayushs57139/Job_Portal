@@ -14,6 +14,9 @@ export default {
     "**/*"
   ],
   extra: {
+    eas: {
+      projectId: "6db1e9a9-6102-41b5-a4a3-ec9a3fe63034"
+    },
     // API Configuration
     // Production: Set EXPO_PUBLIC_API_HOST to your production API domain (e.g., "api.yourdomain.com")
     // Development: Set to your computer's IP address for Expo Go on physical device
