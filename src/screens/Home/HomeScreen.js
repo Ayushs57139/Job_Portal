@@ -20,6 +20,8 @@ import AdvertisementWidget from '../../components/AdvertisementWidget';
 import PopularSearches from '../../components/PopularSearches';
 import TrendingJobRoles from '../../components/TrendingJobRoles';
 import api from '../../config/api';
+import { keySkillsOptions } from '../../data/jobPostFormConfig';
+import { DEPARTMENTS_DATA } from '../../data/departmentsData';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -38,14 +40,117 @@ const HomeScreen = ({ navigation }) => {
   const [experience, setExperience] = useState('Select experience');
   const [loading, setLoading] = useState(true);
   const [showExperienceMenu, setShowExperienceMenu] = useState(false);
+  const [showLocationMenu, setShowLocationMenu] = useState(false);
+  const [showSearchMenu, setShowSearchMenu] = useState(false);
+  const [searchFilter, setSearchFilter] = useState('');
+  const [selectedSkills, setSelectedSkills] = useState([]);
+  const [companyFilter, setCompanyFilter] = useState('All industries');
 
   const experienceOptions = [
-    'Fresher (0-1 year)',
-    '1-3 years',
-    '3-5 years',
-    '5-10 years',
-    '10+ years',
+    'Fresher',
+    '1 Month',
+    '2 Months',
+    '3 Months',
+    '6 Months',
+    '9 Months',
+    '1 Year',
+    '1.5 Years',
+    '2 Years',
+    '2.5 Years',
+    '3 Years',
+    '3.5 Years',
+    '4 Years',
+    '4.5 Years',
+    '5 Years',
+    '5.5 Years',
+    '6 Years',
+    '6.5 Years',
+    '7 Years',
+    '7.5 Years',
+    '8 Years',
+    '8.5 Years',
+    '9 Years',
+    '9.5 Years',
+    '10 Years',
+    '10.5 Years',
+    '11 Years',
+    '11.5 Years',
+    '12 Years',
+    '12.5 Years',
+    '13 Years',
+    '13.5 Years',
+    '14 Years',
+    '14.5 Years',
+    '15 Years',
+    '15.5 Years',
+    '16 Years',
+    '16.5 Years',
+    '17 Years',
+    '17.5 Years',
+    '18 Years',
+    '18.5 Years',
+    '19 Years',
+    '19.5 Years',
+    '20 Years',
+    '20.5 Years',
+    '21 Years',
+    '21.5 Years',
+    '22 Years',
+    '22.5 Years',
+    '23 Years',
+    '23.5 Years',
+    '24 Years',
+    '24.5 Years',
+    '25 Years',
+    '25.5 Years',
+    '26 Years',
+    '26.5 Years',
+    '27 Years',
+    '27.5 Years',
+    '28 Years',
+    '28.5 Years',
+    '29 Years',
+    '29.5 Years',
+    '30 Years',
+    '30.5 Years',
+    '31 Years',
+    '31.5 Years',
+    '32 Years',
+    '32.5 Years',
+    '33 Years',
+    '33.5 Years',
+    '34 Years',
+    '34.5 Years',
+    '35 Years',
+    '35.5 Years',
+    '36 Years',
+    '36 Years Plus',
   ];
+
+  const locationOptions = [
+    'Delhi, Delhi',
+    'Mumbai, Maharashtra',
+    'Bengaluru, Karnataka',
+    'Hyderabad, Telangana',
+    'Chennai, Tamil Nadu',
+    'Pune, Maharashtra',
+    'Kolkata, West Bengal',
+    'Ahmedabad, Gujarat',
+    'Jaipur, Rajasthan',
+    'Noida, Uttar Pradesh',
+    'Gurugram, Haryana',
+    'Chandigarh, Punjab',
+    'Indore, Madhya Pradesh',
+    'Lucknow, Uttar Pradesh',
+    'Surat, Gujarat',
+  ];
+
+  const skillOptions = keySkillsOptions.map(option => option.label);
+  const departmentOptions = DEPARTMENTS_DATA.map(item => item.department);
+  const searchOptions = [...skillOptions, ...departmentOptions];
+  const filteredSearchOptions = searchOptions.filter(option =>
+    option.toLowerCase().includes(searchFilter.toLowerCase())
+  );
 
   useEffect(() => {
     loadHomeData();
@@ -97,8 +202,9 @@ const HomeScreen = ({ navigation }) => {
   };
 
   const handleSearch = () => {
+    const searchValue = selectedSkills.length > 0 ? selectedSkills.join(', ') : searchQuery;
     navigation.navigate('Jobs', {
-      search: searchQuery,
+      search: searchValue,
       location: locationQuery,
       experience: experience !== 'Select experience' ? experience : undefined,
     });
@@ -113,22 +219,112 @@ const HomeScreen = ({ navigation }) => {
       <View style={styles.searchContainer}>
         <View style={styles.searchRow}>
           {/* Skills/Designations Input */}
-          <View style={[styles.searchInputContainer, styles.flexInput]}>
-            <Ionicons name="search-outline" size={isPhone ? 18 : 20} color={colors.textSecondary} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder={isPhone ? "Enter skills / companies" : "Enter skills / designations / companies"}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholderTextColor={colors.textLight}
-            />
+          <View style={styles.experienceContainer}>
+            <TouchableOpacity
+              style={styles.experienceDropdown}
+              onPress={() => {
+                setShowSearchMenu(!showSearchMenu);
+                setShowExperienceMenu(false);
+                setShowLocationMenu(false);
+              }}
+            >
+              <Text
+                style={[
+                  styles.experienceText,
+                  selectedSkills.length === 0 && styles.placeholderText,
+                ]}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {selectedSkills.length > 0
+                  ? selectedSkills.join(', ')
+                  : (isPhone ? 'Enter skills / companies' : 'Enter skills / designations / companies')}
+              </Text>
+              <Ionicons name="search-outline" size={isPhone ? 18 : 20} color={colors.textSecondary} />
+            </TouchableOpacity>
+
+            {showSearchMenu && (
+              <>
+                <View style={styles.experienceMenu}>
+                  <View style={styles.searchFilterInput}>
+                    <Ionicons name="search-outline" size={18} color={colors.textSecondary} />
+                    <TextInput
+                      style={styles.searchFilterText}
+                      placeholder="Search skills or departments"
+                      placeholderTextColor={colors.textLight}
+                      value={searchFilter}
+                      onChangeText={setSearchFilter}
+                      autoFocus={true}
+                    />
+                  </View>
+                  <ScrollView
+                    style={styles.experienceMenuScroll}
+                    nestedScrollEnabled={true}
+                    showsVerticalScrollIndicator={false}
+                  >
+                    {filteredSearchOptions.length > 0 ? (
+                      filteredSearchOptions.map((option, index) => (
+                        <TouchableOpacity
+                          key={`${option}-${index}`}
+                          style={[
+                            styles.experienceOption,
+                            index === filteredSearchOptions.length - 1 && styles.experienceOptionLast,
+                            selectedSkills.includes(option) && styles.experienceOptionActive,
+                          ]}
+                          onPress={() => {
+                            setSelectedSkills((prev) => {
+                              const exists = prev.includes(option);
+                              if (exists) {
+                                const updated = prev.filter(item => item !== option);
+                                setSearchQuery(updated.join(', '));
+                                return updated;
+                              }
+                              if (prev.length >= 12) return prev;
+                              const updated = [...prev, option];
+                              setSearchQuery(updated.join(', '));
+                              return updated;
+                            });
+                            setSearchFilter('');
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          <Text
+                            style={[
+                              styles.experienceOptionText,
+                              selectedSkills.includes(option) && styles.experienceOptionTextActive,
+                            ]}
+                          >
+                            {option}
+                          </Text>
+                        </TouchableOpacity>
+                      ))
+                    ) : (
+                      <View style={styles.noResultsContainer}>
+                        <Text style={styles.noResultsText}>No results found</Text>
+                      </View>
+                    )}
+                  </ScrollView>
+                </View>
+                <TouchableOpacity
+                  style={styles.dropdownBackdrop}
+                  activeOpacity={1}
+                  onPress={() => {
+                    setShowSearchMenu(false);
+                    setSearchFilter('');
+                  }}
+                />
+              </>
+            )}
           </View>
 
           {/* Experience Dropdown */}
           <View style={styles.experienceContainer}>
             <TouchableOpacity
               style={styles.experienceDropdown}
-              onPress={() => setShowExperienceMenu(!showExperienceMenu)}
+              onPress={() => {
+                setShowExperienceMenu(!showExperienceMenu);
+                setShowLocationMenu(false);
+              }}
             >
               <Text
                 style={[
@@ -185,15 +381,68 @@ const HomeScreen = ({ navigation }) => {
           </View>
 
           {/* Location Input */}
-          <View style={[styles.searchInputContainer, styles.locationInput]}>
-            <Ionicons name="location-outline" size={isPhone ? 18 : 20} color={colors.textSecondary} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Enter location"
-              value={locationQuery}
-              onChangeText={setLocationQuery}
-              placeholderTextColor={colors.textLight}
-            />
+          <View style={styles.experienceContainer}>
+            <TouchableOpacity
+              style={styles.experienceDropdown}
+              onPress={() => {
+                setShowLocationMenu(!showLocationMenu);
+                setShowExperienceMenu(false);
+              }}
+            >
+              <Text
+                style={[
+                  styles.experienceText,
+                  !locationQuery && styles.placeholderText,
+                ]}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {locationQuery || 'Enter location'}
+              </Text>
+              <Ionicons name="chevron-down" size={isPhone ? 18 : 20} color={colors.textSecondary} />
+            </TouchableOpacity>
+
+            {showLocationMenu && (
+              <>
+                <View style={styles.experienceMenu}>
+                  <ScrollView
+                    style={styles.experienceMenuScroll}
+                    nestedScrollEnabled={true}
+                    showsVerticalScrollIndicator={false}
+                  >
+                    {locationOptions.map((option, index) => (
+                      <TouchableOpacity
+                        key={option}
+                        style={[
+                          styles.experienceOption,
+                          index === locationOptions.length - 1 && styles.experienceOptionLast,
+                          locationQuery === option && styles.experienceOptionActive,
+                        ]}
+                        onPress={() => {
+                          setLocationQuery(option);
+                          setShowLocationMenu(false);
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Text
+                          style={[
+                            styles.experienceOptionText,
+                            locationQuery === option && styles.experienceOptionTextActive,
+                          ]}
+                        >
+                          {option}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+                <TouchableOpacity
+                  style={styles.dropdownBackdrop}
+                  activeOpacity={1}
+                  onPress={() => setShowLocationMenu(false)}
+                />
+              </>
+            )}
           </View>
 
           {/* Search Button */}
@@ -206,19 +455,28 @@ const HomeScreen = ({ navigation }) => {
         <View style={styles.popularSearches}>
           <TouchableOpacity
             style={styles.popularTag}
-            onPress={() => setSearchQuery('business development, delhi')}
+            onPress={() => {
+              setSelectedSkills([]);
+              setSearchQuery('business development, delhi');
+            }}
           >
             <Text style={styles.popularTagText} numberOfLines={isPhone ? 1 : undefined} ellipsizeMode="tail">business development, delhi</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.popularTag}
-            onPress={() => setSearchQuery('software developer, noida')}
+            onPress={() => {
+              setSelectedSkills([]);
+              setSearchQuery('software developer, noida');
+            }}
           >
             <Text style={styles.popularTagText} numberOfLines={isPhone ? 1 : undefined} ellipsizeMode="tail">software developer, noida</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.popularTag}
-            onPress={() => setSearchQuery('web development, delhi')}
+            onPress={() => {
+              setSelectedSkills([]);
+              setSearchQuery('web development, delhi');
+            }}
           >
             <Text style={styles.popularTagText} numberOfLines={isPhone ? 1 : undefined} ellipsizeMode="tail">web development, delhi</Text>
           </TouchableOpacity>
@@ -268,8 +526,24 @@ const HomeScreen = ({ navigation }) => {
     </View>
   );
 
-  const renderTopCompanies = () => (
-    <View style={styles.section}>
+  const getFilteredCompanies = () => {
+    if (companyFilter === 'Top rated') {
+      return topCompanies.filter((company) => {
+        const rating = company.rating || company.profile?.company?.rating || 0;
+        return rating >= 4;
+      });
+    }
+    if (companyFilter === 'Actively hiring') {
+      return topCompanies.filter((company) => (company.openPositions || 0) > 0);
+    }
+    return topCompanies;
+  };
+
+  const renderTopCompanies = () => {
+    const filteredCompanies = getFilteredCompanies();
+
+    return (
+    <View style={[styles.section, styles.companySection]}>
       <View style={styles.sectionHeader}>
         <View>
           <Text style={styles.sectionTitle}>Top Companies Hiring Right Now</Text>
@@ -279,15 +553,56 @@ const HomeScreen = ({ navigation }) => {
         </View>
       </View>
 
+      <View style={styles.companyStatsRow}>
+        <View style={styles.companyStatCard}>
+          <Text style={styles.companyStatValue}>{topCompanies.length || 0}</Text>
+          <Text style={styles.companyStatLabel}>Featured partners</Text>
+        </View>
+        <View style={styles.companyStatCard}>
+          <Text style={styles.companyStatValue}>500+</Text>
+          <Text style={styles.companyStatLabel}>Live openings</Text>
+        </View>
+        <View style={styles.companyStatCard}>
+          <Text style={styles.companyStatValue}>4.7/5</Text>
+          <Text style={styles.companyStatLabel}>Avg. rating</Text>
+        </View>
+      </View>
+
+      <View style={styles.companyFilterRow}>
+        {['All industries', 'Top rated', 'Actively hiring'].map((filter) => {
+          const isActive = companyFilter === filter;
+          return (
+            <TouchableOpacity
+              key={filter}
+              style={[
+                styles.companyFilterChip,
+                isActive && styles.companyFilterChipActive,
+              ]}
+              onPress={() => setCompanyFilter(filter)}
+              activeOpacity={0.8}
+            >
+              <Text
+                style={[
+                  styles.companyFilterText,
+                  isActive && styles.companyFilterTextActive,
+                ]}
+              >
+                {filter}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
       {loading ? (
         <Text style={styles.loadingText}>Loading companies...</Text>
-      ) : topCompanies.length > 0 ? (
+      ) : filteredCompanies.length > 0 ? (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.horizontalScroll}
+          contentContainerStyle={styles.companyCarousel}
         >
-          {topCompanies.map((company) => (
+          {filteredCompanies.map((company) => (
             <CompanyCard key={company._id} company={company} />
           ))}
         </ScrollView>
@@ -296,6 +611,7 @@ const HomeScreen = ({ navigation }) => {
       )}
     </View>
   );
+  };
 
   const renderCareerInsights = () => (
     <View style={styles.section}>
@@ -569,6 +885,22 @@ const styles = StyleSheet.create({
   experienceMenuScroll: {
     maxHeight: isPhone ? 250 : (isMobile ? 280 : 320),
   },
+  searchFilterInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: isPhone ? spacing.md : spacing.lg,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  searchFilterText: {
+    flex: 1,
+    ...typography.body1,
+    fontSize: isPhone ? 14 : typography.body1.fontSize,
+    color: colors.text,
+    outlineStyle: 'none',
+  },
   experienceOption: {
     paddingHorizontal: isPhone ? spacing.md : (isMobile ? spacing.md : spacing.lg),
     paddingVertical: isPhone ? spacing.md : (isMobile ? spacing.md : spacing.lg),
@@ -600,6 +932,15 @@ const styles = StyleSheet.create({
   experienceOptionTextActive: {
     color: colors.primary,
     fontWeight: '600',
+  },
+  noResultsContainer: {
+    padding: spacing.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  noResultsText: {
+    ...typography.body2,
+    color: colors.textSecondary,
   },
   searchButton: {
     backgroundColor: colors.primary,
@@ -774,6 +1115,70 @@ const styles = StyleSheet.create({
     paddingHorizontal: isPhone ? spacing.sm : spacing.lg,
     alignItems: 'center',
     backgroundColor: colors.background,
+  },
+  companySection: {
+    backgroundColor: isWeb ? '#F8FAFF' : colors.cardBackground,
+    borderRadius: isPhone ? borderRadius.lg : borderRadius.xl,
+    ...(isWeb && {
+      boxShadow: '0 20px 60px rgba(15, 23, 42, 0.08)',
+    }),
+  },
+  companyStatsRow: {
+    flexDirection: isPhone ? 'column' : 'row',
+    gap: isPhone ? spacing.sm : spacing.md,
+    marginTop: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  companyStatCard: {
+    flex: 1,
+    backgroundColor: colors.cardBackground,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: '#E4E7FB',
+    ...(isWeb && {
+      backdropFilter: 'blur(8px)',
+    }),
+  },
+  companyStatValue: {
+    fontSize: isPhone ? 20 : 26,
+    fontWeight: '700',
+    color: '#1E1B4B',
+    marginBottom: spacing.xs,
+  },
+  companyStatLabel: {
+    ...typography.body2,
+    color: colors.textSecondary,
+  },
+  companyFilterRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  companyFilterChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: '#E4E7FB',
+    backgroundColor: colors.cardBackground,
+  },
+  companyFilterChipActive: {
+    backgroundColor: '#EEF2FF',
+    borderColor: '#C7D2FE',
+  },
+  companyFilterText: {
+    ...typography.body2,
+    color: colors.textSecondary,
+    fontWeight: '500',
+  },
+  companyFilterTextActive: {
+    color: '#4338CA',
+  },
+  companyCarousel: {
+    paddingRight: spacing.lg,
+    gap: spacing.md,
   },
 });
 

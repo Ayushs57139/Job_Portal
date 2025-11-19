@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const Blog = require('../models/Blog');
 const { auth } = require('../middleware/auth');
 
@@ -98,15 +99,35 @@ router.get('/featured', async (req, res) => {
 // GET /api/blogs/:id - Get single blog by ID or slug (public)
 router.get('/:id', async (req, res) => {
     try {
-        // Try to find by ID first, then by slug
-        const blog = await Blog.findOne({
-            $or: [
-                { _id: req.params.id },
-                { slug: req.params.id }
-            ]
-        });
+        const identifier = req.params.id;
+        let blog;
+
+        console.log('Blog route - Received identifier:', identifier);
+        console.log('Blog route - Is valid ObjectId?', mongoose.Types.ObjectId.isValid(identifier));
+
+        // Check if identifier is a valid ObjectId (24 hex characters)
+        const isValidObjectId = mongoose.Types.ObjectId.isValid(identifier) && 
+                                identifier.length === 24 && 
+                                /^[0-9a-fA-F]{24}$/.test(identifier);
+
+        if (isValidObjectId) {
+            // If it's a valid ObjectId, try to find by _id first
+            console.log('Blog route - Searching by ObjectId:', identifier);
+            blog = await Blog.findById(identifier);
+            
+            // If not found by _id, try by slug as fallback
+            if (!blog) {
+                console.log('Blog route - Not found by _id, trying by slug');
+                blog = await Blog.findOne({ slug: identifier });
+            }
+        } else {
+            // If it's not a valid ObjectId (likely a slug), only search by slug
+            console.log('Blog route - Searching by slug:', identifier);
+            blog = await Blog.findOne({ slug: identifier });
+        }
 
         if (!blog) {
+            console.log('Blog route - Blog not found');
             return res.status(404).json({
                 success: false,
                 message: 'Blog not found'
@@ -114,6 +135,7 @@ router.get('/:id', async (req, res) => {
         }
 
         if (!blog.published) {
+            console.log('Blog route - Blog exists but not published');
             return res.status(404).json({
                 success: false,
                 message: 'Blog not found'
@@ -124,12 +146,14 @@ router.get('/:id', async (req, res) => {
         blog.views += 1;
         await blog.save();
 
+        console.log('Blog route - Blog found successfully:', blog.title);
         res.json({
             success: true,
             blog
         });
     } catch (error) {
         console.error('Error fetching blog:', error);
+        console.error('Error stack:', error.stack);
         res.status(500).json({
             success: false,
             message: 'Error fetching blog',

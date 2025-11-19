@@ -60,12 +60,50 @@ const CompanyCard = ({ company }) => {
     return avatarColors[charCode % avatarColors.length];
   };
 
+  const getTextValue = (value, fallback) => {
+    if (value === null || value === undefined) return fallback;
+    if (typeof value === 'string' || typeof value === 'number') return value.toString();
+    if (Array.isArray(value)) return value.filter(Boolean).join(', ') || fallback;
+    if (typeof value === 'object') {
+      const objectText = Object.values(value)
+        .filter((v) => typeof v === 'string' && v.trim())
+        .join(', ');
+      return objectText || fallback;
+    }
+    return fallback;
+  };
+
+  const location = getTextValue(
+    company.profile?.company?.location ||
+      company.profile?.company?.city ||
+      company.location?.city ||
+      company.location,
+    'Multiple locations'
+  );
+
+  const companyType = getTextValue(
+    company.profile?.company?.companyType || company.companyType,
+    'Private company'
+  );
+
+  const employeeCount = getTextValue(
+    company.profile?.company?.employeeCount || company.employeeCount,
+    '200+ employees'
+  );
+
+  const hiringStatus = (company.openPositions || 0) > 0 ? 'Actively hiring' : 'Building talent pool';
+
   return (
     <TouchableOpacity 
       style={styles.card}
       onPress={() => navigation.navigate('CompanyDetails', { companyId: company._id })}
       activeOpacity={0.9}
     >
+      <View style={styles.trustBadge}>
+        <Ionicons name="shield-checkmark" size={14} color="#4338CA" />
+        <Text style={styles.trustBadgeText}>{company.isFeatured ? 'Featured partner' : 'Verified'}</Text>
+      </View>
+
       <View style={styles.header}>
         <View style={[styles.avatar, { backgroundColor: getAvatarColor(company.profile?.company?.name || company.name) }]}>
           <Text style={styles.avatarText}>{getInitials(company.profile?.company?.name || company.name)}</Text>
@@ -100,13 +138,34 @@ const CompanyCard = ({ company }) => {
         )}
       </View>
 
+      <View style={styles.metaChips}>
+        <View style={styles.metaChip}>
+          <Ionicons name="location-outline" size={14} color="#4338CA" />
+          <Text style={styles.metaChipText}>{location}</Text>
+        </View>
+        <View style={styles.metaChip}>
+          <Ionicons name="briefcase-outline" size={14} color="#4338CA" />
+          <Text style={styles.metaChipText}>{companyType}</Text>
+        </View>
+        <View style={styles.metaChip}>
+          <Ionicons name="people-outline" size={14} color="#4338CA" />
+          <Text style={styles.metaChipText}>{employeeCount}</Text>
+        </View>
+      </View>
+
       <Text style={styles.description} numberOfLines={2}>
         {company.profile?.company?.description || company.description || 'Leading company in the industry'}
       </Text>
 
-      <View style={styles.viewJobsButton}>
-        <Text style={styles.viewJobsText}>View Jobs</Text>
-        <Ionicons name="arrow-forward" size={16} color="#FFFFFF" style={{ marginLeft: 8 }} />
+      <View style={styles.cardFooter}>
+        <View style={styles.viewJobsButton}>
+          <Text style={styles.viewJobsText}>View Jobs</Text>
+          <Ionicons name="arrow-forward" size={16} color="#FFFFFF" style={{ marginLeft: 8 }} />
+        </View>
+        <View style={styles.hiringTag}>
+          <Ionicons name="flash" size={14} color="#10B981" />
+          <Text style={styles.hiringTagText}>{hiringStatus}</Text>
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -120,9 +179,11 @@ const styles = StyleSheet.create({
     ...shadows.lg,
     borderWidth: 1,
     borderColor: colors.borderLight,
+    position: 'relative',
     ...(isWeb && {
       cursor: 'pointer',
       userSelect: 'none',
+      transition: 'transform 0.2s ease, box-shadow 0.2s ease',
     }),
   },
   header: {
@@ -198,7 +259,33 @@ const styles = StyleSheet.create({
     marginBottom: isPhone ? spacing.sm : spacing.md,
     lineHeight: isPhone ? 18 : (isMobile ? 18 : (isTablet ? 19 : 20)),
   },
+  metaChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+    marginBottom: spacing.md,
+  },
+  metaChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs / 1.5,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+    borderRadius: borderRadius.lg,
+    backgroundColor: '#EEF2FF',
+  },
+  metaChipText: {
+    fontSize: isPhone ? 11 : 12,
+    fontWeight: '600',
+    color: '#4338CA',
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
   viewJobsButton: {
+    flex: 1,
     backgroundColor: '#6366F1',
     borderRadius: borderRadius.md,
     paddingVertical: isPhone ? spacing.sm : spacing.md,
@@ -210,6 +297,38 @@ const styles = StyleSheet.create({
     fontSize: isPhone ? 13 : (isMobile ? 14 : (isTablet ? 14 : (isDesktop ? 15 : 14))),
     fontWeight: '600',
     color: colors.textWhite,
+  },
+  hiringTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs / 1.5,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
+    backgroundColor: '#ECFDF5',
+  },
+  hiringTagText: {
+    fontSize: isPhone ? 11 : 12,
+    fontWeight: '600',
+    color: '#047857',
+  },
+  trustBadge: {
+    position: 'absolute',
+    top: spacing.sm,
+    right: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs / 1.5,
+    backgroundColor: '#EEF2FF',
+    borderRadius: borderRadius.lg,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    zIndex: 1,
+  },
+  trustBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#4338CA',
   },
 });
 

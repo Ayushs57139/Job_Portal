@@ -8,12 +8,21 @@ import {
   ActivityIndicator,
   Alert,
   Share,
+  Platform,
+  Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, typography, spacing, borderRadius, shadows } from '../../styles/theme';
 import api from '../../config/api';
+
+const { width } = Dimensions.get('window');
+const isWeb = Platform.OS === 'web';
+const isPhone = width <= 480;
+const isMobile = width <= 600;
+const isTablet = width > 600 && width <= 1024;
+const isDesktop = width > 1024;
 
 const BlogDetailScreen = ({ route, navigation }) => {
   const { blogId, slug } = route.params || {};
@@ -28,12 +37,9 @@ const BlogDetailScreen = ({ route, navigation }) => {
 
   const loadUser = async () => {
     try {
-      const token = await AsyncStorage.getItem('token');
-      if (token) {
-        const response = await api.get('/api/auth/me');
-        if (response.data.success) {
-          setUser(response.data.user);
-        }
+      const userData = await api.getCurrentUserFromStorage();
+      if (userData) {
+        setUser(userData);
       }
     } catch (error) {
       console.error('Error loading user:', error);
@@ -45,13 +51,28 @@ const BlogDetailScreen = ({ route, navigation }) => {
       setLoading(true);
       // Use slug if provided, otherwise use blogId
       const identifier = slug || blogId;
-      const response = await api.get(`/api/blogs/${identifier}`);
-      if (response.data.success) {
-        setBlog(response.data.blog);
+      console.log('BlogDetailScreen - Loading blog with identifier:', identifier);
+      console.log('Route params:', route.params);
+      
+      if (!identifier) {
+        console.error('No identifier provided (slug or blogId)');
+        Alert.alert('Error', 'Blog identifier is missing');
+        navigation.goBack();
+        return;
+      }
+      
+      const response = await api.getBlog(identifier);
+      console.log('Blog API response:', response);
+      
+      if (response && response.success) {
+        setBlog(response.blog);
+      } else {
+        throw new Error('Failed to load blog: Invalid response');
       }
     } catch (error) {
       console.error('Error loading blog:', error);
-      Alert.alert('Error', 'Failed to load blog');
+      console.error('Error details:', error.message);
+      Alert.alert('Error', error.message || 'Failed to load blog');
       navigation.goBack();
     } finally {
       setLoading(false);
@@ -82,14 +103,14 @@ const BlogDetailScreen = ({ route, navigation }) => {
             try {
               // Use slug if provided, otherwise use blogId
               const identifier = slug || blogId;
-              const response = await api.delete(`/api/blogs/${identifier}`);
-              if (response.data.success) {
+              const response = await api.request(`/blogs/${identifier}`, { method: 'DELETE' });
+              if (response && response.success) {
                 Alert.alert('Success', 'Blog deleted successfully');
                 navigation.goBack();
               }
             } catch (error) {
               console.error('Error deleting blog:', error);
-              Alert.alert('Error', error.response?.data?.message || 'Failed to delete blog');
+              Alert.alert('Error', error.message || 'Failed to delete blog');
             }
           },
         },
@@ -114,19 +135,19 @@ const BlogDetailScreen = ({ route, navigation }) => {
   };
 
   const getCategoryColor = (category) => {
-    const colors = {
-      'Career Tips': ['#667eea', '#764ba2'],
-      'Interview Prep': ['#f093fb', '#f5576c'],
-      'Workplace Trends': ['#4facfe', '#00f2fe'],
-      'Resume Writing': ['#43e97b', '#38f9d7'],
-      'Job Search': ['#fa709a', '#fee140'],
-      'Industry News': ['#30cfd0', '#330867'],
-      'Salary Negotiation': ['#a8edea', '#fed6e3'],
-      'Networking': ['#ff9a56', '#ff6a88'],
-      'Professional Development': ['#ffecd2', '#fcb69f'],
-      'Work-Life Balance': ['#a1c4fd', '#c2e9fb'],
+    const categoryColors = {
+      'Career Tips': ['#FF6B6B', '#FF8E53'],
+      'Interview Prep': ['#4ECDC4', '#44A08D'],
+      'Workplace Trends': ['#A8EDEA', '#FED6E3'],
+      'Resume Writing': ['#FFD89B', '#19547B'],
+      'Job Search': ['#FF9A9E', '#FECFEF'],
+      'Industry News': ['#30CFD0', '#330867'],
+      'Salary Negotiation': ['#FBD786', '#F7971E'],
+      'Networking': ['#C471ED', '#F64F59'],
+      'Professional Development': ['#FFECD2', '#FCB69F'],
+      'Work-Life Balance': ['#A1C4FD', '#C2E9FB'],
     };
-    return colors[category] || ['#667eea', '#764ba2'];
+    return categoryColors[category] || ['#667EEA', '#764BA2'];
   };
 
   if (loading) {
@@ -156,11 +177,18 @@ const BlogDetailScreen = ({ route, navigation }) => {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
+          <View style={styles.backButtonContainer}>
+            <Ionicons name="arrow-back" size={22} color={colors.text} />
+          </View>
         </TouchableOpacity>
+        <View style={styles.headerTitleContainer}>
+          <Text style={styles.headerTitle} numberOfLines={1}>Blog Post</Text>
+        </View>
         <View style={styles.headerActions}>
           <TouchableOpacity onPress={handleShare} style={styles.iconButton}>
-            <Ionicons name="share-social" size={22} color={colors.text} />
+            <View style={styles.iconButtonContainer}>
+              <Ionicons name="share-social" size={20} color={colors.primary} />
+            </View>
           </TouchableOpacity>
           {canEditBlog() && (
             <>
@@ -168,10 +196,14 @@ const BlogDetailScreen = ({ route, navigation }) => {
                 onPress={() => navigation.navigate('CreateBlog', { blog })}
                 style={styles.iconButton}
               >
-                <Ionicons name="create" size={22} color={colors.primary} />
+                <View style={[styles.iconButtonContainer, styles.editButtonContainer]}>
+                  <Ionicons name="create-outline" size={20} color={colors.primary} />
+                </View>
               </TouchableOpacity>
               <TouchableOpacity onPress={handleDelete} style={styles.iconButton}>
-                <Ionicons name="trash" size={22} color={colors.error} />
+                <View style={[styles.iconButtonContainer, styles.deleteButtonContainer]}>
+                  <Ionicons name="trash-outline" size={20} color={colors.error} />
+                </View>
               </TouchableOpacity>
             </>
           )}
@@ -184,84 +216,109 @@ const BlogDetailScreen = ({ route, navigation }) => {
         showsVerticalScrollIndicator={false}
       >
         {/* Hero Section */}
-        <LinearGradient
-          colors={categoryColors}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.heroSection}
-        >
-          {blog.featured && (
-            <View style={styles.featuredBadge}>
-              <Ionicons name="star" size={16} color="#FFD700" />
-              <Text style={styles.featuredText}>Featured Article</Text>
+        <View style={styles.heroWrapper}>
+          <View style={styles.heroSection}>
+            <View style={styles.heroContent}>
+              <View style={styles.badgesContainer}>
+                {blog.featured && (
+                  <View style={styles.featuredBadge}>
+                    <LinearGradient
+                      colors={['#FFD700', '#FFA500']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.featuredBadgeGradient}
+                    >
+                      <Ionicons name="star" size={14} color="#fff" />
+                      <Text style={styles.featuredText}>Featured</Text>
+                    </LinearGradient>
+                  </View>
+                )}
+                <View style={styles.categoryBadge}>
+                  <Text style={styles.categoryText}>{blog.category}</Text>
+                </View>
+              </View>
+              <Text style={styles.title}>{blog.title}</Text>
+              <Text style={styles.excerpt}>{blog.excerpt}</Text>
             </View>
-          )}
-          <View style={styles.categoryBadge}>
-            <Text style={styles.categoryText}>{blog.category}</Text>
           </View>
-          <Text style={styles.title}>{blog.title}</Text>
-          <Text style={styles.excerpt}>{blog.excerpt}</Text>
-        </LinearGradient>
+        </View>
 
         {/* Meta Information */}
         <View style={styles.metaSection}>
-          <View style={styles.authorInfo}>
-            <View style={styles.authorAvatar}>
-              <Text style={styles.authorInitial}>
-                {blog.author.charAt(0).toUpperCase()}
-              </Text>
+          <View style={styles.metaCard}>
+            <View style={styles.authorInfo}>
+              <View style={styles.authorAvatar}>
+                <LinearGradient
+                  colors={categoryColors}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.authorAvatarGradient}
+                >
+                  <Text style={styles.authorInitial}>
+                    {blog.author.charAt(0).toUpperCase()}
+                  </Text>
+                </LinearGradient>
+              </View>
+              <View style={styles.authorDetails}>
+                <Text style={styles.authorName}>{blog.author}</Text>
+                <Text style={styles.authorType}>
+                  {blog.authorType.charAt(0).toUpperCase() + blog.authorType.slice(1)}
+                </Text>
+              </View>
             </View>
-            <View style={styles.authorDetails}>
-              <Text style={styles.authorName}>{blog.author}</Text>
-              <Text style={styles.authorType}>
-                {blog.authorType.charAt(0).toUpperCase() + blog.authorType.slice(1)}
-              </Text>
-            </View>
-          </View>
-          <View style={styles.metaStats}>
-            <View style={styles.statItem}>
-              <Ionicons name="calendar" size={16} color={colors.textSecondary} />
-              <Text style={styles.statText}>{formatDate(blog.publishedAt || blog.createdAt)}</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Ionicons name="time" size={16} color={colors.textSecondary} />
-              <Text style={styles.statText}>{blog.readTime}</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Ionicons name="eye" size={16} color={colors.textSecondary} />
-              <Text style={styles.statText}>{blog.views} views</Text>
+            <View style={styles.metaStats}>
+              <View style={styles.statItem}>
+                <View style={styles.statIconContainer}>
+                  <Ionicons name="calendar-outline" size={16} color={colors.primary} />
+                </View>
+                <Text style={styles.statText}>{formatDate(blog.publishedAt || blog.createdAt)}</Text>
+              </View>
+              <View style={styles.statItem}>
+                <View style={styles.statIconContainer}>
+                  <Ionicons name="time-outline" size={16} color={colors.primary} />
+                </View>
+                <Text style={styles.statText}>{blog.readTime}</Text>
+              </View>
+              <View style={styles.statItem}>
+                <View style={styles.statIconContainer}>
+                  <Ionicons name="eye-outline" size={16} color={colors.primary} />
+                </View>
+                <Text style={styles.statText}>{blog.views || 0} views</Text>
+              </View>
             </View>
           </View>
         </View>
 
         {/* Content */}
         <View style={styles.contentSection}>
-          <Text style={styles.content}>{blog.content}</Text>
+          <View style={styles.contentCard}>
+            <Text style={styles.content}>{blog.content}</Text>
+          </View>
         </View>
 
         {/* Tags */}
         {blog.tags && blog.tags.length > 0 && (
           <View style={styles.tagsSection}>
-            <Text style={styles.tagsTitle}>Tags</Text>
-            <View style={styles.tagsContainer}>
-              {blog.tags.map((tag, index) => (
-                <View key={index} style={styles.tag}>
-                  <Text style={styles.tagText}>#{tag}</Text>
-                </View>
-              ))}
+            <View style={styles.tagsCard}>
+              <View style={styles.tagsHeader}>
+                <Ionicons name="pricetag-outline" size={20} color={colors.primary} />
+                <Text style={styles.tagsTitle}>Tags</Text>
+              </View>
+              <View style={styles.tagsContainer}>
+                {blog.tags.map((tag, index) => (
+                  <View key={index} style={styles.tag}>
+                    <Text style={styles.tagText}>#{tag}</Text>
+                  </View>
+                ))}
+              </View>
             </View>
           </View>
         )}
 
         {/* Call to Action */}
         <View style={styles.ctaSection}>
-          <LinearGradient
-            colors={categoryColors}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.ctaCard}
-          >
-            <Ionicons name="newspaper" size={32} color="#fff" />
+          <View style={styles.ctaCard}>
+            <Ionicons name="newspaper" size={32} color={colors.primary} />
             <Text style={styles.ctaTitle}>Enjoyed this article?</Text>
             <Text style={styles.ctaSubtitle}>
               Discover more insightful articles and career tips
@@ -273,7 +330,7 @@ const BlogDetailScreen = ({ route, navigation }) => {
               <Text style={styles.ctaButtonText}>Read More Articles</Text>
               <Ionicons name="arrow-forward" size={18} color={colors.primary} />
             </TouchableOpacity>
-          </LinearGradient>
+          </View>
         </View>
       </ScrollView>
     </View>
@@ -289,21 +346,61 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    paddingHorizontal: isPhone ? spacing.md : spacing.lg,
+    paddingVertical: spacing.md + spacing.xs,
     backgroundColor: colors.cardBackground,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.borderLight,
+    ...shadows.sm,
+    ...(isWeb && {
+      position: 'sticky',
+      top: 0,
+      zIndex: 100,
+    }),
   },
   backButton: {
     padding: spacing.xs,
   },
+  backButtonContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.xs,
+  },
+  headerTitleContainer: {
+    flex: 1,
+    alignItems: 'center',
+    marginHorizontal: spacing.md,
+  },
+  headerTitle: {
+    ...typography.h6,
+    color: colors.text,
+    fontWeight: '700',
+  },
   headerActions: {
     flexDirection: 'row',
-    gap: spacing.sm,
+    gap: spacing.xs,
   },
   iconButton: {
     padding: spacing.xs,
+  },
+  iconButtonContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.xs,
+  },
+  editButtonContainer: {
+    backgroundColor: colors.primaryLight,
+  },
+  deleteButtonContainer: {
+    backgroundColor: '#FFE5E5',
   },
   scrollView: {
     flex: 1,
@@ -311,73 +408,112 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: spacing.xxl,
   },
+  heroWrapper: {
+    marginHorizontal: isPhone ? spacing.sm : (isMobile ? spacing.md : spacing.lg),
+    marginTop: spacing.md,
+    marginBottom: spacing.lg,
+    borderRadius: borderRadius.xl,
+    overflow: 'hidden',
+    ...shadows.lg,
+  },
   heroSection: {
-    padding: spacing.xl,
-    minHeight: 250,
-    justifyContent: 'flex-end',
+    padding: isPhone ? spacing.lg : spacing.xl,
+    minHeight: isPhone ? 280 : 320,
+    position: 'relative',
+    overflow: 'hidden',
+    backgroundColor: colors.cardBackground,
+  },
+  heroContent: {
+    zIndex: 2,
+    position: 'relative',
+  },
+  badgesContainer: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+    flexWrap: 'wrap',
   },
   featuredBadge: {
+    alignSelf: 'flex-start',
+  },
+  featuredBadgeGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
     borderRadius: borderRadius.full,
     gap: spacing.xs,
-    marginBottom: spacing.md,
+    ...shadows.sm,
   },
   featuredText: {
     ...typography.caption,
     color: '#fff',
-    fontWeight: '700',
+    fontWeight: '800',
+    fontSize: 11,
   },
   categoryBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: colors.primaryLight,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
     borderRadius: borderRadius.full,
-    marginBottom: spacing.md,
+    ...shadows.sm,
   },
   categoryText: {
     ...typography.caption,
     color: colors.primary,
-    fontWeight: '700',
+    fontWeight: '800',
+    fontSize: 12,
   },
   title: {
     ...typography.h2,
-    color: '#fff',
+    color: colors.text,
     marginBottom: spacing.md,
+    fontSize: isPhone ? 24 : (isTablet ? 32 : 36),
+    lineHeight: isPhone ? 30 : (isTablet ? 38 : 44),
+    fontWeight: '800',
   },
   excerpt: {
     ...typography.body1,
-    color: 'rgba(255, 255, 255, 0.9)',
-    lineHeight: 24,
+    color: colors.textSecondary,
+    lineHeight: 26,
+    fontSize: isPhone ? 15 : 16,
   },
   metaSection: {
-    padding: spacing.lg,
+    paddingHorizontal: isPhone ? spacing.md : (isMobile ? spacing.lg : spacing.xl),
+    paddingTop: 0,
+    paddingBottom: spacing.lg,
+  },
+  metaCard: {
     backgroundColor: colors.cardBackground,
-    marginTop: -spacing.lg,
-    borderTopLeftRadius: borderRadius.xl,
-    borderTopRightRadius: borderRadius.xl,
+    borderRadius: borderRadius.xl,
+    padding: spacing.lg,
+    marginTop: -spacing.xl,
+    ...shadows.md,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
   },
   authorInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
+    paddingBottom: spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderLight,
   },
   authorAvatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: colors.primary,
+    marginRight: spacing.md,
+    ...shadows.sm,
+  },
+  authorAvatarGradient: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: spacing.md,
   },
   authorInitial: {
-    ...typography.h4,
+    ...typography.h3,
     color: '#fff',
     fontWeight: '700',
   },
@@ -385,12 +521,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   authorName: {
-    ...typography.h6,
+    ...typography.h5,
     color: colors.text,
+    fontWeight: '700',
+    marginBottom: spacing.xs / 2,
   },
   authorType: {
     ...typography.caption,
     color: colors.textSecondary,
+    fontSize: 13,
   },
   metaStats: {
     flexDirection: 'row',
@@ -400,27 +539,68 @@ const styles = StyleSheet.create({
   statItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
+    gap: spacing.sm,
+    backgroundColor: colors.background,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  statIconContainer: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   statText: {
-    ...typography.caption,
-    color: colors.textSecondary,
+    ...typography.body2,
+    color: colors.text,
+    fontWeight: '600',
+    fontSize: 13,
   },
   contentSection: {
-    padding: spacing.lg,
+    paddingHorizontal: isPhone ? spacing.md : (isMobile ? spacing.lg : spacing.xl),
+    paddingVertical: spacing.lg,
+  },
+  contentCard: {
+    backgroundColor: colors.cardBackground,
+    borderRadius: borderRadius.xl,
+    padding: isPhone ? spacing.lg : spacing.xl,
+    ...shadows.md,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
   },
   content: {
     ...typography.body1,
     color: colors.text,
     lineHeight: 28,
+    fontSize: isPhone ? 15 : 16,
   },
   tagsSection: {
+    paddingHorizontal: isPhone ? spacing.md : (isMobile ? spacing.lg : spacing.xl),
+    paddingBottom: spacing.lg,
+  },
+  tagsCard: {
+    backgroundColor: colors.cardBackground,
+    borderRadius: borderRadius.xl,
     padding: spacing.lg,
+    ...shadows.md,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  tagsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
   },
   tagsTitle: {
     ...typography.h6,
     color: colors.text,
-    marginBottom: spacing.md,
+    fontWeight: '700',
   },
   tagsContainer: {
     flexDirection: 'row',
@@ -428,57 +608,70 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   tag: {
-    backgroundColor: colors.background,
+    backgroundColor: colors.primaryLight,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.full,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.primary,
+    ...shadows.xs,
   },
   tagText: {
     ...typography.body2,
     color: colors.primary,
-    fontWeight: '600',
+    fontWeight: '700',
+    fontSize: 12,
   },
   ctaSection: {
-    padding: spacing.lg,
+    paddingHorizontal: isPhone ? spacing.md : (isMobile ? spacing.lg : spacing.xl),
+    paddingBottom: spacing.xl,
   },
   ctaCard: {
-    padding: spacing.xl,
-    borderRadius: borderRadius.lg,
+    padding: isPhone ? spacing.xl : spacing.xxl,
+    borderRadius: borderRadius.xl,
     alignItems: 'center',
+    backgroundColor: colors.cardBackground,
+    ...shadows.lg,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
   },
   ctaTitle: {
     ...typography.h4,
-    color: '#fff',
+    color: colors.text,
     marginTop: spacing.md,
     textAlign: 'center',
+    fontWeight: '700',
+    fontSize: isPhone ? 20 : 24,
   },
   ctaSubtitle: {
     ...typography.body2,
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: colors.textSecondary,
     marginTop: spacing.sm,
     textAlign: 'center',
+    fontSize: isPhone ? 14 : 16,
   },
   ctaButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md + spacing.xs,
     borderRadius: borderRadius.full,
     marginTop: spacing.lg,
     gap: spacing.sm,
+    ...shadows.md,
   },
   ctaButtonText: {
     ...typography.button,
     color: colors.primary,
     fontWeight: '700',
+    fontSize: isPhone ? 14 : 16,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: colors.background,
   },
   loadingText: {
     ...typography.body1,

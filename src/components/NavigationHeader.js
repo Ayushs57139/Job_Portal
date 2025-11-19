@@ -85,7 +85,7 @@ const NavigationHeader = () => {
                   style={styles.loginButton}
                   onPress={() => navigation.navigate('Login')}
                 >
-                  <Text style={styles.loginButtonText}>Login</Text>
+                  <Text style={styles.loginButtonText}>Candidate Login</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.postJobButton}
@@ -97,7 +97,7 @@ const NavigationHeader = () => {
                   style={styles.employersButton}
                   onPress={() => navigation.navigate('EmployerOptions')}
                 >
-                  <Text style={styles.employersButtonText}>For Employers</Text>
+                  <Text style={styles.employersButtonText}>Employers Login</Text>
                 </TouchableOpacity>
               </View>
             )}

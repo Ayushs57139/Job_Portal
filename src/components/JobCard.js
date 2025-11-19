@@ -64,10 +64,19 @@ const JobCard = ({ job }) => {
     setIsSaved(!isSaved);
   };
 
+  const handleJobClick = () => {
+    if (isWeb && typeof window !== 'undefined') {
+      const url = `${window.location.origin}/jobs/${job._id}`;
+      window.open(url, '_blank');
+    } else {
+      navigation.navigate('JobDetails', { jobId: job._id });
+    }
+  };
+
   return (
     <TouchableOpacity
       style={styles.card}
-      onPress={() => navigation.navigate('JobDetails', { jobId: job._id })}
+      onPress={handleJobClick}
       activeOpacity={0.9}
     >
       {/* Top Bar with Company Logo and Save Button */}
@@ -181,15 +190,16 @@ const JobCard = ({ job }) => {
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.lg,
-    padding: isPhone ? spacing.sm : (isMobile ? spacing.md : isTablet ? spacing.md : spacing.lg),
-    marginBottom: isPhone ? spacing.sm : spacing.md,
+    borderRadius: borderRadius.xl,
+    padding: isPhone ? spacing.md : (isMobile ? spacing.md : isTablet ? spacing.lg : spacing.lg),
+    width: '100%',
     ...shadows.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderLight,
     ...(isWeb && {
-      transition: 'all 0.3s ease',
+      transition: 'transform 0.25s ease, box-shadow 0.25s ease',
       cursor: 'pointer',
+      boxShadow: '0 15px 40px rgba(15, 23, 42, 0.08)',
     }),
   },
   topBar: {

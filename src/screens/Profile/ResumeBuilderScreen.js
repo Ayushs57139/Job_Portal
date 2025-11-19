@@ -1,39 +1,24 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   ScrollView,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
-  Modal,
   Platform,
-  Alert,
   Dimensions,
-  Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import ViewShot from 'react-native-view-shot';
-import * as FileSystem from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
+import { useNavigation } from '@react-navigation/native';
 import { colors, typography, spacing, borderRadius, shadows } from '../../styles/theme';
 import Header from '../../components/Header';
-import { RESUME_TEMPLATES } from '../../components/ResumeTemplates';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
 
 // Resume Themes Configuration
 const RESUME_THEMES = [
-  { 
-    id: 'blue', 
-    name: 'Ocean Blue', 
-    gradient: ['#667eea', '#764ba2'], 
-    accent: '#667eea', 
-    icon: '🏊',
-    description: 'Professional and calming'
-  },
   { 
     id: 'purple', 
     name: 'Royal Purple', 
@@ -62,7 +47,7 @@ const RESUME_THEMES = [
     id: 'dark', 
     name: 'Midnight Dark', 
     gradient: ['#2c3e50', '#34495e'], 
-    accent: '#3498db', 
+    accent: '#8B5CF6', 
     icon: '🌙',
     description: 'Professional and bold'
   },
@@ -76,817 +61,92 @@ const RESUME_THEMES = [
   },
 ];
 
-// Multi-step configuration
-const STEPS = [
-  { id: 'personal', title: 'Personal Info', icon: 'person', description: 'Tell us about yourself' },
-  { id: 'summary', title: 'Summary', icon: 'document-text', description: 'Your professional summary' },
-  { id: 'experience', title: 'Experience', icon: 'briefcase', description: 'Your work history' },
-  { id: 'education', title: 'Education', icon: 'school', description: 'Your qualifications' },
-  { id: 'skills', title: 'Skills', icon: 'bulb', description: 'Your expertise' },
+// Testimonials data
+const TESTIMONIALS = [
+  [
+    {
+      id: 1,
+      name: 'Divi J',
+      role: 'Recent Graduate',
+      rating: 5,
+      quote: "Amazing AI Writer! It transformed my average resume into a standout one. Received three interview invites in just a week!",
+      avatarColor: '#6366F1',
+    },
+    {
+      id: 2,
+      name: 'Aviral S',
+      role: 'Engineer',
+      rating: 5,
+      quote: "The AI resume writer is a career lifesaver! Tailored my CV perfectly to my industry. Landed an interview with my top choice company!",
+      avatarColor: '#8B5CF6',
+    },
+    {
+      id: 3,
+      name: 'Arpita K',
+      role: 'Product Manager',
+      rating: 4,
+      quote: "Didn't believe in AI magic until now. The writer made my resume shine in ways I couldn't have imagined. Truly grateful!",
+      avatarColor: '#EC4899',
+    },
+  ],
+  [
+    {
+      id: 4,
+      name: 'Rahul M',
+      role: 'Software Developer',
+      rating: 5,
+      quote: "Best resume builder I've used! The templates are professional and the export feature works flawlessly.",
+      avatarColor: '#F59E0B',
+    },
+    {
+      id: 5,
+      name: 'Priya S',
+      role: 'Marketing Manager',
+      rating: 5,
+      quote: "Created my perfect resume in just 10 minutes. The step-by-step process is so intuitive and helpful!",
+      avatarColor: '#10B981',
+    },
+    {
+      id: 6,
+      name: 'Amit K',
+      role: 'Data Scientist',
+      rating: 5,
+      quote: "Love the ATS-friendly format! Got multiple interview calls after updating my resume with this tool.",
+      avatarColor: '#3B82F6',
+    },
+  ],
 ];
 
 const ResumeBuilderScreen = () => {
-  const viewShotRef = useRef(null);
-  const scrollRef = useRef(null);
-  const progressAnim = useRef(new Animated.Value(0)).current;
-  
-  // State for resume data
-  const [resumeData, setResumeData] = useState({
-    personalInfo: {
-      fullName: '',
-      title: '',
-      email: '',
-      phone: '',
-      location: '',
-    },
-    summary: '',
-    experience: [],
-    education: [],
-    skills: [],
-    certifications: [],
-    languages: [],
-  });
+  const navigation = useNavigation();
+  const [selectedTheme] = useState(RESUME_THEMES[0]);
+  const [currentTestimonialPage, setCurrentTestimonialPage] = useState(0);
 
-  // UI State
-  const [selectedTemplate, setSelectedTemplate] = useState(RESUME_TEMPLATES[0]);
-  const [selectedTheme, setSelectedTheme] = useState(RESUME_THEMES[0]);
-  const [showTemplateModal, setShowTemplateModal] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
-  const [currentStep, setCurrentStep] = useState(0);
-  const [skillInput, setSkillInput] = useState('');
-  const [exporting, setExporting] = useState(false);
-  const [completedSteps, setCompletedSteps] = useState([]);
-
-  // Form state for experience
-  const [experienceForm, setExperienceForm] = useState({
-    position: '',
-    company: '',
-    startDate: '',
-    endDate: '',
-    description: '',
-  });
-
-  // Form state for education
-  const [educationForm, setEducationForm] = useState({
-    degree: '',
-    institution: '',
-    year: '',
-  });
-
-  // Step Navigation
-  const nextStep = () => {
-    if (currentStep < STEPS.length - 1) {
-      const newStep = currentStep + 1;
-      setCurrentStep(newStep);
-      scrollRef.current?.scrollTo({ x: 0, y: 0, animated: true });
-      animateProgress(newStep);
+  const getInitials = (name) => {
+    if (!name) return 'U';
+    const words = name.split(' ');
+    if (words.length >= 2) {
+      return (words[0][0] + words[words.length - 1][0]).toUpperCase();
     }
+    return name.substring(0, 1).toUpperCase();
   };
 
-  const prevStep = () => {
-    if (currentStep > 0) {
-      const newStep = currentStep - 1;
-      setCurrentStep(newStep);
-      scrollRef.current?.scrollTo({ x: 0, y: 0, animated: true });
-      animateProgress(newStep);
-    }
-  };
-
-  const goToStep = (stepIndex) => {
-    setCurrentStep(stepIndex);
-    scrollRef.current?.scrollTo({ x: 0, y: 0, animated: true });
-    animateProgress(stepIndex);
-  };
-
-  const animateProgress = (step) => {
-    Animated.spring(progressAnim, {
-      toValue: step,
-      useNativeDriver: false,
-      tension: 50,
-      friction: 7,
-    }).start();
-  };
-
-  // Check if step is completed
-  const isStepCompleted = (stepIndex) => {
-    const stepId = STEPS[stepIndex].id;
-    
-    switch (stepId) {
-      case 'personal':
-        const { fullName, title, email, phone } = resumeData.personalInfo;
-        return !!(fullName && title && email && phone);
-      case 'summary':
-        return resumeData.summary.trim().length > 20;
-      case 'experience':
-        return resumeData.experience.length > 0;
-      case 'education':
-        return resumeData.education.length > 0;
-      case 'skills':
-        return resumeData.skills.length > 0;
-      default:
-        return false;
-    }
-  };
-
-  // Validate current step
-  const validateStep = () => {
-    const currentStepId = STEPS[currentStep].id;
-    
-    switch (currentStepId) {
-      case 'personal':
-        const { fullName, title, email, phone } = resumeData.personalInfo;
-        if (!fullName || !title || !email || !phone) {
-          Alert.alert('Required Fields', 'Please fill in all required fields (Full Name, Title, Email, Phone)');
-          return false;
-        }
-        // Basic email validation
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-          Alert.alert('Invalid Email', 'Please enter a valid email address');
-          return false;
-        }
-        break;
-      case 'summary':
-        if (resumeData.summary.trim().length < 20) {
-          Alert.alert('Professional Summary', 'Please write a brief summary (at least 20 characters)', [
-            { text: 'Skip', onPress: () => nextStep() },
-            { text: 'OK' }
-          ]);
-          return false;
-        }
-        break;
-      case 'experience':
-        if (resumeData.experience.length === 0) {
-          Alert.alert('Add Experience', 'Please add at least one work experience', [
-            { text: 'Skip', onPress: () => { markStepCompleted(); nextStep(); } },
-            { text: 'OK' }
-          ]);
-          return false;
-        }
-        break;
-      case 'education':
-        if (resumeData.education.length === 0) {
-          Alert.alert('Add Education', 'Please add at least one education entry', [
-            { text: 'Skip', onPress: () => { markStepCompleted(); nextStep(); } },
-            { text: 'OK' }
-          ]);
-          return false;
-        }
-        break;
-      case 'skills':
-        if (resumeData.skills.length === 0) {
-          Alert.alert('Add Skills', 'Please add at least one skill', [
-            { text: 'Skip', onPress: () => { markStepCompleted(); nextStep(); } },
-            { text: 'OK' }
-          ]);
-          return false;
-        }
-        break;
-    }
-    return true;
-  };
-
-  const markStepCompleted = () => {
-    if (!completedSteps.includes(currentStep) && isStepCompleted(currentStep)) {
-      setCompletedSteps([...completedSteps, currentStep]);
-    }
-  };
-
-  const handleNext = () => {
-    if (validateStep()) {
-      markStepCompleted();
-      nextStep();
-    }
-  };
-
-  // Update personal info
-  const updatePersonalInfo = (field, value) => {
-    setResumeData(prev => ({
-      ...prev,
-      personalInfo: { ...prev.personalInfo, [field]: value },
-    }));
-  };
-
-  // Add experience
-  const addExperience = () => {
-    if (experienceForm.position && experienceForm.company) {
-      setResumeData(prev => ({
-        ...prev,
-        experience: [...prev.experience, { ...experienceForm }],
-      }));
-      setExperienceForm({
-        position: '',
-        company: '',
-        startDate: '',
-        endDate: '',
-        description: '',
-      });
-      Alert.alert('Success', 'Experience added successfully');
-    } else {
-      Alert.alert('Error', 'Please fill in required fields');
-    }
-  };
-
-  // Remove experience
-  const removeExperience = (index) => {
-    setResumeData(prev => ({
-      ...prev,
-      experience: prev.experience.filter((_, i) => i !== index),
-    }));
-  };
-
-  // Add education
-  const addEducation = () => {
-    if (educationForm.degree && educationForm.institution) {
-      setResumeData(prev => ({
-        ...prev,
-        education: [...prev.education, { ...educationForm }],
-      }));
-      setEducationForm({
-        degree: '',
-        institution: '',
-        year: '',
-      });
-      Alert.alert('Success', 'Education added successfully');
-    } else {
-      Alert.alert('Error', 'Please fill in required fields');
-    }
-  };
-
-  // Remove education
-  const removeEducation = (index) => {
-    setResumeData(prev => ({
-      ...prev,
-      education: prev.education.filter((_, i) => i !== index),
-    }));
-  };
-
-  // Add skill
-  const addSkill = () => {
-    if (skillInput.trim()) {
-      setResumeData(prev => ({
-        ...prev,
-        skills: [...prev.skills, skillInput.trim()],
-      }));
-      setSkillInput('');
-    }
-  };
-
-  // Remove skill
-  const removeSkill = (index) => {
-    setResumeData(prev => ({
-      ...prev,
-      skills: prev.skills.filter((_, i) => i !== index),
-    }));
-  };
-
-  // Export to PDF
-  const exportToPDF = async () => {
-    try {
-      setExporting(true);
-      if (Platform.OS === 'web') {
-        // Web export using print
-        window.print();
+  const renderStars = (rating) => {
+    const stars = [];
+    for (let i = 0; i < 5; i++) {
+      if (i < rating) {
+        stars.push(
+          <Ionicons key={`star-${i}`} name="star" size={18} color="#FFB800" />
+        );
       } else {
-        // Mobile export using ViewShot
-        const uri = await viewShotRef.current.capture();
-        const pdfUri = `${FileSystem.documentDirectory}${resumeData.personalInfo.fullName || 'Resume'}_${Date.now()}.pdf`;
-        
-        // For mobile, we'd use a proper PDF library
-        // For now, sharing the image
-        if (await Sharing.isAvailableAsync()) {
-          await Sharing.shareAsync(uri, {
-            mimeType: 'image/png',
-            dialogTitle: 'Share Resume',
-          });
-        }
+        stars.push(
+          <Ionicons key={`star-${i}`} name="star-outline" size={18} color="#FFB800" />
+        );
       }
-      Alert.alert('Success', 'Resume exported successfully');
-    } catch (error) {
-      console.error('Error exporting PDF:', error);
-      Alert.alert('Error', 'Failed to export resume');
-    } finally {
-      setExporting(false);
     }
+    return stars;
   };
 
-  // Export to Word (simplified - creates formatted text)
-  const exportToWord = async () => {
-    try {
-      setExporting(true);
-      
-      // Create formatted text content
-      let content = `${resumeData.personalInfo.fullName}\n`;
-      content += `${resumeData.personalInfo.title}\n`;
-      content += `${resumeData.personalInfo.email} | ${resumeData.personalInfo.phone}\n`;
-      content += `${resumeData.personalInfo.location}\n\n`;
-      
-      if (resumeData.summary) {
-        content += `SUMMARY\n${resumeData.summary}\n\n`;
-      }
-      
-      if (resumeData.experience.length > 0) {
-        content += `EXPERIENCE\n`;
-        resumeData.experience.forEach(exp => {
-          content += `${exp.position} - ${exp.company}\n`;
-          content += `${exp.startDate} - ${exp.endDate}\n`;
-          content += `${exp.description}\n\n`;
-        });
-      }
-      
-      if (resumeData.education.length > 0) {
-        content += `EDUCATION\n`;
-        resumeData.education.forEach(edu => {
-          content += `${edu.degree}\n`;
-          content += `${edu.institution} - ${edu.year}\n\n`;
-        });
-      }
-      
-      if (resumeData.skills.length > 0) {
-        content += `SKILLS\n${resumeData.skills.join(', ')}\n`;
-      }
-
-      if (Platform.OS === 'web') {
-        // Download as text file on web
-        const blob = new Blob([content], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `${resumeData.personalInfo.fullName || 'Resume'}.txt`;
-        link.click();
-        URL.revokeObjectURL(url);
-      } else {
-        // Share on mobile
-        const fileUri = `${FileSystem.documentDirectory}${resumeData.personalInfo.fullName || 'Resume'}.txt`;
-        await FileSystem.writeAsStringAsync(fileUri, content);
-        
-        if (await Sharing.isAvailableAsync()) {
-          await Sharing.shareAsync(fileUri);
-        }
-      }
-      
-      Alert.alert('Success', 'Resume exported successfully');
-    } catch (error) {
-      console.error('Error exporting Word:', error);
-      Alert.alert('Error', 'Failed to export resume');
-    } finally {
-      setExporting(false);
-    }
-  };
-
-  // Render template selector modal
-  const renderTemplateModal = () => (
-    <Modal
-      visible={showTemplateModal}
-      animationType="slide"
-      transparent={true}
-      onRequestClose={() => setShowTemplateModal(false)}
-    >
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Choose Template & Theme</Text>
-            <TouchableOpacity onPress={() => setShowTemplateModal(false)}>
-              <Ionicons name="close" size={24} color={colors.text} />
-            </TouchableOpacity>
-          </View>
-          
-          <ScrollView style={styles.templateList} showsVerticalScrollIndicator={false}>
-            {/* Themes Section */}
-            <View style={styles.modalSection}>
-              <View style={styles.modalSectionHeader}>
-                <Ionicons name="color-palette" size={20} color={selectedTheme.accent} />
-                <Text style={styles.modalSectionTitle}>Theme Colors</Text>
-              </View>
-              <View style={styles.themesGrid}>
-                {RESUME_THEMES.map((theme) => (
-                  <TouchableOpacity
-                    key={theme.id}
-                    style={[
-                      styles.themeCard,
-                      selectedTheme.id === theme.id && { 
-                        borderColor: theme.accent,
-                        borderWidth: 3,
-                      }
-                    ]}
-                    onPress={() => setSelectedTheme(theme)}
-                  >
-                    <LinearGradient
-                      colors={theme.gradient}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={styles.themeGradient}
-                    >
-                      <Text style={styles.themeIcon}>{theme.icon}</Text>
-                    </LinearGradient>
-                    <Text style={styles.themeName} numberOfLines={1}>{theme.name}</Text>
-                    {selectedTheme.id === theme.id && (
-                      <View style={[styles.checkmarkBadge, { backgroundColor: theme.accent }]}>
-                        <Ionicons name="checkmark" size={16} color="#FFFFFF" />
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            {/* Templates Section */}
-            <View style={styles.modalSection}>
-              <View style={styles.modalSectionHeader}>
-                <Ionicons name="document-text" size={20} color={selectedTheme.accent} />
-                <Text style={styles.modalSectionTitle}>Resume Templates</Text>
-              </View>
-              {RESUME_TEMPLATES.map((template) => (
-                <TouchableOpacity
-                  key={template.id}
-                  style={[
-                    styles.templateItem,
-                    selectedTemplate.id === template.id && styles.templateItemSelected,
-                  ]}
-                  onPress={() => {
-                    setSelectedTemplate(template);
-                    setShowTemplateModal(false);
-                  }}
-                >
-                  <View style={[styles.templateIcon, { backgroundColor: selectedTheme.accent + '15' }]}>
-                    <Ionicons 
-                      name="document-text" 
-                      size={24} 
-                      color={selectedTemplate.id === template.id ? selectedTheme.accent : colors.textSecondary} 
-                    />
-                  </View>
-                  <View style={styles.templateInfo}>
-                    <Text style={styles.templateName}>{template.name}</Text>
-                    <Text style={styles.templateCategory}>{template.category}</Text>
-                    <Text style={styles.templateDescription}>{template.description}</Text>
-                  </View>
-                  {selectedTemplate.id === template.id && (
-                    <View style={[styles.checkmarkBadgeSmall, { backgroundColor: selectedTheme.accent }]}>
-                      <Ionicons name="checkmark" size={16} color="#FFFFFF" />
-                    </View>
-                  )}
-                </TouchableOpacity>
-              ))}
-            </View>
-          </ScrollView>
-        </View>
-      </View>
-    </Modal>
-  );
-
-  // Render preview modal
-  const renderPreviewModal = () => (
-    <Modal
-      visible={showPreview}
-      animationType="slide"
-      onRequestClose={() => setShowPreview(false)}
-    >
-      <View style={styles.previewContainer}>
-        <View style={styles.previewHeader}>
-          <TouchableOpacity onPress={() => setShowPreview(false)}>
-            <Ionicons name="close" size={28} color={colors.text} />
-          </TouchableOpacity>
-          <Text style={styles.previewTitle}>Resume Preview</Text>
-          <View style={styles.previewActions}>
-            <TouchableOpacity style={styles.previewButton} onPress={exportToPDF}>
-              <Ionicons name="download-outline" size={20} color={colors.textWhite} />
-              <Text style={styles.previewButtonText}>PDF</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.previewButton} onPress={exportToWord}>
-              <Ionicons name="document-outline" size={20} color={colors.textWhite} />
-              <Text style={styles.previewButtonText}>Word</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-        
-        <ScrollView style={styles.previewScroll}>
-          <ViewShot ref={viewShotRef} options={{ format: 'png', quality: 1.0 }}>
-            {React.createElement(selectedTemplate.component, { data: resumeData })}
-          </ViewShot>
-        </ScrollView>
-      </View>
-    </Modal>
-  );
-
-  // Render Personal Info Section
-  const renderPersonalInfoSection = () => (
-    <View style={styles.formSection}>
-      <Text style={styles.sectionTitle}>Personal Information</Text>
-      
-      <TextInput
-        style={styles.input}
-        placeholder="Full Name *"
-        value={resumeData.personalInfo.fullName}
-        onChangeText={(text) => updatePersonalInfo('fullName', text)}
-        placeholderTextColor={colors.textLight}
-      />
-      
-      <TextInput
-        style={styles.input}
-        placeholder="Professional Title *"
-        value={resumeData.personalInfo.title}
-        onChangeText={(text) => updatePersonalInfo('title', text)}
-        placeholderTextColor={colors.textLight}
-      />
-      
-      <TextInput
-        style={styles.input}
-        placeholder="Email Address *"
-        value={resumeData.personalInfo.email}
-        onChangeText={(text) => updatePersonalInfo('email', text)}
-        keyboardType="email-address"
-        placeholderTextColor={colors.textLight}
-      />
-      
-      <TextInput
-        style={styles.input}
-        placeholder="Phone Number *"
-        value={resumeData.personalInfo.phone}
-        onChangeText={(text) => updatePersonalInfo('phone', text)}
-        keyboardType="phone-pad"
-        placeholderTextColor={colors.textLight}
-      />
-      
-      <TextInput
-        style={styles.input}
-        placeholder="Location (City, Country)"
-        value={resumeData.personalInfo.location}
-        onChangeText={(text) => updatePersonalInfo('location', text)}
-        placeholderTextColor={colors.textLight}
-      />
-    </View>
-  );
-
-  // Render Summary Section
-  const renderSummarySection = () => (
-    <View style={styles.formSection}>
-      <Text style={styles.sectionTitle}>Professional Summary</Text>
-      <TextInput
-        style={[styles.input, styles.textArea]}
-        placeholder="Write a brief professional summary (2-3 sentences)"
-        value={resumeData.summary}
-        onChangeText={(text) => setResumeData(prev => ({ ...prev, summary: text }))}
-        multiline
-        numberOfLines={4}
-        placeholderTextColor={colors.textLight}
-      />
-    </View>
-  );
-
-  // Render Experience Section
-  const renderExperienceSection = () => (
-    <View style={styles.formSection}>
-      <Text style={styles.sectionTitle}>Work Experience</Text>
-      
-      {resumeData.experience.map((exp, index) => (
-        <View key={index} style={styles.listItem}>
-          <View style={styles.listItemContent}>
-            <Text style={styles.listItemTitle}>{exp.position}</Text>
-            <Text style={styles.listItemSubtitle}>{exp.company}</Text>
-            <Text style={styles.listItemDate}>{exp.startDate} - {exp.endDate}</Text>
-          </View>
-          <TouchableOpacity onPress={() => removeExperience(index)}>
-            <Ionicons name="trash-outline" size={20} color={colors.error} />
-          </TouchableOpacity>
-        </View>
-      ))}
-      
-      <View style={styles.formCard}>
-        <Text style={styles.formCardTitle}>Add New Experience</Text>
-        
-        <TextInput
-          style={styles.input}
-          placeholder="Position Title *"
-          value={experienceForm.position}
-          onChangeText={(text) => setExperienceForm(prev => ({ ...prev, position: text }))}
-          placeholderTextColor={colors.textLight}
-        />
-        
-        <TextInput
-          style={styles.input}
-          placeholder="Company Name *"
-          value={experienceForm.company}
-          onChangeText={(text) => setExperienceForm(prev => ({ ...prev, company: text }))}
-          placeholderTextColor={colors.textLight}
-        />
-        
-        <View style={styles.row}>
-          <TextInput
-            style={[styles.input, styles.halfInput]}
-            placeholder="Start Date (MM/YYYY)"
-            value={experienceForm.startDate}
-            onChangeText={(text) => setExperienceForm(prev => ({ ...prev, startDate: text }))}
-            placeholderTextColor={colors.textLight}
-          />
-          
-          <TextInput
-            style={[styles.input, styles.halfInput]}
-            placeholder="End Date (MM/YYYY)"
-            value={experienceForm.endDate}
-            onChangeText={(text) => setExperienceForm(prev => ({ ...prev, endDate: text }))}
-            placeholderTextColor={colors.textLight}
-          />
-        </View>
-        
-        <TextInput
-          style={[styles.input, styles.textArea]}
-          placeholder="Job Description & Achievements"
-          value={experienceForm.description}
-          onChangeText={(text) => setExperienceForm(prev => ({ ...prev, description: text }))}
-          multiline
-          numberOfLines={3}
-          placeholderTextColor={colors.textLight}
-        />
-        
-        <LinearGradient colors={selectedTheme.gradient} style={styles.addButton}>
-          <TouchableOpacity 
-            style={styles.addButtonInner}
-            onPress={addExperience}
-          >
-            <Ionicons name="add-circle" size={20} color={colors.textWhite} />
-            <Text style={styles.addButtonText}>Add Experience</Text>
-          </TouchableOpacity>
-        </LinearGradient>
-      </View>
-    </View>
-  );
-
-  // Render Education Section
-  const renderEducationSection = () => (
-    <View style={styles.formSection}>
-      <Text style={styles.sectionTitle}>Education</Text>
-      
-      {resumeData.education.map((edu, index) => (
-        <View key={index} style={styles.listItem}>
-          <View style={styles.listItemContent}>
-            <Text style={styles.listItemTitle}>{edu.degree}</Text>
-            <Text style={styles.listItemSubtitle}>{edu.institution}</Text>
-            <Text style={styles.listItemDate}>{edu.year}</Text>
-          </View>
-          <TouchableOpacity onPress={() => removeEducation(index)}>
-            <Ionicons name="trash-outline" size={20} color={colors.error} />
-          </TouchableOpacity>
-        </View>
-      ))}
-      
-      <View style={styles.formCard}>
-        <Text style={styles.formCardTitle}>Add Education</Text>
-        
-        <TextInput
-          style={styles.input}
-          placeholder="Degree / Certification *"
-          value={educationForm.degree}
-          onChangeText={(text) => setEducationForm(prev => ({ ...prev, degree: text }))}
-          placeholderTextColor={colors.textLight}
-        />
-        
-        <TextInput
-          style={styles.input}
-          placeholder="Institution Name *"
-          value={educationForm.institution}
-          onChangeText={(text) => setEducationForm(prev => ({ ...prev, institution: text }))}
-          placeholderTextColor={colors.textLight}
-        />
-        
-        <TextInput
-          style={styles.input}
-          placeholder="Year (YYYY)"
-          value={educationForm.year}
-          onChangeText={(text) => setEducationForm(prev => ({ ...prev, year: text }))}
-          keyboardType="numeric"
-          placeholderTextColor={colors.textLight}
-        />
-        
-        <LinearGradient colors={selectedTheme.gradient} style={styles.addButton}>
-          <TouchableOpacity 
-            style={styles.addButtonInner}
-            onPress={addEducation}
-          >
-            <Ionicons name="add-circle" size={20} color={colors.textWhite} />
-            <Text style={styles.addButtonText}>Add Education</Text>
-          </TouchableOpacity>
-        </LinearGradient>
-      </View>
-    </View>
-  );
-
-  // Render Skills Section
-  const renderSkillsSection = () => (
-    <View style={styles.formSection}>
-      <Text style={styles.sectionTitle}>Skills</Text>
-      
-      <View style={styles.skillsContainer}>
-        {resumeData.skills.map((skill, index) => (
-          <LinearGradient key={index} colors={selectedTheme.gradient} style={styles.skillChip}>
-            <Text style={styles.skillText}>{skill}</Text>
-            <TouchableOpacity onPress={() => removeSkill(index)}>
-              <Ionicons name="close-circle" size={18} color={colors.textWhite} />
-            </TouchableOpacity>
-          </LinearGradient>
-        ))}
-      </View>
-      
-      <View style={styles.skillInputContainer}>
-        <TextInput
-          style={[styles.input, { flex: 1 }]}
-          placeholder="Add a skill"
-          value={skillInput}
-          onChangeText={setSkillInput}
-          onSubmitEditing={addSkill}
-          placeholderTextColor={colors.textLight}
-        />
-        <LinearGradient colors={selectedTheme.gradient} style={styles.skillAddButton}>
-          <TouchableOpacity 
-            style={{ width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}
-            onPress={addSkill}
-          >
-            <Ionicons name="add" size={24} color={colors.textWhite} />
-          </TouchableOpacity>
-        </LinearGradient>
-      </View>
-    </View>
-  );
-
-  // Render Step Progress Indicator
-  const renderStepProgress = () => {
-    const progressWidth = progressAnim.interpolate({
-      inputRange: [0, STEPS.length - 1],
-      outputRange: ['0%', '100%'],
-    });
-
-    return (
-      <View style={styles.progressContainer}>
-        <View style={styles.progressBar}>
-          <Animated.View style={[styles.progressFill, { width: progressWidth, backgroundColor: selectedTheme.accent }]} />
-        </View>
-        
-        <View style={styles.stepsIndicator}>
-          {STEPS.map((step, index) => {
-            const isCompleted = completedSteps.includes(index) || isStepCompleted(index);
-            const isActive = index === currentStep;
-            const isPast = index < currentStep;
-            
-            return (
-              <TouchableOpacity
-                key={step.id}
-                style={styles.stepIndicatorWrapper}
-                onPress={() => goToStep(index)}
-                disabled={index > currentStep && !isCompleted}
-              >
-                <View
-                  style={[
-                    styles.stepIndicator,
-                    isActive && { backgroundColor: selectedTheme.accent, borderColor: selectedTheme.accent, ...shadows.md },
-                    (isPast || isCompleted) && styles.stepIndicatorCompleted,
-                  ]}
-                >
-                  {isPast || (isCompleted && !isActive) ? (
-                    <Ionicons name="checkmark-circle" size={20} color={colors.textWhite} />
-                  ) : (
-                    <Text
-                      style={[
-                        styles.stepNumber,
-                        isActive && styles.stepNumberActive,
-                      ]}
-                    >
-                      {index + 1}
-                    </Text>
-                  )}
-                </View>
-                <Text style={[
-                  styles.stepLabel,
-                  isActive && { color: selectedTheme.accent, fontWeight: '600' },
-                  (isPast || isCompleted) && styles.stepLabelCompleted,
-                ]}>
-                  {step.title}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </View>
-    );
-  };
-
-  // Render Current Step Content
-  const renderStepContent = () => {
-    const currentStepId = STEPS[currentStep].id;
-    
-    switch (currentStepId) {
-      case 'personal':
-        return renderPersonalInfoSection();
-      case 'summary':
-        return renderSummarySection();
-      case 'experience':
-        return renderExperienceSection();
-      case 'education':
-        return renderEducationSection();
-      case 'skills':
-        return renderSkillsSection();
-      default:
-        return null;
-    }
-  };
 
   return (
     <View style={styles.container}>
@@ -894,120 +154,167 @@ const ResumeBuilderScreen = () => {
       
       {/* Single ScrollView wrapping all content */}
       <ScrollView
-        ref={scrollRef}
         style={styles.mainScrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.mainScrollContent}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Hero Header with Gradient */}
-        <LinearGradient
-          colors={selectedTheme.gradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.heroHeader}
-        >
-          <View style={styles.heroContent}>
-            <View style={styles.heroTextContainer}>
-              <View style={styles.heroTitleRow}>
-                <Ionicons name="document-text" size={28} color={colors.textWhite} style={{ marginRight: 12 }} />
-                <Text style={styles.heroTitle}>Resume Builder</Text>
+        {/* Content Wrapper */}
+        <View style={styles.contentWrapper}>
+          {/* Hero Header */}
+          <View style={styles.heroHeader}>
+            <View style={styles.heroContent}>
+              <View style={styles.heroTextContainer}>
+                <View style={styles.heroTitleRow}>
+                  <View style={styles.heroIconContainer}>
+                    <Ionicons name="document-text" size={28} color={selectedTheme.accent} />
+                  </View>
+                  <View style={styles.heroTextWrapper}>
+                    <Text style={styles.heroTitle}>Resume Builder</Text>
+                    <Text style={styles.heroSubtitle}>
+                      Create a professional resume in minutes. Stand out to employers with our easy-to-use resume builder.
+                    </Text>
+                  </View>
+                </View>
               </View>
-              <Text style={styles.heroSubtitle}>
-                Step {currentStep + 1} of {STEPS.length} - {STEPS[currentStep].description}
-              </Text>
             </View>
-            
-            <TouchableOpacity 
-              style={styles.templateButtonHero}
-              onPress={() => setShowTemplateModal(true)}
+          </View>
+
+          {/* Features Section */}
+          <View style={styles.featuresSection}>
+            <Text style={styles.featuresTitle}>Why Use Our Resume Builder?</Text>
+            <View style={styles.featuresGrid}>
+              <View style={styles.featureCard}>
+                <View style={[styles.featureIconContainer, { backgroundColor: selectedTheme.accent + '15' }]}>
+                  <Ionicons name="checkmark-circle" size={32} color={selectedTheme.accent} />
+                </View>
+                <Text style={styles.featureTitle}>ATS-Friendly</Text>
+                <Text style={styles.featureDescription}>Resumes optimized for Applicant Tracking Systems</Text>
+              </View>
+              
+              <View style={styles.featureCard}>
+                <View style={[styles.featureIconContainer, { backgroundColor: selectedTheme.accent + '15' }]}>
+                  <Ionicons name="brush" size={32} color={selectedTheme.accent} />
+                </View>
+                <Text style={styles.featureTitle}>Multiple Templates</Text>
+                <Text style={styles.featureDescription}>Choose from professionally designed resume templates</Text>
+              </View>
+              
+              <View style={styles.featureCard}>
+                <View style={[styles.featureIconContainer, { backgroundColor: selectedTheme.accent + '15' }]}>
+                  <Ionicons name="color-palette" size={32} color={selectedTheme.accent} />
+                </View>
+                <Text style={styles.featureTitle}>Customizable Themes</Text>
+                <Text style={styles.featureDescription}>Personalize your resume with various color themes</Text>
+              </View>
+              
+              <View style={styles.featureCard}>
+                <View style={[styles.featureIconContainer, { backgroundColor: selectedTheme.accent + '15' }]}>
+                  <Ionicons name="download" size={32} color={selectedTheme.accent} />
+                </View>
+                <Text style={styles.featureTitle}>Easy Export</Text>
+                <Text style={styles.featureDescription}>Download your resume in PDF or Word format instantly</Text>
+              </View>
+              
+              <View style={styles.featureCard}>
+                <View style={[styles.featureIconContainer, { backgroundColor: selectedTheme.accent + '15' }]}>
+                  <Ionicons name="time" size={32} color={selectedTheme.accent} />
+                </View>
+                <Text style={styles.featureTitle}>Quick & Easy</Text>
+                <Text style={styles.featureDescription}>Build a professional resume in just 5 simple steps</Text>
+              </View>
+              
+              <View style={styles.featureCard}>
+                <View style={[styles.featureIconContainer, { backgroundColor: selectedTheme.accent + '15' }]}>
+                  <Ionicons name="shield-checkmark" size={32} color={selectedTheme.accent} />
+                </View>
+                <Text style={styles.featureTitle}>100% Free</Text>
+                <Text style={styles.featureDescription}>No hidden charges, create unlimited resumes</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Stats Section */}
+          <View style={styles.statsSection}>
+            <View style={styles.statCard}>
+              <Text style={styles.statNumber}>50K+</Text>
+              <Text style={styles.statLabel}>Resumes Created</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Text style={styles.statNumber}>98%</Text>
+              <Text style={styles.statLabel}>Success Rate</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Text style={styles.statNumber}>10+</Text>
+              <Text style={styles.statLabel}>Templates</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Text style={styles.statNumber}>5 Min</Text>
+              <Text style={styles.statLabel}>Average Time</Text>
+            </View>
+          </View>
+
+          {/* Testimonials Section */}
+          <View style={styles.testimonialsSection}>
+            <Text style={styles.testimonialsTitle}>Why our customers love us</Text>
+            <View style={styles.testimonialsGrid}>
+              {TESTIMONIALS[currentTestimonialPage]?.map((testimonial) => (
+                <View key={testimonial.id} style={styles.testimonialCard}>
+                  <View style={styles.testimonialStars}>
+                    {renderStars(testimonial.rating)}
+                  </View>
+                  <Text style={styles.testimonialQuote}>"{testimonial.quote}"</Text>
+                  <View style={styles.testimonialFooter}>
+                    <View style={[styles.testimonialAvatar, { backgroundColor: testimonial.avatarColor }]}>
+                      <Text style={styles.testimonialAvatarText}>{getInitials(testimonial.name)}</Text>
+                    </View>
+                    <View style={styles.testimonialInfo}>
+                      <Text style={styles.testimonialName}>{testimonial.name}</Text>
+                      <Text style={styles.testimonialRole}>{testimonial.role}</Text>
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </View>
+            <View style={styles.testimonialsPagination}>
+              <TouchableOpacity
+                style={[styles.paginationButton, currentTestimonialPage === 0 && styles.paginationButtonDisabled]}
+                onPress={() => setCurrentTestimonialPage(Math.max(0, currentTestimonialPage - 1))}
+                disabled={currentTestimonialPage === 0}
+              >
+                <Ionicons name="chevron-back" size={20} color={currentTestimonialPage === 0 ? colors.textLight : colors.text} />
+              </TouchableOpacity>
+              <Text style={styles.paginationText}>
+                {currentTestimonialPage + 1}/{TESTIMONIALS.length}
+              </Text>
+              <TouchableOpacity
+                style={[styles.paginationButton, currentTestimonialPage === TESTIMONIALS.length - 1 && styles.paginationButtonDisabled]}
+                onPress={() => setCurrentTestimonialPage(Math.min(TESTIMONIALS.length - 1, currentTestimonialPage + 1))}
+                disabled={currentTestimonialPage === TESTIMONIALS.length - 1}
+              >
+                <Ionicons name="chevron-forward" size={20} color={currentTestimonialPage === TESTIMONIALS.length - 1 ? colors.textLight : colors.text} />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={styles.createResumeSection}>
+            <TouchableOpacity
+              style={styles.createResumeButton}
+              onPress={() => {
+                navigation.navigate('CreateResume');
+              }}
             >
               <LinearGradient
-                colors={['rgba(255, 255, 255, 0.3)', 'rgba(255, 255, 255, 0.1)']}
-                style={styles.themeButtonGradient}
+                colors={selectedTheme.gradient}
+                style={styles.createResumeButtonGradient}
               >
-                <Ionicons name="color-palette" size={24} color={colors.textWhite} />
+                <Ionicons name="add-circle" size={28} color={colors.textWhite} />
+                <Text style={styles.createResumeButtonText}>Create Resume</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
-
-          {/* Current Template & Theme Badges */}
-          <View style={styles.badgesContainer}>
-            <View style={[styles.templateBadge, { borderColor: selectedTheme.accent }]}>
-              <Ionicons name="document-text" size={14} color={selectedTheme.accent} />
-              <Text style={[styles.templateBadgeText, { color: selectedTheme.accent }]}>{selectedTemplate.name}</Text>
-            </View>
-            <View style={[styles.themeBadge, { backgroundColor: selectedTheme.accent + '20' }]}>
-              <Text style={styles.themeBadgeIcon}>{selectedTheme.icon}</Text>
-              <Text style={[styles.themeBadgeText, { color: selectedTheme.accent }]}>{selectedTheme.name}</Text>
-            </View>
-          </View>
-        </LinearGradient>
-
-        {/* Step Progress */}
-        {renderStepProgress()}
-
-        {/* Form Content */}
-        <View style={styles.contentWrapper}>
-          <View style={styles.stepContentCard}>
-            <View style={styles.stepHeader}>
-              <LinearGradient
-                colors={[selectedTheme.accent + '20', selectedTheme.accent + '10']}
-                style={styles.stepIconContainer}
-              >
-                <Ionicons name={STEPS[currentStep].icon} size={32} color={selectedTheme.accent} />
-              </LinearGradient>
-              <View style={styles.stepHeaderText}>
-                <Text style={styles.stepTitle}>{STEPS[currentStep].title}</Text>
-                <Text style={styles.stepDescription}>{STEPS[currentStep].description}</Text>
-              </View>
-            </View>
-
-            {renderStepContent()}
-          </View>
-        </View>
-
-        {/* Navigation Buttons */}
-        <View style={styles.navigationContainer}>
-          <View style={styles.navigationButtons}>
-            {currentStep > 0 && (
-              <TouchableOpacity
-                style={[styles.navButton, { borderColor: selectedTheme.accent }]}
-                onPress={prevStep}
-              >
-                <Ionicons name="arrow-back" size={20} color={selectedTheme.accent} />
-                <Text style={[styles.navButtonTextSecondary, { color: selectedTheme.accent }]}>Previous</Text>
-              </TouchableOpacity>
-            )}
-
-            {currentStep < STEPS.length - 1 ? (
-              <LinearGradient
-                colors={selectedTheme.gradient}
-                style={{ flex: 1, borderRadius: borderRadius.lg }}
-              >
-                <TouchableOpacity
-                  style={styles.navButtonGradient}
-                  onPress={handleNext}
-                >
-                  <Text style={styles.navButtonTextPrimary}>Next Step</Text>
-                  <Ionicons name="arrow-forward" size={20} color={colors.textWhite} />
-                </TouchableOpacity>
-              </LinearGradient>
-            ) : (
-              <TouchableOpacity
-                style={[styles.navButton, styles.navButtonSuccess]}
-                onPress={() => setShowPreview(true)}
-              >
-                <Ionicons name="checkmark-circle" size={20} color={colors.textWhite} />
-                <Text style={styles.navButtonTextPrimary}>Preview & Export</Text>
-              </TouchableOpacity>
-            )}
-          </View>
         </View>
       </ScrollView>
-
-      {renderTemplateModal()}
-      {renderPreviewModal()}
     </View>
   );
 };
@@ -1022,17 +329,26 @@ const styles = StyleSheet.create({
   },
   mainScrollContent: {
     flexGrow: 1,
+    padding: isWeb ? spacing.xl : spacing.lg,
+    paddingBottom: spacing.xxl,
+    ...(isWeb && {
+      alignItems: 'center',
+    }),
   },
   contentWrapper: {
-    flex: 1,
+    width: '100%',
+    maxWidth: isWeb ? 1000 : '100%',
   },
   
   // Hero Header Styles
   heroHeader: {
-    paddingTop: spacing.lg,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.xl,
-    ...shadows.lg,
+    backgroundColor: colors.cardBackground,
+    borderRadius: borderRadius.xl,
+    padding: spacing.xl,
+    marginBottom: spacing.lg,
+    ...shadows.md,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
   },
   heroContent: {
     flexDirection: 'row',
@@ -1046,32 +362,34 @@ const styles = StyleSheet.create({
   heroTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: spacing.md,
+    flex: 1,
+  },
+  heroIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: borderRadius.xl,
+    backgroundColor: colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    ...shadows.sm,
+  },
+  heroTextWrapper: {
+    flex: 1,
+    gap: spacing.xs,
   },
   heroTitle: {
-    ...typography.h2,
-    color: colors.textWhite,
+    ...typography.h1,
+    color: colors.text,
     fontWeight: '800',
-    marginBottom: spacing.xs,
+    fontSize: isWeb ? 36 : 32,
   },
   heroSubtitle: {
     ...typography.body1,
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: colors.textSecondary,
     fontWeight: '500',
-  },
-  templateButtonHero: {
-    width: 48,
-    height: 48,
-    borderRadius: borderRadius.round,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  themeButtonGradient: {
-    width: '100%',
-    height: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   badgesContainer: {
     flexDirection: 'row',
@@ -1079,493 +397,239 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     marginTop: spacing.sm,
   },
-  templateBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.textWhite,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.round,
-    borderWidth: 2,
-    gap: spacing.xs,
-  },
-  templateBadgeText: {
-    ...typography.caption,
-    fontWeight: '600',
-  },
-  themeBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.round,
-    gap: spacing.xs,
-  },
-  themeBadgeIcon: {
-    fontSize: 16,
-  },
-  themeBadgeText: {
-    ...typography.caption,
-    fontWeight: '600',
-  },
-
-  // Progress Indicator Styles
-  progressContainer: {
-    backgroundColor: colors.cardBackground,
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.md,
-    ...shadows.sm,
-  },
-  progressBar: {
-    height: 4,
-    backgroundColor: colors.borderLight,
-    borderRadius: borderRadius.sm,
-    marginBottom: spacing.lg,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: borderRadius.sm,
-  },
-  stepsIndicator: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  stepIndicatorWrapper: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  stepIndicator: {
-    width: 36,
-    height: 36,
-    borderRadius: borderRadius.round,
-    backgroundColor: colors.background,
-    borderWidth: 2,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.xs,
-  },
-  stepIndicatorCompleted: {
-    backgroundColor: colors.success,
-    borderColor: colors.success,
-  },
-  stepNumber: {
-    ...typography.body2,
-    color: colors.textSecondary,
-    fontWeight: '600',
-  },
-  stepNumberActive: {
-    color: colors.textWhite,
-  },
-  stepLabel: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginTop: spacing.xs,
-  },
-  stepLabelActive: {
-    color: colors.primary,
-    fontWeight: '600',
-  },
-  stepLabelCompleted: {
-    color: colors.success,
-    fontWeight: '600',
-  },
-
-  // Content Styles
-  stepContentCard: {
-    margin: spacing.lg,
+  
+  // Features Section
+  featuresSection: {
     backgroundColor: colors.cardBackground,
     borderRadius: borderRadius.xl,
-    padding: spacing.lg,
-    ...shadows.md,
-  },
-  stepHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.xl,
-    paddingBottom: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
-  },
-  stepIconContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: borderRadius.lg,
-    backgroundColor: colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.md,
-  },
-  stepHeaderText: {
-    flex: 1,
-  },
-  stepTitle: {
-    ...typography.h4,
-    color: colors.text,
-    fontWeight: '700',
-    marginBottom: spacing.xs,
-  },
-  stepDescription: {
-    ...typography.body2,
-    color: colors.textSecondary,
-  },
-  formSection: {
+    padding: spacing.xl,
     marginBottom: spacing.lg,
-  },
-  sectionTitle: {
-    ...typography.h5,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: spacing.md,
-  },
-  input: {
-    backgroundColor: colors.background,
-    borderRadius: borderRadius.lg,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    ...typography.body1,
-    color: colors.text,
-    borderWidth: 2,
-    borderColor: colors.border,
-    marginBottom: spacing.md,
-    ...shadows.xs,
-  },
-  textArea: {
-    minHeight: 120,
-    textAlignVertical: 'top',
-    paddingTop: spacing.md,
-  },
-  row: {
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  halfInput: {
-    flex: 1,
-  },
-  formCard: {
-    backgroundColor: colors.background,
-    padding: spacing.lg,
-    borderRadius: borderRadius.xl,
-    marginTop: spacing.md,
-    borderWidth: 2,
-    borderColor: colors.borderLight,
-  },
-  formCardTitle: {
-    ...typography.h6,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: spacing.md,
-  },
-  addButton: {
-    paddingVertical: spacing.lg,
-    borderRadius: borderRadius.lg,
-    marginTop: spacing.md,
     ...shadows.md,
-  },
-  addButtonInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-  },
-  addButtonText: {
-    color: colors.textWhite,
-    fontWeight: '700',
-    ...typography.body1,
-  },
-  listItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.background,
-    padding: spacing.lg,
-    borderRadius: borderRadius.lg,
-    marginBottom: spacing.md,
     borderWidth: 1,
     borderColor: colors.borderLight,
   },
-  listItemContent: {
-    flex: 1,
-  },
-  listItemTitle: {
-    ...typography.body1,
-    fontWeight: '700',
+  featuresTitle: {
+    ...typography.h3,
     color: colors.text,
-    marginBottom: spacing.xs,
+    fontWeight: '700',
+    marginBottom: spacing.xl,
+    textAlign: 'center',
+    fontSize: isWeb ? 28 : 24,
   },
-  listItemSubtitle: {
-    ...typography.body2,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
-  },
-  listItemDate: {
-    ...typography.caption,
-    color: colors.textLight,
-    marginTop: spacing.xs,
-  },
-  skillsContainer: {
+  featuresGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
+    gap: spacing.lg,
+    justifyContent: 'space-between',
   },
-  skillChip: {
-    flexDirection: 'row',
+  featureCard: {
+    width: isWeb ? '30%' : '48%',
+    minWidth: isWeb ? 280 : 'auto',
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.xl,
+    padding: spacing.lg,
     alignItems: 'center',
-    gap: spacing.xs,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.round,
+    ...shadows.sm,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  featureIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: borderRadius.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
     ...shadows.sm,
   },
-  skillText: {
-    color: colors.textWhite,
+  featureTitle: {
+    ...typography.h6,
+    color: colors.text,
+    fontWeight: '700',
+    marginBottom: spacing.xs,
+    textAlign: 'center',
+    fontSize: 16,
+  },
+  featureDescription: {
     ...typography.body2,
-    fontWeight: '600',
-  },
-  skillInputContainer: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    alignItems: 'center',
-  },
-  skillAddButton: {
-    width: 56,
-    height: 56,
-    borderRadius: borderRadius.lg,
-    ...shadows.md,
-  },
-
-  // Navigation Button Styles
-  navigationContainer: {
-    backgroundColor: colors.cardBackground,
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.lg,
-    marginTop: spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderLight,
-  },
-  navigationButtons: {
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  navButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.lg,
-    borderRadius: borderRadius.lg,
-    backgroundColor: colors.background,
-    borderWidth: 2,
-  },
-  navButtonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.lg,
-  },
-  navButtonSuccess: {
-    backgroundColor: colors.success,
-    borderColor: colors.success,
-    ...shadows.md,
-  },
-  navButtonTextSecondary: {
-    ...typography.button,
-    color: colors.primary,
-    fontWeight: '700',
-  },
-  navButtonTextPrimary: {
-    ...typography.button,
-    color: colors.textWhite,
-    fontWeight: '700',
+    color: colors.textSecondary,
+    textAlign: 'center',
+    fontSize: 13,
+    lineHeight: 20,
   },
   
-  // Modal Styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: colors.cardBackground,
-    borderTopLeftRadius: borderRadius.xl,
-    borderTopRightRadius: borderRadius.xl,
-    maxHeight: '80%',
-    ...shadows.lg,
-  },
-  modalHeader: {
+  // Stats Section
+  statsSection: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: spacing.xl,
-    borderBottomWidth: 2,
-    borderBottomColor: colors.borderLight,
-  },
-  modalTitle: {
-    ...typography.h4,
-    fontWeight: '800',
-    color: colors.text,
-  },
-  modalSection: {
-    marginBottom: spacing.xl,
-  },
-  modalSectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-    paddingHorizontal: spacing.lg,
-  },
-  modalSectionTitle: {
-    ...typography.h6,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  themesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.lg,
+    gap: spacing.md,
     marginBottom: spacing.lg,
+    flexWrap: 'wrap',
   },
-  themeCard: {
-    width: '30%',
-    minWidth: 80,
-    borderWidth: 2,
-    borderColor: 'transparent',
-    borderRadius: borderRadius.lg,
-    overflow: 'hidden',
-    ...shadows.xs,
-  },
-  themeGradient: {
-    width: '100%',
-    aspectRatio: 1,
+  statCard: {
+    flex: 1,
+    minWidth: isWeb ? 200 : '45%',
+    backgroundColor: colors.cardBackground,
+    borderRadius: borderRadius.xl,
+    padding: spacing.lg,
     alignItems: 'center',
-    justifyContent: 'center',
+    ...shadows.md,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
   },
-  themeIcon: {
-    fontSize: 32,
+  statNumber: {
+    ...typography.h1,
+    color: colors.success,
+    fontWeight: '800',
+    fontSize: isWeb ? 40 : 36,
+    marginBottom: spacing.xs,
   },
-  themeName: {
-    ...typography.caption,
-    color: colors.text,
+  statLabel: {
+    ...typography.body2,
+    color: colors.textSecondary,
     fontWeight: '600',
     textAlign: 'center',
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.background,
-  },
-  checkmarkBadge: {
-    position: 'absolute',
-    top: 4,
-    right: 4,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadows.sm,
-  },
-  checkmarkBadgeSmall: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  templateList: {
-    padding: spacing.lg,
-  },
-  templateItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing.lg,
-    borderRadius: borderRadius.lg,
-    marginBottom: spacing.md,
-    backgroundColor: colors.background,
-    borderWidth: 2,
-    borderColor: 'transparent',
-    ...shadows.xs,
-  },
-  templateItemSelected: {
-    borderColor: colors.primary,
-    backgroundColor: colors.background,
-    ...shadows.md,
-  },
-  templateIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: borderRadius.lg,
-    backgroundColor: colors.cardBackground,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.lg,
-    ...shadows.sm,
-  },
-  templateInfo: {
-    flex: 1,
-  },
-  templateName: {
-    ...typography.h6,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: spacing.xs,
-  },
-  templateCategory: {
-    ...typography.body2,
-    color: colors.primary,
-    marginTop: spacing.xs,
-    fontWeight: '600',
-  },
-  templateDescription: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
+    fontSize: 14,
   },
   
-  // Preview Modal Styles
-  previewContainer: {
-    flex: 1,
-    backgroundColor: colors.background,
+  // Create Resume Section
+  createResumeSection: {
+    marginTop: spacing.xl,
+    marginBottom: spacing.lg,
+    alignItems: 'center',
   },
-  previewHeader: {
+  createResumeButton: {
+    width: '100%',
+    maxWidth: isWeb ? 400 : '100%',
+    borderRadius: borderRadius.xl,
+    overflow: 'hidden',
+    ...shadows.lg,
+  },
+  createResumeButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: spacing.xl,
-    backgroundColor: colors.cardBackground,
-    ...shadows.md,
-  },
-  previewTitle: {
-    ...typography.h4,
-    fontWeight: '800',
-    color: colors.text,
-  },
-  previewActions: {
-    flexDirection: 'row',
+    justifyContent: 'center',
     gap: spacing.md,
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.xxl,
   },
-  previewButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.lg,
-    ...shadows.md,
-  },
-  previewButtonText: {
+  createResumeButtonText: {
+    ...typography.h5,
     color: colors.textWhite,
     fontWeight: '700',
-    ...typography.body2,
+    fontSize: 20,
   },
-  previewScroll: {
+  
+  // Testimonials Section
+  testimonialsSection: {
+    backgroundColor: colors.cardBackground,
+    borderRadius: borderRadius.xl,
+    padding: spacing.xl,
+    marginBottom: spacing.lg,
+    ...shadows.md,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  testimonialsTitle: {
+    ...typography.h3,
+    color: colors.text,
+    fontWeight: '700',
+    marginBottom: spacing.xl,
+    textAlign: 'center',
+    fontSize: isWeb ? 28 : 24,
+  },
+  testimonialsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.lg,
+    justifyContent: 'space-between',
+    marginBottom: spacing.xl,
+  },
+  testimonialCard: {
     flex: 1,
+    minWidth: isWeb ? 280 : '100%',
     backgroundColor: colors.background,
+    borderRadius: borderRadius.xl,
+    padding: spacing.lg,
+    ...shadows.sm,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  testimonialStars: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+    marginBottom: spacing.md,
+  },
+  testimonialQuote: {
+    ...typography.body1,
+    color: colors.text,
+    lineHeight: 24,
+    marginBottom: spacing.lg,
+    fontSize: 14,
+    fontStyle: 'italic',
+  },
+  testimonialFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  testimonialAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.sm,
+  },
+  testimonialAvatarText: {
+    ...typography.h6,
+    color: colors.textWhite,
+    fontWeight: '700',
+    fontSize: 18,
+  },
+  testimonialInfo: {
+    flex: 1,
+  },
+  testimonialName: {
+    ...typography.body1,
+    color: colors.text,
+    fontWeight: '700',
+    marginBottom: spacing.xs,
+    fontSize: 15,
+  },
+  testimonialRole: {
+    ...typography.body2,
+    color: colors.textSecondary,
+    fontSize: 13,
+  },
+  testimonialsPagination: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.md,
+    marginTop: spacing.md,
+  },
+  paginationButton: {
+    width: 40,
+    height: 40,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    ...shadows.xs,
+  },
+  paginationButtonDisabled: {
+    opacity: 0.5,
+  },
+  paginationText: {
+    ...typography.body2,
+    color: colors.text,
+    fontWeight: '600',
+    minWidth: 40,
+    textAlign: 'center',
   },
 });
 

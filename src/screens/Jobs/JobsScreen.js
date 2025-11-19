@@ -354,38 +354,46 @@ const JobsScreen = ({ route }) => {
   };
 
   const renderHeroSection = () => (
-    <LinearGradient
-      colors={['#667eea', '#764ba2']}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={styles.hero}
-    >
+    <View style={styles.hero}>
       <Text style={styles.heroTitle}>{activeFilter || 'All Jobs'}</Text>
       <Text style={styles.heroSubtitle}>
         {activeFilter 
           ? `Showing ${jobs.length} job${jobs.length !== 1 ? 's' : ''} matching your criteria`
           : 'Discover opportunities from top companies and consultancies'}
       </Text>
+      <View style={styles.heroStatsRow}>
+        <View style={styles.heroStatCard}>
+          <Text style={styles.heroStatValue}>{jobs.length}</Text>
+          <Text style={styles.heroStatLabel}>Open roles</Text>
+        </View>
+        <View style={styles.heroStatCard}>
+          <Text style={styles.heroStatValue}>
+            {jobs.filter(job => job.workMode?.toLowerCase() === 'wfh').length}
+          </Text>
+          <Text style={styles.heroStatLabel}>Remote friendly</Text>
+        </View>
+        <View style={styles.heroStatCard}>
+          <Text style={styles.heroStatValue}>
+            {jobs.filter(job => job.jobType?.toLowerCase().includes('intern')).length}
+          </Text>
+          <Text style={styles.heroStatLabel}>Internships</Text>
+        </View>
+      </View>
       {activeFilter && (
         <TouchableOpacity 
           style={styles.clearFilterButton}
           onPress={clearAllFilters}
           activeOpacity={0.8}
         >
-          <Ionicons name="close-circle" size={20} color={colors.textWhite} />
+          <Ionicons name="close-circle" size={20} color={colors.text} />
           <Text style={styles.clearFilterText}>Clear Filter</Text>
         </TouchableOpacity>
       )}
-    </LinearGradient>
+    </View>
   );
 
   const renderSearchBar = () => (
-    <LinearGradient
-      colors={['#667eea', '#764ba2']}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={styles.searchContainerGradient}
-    >
+      <View style={styles.searchContainerGradient}>
       <View style={styles.searchContainer}>
       <View style={styles.searchRow}>
         <View style={styles.searchInputWrapper}>
@@ -465,8 +473,38 @@ const JobsScreen = ({ route }) => {
           <Text style={styles.searchButtonText}>Search</Text>
         </TouchableOpacity>
       </View>
+        <View style={styles.quickFilters}>
+          {[
+            { id: 'all', label: 'Trending roles', icon: 'flame' },
+            { id: 'remote', label: 'Remote friendly', icon: 'home' },
+            { id: 'freshers', label: 'Freshers', icon: 'sparkles' },
+            { id: 'highPay', label: 'High paying', icon: 'cash' },
+          ].map(filter => (
+            <TouchableOpacity
+              key={filter.id}
+              style={styles.quickFilterChip}
+              onPress={() => {
+                if (filter.id === 'remote') {
+                  setWorkMode(['wfh']);
+                } else if (filter.id === 'freshers') {
+                  setSelectedExperience('Fresher (0-1 year)');
+                } else if (filter.id === 'highPay') {
+                  setSortBy('salary-high');
+                }
+                handleSearch();
+              }}
+            >
+              <Ionicons
+                name={filter.icon}
+                size={14}
+                color="#4338CA"
+              />
+              <Text style={styles.quickFilterText}>{filter.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
-    </LinearGradient>
+    </View>
   );
 
   const renderSidebarFilters = () => (
@@ -716,7 +754,9 @@ const JobsScreen = ({ route }) => {
           
           {jobs.map((job, index) => (
             <React.Fragment key={job._id}>
-              <JobCard job={job} />
+              <View style={styles.jobCardWrapper}>
+                <JobCard job={job} />
+              </View>
               {/* Show ad after every 5 jobs */}
               {(index + 1) % 5 === 0 && index < jobs.length - 1 && (
                 <AdvertisementWidget 
@@ -892,27 +932,31 @@ const styles = StyleSheet.create({
     paddingVertical: isMobile ? spacing.xl : spacing.xxl,
     paddingHorizontal: isMobile ? spacing.md : spacing.lg,
     alignItems: 'center',
+    borderBottomLeftRadius: borderRadius.xl,
+    borderBottomRightRadius: borderRadius.xl,
+    ...(isWeb && {
+      marginHorizontal: spacing.lg,
+      marginBottom: spacing.lg,
+    }),
   },
   searchContainerGradient: {
-    paddingTop: isPhone ? spacing.md : (isMobile ? spacing.lg : isTablet ? spacing.lg : spacing.xl),
-    position: 'relative',
-    zIndex: 1,
-    overflow: 'visible',
-    ...(isWeb && {
-      overflow: 'visible',
-    }),
+    marginHorizontal: isPhone ? spacing.sm : spacing.lg,
+    marginTop: -spacing.xl,
+    borderRadius: borderRadius.xl,
+    ...shadows.lg,
+    padding: 1,
   },
   heroTitle: {
     fontSize: isMobile ? 26 : (isTablet ? 32 : 42),
     fontWeight: '700',
-    color: colors.textWhite,
+    color: colors.text,
     textAlign: 'center',
     marginBottom: spacing.sm,
     paddingHorizontal: isMobile ? spacing.md : 0,
   },
   heroSubtitle: {
     fontSize: isWeb ? 18 : 16,
-    color: colors.textWhite,
+    color: colors.textSecondary,
     textAlign: 'center',
     opacity: 0.9,
     marginBottom: spacing.sm,
@@ -921,29 +965,54 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.md,
     marginTop: spacing.md,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: colors.border,
+    backgroundColor: colors.cardBackground,
   },
   clearFilterText: {
-    color: colors.textWhite,
+    color: colors.text,
     fontWeight: '600',
     fontSize: 14,
   },
+  heroStatsRow: {
+    flexDirection: isPhone ? 'column' : 'row',
+    gap: spacing.md,
+    width: '100%',
+    maxWidth: 900,
+    marginBottom: spacing.lg,
+  },
+  heroStatCard: {
+    flex: 1,
+    backgroundColor: colors.cardBackground,
+    borderRadius: borderRadius.lg,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.sm,
+  },
+  heroStatValue: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  heroStatLabel: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginTop: spacing.xs / 2,
+  },
   searchContainer: {
+    backgroundColor: colors.cardBackground,
+    borderRadius: borderRadius.xl,
     padding: isPhone ? spacing.sm : (isMobile ? spacing.md : isTablet ? spacing.lg : spacing.xl),
     gap: isPhone ? spacing.sm : spacing.md,
     maxWidth: isDesktop ? 1400 : '100%',
     alignSelf: 'center',
     width: '100%',
-    overflow: 'visible',
-    ...(isWeb && {
-      overflow: 'visible',
-    }),
   },
   searchRow: {
     flexDirection: isPhone ? 'column' : (isMobile ? 'column' : 'row'),
@@ -1103,6 +1172,27 @@ const styles = StyleSheet.create({
     color: colors.textWhite,
     fontWeight: '600',
   },
+  quickFilters: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  quickFilterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs / 1.5,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    backgroundColor: colors.background,
+  },
+  quickFilterText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.text,
+  },
   contentContainer: {
     flexDirection: isWeb && width > 768 ? 'row' : 'column',
     paddingVertical: spacing.lg,
@@ -1113,16 +1203,22 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   sidebarWrapper: {
-    width: isWeb && width > 768 ? 280 : '100%',
+    width: isWeb && width > 768 ? 300 : '100%',
+    marginRight: isWeb && width > 768 ? spacing.lg : 0,
+    ...(isWeb && width > 768 && {
+      position: 'sticky',
+      top: spacing.xl,
+      alignSelf: 'flex-start',
+    }),
   },
   sidebar: {
     backgroundColor: colors.cardBackground,
-    borderTopRightRadius: borderRadius.lg,
-    borderBottomRightRadius: borderRadius.lg,
-    borderTopLeftRadius: 0,
-    borderBottomLeftRadius: 0,
+    borderRadius: borderRadius.xl,
     padding: spacing.lg,
-    ...shadows.sm,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    ...shadows.md,
+    gap: spacing.lg,
   },
   filterHeader: {
     flexDirection: 'row',
@@ -1131,7 +1227,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
     paddingBottom: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.borderLight,
   },
   filterTitle: {
     ...typography.h5,
@@ -1144,10 +1240,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   filterSection: {
-    marginBottom: spacing.lg,
-    paddingBottom: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
+    marginBottom: spacing.md,
+    padding: spacing.md,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    backgroundColor: colors.background,
   },
   searchInputContainer: {
     flexDirection: 'row',
@@ -1278,8 +1376,18 @@ const styles = StyleSheet.create({
   },
   jobsListContainer: {
     flex: 1,
-    paddingLeft: isWeb && width > 768 ? spacing.md : spacing.lg,
-    paddingRight: isWeb && width > 768 ? spacing.lg : spacing.lg,
+    paddingLeft: isWeb && width > 768 ? spacing.lg : spacing.md,
+    paddingRight: isWeb && width > 768 ? spacing.lg : spacing.md,
+    gap: spacing.md,
+    ...(isWeb && {
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+    }),
+  },
+  jobCardWrapper: {
+    width: '100%',
+    maxWidth: 900,
   },
   resultsCount: {
     ...typography.body1,

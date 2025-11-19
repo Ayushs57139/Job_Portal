@@ -1,4 +1,5 @@
 export default {
+  owner: "ayushrex8",
   name: "Free Job Wala",
   slug: "free-job-wala",
   version: "1.0.0",
@@ -15,15 +16,21 @@ export default {
   ],
   extra: {
     eas: {
-      projectId: "6db1e9a9-6102-41b5-a4a3-ec9a3fe63034"
+      projectId: "d4f855f4-7d0a-4c10-8b02-0c57b57d6de2"
     },
     // API Configuration
-    // Production: Set EXPO_PUBLIC_API_HOST to your production API domain (e.g., "api.yourdomain.com")
-    // Development: Set to your computer's IP address for Expo Go on physical device
-    // Find your IP: Windows (ipconfig), Mac/Linux (ifconfig)
-    // Example: if Expo shows exp://192.168.1.19:8081, set apiHost to "192.168.1.19"
-    apiHost: process.env.EXPO_PUBLIC_API_HOST || (process.env.NODE_ENV === 'production' ? "api.yourdomain.com" : "192.168.1.19"),
-    apiPort: process.env.EXPO_PUBLIC_API_PORT || (process.env.NODE_ENV === 'production' ? "443" : "5000")
+    // Production: use your live backend at https://admin.freejobwala.org
+    // Development: use your local machine IP so Expo Go on device can reach it
+    apiHost:
+      process.env.EXPO_PUBLIC_API_HOST ||
+      (process.env.NODE_ENV === 'production'
+        ? "admin.freejobwala.org"
+        : "192.168.1.19"),
+    apiPort:
+      process.env.EXPO_PUBLIC_API_PORT ||
+      (process.env.NODE_ENV === 'production'
+        ? "443"
+        : "5000")
   },
   ios: {
     supportsTablet: true,

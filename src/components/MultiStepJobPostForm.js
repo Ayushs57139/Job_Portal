@@ -601,9 +601,15 @@ const MultiStepJobPostForm = ({ onSubmit, initialData = {}, onCancel, onChange, 
               index === currentStep && styles.stepNumberCircleActive,
               index < currentStep && styles.stepNumberCircleCompleted,
             ]}>
-              <Text style={styles.stepNumberText}>{index + 1}</Text>
+              <Text style={[
+                styles.stepNumberText,
+                (index === currentStep || index < currentStep) && styles.stepNumberTextActive
+              ]}>{index + 1}</Text>
             </View>
-            <Text style={styles.stepNumberLabel} numberOfLines={1}>
+            <Text style={[
+              styles.stepNumberLabel,
+              index === currentStep && styles.stepNumberLabelActive
+            ]} numberOfLines={1}>
               {step.title}
             </Text>
           </TouchableOpacity>
@@ -634,7 +640,7 @@ const MultiStepJobPostForm = ({ onSubmit, initialData = {}, onCancel, onChange, 
             </View>
             {onCancel && (
               <TouchableOpacity onPress={onCancel} style={styles.closeButton}>
-                <Ionicons name="close" size={24} color={colors.text} />
+                <Ionicons name="close" size={24} color="#64748b" />
               </TouchableOpacity>
             )}
           </View>
@@ -653,7 +659,7 @@ const MultiStepJobPostForm = ({ onSubmit, initialData = {}, onCancel, onChange, 
                   style={styles.secondaryButton}
                   onPress={handlePrevious}
                 >
-                  <Ionicons name="arrow-back" size={20} color={colors.primary} />
+                  <Ionicons name="arrow-back" size={20} color="#4f46e5" />
                   <Text style={styles.secondaryButtonText}>Previous</Text>
                 </TouchableOpacity>
               )}
@@ -676,7 +682,7 @@ const MultiStepJobPostForm = ({ onSubmit, initialData = {}, onCancel, onChange, 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: '#f8fafc',
   },
   keyboardView: {
     flex: 1,
@@ -691,125 +697,162 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    padding: spacing.lg,
-    backgroundColor: colors.cardBackground,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    ...shadows.sm,
+    padding: spacing.xl,
+    paddingTop: spacing.xl + 8,
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 0,
+    ...shadows.md,
   },
   headerContent: {
     flex: 1,
   },
   headerTitle: {
     ...typography.h4,
-    color: colors.text,
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#1e293b',
     marginBottom: spacing.xs,
+    letterSpacing: -0.5,
   },
   headerSubtitle: {
     ...typography.caption,
-    color: colors.textSecondary,
+    fontSize: 14,
+    color: '#64748b',
+    fontWeight: '500',
   },
   closeButton: {
     padding: spacing.xs,
   },
   progressContainer: {
-    padding: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.md,
-    backgroundColor: colors.cardBackground,
+    padding: spacing.xl,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.lg,
+    backgroundColor: '#f8fafc',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
   },
   progressBar: {
-    height: 6,
-    backgroundColor: colors.borderLight,
+    height: 8,
+    backgroundColor: '#e2e8f0',
     borderRadius: borderRadius.full,
     overflow: 'hidden',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
+    ...shadows.sm,
   },
   progressFill: {
     height: '100%',
-    backgroundColor: colors.primary,
+    backgroundColor: '#4f46e5',
     borderRadius: borderRadius.full,
   },
   progressText: {
     ...typography.caption,
-    color: colors.textSecondary,
+    fontSize: 13,
+    color: '#64748b',
     textAlign: 'center',
+    fontWeight: '600',
   },
   stepNavigationContainer: {
-    backgroundColor: colors.cardBackground,
+    backgroundColor: '#ffffff',
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: '#e2e8f0',
+    ...shadows.sm,
   },
   stepNavigationContent: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
+    gap: spacing.md,
   },
   stepNumberButton: {
     alignItems: 'center',
     marginHorizontal: spacing.xs,
-    minWidth: 70,
+    minWidth: 80,
   },
   stepNumberCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.borderLight,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#f1f5f9',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: spacing.xs,
-    borderWidth: 2,
-    borderColor: colors.border,
+    marginBottom: spacing.sm,
+    borderWidth: 3,
+    borderColor: '#cbd5e1',
+    ...shadows.sm,
   },
   stepNumberCircleActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+    backgroundColor: '#4f46e5',
+    borderColor: '#4f46e5',
+    ...shadows.md,
   },
   stepNumberCircleCompleted: {
-    backgroundColor: colors.success,
-    borderColor: colors.success,
+    backgroundColor: '#10b981',
+    borderColor: '#10b981',
   },
   stepNumberText: {
     ...typography.button,
-    color: colors.text,
+    color: '#64748b',
     fontSize: 16,
+    fontWeight: '700',
+  },
+  stepNumberTextActive: {
+    color: '#ffffff',
   },
   stepNumberLabel: {
     ...typography.caption,
-    color: colors.textSecondary,
+    color: '#64748b',
     textAlign: 'center',
     fontSize: 10,
+    fontWeight: '500',
+  },
+  stepNumberLabelActive: {
+    color: '#4f46e5',
+    fontWeight: '700',
   },
   formContainer: {
-    padding: spacing.lg,
-    backgroundColor: colors.cardBackground,
+    padding: spacing.xl,
+    backgroundColor: '#ffffff',
+    marginTop: spacing.md,
+    marginHorizontal: spacing.lg,
+    borderRadius: 16,
+    ...shadows.sm,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
   },
   footer: {
-    padding: spacing.lg,
-    backgroundColor: colors.cardBackground,
-    marginTop: spacing.md,
+    padding: spacing.xl,
+    backgroundColor: '#ffffff',
+    marginTop: spacing.lg,
     marginBottom: spacing.xl,
+    borderTopWidth: 1,
+    borderTopColor: '#e2e8f0',
+    ...shadows.md,
   },
   buttonRow: {
     flexDirection: 'row',
     gap: spacing.md,
+    maxWidth: 800,
+    alignSelf: 'center',
+    width: '100%',
   },
   secondaryButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.md + 4,
     paddingHorizontal: spacing.lg,
-    backgroundColor: colors.background,
+    backgroundColor: '#ffffff',
     borderWidth: 2,
-    borderColor: colors.primary,
-    borderRadius: borderRadius.md,
+    borderColor: '#4f46e5',
+    borderRadius: 12,
     gap: spacing.xs,
+    ...shadows.sm,
   },
   secondaryButtonText: {
     ...typography.button,
-    color: colors.primary,
+    color: '#4f46e5',
+    fontWeight: '600',
+    fontSize: 16,
   },
   primaryButton: {
     flex: 1,

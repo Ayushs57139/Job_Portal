@@ -19,16 +19,16 @@ import api from '../../config/api';
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
 
-// Predefined gradient colors for packages
+// Predefined gradient colors for packages (no blue)
 const gradientColors = [
-  ['#667eea', '#764ba2'],
-  ['#f093fb', '#f5576c'],
-  ['#4facfe', '#00f2fe'],
-  ['#fa709a', '#fee140'],
-  ['#a8edea', '#fed6e3'],
-  ['#ff9a9e', '#fecfef'],
-  ['#ffecd2', '#fcb69f'],
-  ['#ff6e7f', '#bfe9ff'],
+  ['#9D50BB', '#6E48AA'], // Purple
+  ['#f093fb', '#f5576c'], // Pink to Red
+  ['#fa709a', '#fee140'], // Pink to Yellow
+  ['#a8edea', '#fed6e3'], // Teal to Pink
+  ['#ff9a9e', '#fecfef'], // Pink gradient
+  ['#ffecd2', '#fcb69f'], // Orange gradient
+  ['#ff6e7f', '#ffa500'], // Red to Orange
+  ['#11998e', '#38ef7d'], // Teal to Green
 ];
 
 const PackagesScreen = () => {
@@ -132,7 +132,7 @@ const PackagesScreen = () => {
         <Ionicons
           name={feature.icon}
           size={18}
-          color={feature.isNegative ? colors.error : feature.isPositive ? colors.success : colors.primary}
+          color={feature.isNegative ? colors.error : feature.isPositive ? colors.success : colors.success}
         />
         <Text style={styles.featureLabel}>{feature.label}</Text>
       </View>
@@ -185,7 +185,7 @@ const PackagesScreen = () => {
       {pkg.supportIncluded && pkg.supportDetails && (
         <View style={styles.supportContainer}>
           <View style={styles.supportHeader}>
-            <Ionicons name="chatbubble-ellipses" size={20} color={colors.info} />
+            <Ionicons name="chatbubble-ellipses" size={20} color={colors.success} />
             <Text style={styles.supportTitle}>Support Included</Text>
           </View>
           <Text style={styles.supportDescription}>{pkg.supportDetails}</Text>
@@ -221,7 +221,7 @@ const PackagesScreen = () => {
       <View style={styles.container}>
         <Header />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <ActivityIndicator size="large" color={colors.success} />
           <Text style={styles.loadingText}>Loading packages...</Text>
         </View>
       </View>
@@ -238,18 +238,13 @@ const PackagesScreen = () => {
         showsVerticalScrollIndicator={false}
       >
         {/* Hero Section */}
-        <LinearGradient
-          colors={['#667eea', '#764ba2']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.heroSection}
-        >
-          <Ionicons name="ribbon" size={48} color="#fff" />
+        <View style={styles.heroSection}>
+          <Ionicons name="ribbon" size={48} color={colors.success} />
           <Text style={styles.heroTitle}>Choose Your Perfect Package</Text>
           <Text style={styles.heroSubtitle}>
             Unlock premium features and grow your career or business
           </Text>
-        </LinearGradient>
+        </View>
 
         {/* Tab Selector */}
         <View style={styles.tabContainer}>
@@ -260,7 +255,7 @@ const PackagesScreen = () => {
             <Ionicons
               name="business"
               size={20}
-              color={selectedTab === 'employer' ? '#fff' : colors.primary}
+              color={selectedTab === 'employer' ? '#fff' : colors.success}
             />
             <Text style={[styles.tabText, selectedTab === 'employer' && styles.tabTextActive]}>
               For Employers
@@ -274,7 +269,7 @@ const PackagesScreen = () => {
             <Ionicons
               name="person"
               size={20}
-              color={selectedTab === 'candidate' ? '#fff' : colors.primary}
+              color={selectedTab === 'candidate' ? '#fff' : colors.success}
             />
             <Text style={[styles.tabText, selectedTab === 'candidate' && styles.tabTextActive]}>
               For Candidates
@@ -361,7 +356,7 @@ const PackagesScreen = () => {
             <Text style={styles.infoText}>All transactions are encrypted and secure</Text>
           </View>
           <View style={styles.infoCard}>
-            <Ionicons name="headset" size={32} color={colors.info} />
+            <Ionicons name="headset" size={32} color={colors.success} />
             <Text style={styles.infoTitle}>24/7 Support</Text>
             <Text style={styles.infoText}>We're here to help you succeed</Text>
           </View>
@@ -400,18 +395,28 @@ const styles = StyleSheet.create({
   },
   heroSection: {
     padding: spacing.xxl,
+    paddingTop: spacing.xxl + spacing.xl,
+    paddingBottom: spacing.xxl + spacing.xl,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: spacing.xl,
+    backgroundColor: colors.cardBackground,
+    marginHorizontal: spacing.lg,
+    borderRadius: borderRadius.xl,
+    ...shadows.md,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
   },
   heroTitle: {
     ...typography.h2,
-    color: '#fff',
+    color: colors.text,
     marginTop: spacing.md,
     textAlign: 'center',
+    fontWeight: '800',
   },
   heroSubtitle: {
     ...typography.body1,
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: colors.textSecondary,
     marginTop: spacing.sm,
     textAlign: 'center',
     maxWidth: 500,
@@ -420,9 +425,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     margin: spacing.lg,
     backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.xl,
     padding: spacing.xs,
-    ...shadows.sm,
+    ...shadows.md,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
   },
   tab: {
     flex: 1,
@@ -435,37 +442,47 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   tabActive: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.success,
   },
   tabText: {
     ...typography.body1,
     fontWeight: '600',
-    color: colors.primary,
+    color: colors.success,
   },
   tabTextActive: {
     color: '#fff',
   },
   packagesSection: {
     paddingHorizontal: spacing.lg,
+    maxWidth: isWeb ? 1200 : '100%',
+    alignSelf: 'center',
+    width: '100%',
   },
   sectionTitle: {
     ...typography.h3,
     color: colors.text,
     marginBottom: spacing.sm,
+    marginTop: spacing.xl,
     textAlign: 'center',
+    fontWeight: '800',
+    fontSize: isWeb ? 32 : 28,
   },
   sectionSubtitle: {
-    ...typography.body2,
+    ...typography.body1,
     color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: spacing.xl,
+    fontSize: 15,
+    lineHeight: 24,
   },
   packageCard: {
     backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.xl,
     marginBottom: spacing.xl,
     overflow: 'hidden',
-    ...shadows.md,
+    ...shadows.lg,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
   },
   packageHeader: {
     padding: spacing.xl,
@@ -513,12 +530,14 @@ const styles = StyleSheet.create({
   },
   featuresContainer: {
     padding: spacing.xl,
+    backgroundColor: colors.background,
   },
   featureItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: colors.borderLight,
   },
@@ -570,9 +589,10 @@ const styles = StyleSheet.create({
   },
   selectButton: {
     margin: spacing.lg,
-    borderRadius: borderRadius.md,
+    marginTop: 0,
+    borderRadius: borderRadius.xl,
     overflow: 'hidden',
-    ...shadows.sm,
+    ...shadows.md,
   },
   selectButtonGradient: {
     flexDirection: 'row',
@@ -596,9 +616,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.cardBackground,
     padding: spacing.xl,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.xl,
     alignItems: 'center',
-    ...shadows.sm,
+    ...shadows.md,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
   },
   infoTitle: {
     ...typography.h6,
@@ -642,11 +664,14 @@ const styles = StyleSheet.create({
   },
   supportContainer: {
     margin: spacing.lg,
-    padding: spacing.md,
+    marginTop: 0,
+    padding: spacing.lg,
     backgroundColor: colors.background,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     borderWidth: 1,
     borderColor: colors.borderLight,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.success,
   },
   supportHeader: {
     flexDirection: 'row',

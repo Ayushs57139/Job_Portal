@@ -242,38 +242,40 @@ const Header = ({ showBack = false, title }) => {
       <View style={styles.headerWrapper}>
         <View style={styles.header}>
           <View style={styles.headerContent}>
-            {/* Logo or Back Button */}
-            {showBack ? (
-              <View style={styles.leftSection}>
+            {/* Left Section - Logo or Back Button */}
+            <View style={styles.leftSectionContainer}>
+              {showBack ? (
+                <View style={styles.leftSection}>
+                  <TouchableOpacity
+                    onPress={() => navigation.goBack()}
+                    style={styles.backButton}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="arrow-back" size={24} color={colors.primary} />
+                  </TouchableOpacity>
+                  {title && <Text style={styles.titleText}>{title}</Text>}
+                </View>
+              ) : (
                 <TouchableOpacity
-                  onPress={() => navigation.goBack()}
-                  style={styles.backButton}
-                  activeOpacity={0.7}
+                  onPress={() => navigateTo('Home')}
+                  style={styles.logo}
+                  activeOpacity={0.8}
                 >
-                  <Ionicons name="arrow-back" size={24} color={colors.primary} />
+                  <Text style={styles.logoText}>
+                    <Text style={styles.logoFree}>Free</Text>
+                    <Text style={styles.logoJob}>job</Text>
+                    <Text style={styles.logoWala}>wala</Text>
+                  </Text>
                 </TouchableOpacity>
-                {title && <Text style={styles.titleText}>{title}</Text>}
-              </View>
-            ) : (
-              <TouchableOpacity
-                onPress={() => navigateTo('Home')}
-                style={styles.logo}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.logoText}>
-                  <Text style={styles.logoFree}>Free</Text>
-                  <Text style={styles.logoJob}>job</Text>
-                  <Text style={styles.logoWala}>wala</Text>
-                </Text>
-              </TouchableOpacity>
-            )}
+              )}
 
-            {/* Navigation Menu - Desktop/Tablet (only show if not showing back button) */}
-            {!showBack && !isMobile && (
-              <View style={styles.navMenu}>
-                {menuItems.map((item, index) => renderMenuItem(item, index))}
-              </View>
-            )}
+              {/* Navigation Menu - Desktop/Tablet (only show if not showing back button) */}
+              {!showBack && !isMobile && (
+                <View style={styles.navMenu}>
+                  {menuItems.map((item, index) => renderMenuItem(item, index))}
+                </View>
+              )}
+            </View>
 
           {/* Right Section */}
           <View style={styles.headerActions}>
@@ -339,7 +341,7 @@ const Header = ({ showBack = false, title }) => {
                   onPress={() => navigateTo('Login')}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.loginButtonText}>Login</Text>
+                  <Text style={styles.loginButtonText}>Candidate Login</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.postJobButton}
@@ -353,7 +355,7 @@ const Header = ({ showBack = false, title }) => {
                   onPress={() => navigateTo('EmployerOptions')}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.employersButtonText}>For Employers</Text>
+                  <Text style={styles.employersButtonText}>Employers Login</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -436,7 +438,7 @@ const Header = ({ showBack = false, title }) => {
                   style={styles.mobileLoginButton}
                   onPress={() => navigateTo('Login')}
                 >
-                  <Text style={styles.mobileLoginButtonText}>Login</Text>
+                  <Text style={styles.mobileLoginButtonText}>Candidate Login</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.mobilePostJobButton}
@@ -486,12 +488,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: isPhone ? spacing.sm : (isMobile ? spacing.md : isTablet ? spacing.lg : spacing.xl),
+    paddingHorizontal: 0,
     paddingVertical: isPhone ? spacing.xs : (isMobile ? spacing.sm : spacing.md),
     minHeight: isPhone ? 56 : (isMobile ? 60 : isTablet ? 65 : 70),
-    maxWidth: isDesktop ? (width > 1400 ? 1400 : 1200) : '100%',
     width: '100%',
-    alignSelf: 'center',
     overflow: 'visible',
   },
   logo: {
@@ -513,12 +513,19 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   
+  // Left Section Container
+  leftSectionContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: spacing.lg,
+    paddingLeft: isPhone ? spacing.sm : (isMobile ? spacing.md : isTablet ? spacing.lg : spacing.xl),
+  },
   // Back Button & Title
   leftSection: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    flex: 1,
   },
   backButton: {
     width: 40,
@@ -541,8 +548,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: isTablet ? spacing.xs : spacing.sm,
-    flex: 1,
-    justifyContent: 'center',
     overflow: 'visible',
     flexWrap: 'wrap',
   },
@@ -623,6 +628,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+    marginLeft: 'auto',
+    paddingRight: isPhone ? spacing.sm : (isMobile ? spacing.md : isTablet ? spacing.lg : spacing.xl),
   },
   authButtons: {
     flexDirection: 'row',

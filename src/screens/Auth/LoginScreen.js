@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, borderRadius, typography } from '../../styles/theme';
+import { colors, spacing, borderRadius, typography, shadows } from '../../styles/theme';
 import api from '../../config/api';
 
 const LoginScreen = ({ navigation }) => {
@@ -94,123 +94,159 @@ const LoginScreen = ({ navigation }) => {
   };
 
   const renderLeftSide = () => (
-    <View style={[styles.leftSide, isPhone && styles.leftSidePhone, isTablet && styles.leftSideTablet]}>
-      <ScrollView 
-        style={styles.leftScrollView}
-        contentContainerStyle={[
-          styles.leftScrollContent,
-          isPhone && styles.leftScrollContentPhone,
-          isTablet && styles.leftScrollContentTablet,
-          isLaptop && styles.leftScrollContentLaptop
+    <LinearGradient
+      colors={['#ffffff', '#f8fafc', '#f1f5f9']}
+      style={[styles.leftSide, isPhone && styles.leftSidePhone, isTablet && styles.leftSideTablet]}
+    >
+      <View 
+        style={[
+          styles.leftContent,
+          isPhone && styles.leftContentPhone,
+          isTablet && styles.leftContentTablet,
+          isLaptop && styles.leftContentLaptop
         ]}
-        showsVerticalScrollIndicator={false}
       >
         {/* Logo */}
-        <View style={[styles.logoContainer, isPhone && styles.logoContainerPhone]}>
-          <Text style={[styles.logoText, isPhone && styles.logoTextPhone, isTablet && styles.logoTextTablet]}>
-            <Text style={styles.logoPrimary}>Free</Text>
-            <Text style={styles.logoSecondary}>job</Text>
-            <Text style={styles.logoTertiary}>wala</Text>
-          </Text>
-        </View>
-
-        {/* Header Badge */}
-        <View style={[styles.headerBadge, isPhone && styles.headerBadgePhone]}>
-          <Ionicons name={userTypeConfig[userType].icon} size={isPhone ? 14 : 16} color="#fff" />
-          <Text style={[styles.headerBadgeText, isPhone && styles.headerBadgeTextPhone]}>{userTypeConfig[userType].title}</Text>
-        </View>
-
-        {/* Welcome */}
-        <Text style={[styles.welcomeTitle, isPhone && styles.welcomeTitlePhone, isTablet && styles.welcomeTitleTablet]}>Welcome Back!</Text>
-        <Text style={[styles.welcomeSubtitle, isPhone && styles.welcomeSubtitlePhone]}>{userTypeConfig[userType].subtitle}</Text>
-
-
-        {/* Login ID Input */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Login ID</Text>
-          <View style={styles.inputWrapper}>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter User ID, Email, or Phone Number"
-              placeholderTextColor="#94a3b8"
-              value={loginId}
-              onChangeText={(text) => {
-                setLoginId(text);
-                setErrors({ ...errors, loginId: null });
-                setGeneralError('');
-              }}
-              autoCapitalize="none"
-              keyboardType="email-address"
-            />
-          </View>
-          <Text style={styles.inputHelp}>
-            You can login with your User ID (JW12345678), Email, or Phone Number
-          </Text>
-          {errors.loginId && <Text style={styles.errorText}>{errors.loginId}</Text>}
-        </View>
-
-        {/* Password Input */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Password</Text>
-          <View style={styles.inputWrapper}>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your password"
-              placeholderTextColor="#94a3b8"
-              value={password}
-              onChangeText={(text) => {
-                setPassword(text);
-                setErrors({ ...errors, password: null });
-                setGeneralError('');
-              }}
-              secureTextEntry={!showPassword}
-            />
-            <TouchableOpacity
-              style={styles.eyeIcon}
-              onPress={() => setShowPassword(!showPassword)}
-            >
-              <Ionicons
-                name={showPassword ? 'eye-off' : 'eye'}
-                size={20}
-                color="#64748b"
-              />
-            </TouchableOpacity>
-          </View>
-          {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
-        </View>
-
-        {/* General Error Message */}
-        {generalError && (
-          <View style={styles.generalErrorContainer}>
-            <Text style={styles.generalErrorText}>{generalError}</Text>
-          </View>
-        )}
-
-        {/* Sign In Button */}
         <TouchableOpacity 
-          style={styles.signInButton}
-          onPress={handleLogin}
-          disabled={loading}
+          style={styles.logoContainer}
+          onPress={() => navigation.navigate('Home')}
+          activeOpacity={0.7}
         >
-          <Text style={styles.signInButtonText}>
-            {loading ? 'Signing In...' : 'Sign In'}
+          <Text style={styles.logoText}>
+            <Text style={styles.logoPrimary}>Free</Text>
+            <Text style={styles.logoJob}>job</Text>
+            <Text style={styles.logoWala}>wala</Text>
           </Text>
         </TouchableOpacity>
 
-        {/* Create Account */}
-        <View style={styles.createAccountContainer}>
-          <Text style={styles.createAccountText}>Don't have an account?</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-            <Text style={styles.createAccountLink}>Create Account</Text>
-          </TouchableOpacity>
+        {/* Header Section */}
+        <View style={styles.headerSection}>
+          <View style={styles.iconCircle}>
+            <Ionicons name="person" size={28} color="#4f46e5" />
+          </View>
+          <Text style={styles.welcomeTitle}>Welcome Back!</Text>
+          <Text style={styles.welcomeSubtitle}>{userTypeConfig[userType].subtitle}</Text>
         </View>
-      </ScrollView>
-    </View>
+
+
+        {/* Login Form Card */}
+        <View style={styles.loginFormCard}>
+          {/* Login ID Input */}
+          <View style={styles.inputGroup}>
+            <View style={styles.labelContainer}>
+              <Ionicons name="person-outline" size={18} color="#64748b" style={styles.labelIcon} />
+              <Text style={styles.inputLabel}>Login ID</Text>
+            </View>
+            <View style={[styles.inputWrapper, errors.loginId && styles.inputWrapperError]}>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter User ID, Email, or Phone Number"
+                placeholderTextColor="#94a3b8"
+                value={loginId}
+                onChangeText={(text) => {
+                  setLoginId(text);
+                  setErrors({ ...errors, loginId: null });
+                  setGeneralError('');
+                }}
+                autoCapitalize="none"
+                keyboardType="email-address"
+              />
+            </View>
+            {errors.loginId && (
+              <View style={styles.errorContainer}>
+                <Ionicons name="alert-circle" size={14} color="#ef4444" />
+                <Text style={styles.errorText}>{errors.loginId}</Text>
+              </View>
+            )}
+          </View>
+
+          {/* Password Input */}
+          <View style={styles.inputGroup}>
+            <View style={styles.labelContainer}>
+              <Ionicons name="lock-closed-outline" size={18} color="#64748b" style={styles.labelIcon} />
+              <Text style={styles.inputLabel}>Password</Text>
+            </View>
+            <View style={[styles.inputWrapper, errors.password && styles.inputWrapperError]}>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your password"
+                placeholderTextColor="#94a3b8"
+                value={password}
+                onChangeText={(text) => {
+                  setPassword(text);
+                  setErrors({ ...errors, password: null });
+                  setGeneralError('');
+                }}
+                secureTextEntry={!showPassword}
+              />
+              <TouchableOpacity
+                style={styles.eyeIcon}
+                onPress={() => setShowPassword(!showPassword)}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                  size={22}
+                  color="#64748b"
+                />
+              </TouchableOpacity>
+            </View>
+            {errors.password && (
+              <View style={styles.errorContainer}>
+                <Ionicons name="alert-circle" size={14} color="#ef4444" />
+                <Text style={styles.errorText}>{errors.password}</Text>
+              </View>
+            )}
+          </View>
+
+          {/* General Error Message */}
+          {generalError && (
+            <View style={styles.generalErrorContainer}>
+              <Ionicons name="alert-circle" size={18} color="#ef4444" />
+              <Text style={styles.generalErrorText}>{generalError}</Text>
+            </View>
+          )}
+
+          {/* Sign In Button */}
+          <TouchableOpacity 
+            onPress={handleLogin}
+            disabled={loading}
+            activeOpacity={0.9}
+            style={styles.signInButtonWrapper}
+          >
+            <LinearGradient
+              colors={['#4f46e5', '#6366f1']}
+              style={[styles.signInButton, loading && styles.signInButtonDisabled]}
+            >
+              <Ionicons name="log-in-outline" size={20} color="#fff" />
+              <Text style={styles.signInButtonText}>
+                {loading ? 'Signing In...' : 'Sign In'}
+              </Text>
+            </LinearGradient>
+          </TouchableOpacity>
+
+          {/* Divider */}
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          {/* Create Account */}
+          <View style={styles.createAccountContainer}>
+            <Text style={styles.createAccountText}>Don't have an account? </Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Register')} activeOpacity={0.7}>
+              <Text style={styles.createAccountLink}>Create Account</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </LinearGradient>
   );
 
   const renderRightSide = () => (
     <LinearGradient
-      colors={['#6366f1', '#8b5cf6']}
+      colors={['#4f46e5', '#6366f1', '#7c3aed']}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={[
@@ -326,7 +362,6 @@ const styles = StyleSheet.create({
   // Left Side Styles
   leftSide: {
     flex: 1,
-    backgroundColor: '#ffffff',
   },
   leftSidePhone: {
     flex: 1,
@@ -335,126 +370,127 @@ const styles = StyleSheet.create({
   leftSideTablet: {
     flex: 1.2,
   },
-  leftScrollView: {
+  leftContent: {
     flex: 1,
-  },
-  leftScrollContent: {
     padding: 48,
-    paddingTop: 32,
+    paddingTop: 100,
+    justifyContent: 'center',
   },
-  leftScrollContentPhone: {
+  leftContentPhone: {
     padding: 20,
-    paddingTop: 20,
-    paddingBottom: 32,
+    paddingTop: 80,
   },
-  leftScrollContentTablet: {
+  leftContentTablet: {
     padding: 32,
-    paddingTop: 24,
+    paddingTop: 90,
   },
-  leftScrollContentLaptop: {
+  leftContentLaptop: {
     padding: 48,
-    paddingTop: 32,
+    paddingTop: 100,
   },
   
   // Logo
   logoContainer: {
-    marginBottom: 24,
-  },
-  logoContainerPhone: {
-    marginBottom: 20,
+    position: 'absolute',
+    top: 32,
+    left: 20,
+    zIndex: 10,
+    paddingTop: 8,
+    paddingHorizontal: 8,
   },
   logoText: {
     fontSize: 28,
-    fontWeight: '700',
-  },
-  logoTextPhone: {
-    fontSize: 24,
-  },
-  logoTextTablet: {
-    fontSize: 26,
+    fontWeight: '800',
+    letterSpacing: -0.5,
   },
   logoPrimary: {
     color: '#3b82f6',
   },
-  logoSecondary: {
-    color: '#1e293b',
+  logoJob: {
+    color: '#FF6B35',
   },
-  logoTertiary: {
+  logoWala: {
     color: '#1e293b',
   },
   
-  // Header Badge
-  headerBadge: {
-    flexDirection: 'row',
+  // Header Section
+  headerSection: {
     alignItems: 'center',
-    backgroundColor: '#475569',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    alignSelf: 'flex-start',
     marginBottom: 24,
-    gap: 8,
   },
-  headerBadgePhone: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginBottom: 20,
-  },
-  headerBadgeText: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  headerBadgeTextPhone: {
-    fontSize: 12,
+  iconCircle: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    ...shadows.lg,
+    borderWidth: 3,
+    borderColor: '#e0e7ff',
   },
   
   // Welcome
   welcomeTitle: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '700',
     color: '#1e293b',
-    marginBottom: 8,
-  },
-  welcomeTitlePhone: {
-    fontSize: 24,
     marginBottom: 6,
-  },
-  welcomeTitleTablet: {
-    fontSize: 28,
+    textAlign: 'center',
+    letterSpacing: -0.5,
   },
   welcomeSubtitle: {
-    fontSize: 16,
-    color: '#64748b',
-    marginBottom: 24,
-  },
-  welcomeSubtitlePhone: {
     fontSize: 14,
-    marginBottom: 20,
+    color: '#64748b',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  
+  // Login Form Card
+  loginFormCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 24,
+    ...shadows.lg,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
   },
   
   // Input Groups
   inputGroup: {
-    marginBottom: 20,
+    marginBottom: 16,
+  },
+  labelContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  labelIcon: {
+    marginRight: 8,
   },
   inputLabel: {
     fontSize: 14,
     fontWeight: '600',
     color: '#1e293b',
-    marginBottom: 8,
   },
   inputWrapper: {
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: '#e2e8f0',
-    borderRadius: 8,
+    borderRadius: 12,
     backgroundColor: '#ffffff',
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  inputWrapperError: {
+    borderColor: '#ef4444',
+    backgroundColor: '#fef2f2',
   },
   input: {
     flex: 1,
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 14,
     fontSize: 15,
     color: '#1e293b',
   },
@@ -467,38 +503,77 @@ const styles = StyleSheet.create({
     color: '#64748b',
     marginTop: 6,
   },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+  },
   errorText: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#ef4444',
-    marginTop: 6,
+    fontWeight: '500',
   },
   generalErrorContainer: {
     backgroundColor: '#fee2e2',
     borderWidth: 1,
     borderColor: '#ef4444',
-    borderRadius: 8,
+    borderRadius: 12,
     padding: 12,
     marginBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   generalErrorText: {
     fontSize: 14,
     color: '#dc2626',
-    textAlign: 'center',
+    flex: 1,
+    fontWeight: '500',
   },
   
   // Sign In Button
+  signInButtonWrapper: {
+    marginTop: 4,
+    marginBottom: 16,
+    borderRadius: 12,
+    overflow: 'hidden',
+    ...shadows.md,
+  },
   signInButton: {
-    backgroundColor: '#6366f1',
-    paddingVertical: 14,
-    borderRadius: 8,
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 8,
-    marginBottom: 20,
+    justifyContent: 'center',
+    gap: 10,
+    paddingVertical: 16,
+    borderRadius: 12,
+  },
+  signInButtonDisabled: {
+    opacity: 0.6,
   },
   signInButtonText: {
     color: '#ffffff',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  
+  // Divider
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 12,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#e2e8f0',
+  },
+  dividerText: {
+    fontSize: 13,
+    color: '#94a3b8',
+    fontWeight: '500',
   },
   
   // Create Account
@@ -507,6 +582,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     gap: 6,
+    flexWrap: 'wrap',
   },
   createAccountText: {
     fontSize: 14,
@@ -514,8 +590,9 @@ const styles = StyleSheet.create({
   },
   createAccountLink: {
     fontSize: 14,
-    color: '#6366f1',
-    fontWeight: '600',
+    color: '#4f46e5',
+    fontWeight: '700',
+    textDecorationLine: 'underline',
   },
   
   // Right Side Styles

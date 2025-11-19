@@ -107,6 +107,12 @@ const detectApiHostFromExpo = () => {
   return null;
 };
 
+const buildApiUrl = (host, port = '5000') => {
+  const protocol = port === '443' ? 'https' : 'http';
+  const portSegment = port === '443' ? '' : `:${port}`;
+  return `${protocol}://${host}${portSegment}/api`;
+};
+
 const getApiUrl = () => {
   // Return cached value if already computed
   if (_cachedApiUrl !== null) {
@@ -302,12 +308,48 @@ const getApiUrl = () => {
             console.log('[API Config] ✅ Using 10.0.2.2 (maps to host localhost, same as web backend)');
           }
         } else {
-          // In production, use localhost (assuming backend is on same server)
-          API_HOST = 'localhost';
+          // ---------- PRODUCTION (stand‑alone APK / AAB) ----------
+          // For production we should NEVER hard‑code a local IP.
+          // Instead we rely on:
+          //   1) EXPO_PUBLIC_API_URL  (already handled at top of getApiUrl)
+          //   2) EXPO_PUBLIC_API_HOST / EXPO_PUBLIC_API_PORT
+          //   3) app.config.js -> extra.apiHost / extra.apiPort
+          //
+          // This lets you point the built app at any reachable backend
+          // (public domain, public IP, or LAN IP) without changing code.
+
+          // Try to read from expo-constants (app.config.js -> extra)
+          if (!API_HOST || !API_PORT || API_PORT === '5000') {
+            try {
+              const Constants = require('expo-constants');
+              if (Constants?.expoConfig?.extra) {
+                const extra = Constants.expoConfig.extra;
+                if (extra.apiHost) {
+                  API_HOST = extra.apiHost;
+                  console.log(`[API Config] ✅ Using API host from app.config.js extra.apiHost: ${API_HOST}`);
+                }
+                if (extra.apiPort) {
+                  API_PORT = extra.apiPort;
+                  console.log(`[API Config] ✅ Using API port from app.config.js extra.apiPort: ${API_PORT}`);
+                }
+              }
+            } catch (e) {
+              console.log('[API Config] Could not read expo constants in production:', e.message);
+            }
+          }
+
+          // Final safety fallback – only if nothing else was configured.
+          // NOTE: You should set EXPO_PUBLIC_API_URL or EXPO_PUBLIC_API_HOST
+          // when building so this branch is normally NOT used.
+          if (!API_HOST) {
+            API_HOST = 'admin.freejobwala.org';
+            API_PORT = '443';
+            console.log('[API Config] ⚠️ Using default production API host admin.freejobwala.org – override via EXPO_PUBLIC_API_HOST / app.config.js');
+          }
         }
       }
       
-      _cachedApiUrl = `http://${API_HOST}:${API_PORT}/api`;
+      _cachedApiUrl = buildApiUrl(API_HOST, API_PORT);
       console.log(`[API Config] Android - Final API URL: ${_cachedApiUrl}`);
       return _cachedApiUrl;
     } else {
@@ -336,7 +378,7 @@ const getApiUrl = () => {
         API_HOST = 'localhost';
       }
       
-      _cachedApiUrl = `http://${API_HOST}:${API_PORT}/api`;
+      _cachedApiUrl = buildApiUrl(API_HOST, API_PORT);
       console.log(`[API Config] iOS - Final API URL: ${_cachedApiUrl}`);
       return _cachedApiUrl;
     }

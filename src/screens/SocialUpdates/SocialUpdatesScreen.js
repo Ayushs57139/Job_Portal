@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  FlatList,
   TouchableOpacity,
   TextInput,
   Image,
@@ -15,7 +14,6 @@ import {
   Platform,
   Dimensions,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, typography, spacing, borderRadius, shadows } from '../../styles/theme';
 import Header from '../../components/Header';
@@ -23,6 +21,10 @@ import api from '../../config/api';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
+const isPhone = width <= 480;
+const isMobile = width <= 600;
+const isTablet = width > 600 && width <= 1024;
+const isDesktop = width > 1024;
 
 const SocialUpdatesScreen = ({ navigation }) => {
   const [posts, setPosts] = useState([]);
@@ -43,6 +45,10 @@ const SocialUpdatesScreen = ({ navigation }) => {
   const [viewCommentsModalVisible, setViewCommentsModalVisible] = useState(false);
   const [commentsPost, setCommentsPost] = useState(null);
 
+  // Full post view modal state
+  const [fullPostModalVisible, setFullPostModalVisible] = useState(false);
+  const [selectedFullPost, setSelectedFullPost] = useState(null);
+
   useEffect(() => {
     loadUserData();
     loadPosts();
@@ -51,9 +57,11 @@ const SocialUpdatesScreen = ({ navigation }) => {
   const loadUserData = async () => {
     try {
       const userData = await api.getCurrentUserFromStorage();
+      console.log('Loaded user data:', userData);
       setCurrentUser(userData);
     } catch (error) {
       console.log('Could not load user data:', error);
+      setCurrentUser(null);
     }
   };
 
@@ -108,13 +116,21 @@ const SocialUpdatesScreen = ({ navigation }) => {
   };
 
   const handleLike = async (postId) => {
+    console.log('handleLike called with postId:', postId);
+    console.log('currentUser:', currentUser);
     if (!currentUser) {
-      Alert.alert('Login Required', 'Please login to like posts.');
+      if (isWeb) {
+        window.alert('Please login to like posts.');
+      } else {
+        Alert.alert('Login Required', 'Please login to like posts.');
+      }
       return;
     }
 
     try {
+      console.log('Calling API to like post:', postId);
       const response = await api.likeSocialUpdate(postId);
+      console.log('Like response:', response);
       
       // Update local state
       setPosts((prevPosts) =>
@@ -135,15 +151,26 @@ const SocialUpdatesScreen = ({ navigation }) => {
       );
     } catch (error) {
       console.error('Error liking post:', error);
-      Alert.alert('Error', 'Failed to like post. Please try again.');
+      if (isWeb) {
+        window.alert('Failed to like post. Please try again.');
+      } else {
+        Alert.alert('Error', 'Failed to like post. Please try again.');
+      }
     }
   };
 
   const openCommentModal = (post) => {
+    console.log('openCommentModal called with post:', post?._id);
+    console.log('currentUser:', currentUser);
     if (!currentUser) {
-      Alert.alert('Login Required', 'Please login to comment on posts.');
+      if (isWeb) {
+        window.alert('Please login to comment on posts.');
+      } else {
+        Alert.alert('Login Required', 'Please login to comment on posts.');
+      }
       return;
     }
+    console.log('Opening comment modal');
     setSelectedPost(post);
     setCommentModalVisible(true);
   };
@@ -202,22 +229,49 @@ const SocialUpdatesScreen = ({ navigation }) => {
     setCommentsPost(null);
   };
 
+  const openFullPostModal = (post) => {
+    setSelectedFullPost(post);
+    setFullPostModalVisible(true);
+  };
+
+  const closeFullPostModal = () => {
+    setFullPostModalVisible(false);
+    setSelectedFullPost(null);
+  };
+
   const handleShare = async (post) => {
+    console.log('handleShare called with post:', post?._id);
+    console.log('currentUser:', currentUser);
     if (!currentUser) {
-      Alert.alert('Login Required', 'Please login to share posts.');
+      if (isWeb) {
+        window.alert('Please login to share posts.');
+      } else {
+        Alert.alert('Login Required', 'Please login to share posts.');
+      }
       return;
     }
 
-    Alert.alert(
-      'Share Post',
-      'Choose a platform to share',
-      [
-        { text: 'WhatsApp', onPress: () => shareToPlaystore(post, 'whatsapp') },
-        { text: 'Facebook', onPress: () => shareToPlaystore(post, 'facebook') },
-        { text: 'Twitter', onPress: () => shareToPlaystore(post, 'twitter') },
-        { text: 'Cancel', style: 'cancel' },
-      ]
-    );
+    if (isWeb) {
+      const platform = window.prompt('Choose a platform to share:\n1. WhatsApp\n2. Facebook\n3. Twitter\n\nEnter 1, 2, or 3:');
+      if (platform === '1') {
+        shareToPlaystore(post, 'whatsapp');
+      } else if (platform === '2') {
+        shareToPlaystore(post, 'facebook');
+      } else if (platform === '3') {
+        shareToPlaystore(post, 'twitter');
+      }
+    } else {
+      Alert.alert(
+        'Share Post',
+        'Choose a platform to share',
+        [
+          { text: 'WhatsApp', onPress: () => shareToPlaystore(post, 'whatsapp') },
+          { text: 'Facebook', onPress: () => shareToPlaystore(post, 'facebook') },
+          { text: 'Twitter', onPress: () => shareToPlaystore(post, 'twitter') },
+          { text: 'Cancel', style: 'cancel' },
+        ]
+      );
+    }
   };
 
   const shareToPlaystore = async (post, platform) => {
@@ -239,10 +293,18 @@ const SocialUpdatesScreen = ({ navigation }) => {
         )
       );
 
-      Alert.alert('Success', 'Post shared successfully!');
+      if (isWeb) {
+        window.alert('Post shared successfully!');
+      } else {
+        Alert.alert('Success', 'Post shared successfully!');
+      }
     } catch (error) {
       console.error('Error sharing post:', error);
-      Alert.alert('Error', 'Failed to share post. Please try again.');
+      if (isWeb) {
+        window.alert('Failed to share post. Please try again.');
+      } else {
+        Alert.alert('Error', 'Failed to share post. Please try again.');
+      }
     }
   };
 
@@ -270,7 +332,11 @@ const SocialUpdatesScreen = ({ navigation }) => {
     const isLiked = currentUser && item.likedBy && item.likedBy.includes(currentUser._id);
     
     return (
-      <View style={styles.postCard}>
+      <TouchableOpacity 
+        style={styles.postCard}
+        onPress={() => openFullPostModal(item)}
+        activeOpacity={0.9}
+      >
         {/* Post Header */}
         <View style={styles.postHeader}>
           <View style={styles.authorInfo}>
@@ -305,103 +371,101 @@ const SocialUpdatesScreen = ({ navigation }) => {
 
         {/* Post Content */}
         <View style={styles.postContent}>
-          <Text style={styles.postTitle}>{item.title}</Text>
-          <Text style={styles.postText}>{item.content}</Text>
+          <Text style={styles.postTitle} numberOfLines={2}>{item.title}</Text>
+          <Text style={styles.postText} numberOfLines={3}>{item.content}</Text>
 
-          {/* Post Media */}
+          {/* Post Media - Show thumbnail only */}
           {item.media && item.media.length > 0 && item.media[0].type === 'image' && (
             <Image
               source={{ uri: `${api.baseURL.replace('/api', '')}${item.media[0].url}` }}
-              style={styles.postImage}
+              style={styles.postImageThumbnail}
               resizeMode="cover"
             />
           )}
 
-          {/* Tags */}
+          {/* Tags - Show limited */}
           {item.tags && item.tags.length > 0 && (
             <View style={styles.tagsContainer}>
-              {item.tags.slice(0, 3).map((tag, index) => (
+              {item.tags.slice(0, 2).map((tag, index) => (
                 <View key={index} style={styles.tag}>
                   <Text style={styles.tagText}>#{tag}</Text>
                 </View>
               ))}
+              {item.tags.length > 2 && (
+                <Text style={styles.moreTagsText}>+{item.tags.length - 2} more</Text>
+              )}
             </View>
           )}
         </View>
 
-        {/* Engagement Stats */}
-        <View style={styles.engagementStats}>
-          <TouchableOpacity onPress={() => item.engagement?.likes > 0 && Alert.alert('Likes', `${item.engagement.likes} people liked this post`)}>
-            <Text style={styles.engagementText}>
-              {item.engagement?.likes || 0} likes
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => item.comments && item.comments.length > 0 && openViewCommentsModal(item)}>
-            <Text style={styles.engagementText}>
-              {item.engagement?.comments || 0} comments
-            </Text>
-          </TouchableOpacity>
-          <Text style={styles.engagementText}>
-            {item.engagement?.shares || 0} shares
-          </Text>
-        </View>
-
-        {/* Action Buttons */}
+        {/* Action Buttons - Compact */}
         <View style={styles.actionButtons}>
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => handleLike(item._id)}
+            onPress={(e) => {
+              e?.stopPropagation?.();
+              console.log('Like button pressed for post:', item._id);
+              handleLike(item._id);
+            }}
+            activeOpacity={0.7}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <Ionicons
               name={isLiked ? 'heart' : 'heart-outline'}
-              size={22}
+              size={18}
               color={isLiked ? colors.error : colors.textSecondary}
             />
-            <Text style={[styles.actionButtonText, isLiked && styles.likedText]}>
-              Like
+            <Text style={[styles.actionButtonTextCompact, isLiked && styles.likedText]}>
+              {item.engagement?.likes || 0}
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => openCommentModal(item)}
+            onPress={(e) => {
+              e?.stopPropagation?.();
+              console.log('Comment button pressed for post:', item._id);
+              openFullPostModal(item);
+            }}
+            activeOpacity={0.7}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Ionicons name="chatbubble-outline" size={20} color={colors.textSecondary} />
-            <Text style={styles.actionButtonText}>Comment</Text>
+            <Ionicons name="chatbubble-outline" size={18} color={colors.textSecondary} />
+            <Text style={styles.actionButtonTextCompact}>
+              {item.engagement?.comments || 0}
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity 
             style={styles.actionButton}
-            onPress={() => handleShare(item)}
+            onPress={(e) => {
+              e?.stopPropagation?.();
+              console.log('Share button pressed for post:', item._id);
+              handleShare(item);
+            }}
+            activeOpacity={0.7}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Ionicons name="share-outline" size={20} color={colors.textSecondary} />
-            <Text style={styles.actionButtonText}>Share</Text>
+            <Ionicons name="share-outline" size={18} color={colors.textSecondary} />
+            <Text style={styles.actionButtonTextCompact}>
+              {item.engagement?.shares || 0}
+            </Text>
           </TouchableOpacity>
         </View>
 
-        {/* Comments Preview */}
-        {item.comments && item.comments.length > 0 && (
-          <View style={styles.commentsPreview}>
-            {item.comments.slice(0, 2).map((comment, index) => (
-              <View key={index} style={styles.commentItem}>
-                <Text style={styles.commentAuthor}>
-                  {comment.user?.firstName} {comment.user?.lastName}:
-                </Text>
-                <Text style={styles.commentText} numberOfLines={2}>
-                  {comment.content}
-                </Text>
-              </View>
-            ))}
-            {item.comments.length > 2 && (
-              <TouchableOpacity onPress={() => openViewCommentsModal(item)}>
-                <Text style={styles.viewMoreComments}>
-                  View all {item.comments.length} comments
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
-      </View>
+        {/* View Full Post Button */}
+        <TouchableOpacity 
+          style={styles.viewFullButton}
+          onPress={(e) => {
+            e?.stopPropagation?.();
+            openFullPostModal(item);
+          }}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.viewFullButtonText}>View Full Post</Text>
+          <Ionicons name="arrow-forward" size={14} color={colors.primary} />
+        </TouchableOpacity>
+      </TouchableOpacity>
     );
   };
 
@@ -440,25 +504,10 @@ const SocialUpdatesScreen = ({ navigation }) => {
     <View style={styles.container}>
       <Header />
       
-      <FlatList
-        data={posts}
-        renderItem={renderPostItem}
-        keyExtractor={(item) => item._id}
-        contentContainerStyle={styles.listContent}
-        ListHeaderComponent={() => (
-          <LinearGradient
-            colors={['#667eea', '#764ba2']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.heroSection}
-          >
-            <Ionicons name="megaphone" size={48} color="#fff" />
-            <Text style={styles.heroTitle}>Social Updates</Text>
-            <Text style={styles.heroSubtitle}>
-              Stay connected with the latest from companies and consultancies
-            </Text>
-          </LinearGradient>
-        )}
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -467,11 +516,54 @@ const SocialUpdatesScreen = ({ navigation }) => {
             tintColor={colors.primary}
           />
         }
-        onEndReached={handleLoadMore}
-        onEndReachedThreshold={0.5}
-        ListFooterComponent={renderFooter}
-        ListEmptyComponent={renderEmpty}
-      />
+        onScroll={({ nativeEvent }) => {
+          const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
+          const paddingToBottom = 20;
+          if (
+            layoutMeasurement.height + contentOffset.y >=
+            contentSize.height - paddingToBottom
+          ) {
+            handleLoadMore();
+          }
+        }}
+        scrollEventThrottle={400}
+      >
+        {/* Hero Section */}
+        <View style={styles.heroSection}>
+          <View style={styles.heroIconContainer}>
+            <Ionicons name="megaphone" size={56} color={colors.primary} />
+          </View>
+          <Text style={styles.heroTitle}>Social Updates</Text>
+          <Text style={styles.heroSubtitle}>
+            Stay connected with the latest from companies and consultancies
+          </Text>
+        </View>
+
+        {/* Posts Grid */}
+        {loading && posts.length === 0 ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.loadingText}>Loading social updates...</Text>
+          </View>
+        ) : posts.length === 0 ? (
+          renderEmpty()
+        ) : (
+          <View style={styles.postsGrid}>
+            {posts.map((post) => (
+              <View key={post._id} style={styles.postCardWrapper}>
+                {renderPostItem({ item: post })}
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Load More Footer */}
+        {loadingMore && (
+          <View style={styles.footerLoader}>
+            <ActivityIndicator size="small" color={colors.primary} />
+          </View>
+        )}
+      </ScrollView>
 
       {/* Add Comment Modal */}
       <Modal
@@ -647,6 +739,173 @@ const SocialUpdatesScreen = ({ navigation }) => {
           )}
         </View>
       </Modal>
+
+      {/* Full Post View Modal */}
+      <Modal
+        visible={fullPostModalVisible}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={closeFullPostModal}
+      >
+        <View style={styles.fullModalContainer}>
+          <View style={styles.fullModalHeader}>
+            <Text style={styles.fullModalTitle}>Social Update</Text>
+            <TouchableOpacity onPress={closeFullPostModal}>
+              <Ionicons name="close" size={28} color={colors.text} />
+            </TouchableOpacity>
+          </View>
+
+          {selectedFullPost && (
+            <ScrollView style={styles.fullModalContent}>
+              {/* Full Post Card */}
+              <View style={styles.fullPostCard}>
+                {/* Post Header */}
+                <View style={styles.fullPostHeader}>
+                  <View style={styles.authorInfo}>
+                    <View style={styles.avatarContainer}>
+                      {selectedFullPost.authorLogo ? (
+                        <Image source={{ uri: selectedFullPost.authorLogo }} style={styles.avatar} />
+                      ) : (
+                        <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                          <Ionicons name="business" size={20} color={colors.textSecondary} />
+                        </View>
+                      )}
+                    </View>
+                    <View style={styles.authorDetails}>
+                      <Text style={styles.authorName}>{selectedFullPost.authorName}</Text>
+                      <View style={styles.postMeta}>
+                        <Text style={styles.authorType}>
+                          {selectedFullPost.authorType === 'admin' ? 'Admin' : selectedFullPost.authorType === 'company' ? 'Company' : 'Consultancy'}
+                        </Text>
+                        <Text style={styles.dotSeparator}> • </Text>
+                        <Text style={styles.postDate}>{formatDate(selectedFullPost.createdAt)}</Text>
+                      </View>
+                    </View>
+                  </View>
+                  {selectedFullPost.postType && selectedFullPost.postType !== 'general' && (
+                    <View style={styles.postTypeBadge}>
+                      <Text style={styles.postTypeText}>
+                        {selectedFullPost.postType.replace('_', ' ').toUpperCase()}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* Full Post Content */}
+                <View style={styles.fullPostContent}>
+                  <Text style={styles.fullPostTitle}>{selectedFullPost.title}</Text>
+                  <Text style={styles.fullPostText}>{selectedFullPost.content}</Text>
+
+                  {/* Full Post Media */}
+                  {selectedFullPost.media && selectedFullPost.media.length > 0 && selectedFullPost.media[0].type === 'image' && (
+                    <Image
+                      source={{ uri: `${api.baseURL.replace('/api', '')}${selectedFullPost.media[0].url}` }}
+                      style={styles.fullPostImage}
+                      resizeMode="cover"
+                    />
+                  )}
+
+                  {/* All Tags */}
+                  {selectedFullPost.tags && selectedFullPost.tags.length > 0 && (
+                    <View style={styles.fullTagsContainer}>
+                      {selectedFullPost.tags.map((tag, index) => (
+                        <View key={index} style={styles.tag}>
+                          <Text style={styles.tagText}>#{tag}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </View>
+
+                {/* Engagement Stats */}
+                <View style={styles.fullEngagementStats}>
+                  <TouchableOpacity onPress={() => selectedFullPost.engagement?.likes > 0 && Alert.alert('Likes', `${selectedFullPost.engagement.likes} people liked this post`)}>
+                    <Text style={styles.engagementText}>
+                      {selectedFullPost.engagement?.likes || 0} likes
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => selectedFullPost.comments && selectedFullPost.comments.length > 0 && openViewCommentsModal(selectedFullPost)}>
+                    <Text style={styles.engagementText}>
+                      {selectedFullPost.engagement?.comments || 0} comments
+                    </Text>
+                  </TouchableOpacity>
+                  <Text style={styles.engagementText}>
+                    {selectedFullPost.engagement?.shares || 0} shares
+                  </Text>
+                </View>
+
+                {/* Action Buttons */}
+                <View style={styles.fullActionButtons}>
+                  <TouchableOpacity
+                    style={styles.fullActionButton}
+                    onPress={() => {
+                      const isLiked = currentUser && selectedFullPost.likedBy && selectedFullPost.likedBy.includes(currentUser._id);
+                      handleLike(selectedFullPost._id);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name={currentUser && selectedFullPost.likedBy && selectedFullPost.likedBy.includes(currentUser._id) ? 'heart' : 'heart-outline'}
+                      size={22}
+                      color={currentUser && selectedFullPost.likedBy && selectedFullPost.likedBy.includes(currentUser._id) ? colors.error : colors.textSecondary}
+                    />
+                    <Text style={[styles.actionButtonText, currentUser && selectedFullPost.likedBy && selectedFullPost.likedBy.includes(currentUser._id) && styles.likedText]}>
+                      Like
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.fullActionButton}
+                    onPress={() => {
+                      closeFullPostModal();
+                      openCommentModal(selectedFullPost);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="chatbubble-outline" size={20} color={colors.textSecondary} />
+                    <Text style={styles.actionButtonText}>Comment</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    style={styles.fullActionButton}
+                    onPress={() => handleShare(selectedFullPost)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="share-outline" size={20} color={colors.textSecondary} />
+                    <Text style={styles.actionButtonText}>Share</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Comments Preview */}
+                {selectedFullPost.comments && selectedFullPost.comments.length > 0 && (
+                  <View style={styles.commentsPreview}>
+                    {selectedFullPost.comments.slice(0, 2).map((comment, index) => (
+                      <View key={index} style={styles.commentItem}>
+                        <Text style={styles.commentAuthor}>
+                          {comment.user?.firstName} {comment.user?.lastName}:
+                        </Text>
+                        <Text style={styles.commentText} numberOfLines={2}>
+                          {comment.content}
+                        </Text>
+                      </View>
+                    ))}
+                    {selectedFullPost.comments.length > 2 && (
+                      <TouchableOpacity onPress={() => {
+                        closeFullPostModal();
+                        openViewCommentsModal(selectedFullPost);
+                      }}>
+                        <Text style={styles.viewMoreComments}>
+                          View all {selectedFullPost.comments.length} comments
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                )}
+              </View>
+            </ScrollView>
+          )}
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -654,7 +913,7 @@ const SocialUpdatesScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.white,
   },
   loadingContainer: {
     flex: 1,
@@ -668,39 +927,77 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   heroSection: {
-    paddingVertical: spacing.xxl,
-    paddingHorizontal: spacing.lg,
+    paddingVertical: isMobile ? spacing.xl : spacing.xxl,
+    paddingHorizontal: isMobile ? spacing.md : spacing.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.xl,
+    backgroundColor: colors.white,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    ...(isWeb && {
+      marginHorizontal: spacing.lg,
+      marginBottom: spacing.lg,
+    }),
+  },
+  heroIconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.lg,
+    ...shadows.sm,
   },
   heroTitle: {
     ...typography.h2,
-    color: '#fff',
-    marginTop: spacing.md,
+    color: colors.text,
+    marginTop: spacing.sm,
     textAlign: 'center',
     fontWeight: '700',
+    letterSpacing: -0.5,
   },
   heroSubtitle: {
     ...typography.body1,
-    color: 'rgba(255, 255, 255, 0.9)',
-    marginTop: spacing.sm,
+    color: colors.textSecondary,
+    marginTop: spacing.md,
     textAlign: 'center',
+    maxWidth: width * 0.8,
+    lineHeight: 24,
   },
-  listContent: {
-    padding: spacing.md,
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
     paddingBottom: spacing.xxl,
+  },
+  postsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.lg,
+    justifyContent: 'center',
+    paddingHorizontal: isWeb ? spacing.xl : spacing.lg,
+    ...(isWeb && {
+      maxWidth: 1400,
+      alignSelf: 'center',
+      width: '100%',
+    }),
+  },
+  postCardWrapper: {
+    width: isPhone ? '100%' : '48%',
   },
   postCard: {
     backgroundColor: colors.cardBackground,
     borderRadius: borderRadius.lg,
-    marginBottom: spacing.lg,
     overflow: 'hidden',
-    ...shadows.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.sm,
     ...(isWeb && {
-      cursor: 'pointer',
       userSelect: 'none',
       transition: 'all 0.3s ease',
+      cursor: 'pointer',
     }),
   },
   postHeader: {
@@ -719,8 +1016,8 @@ const styles = StyleSheet.create({
     marginRight: spacing.sm,
   },
   avatar: {
-    width: 48,
-    height: 48,
+    width: 40,
+    height: 40,
     borderRadius: borderRadius.full,
     borderWidth: 2,
     borderColor: colors.primary + '20',
@@ -739,6 +1036,7 @@ const styles = StyleSheet.create({
     ...typography.subtitle1,
     color: colors.text,
     fontWeight: '600',
+    fontSize: 14,
   },
   postMeta: {
     flexDirection: 'row',
@@ -749,6 +1047,7 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.primary,
     fontWeight: '500',
+    fontSize: 10,
   },
   dotSeparator: {
     ...typography.caption,
@@ -757,14 +1056,15 @@ const styles = StyleSheet.create({
   postDate: {
     ...typography.caption,
     color: colors.textSecondary,
+    fontSize: 10,
   },
   postTypeBadge: {
-    backgroundColor: '#667eea15',
+    backgroundColor: colors.primaryLight,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.lg,
     borderWidth: 1,
-    borderColor: '#667eea30',
+    borderColor: colors.primary + '30',
   },
   postTypeText: {
     ...typography.caption,
@@ -781,46 +1081,65 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontWeight: '700',
     marginBottom: spacing.xs,
+    lineHeight: 20,
+    fontSize: 16,
   },
   postText: {
     ...typography.body2,
     color: colors.textSecondary,
-    lineHeight: 22,
+    lineHeight: 20,
     marginBottom: spacing.sm,
+    fontSize: 13,
   },
-  postImage: {
+  postImageThumbnail: {
     width: '100%',
-    height: 200,
+    height: 150,
     borderRadius: borderRadius.sm,
     marginTop: spacing.sm,
     backgroundColor: colors.border,
   },
+  postImage: {
+    width: '100%',
+    height: 240,
+    borderRadius: borderRadius.md,
+    marginTop: spacing.md,
+    backgroundColor: colors.border,
+    ...shadows.sm,
+  },
   tagsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginTop: spacing.sm,
+    marginTop: spacing.xs,
     gap: spacing.xs,
+    alignItems: 'center',
   },
   tag: {
-    backgroundColor: '#667eea10',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
     borderRadius: borderRadius.full,
     borderWidth: 1,
-    borderColor: '#667eea20',
+    borderColor: colors.primary + '20',
   },
   tagText: {
     ...typography.caption,
-    color: '#667eea',
+    color: colors.primary,
     fontWeight: '600',
+    fontSize: 10,
+  },
+  moreTagsText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontSize: 10,
+    fontStyle: 'italic',
   },
   engagementStats: {
     flexDirection: 'row',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
-    gap: spacing.md,
+    borderTopColor: colors.borderLight,
+    gap: spacing.lg,
   },
   engagementText: {
     ...typography.caption,
@@ -829,22 +1148,57 @@ const styles = StyleSheet.create({
   actionButtons: {
     flexDirection: 'row',
     borderTopWidth: 1,
-    borderTopColor: colors.border,
+    borderTopColor: colors.borderLight,
     paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.background,
+    ...(isWeb && {
+      pointerEvents: 'auto',
+    }),
   },
   actionButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.sm,
     gap: spacing.xs,
     borderRadius: borderRadius.sm,
+    ...(isWeb && {
+      cursor: 'pointer',
+      userSelect: 'none',
+      WebkitUserSelect: 'none',
+      touchAction: 'manipulation',
+      pointerEvents: 'auto',
+    }),
   },
   actionButtonText: {
     ...typography.body2,
     color: colors.textSecondary,
     fontWeight: '600',
+  },
+  actionButtonTextCompact: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontWeight: '600',
+    fontSize: 12,
+  },
+  viewFullButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderLight,
+    backgroundColor: colors.primaryLight + '20',
+    gap: spacing.xs,
+  },
+  viewFullButtonText: {
+    ...typography.body2,
+    color: colors.primary,
+    fontWeight: '700',
+    fontSize: 13,
   },
   likedText: {
     color: colors.error,
@@ -950,14 +1304,6 @@ const styles = StyleSheet.create({
     color: colors.text,
     minHeight: 100,
     marginBottom: spacing.md,
-  },
-  postImage: {
-    width: '100%',
-    height: 200,
-    borderRadius: borderRadius.lg,
-    marginTop: spacing.sm,
-    backgroundColor: colors.border,
-    ...shadows.sm,
   },
   submitButton: {
     backgroundColor: colors.primary,
@@ -1135,6 +1481,78 @@ const styles = StyleSheet.create({
     ...typography.button,
     color: colors.primary,
     fontWeight: '600',
+  },
+  // Full Post Modal Styles
+  fullPostCard: {
+    backgroundColor: colors.cardBackground,
+    borderRadius: borderRadius.lg,
+    margin: spacing.md,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.md,
+  },
+  fullPostHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    padding: spacing.lg,
+    paddingBottom: spacing.md,
+  },
+  fullPostContent: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.md,
+  },
+  fullPostTitle: {
+    ...typography.h4,
+    color: colors.text,
+    fontWeight: '700',
+    marginBottom: spacing.md,
+    lineHeight: 28,
+  },
+  fullPostText: {
+    ...typography.body1,
+    color: colors.textSecondary,
+    lineHeight: 24,
+    marginBottom: spacing.md,
+  },
+  fullPostImage: {
+    width: '100%',
+    height: 300,
+    borderRadius: borderRadius.md,
+    marginTop: spacing.md,
+    backgroundColor: colors.border,
+    ...shadows.sm,
+  },
+  fullTagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: spacing.md,
+    gap: spacing.sm,
+  },
+  fullEngagementStats: {
+    flexDirection: 'row',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderLight,
+    gap: spacing.lg,
+  },
+  fullActionButtons: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    borderTopColor: colors.borderLight,
+    paddingHorizontal: spacing.md,
+    backgroundColor: colors.background,
+  },
+  fullActionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.lg,
+    gap: spacing.sm,
+    borderRadius: borderRadius.sm,
   },
 });
 

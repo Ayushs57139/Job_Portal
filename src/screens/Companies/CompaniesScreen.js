@@ -32,6 +32,7 @@ const CompaniesScreen = () => {
     { id: 'all', label: 'All Industries', icon: 'business-outline' }
   ]);
   const [showIndustryDropdown, setShowIndustryDropdown] = useState(false);
+  const [companyFilter, setCompanyFilter] = useState('all');
 
   useEffect(() => {
     loadCompanies();
@@ -87,6 +88,31 @@ const CompaniesScreen = () => {
     }
   };
 
+  const totalOpenPositions = companies.reduce(
+    (sum, company) => sum + (company.openPositions || 0),
+    0
+  );
+
+  const averageRating =
+    companies.length > 0
+      ? (
+          companies.reduce((sum, company) => sum + parseFloat(company.rating || 0), 0) /
+          companies.length
+        ).toFixed(1)
+      : '4.5';
+
+  const getFilteredCompanies = () => {
+    if (companyFilter === 'topRated') {
+      return companies.filter((company) => parseFloat(company.rating || 0) >= 4.2);
+    }
+    if (companyFilter === 'activelyHiring') {
+      return companies.filter((company) => (company.openPositions || 0) > 0);
+    }
+    return companies;
+  };
+
+  const filteredCompanies = getFilteredCompanies();
+
   const handleRefresh = () => {
     setRefreshing(true);
     loadCompanies();
@@ -116,7 +142,7 @@ const CompaniesScreen = () => {
       >
         {/* Hero Section */}
         <LinearGradient
-          colors={['#6366F1', '#8B5CF6']}
+          colors={['#FFFFFF', '#FFFFFF']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.heroSection}
@@ -125,6 +151,20 @@ const CompaniesScreen = () => {
           <Text style={styles.heroSubtitle}>
             Discover opportunities from leading companies and organizations
           </Text>
+          <View style={styles.heroStatsRow}>
+            <View style={styles.heroStatCard}>
+              <Text style={styles.heroStatValue}>{companies.length}</Text>
+              <Text style={styles.heroStatLabel}>Active partners</Text>
+            </View>
+            <View style={styles.heroStatCard}>
+              <Text style={styles.heroStatValue}>{totalOpenPositions}</Text>
+              <Text style={styles.heroStatLabel}>Open roles</Text>
+            </View>
+            <View style={styles.heroStatCard}>
+              <Text style={styles.heroStatValue}>{averageRating}/5</Text>
+              <Text style={styles.heroStatLabel}>Avg. rating</Text>
+            </View>
+          </View>
         </LinearGradient>
 
         {/* Search Section */}
@@ -161,6 +201,62 @@ const CompaniesScreen = () => {
               <Ionicons name="search" size={20} color={colors.textWhite} />
               <Text style={styles.searchButtonText}>Search</Text>
             </TouchableOpacity>
+          </View>
+
+          <View style={styles.quickFilters}>
+            {[
+              { id: 'all', label: 'All companies' },
+              { id: 'topRated', label: 'Top rated' },
+              { id: 'activelyHiring', label: 'Actively hiring' },
+            ].map((filter) => {
+              const isActive = companyFilter === filter.id;
+              return (
+                <TouchableOpacity
+                  key={filter.id}
+                  style={[
+                    styles.quickFilterChip,
+                    isActive && styles.quickFilterChipActive,
+                  ]}
+                  onPress={() => setCompanyFilter(filter.id)}
+                >
+                  <Ionicons
+                    name={
+                      filter.id === 'topRated'
+                        ? 'star'
+                        : filter.id === 'activelyHiring'
+                        ? 'flash'
+                        : 'grid'
+                    }
+                    size={14}
+                    color={isActive ? '#4338CA' : colors.textSecondary}
+                  />
+                  <Text
+                    style={[
+                      styles.quickFilterText,
+                      isActive && styles.quickFilterTextActive,
+                    ]}
+                  >
+                    {filter.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          <View style={styles.trendingTags}>
+            {['FinTech', 'Healthcare', 'Remote friendly', 'Design leaders'].map((tag) => (
+              <TouchableOpacity
+                key={tag}
+                style={styles.trendingTag}
+                onPress={() => {
+                  setSearchQuery(tag);
+                  handleSearch();
+                }}
+              >
+                <Ionicons name="sparkles" size={14} color="#6366F1" />
+                <Text style={styles.trendingTagText}>{tag}</Text>
+              </TouchableOpacity>
+            ))}
           </View>
 
           {/* Loading or Results Message */}
@@ -229,16 +325,16 @@ const CompaniesScreen = () => {
         />
 
         {/* Companies Grid */}
-        {!loading && companies.length > 0 ? (
+        {!loading && filteredCompanies.length > 0 ? (
           <View style={styles.companiesSection}>
             <View style={styles.companiesGrid}>
-              {companies.map((company, index) => (
+              {filteredCompanies.map((company, index) => (
                 <React.Fragment key={company._id}>
                   <View style={styles.companyCardWrapper}>
                     <CompanyCard company={company} />
                   </View>
                   {/* Show ad after every 6 companies */}
-                  {(index + 1) % 6 === 0 && index < companies.length - 1 && (
+                  {(index + 1) % 6 === 0 && index < filteredCompanies.length - 1 && (
                     <View style={[styles.companyCardWrapper, { width: '100%' }]}>
                       <AdvertisementWidget 
                         position="content-middle" 
@@ -252,7 +348,7 @@ const CompaniesScreen = () => {
             </View>
             
             {/* Advertisement - Bottom of companies section */}
-            {companies.length > 3 && (
+            {filteredCompanies.length > 3 && (
               <AdvertisementWidget 
                 position="content-bottom" 
                 page="companies"
@@ -303,24 +399,61 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xxl * 1.5,
     paddingHorizontal: spacing.lg,
     alignItems: 'center',
+    borderBottomLeftRadius: borderRadius.xl,
+    borderBottomRightRadius: borderRadius.xl,
+    ...(isWeb && {
+      marginHorizontal: spacing.lg,
+      marginBottom: spacing.lg,
+    }),
   },
   heroTitle: {
     fontSize: isWeb ? 40 : 32,
     fontWeight: '700',
-    color: colors.textWhite,
+    color: colors.text,
     textAlign: 'center',
     marginBottom: spacing.sm,
   },
   heroSubtitle: {
     fontSize: isWeb ? 17 : 15,
-    color: colors.textWhite,
+    color: colors.textSecondary,
     textAlign: 'center',
     opacity: 0.95,
+    maxWidth: 600,
+    marginBottom: spacing.lg,
+  },
+  heroStatsRow: {
+    flexDirection: isWeb ? 'row' : 'column',
+    gap: spacing.md,
+    width: '100%',
+    maxWidth: 900,
+  },
+  heroStatCard: {
+    flex: 1,
+    backgroundColor: colors.cardBackground,
+    borderRadius: borderRadius.lg,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.sm,
+  },
+  heroStatValue: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  heroStatLabel: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginTop: spacing.xs / 2,
   },
   searchSection: {
     backgroundColor: colors.cardBackground,
     padding: spacing.lg,
-    ...shadows.md,
+    marginHorizontal: isWeb ? spacing.lg : spacing.sm,
+    marginTop: -spacing.xl,
+    borderRadius: borderRadius.xl,
+    ...shadows.lg,
   },
   searchRow: {
     flexDirection: isWeb && width > 768 ? 'row' : 'column',
@@ -357,6 +490,57 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: colors.text,
     flex: 1,
+  },
+  quickFilters: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+  quickFilterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
+  },
+  quickFilterChipActive: {
+    backgroundColor: '#EEF2FF',
+    borderColor: '#C7D2FE',
+  },
+  quickFilterText: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    fontWeight: '500',
+  },
+  quickFilterTextActive: {
+    color: '#4338CA',
+  },
+  trendingTags: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+  trendingTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs / 1.5,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  trendingTagText: {
+    fontSize: 12,
+    color: colors.text,
+    fontWeight: '500',
   },
   dropdownMenuContainer: {
     position: 'absolute',
@@ -439,7 +623,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   companiesSection: {
-    padding: spacing.lg,
+    padding: isWeb ? spacing.xl : spacing.lg,
   },
   companiesGrid: {
     flexDirection: 'row',

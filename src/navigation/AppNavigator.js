@@ -13,6 +13,7 @@ import AdminLoginScreen from '../screens/Auth/AdminLoginScreen';
 import EmployerOptionsScreen from '../screens/Auth/EmployerOptionsScreen';
 import CompanyRegisterScreen from '../screens/Auth/CompanyRegisterScreen';
 import ConsultancyRegisterScreen from '../screens/Auth/ConsultancyRegisterScreen';
+import EmployerRegisterScreen from '../screens/Auth/EmployerRegisterScreen';
 import CompanyLoginScreen from '../screens/Auth/CompanyLoginScreen';
 import ConsultancyLoginScreen from '../screens/Auth/ConsultancyLoginScreen';
 import KYCFormScreen from '../screens/Auth/KYCFormScreen';
@@ -92,6 +93,7 @@ import UserProfileScreen from '../screens/Profile/UserProfileScreen';
 import UserSettingsScreen from '../screens/Profile/UserSettingsScreen';
 import CompanyProfileScreen from '../screens/Profile/CompanyProfileScreen';
 import ResumeBuilderScreen from '../screens/Profile/ResumeBuilderScreen';
+import CreateResumeScreen from '../screens/Profile/CreateResumeScreen';
 
 // Other Screens
 import CompaniesScreen from '../screens/Companies/CompaniesScreen';
@@ -202,6 +204,7 @@ const AppNavigator = () => {
         ConsultancyLogin: 'consultancy/login',
         CompanyRegister: 'company/register',
         ConsultancyRegister: 'consultancy/register',
+        EmployerRegister: 'employer/register',
       },
     },
   };
@@ -283,6 +286,11 @@ const AppNavigator = () => {
           name="ConsultancyRegister" 
           component={ConsultancyRegisterScreen}
           options={{ title: 'Consultancy Registration' }}
+        />
+        <Stack.Screen 
+          name="EmployerRegister" 
+          component={EmployerRegisterScreen}
+          options={{ title: 'Employer Registration' }}
         />
         <Stack.Screen 
           name="KYCForm" 
@@ -628,6 +636,11 @@ const AppNavigator = () => {
           name="ResumeBuilder" 
           component={ResumeBuilderScreen}
           options={{ title: 'Resume Builder' }}
+        />
+        <Stack.Screen 
+          name="CreateResume" 
+          component={CreateResumeScreen}
+          options={{ title: 'Create Resume' }}
         />
         
         {/* Other Screens */}

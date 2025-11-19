@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Platform, StyleSheet, View, LogBox } from 'react-native';
 import AppNavigator from './src/navigation/AppNavigator';
 import ErrorBoundary from './src/components/ErrorBoundary';
@@ -164,16 +164,22 @@ export default function App() {
   return (
     <ErrorBoundary>
       <SafeAreaProvider style={Platform.OS === 'web' ? { height: '100%', width: '100%' } : undefined}>
-        <View style={styles.container}>
+        <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+          <View style={styles.container}>
           <StatusBar style="light" />
           <AppNavigator />
-        </View>
+          </View>
+        </SafeAreaView>
       </SafeAreaProvider>
     </ErrorBoundary>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#000', // fallback for devices with transparent system bars
+  },
   container: {
     flex: 1,
     ...(Platform.OS === 'web' && {
