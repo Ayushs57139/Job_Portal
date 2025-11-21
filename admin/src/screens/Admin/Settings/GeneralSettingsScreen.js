@@ -9,14 +9,20 @@ import {
   ActivityIndicator,
   Alert,
   Switch,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import AdminLayout from '../../../components/Admin/AdminLayout';
 import api from '../../../config/api';
 import { colors, spacing, typography, borderRadius } from '../../../styles/theme';
+import { useResponsive } from '../../../utils/responsive';
 
 const GeneralSettingsScreen = ({ navigation }) => {
+  const responsive = useResponsive();
+  const isMobile = responsive.isMobile;
+  const isTablet = responsive.isTablet;
+  const dynamicStyles = getStyles(isMobile, isTablet);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState({
@@ -72,9 +78,9 @@ const GeneralSettingsScreen = ({ navigation }) => {
   if (loading) {
     return (
       <AdminLayout title="General Settings" activeScreen="AdminSettings" onNavigate={handleNavigate} onLogout={handleLogout}>
-        <View style={styles.loadingContainer}>
+        <View style={dynamicStyles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading settings...</Text>
+          <Text style={dynamicStyles.loadingText}>Loading settings...</Text>
         </View>
       </AdminLayout>
     );
@@ -82,25 +88,25 @@ const GeneralSettingsScreen = ({ navigation }) => {
 
   return (
     <AdminLayout title="General Settings" activeScreen="AdminSettings" onNavigate={handleNavigate} onLogout={handleLogout}>
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+      <ScrollView style={dynamicStyles.container} showsVerticalScrollIndicator={false}>
+        <View style={dynamicStyles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={dynamicStyles.backButton}>
             <Ionicons name="arrow-back" size={24} color={colors.primary} />
           </TouchableOpacity>
-          <View style={styles.headerTextContainer}>
-            <Text style={styles.pageTitle}>General Settings</Text>
-            <Text style={styles.pageSubtitle}>Configure basic platform settings</Text>
+          <View style={dynamicStyles.headerTextContainer}>
+            <Text style={dynamicStyles.pageTitle}>General Settings</Text>
+            <Text style={dynamicStyles.pageSubtitle}>Configure basic platform settings</Text>
           </View>
         </View>
 
         {/* Site Information */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Site Information</Text>
+        <View style={dynamicStyles.section}>
+          <Text style={dynamicStyles.sectionTitle}>Site Information</Text>
           
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Site Name</Text>
+          <View style={dynamicStyles.inputGroup}>
+            <Text style={dynamicStyles.label}>Site Name</Text>
             <TextInput
-              style={styles.input}
+              style={dynamicStyles.input}
               value={settings.siteName}
               onChangeText={(text) => setSettings({ ...settings, siteName: text })}
               placeholder="Enter site name"
@@ -108,10 +114,10 @@ const GeneralSettingsScreen = ({ navigation }) => {
             />
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Site Description</Text>
+          <View style={dynamicStyles.inputGroup}>
+            <Text style={dynamicStyles.label}>Site Description</Text>
             <TextInput
-              style={[styles.input, styles.textArea]}
+              style={[dynamicStyles.input, dynamicStyles.textArea]}
               value={settings.siteDescription}
               onChangeText={(text) => setSettings({ ...settings, siteDescription: text })}
               placeholder="Enter site description"
@@ -121,10 +127,10 @@ const GeneralSettingsScreen = ({ navigation }) => {
             />
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Site URL</Text>
+          <View style={dynamicStyles.inputGroup}>
+            <Text style={dynamicStyles.label}>Site URL</Text>
             <TextInput
-              style={styles.input}
+              style={dynamicStyles.input}
               value={settings.siteUrl}
               onChangeText={(text) => setSettings({ ...settings, siteUrl: text })}
               placeholder="https://example.com"
@@ -136,13 +142,13 @@ const GeneralSettingsScreen = ({ navigation }) => {
         </View>
 
         {/* Contact Information */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Contact Information</Text>
+        <View style={dynamicStyles.section}>
+          <Text style={dynamicStyles.sectionTitle}>Contact Information</Text>
           
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Contact Email</Text>
+          <View style={dynamicStyles.inputGroup}>
+            <Text style={dynamicStyles.label}>Contact Email</Text>
             <TextInput
-              style={styles.input}
+              style={dynamicStyles.input}
               value={settings.contactEmail}
               onChangeText={(text) => setSettings({ ...settings, contactEmail: text })}
               placeholder="contact@example.com"
@@ -152,10 +158,10 @@ const GeneralSettingsScreen = ({ navigation }) => {
             />
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Contact Phone</Text>
+          <View style={dynamicStyles.inputGroup}>
+            <Text style={dynamicStyles.label}>Contact Phone</Text>
             <TextInput
-              style={styles.input}
+              style={dynamicStyles.input}
               value={settings.contactPhone}
               onChangeText={(text) => setSettings({ ...settings, contactPhone: text })}
               placeholder="+91 1234567890"
@@ -166,16 +172,16 @@ const GeneralSettingsScreen = ({ navigation }) => {
         </View>
 
         {/* Regional Settings */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Regional Settings</Text>
+        <View style={dynamicStyles.section}>
+          <Text style={dynamicStyles.sectionTitle}>Regional Settings</Text>
           
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Timezone</Text>
-            <View style={styles.pickerContainer}>
+          <View style={dynamicStyles.inputGroup}>
+            <Text style={dynamicStyles.label}>Timezone</Text>
+            <View style={dynamicStyles.pickerContainer}>
               <Picker
                 selectedValue={settings.timezone}
                 onValueChange={(value) => setSettings({ ...settings, timezone: value })}
-                style={styles.picker}
+                style={dynamicStyles.picker}
               >
                 <Picker.Item label="Asia/Kolkata (IST)" value="Asia/Kolkata" />
                 <Picker.Item label="America/New_York (EST)" value="America/New_York" />
@@ -186,13 +192,13 @@ const GeneralSettingsScreen = ({ navigation }) => {
             </View>
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Language</Text>
-            <View style={styles.pickerContainer}>
+          <View style={dynamicStyles.inputGroup}>
+            <Text style={dynamicStyles.label}>Language</Text>
+            <View style={dynamicStyles.pickerContainer}>
               <Picker
                 selectedValue={settings.language}
                 onValueChange={(value) => setSettings({ ...settings, language: value })}
-                style={styles.picker}
+                style={dynamicStyles.picker}
               >
                 <Picker.Item label="English" value="en" />
                 <Picker.Item label="Hindi" value="hi" />
@@ -200,13 +206,13 @@ const GeneralSettingsScreen = ({ navigation }) => {
             </View>
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Currency</Text>
-            <View style={styles.pickerContainer}>
+          <View style={dynamicStyles.inputGroup}>
+            <Text style={dynamicStyles.label}>Currency</Text>
+            <View style={dynamicStyles.pickerContainer}>
               <Picker
                 selectedValue={settings.currency}
                 onValueChange={(value) => setSettings({ ...settings, currency: value })}
-                style={styles.picker}
+                style={dynamicStyles.picker}
               >
                 <Picker.Item label="Indian Rupee (INR)" value="INR" />
                 <Picker.Item label="US Dollar (USD)" value="USD" />
@@ -215,13 +221,13 @@ const GeneralSettingsScreen = ({ navigation }) => {
             </View>
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Date Format</Text>
-            <View style={styles.pickerContainer}>
+          <View style={dynamicStyles.inputGroup}>
+            <Text style={dynamicStyles.label}>Date Format</Text>
+            <View style={dynamicStyles.pickerContainer}>
               <Picker
                 selectedValue={settings.dateFormat}
                 onValueChange={(value) => setSettings({ ...settings, dateFormat: value })}
-                style={styles.picker}
+                style={dynamicStyles.picker}
               >
                 <Picker.Item label="DD-MM-YYYY" value="DD-MM-YYYY" />
                 <Picker.Item label="MM-DD-YYYY" value="MM-DD-YYYY" />
@@ -232,13 +238,13 @@ const GeneralSettingsScreen = ({ navigation }) => {
         </View>
 
         {/* Maintenance Mode */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Maintenance Mode</Text>
+        <View style={dynamicStyles.section}>
+          <Text style={dynamicStyles.sectionTitle}>Maintenance Mode</Text>
           
-          <View style={styles.switchRow}>
-            <View style={styles.switchLabelContainer}>
-              <Text style={styles.switchLabel}>Enable Maintenance Mode</Text>
-              <Text style={styles.switchDescription}>
+          <View style={dynamicStyles.switchRow}>
+            <View style={dynamicStyles.switchLabelContainer}>
+              <Text style={dynamicStyles.switchLabel}>Enable Maintenance Mode</Text>
+              <Text style={dynamicStyles.switchDescription}>
                 When enabled, only admins can access the site
               </Text>
             </View>
@@ -251,10 +257,10 @@ const GeneralSettingsScreen = ({ navigation }) => {
           </View>
 
           {settings.maintenanceMode && (
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Maintenance Message</Text>
+            <View style={dynamicStyles.inputGroup}>
+              <Text style={dynamicStyles.label}>Maintenance Message</Text>
               <TextInput
-                style={[styles.input, styles.textArea]}
+                style={[dynamicStyles.input, dynamicStyles.textArea]}
                 value={settings.maintenanceMessage}
                 onChangeText={(text) => setSettings({ ...settings, maintenanceMessage: text })}
                 placeholder="Enter maintenance message"
@@ -268,7 +274,7 @@ const GeneralSettingsScreen = ({ navigation }) => {
 
         {/* Save Button */}
         <TouchableOpacity
-          style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+          style={[dynamicStyles.saveButton, saving && dynamicStyles.saveButtonDisabled]}
           onPress={handleSave}
           disabled={saving}
         >
@@ -277,18 +283,18 @@ const GeneralSettingsScreen = ({ navigation }) => {
           ) : (
             <>
               <Ionicons name="checkmark-circle" size={20} color={colors.white} />
-              <Text style={styles.saveButtonText}>Save Changes</Text>
+              <Text style={dynamicStyles.saveButtonText}>Save Changes</Text>
             </>
           )}
         </TouchableOpacity>
 
-        <View style={styles.bottomSpacing} />
+        <View style={dynamicStyles.bottomSpacing} />
       </ScrollView>
     </AdminLayout>
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (isMobile, isTablet) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -332,11 +338,15 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.md,
     padding: spacing.lg,
     borderRadius: borderRadius.lg,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+    } : {
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+    }),
   },
   sectionTitle: {
     ...typography.h3,
@@ -415,6 +425,8 @@ const styles = StyleSheet.create({
     height: spacing.xxl,
   },
 });
+
+const styles = StyleSheet.create({});
 
 export default GeneralSettingsScreen;
 

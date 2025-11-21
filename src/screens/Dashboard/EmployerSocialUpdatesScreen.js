@@ -14,13 +14,18 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Picker } from '@react-native-picker/picker';
 import * as ImagePicker from 'expo-image-picker';
 import { colors, spacing, borderRadius, typography, shadows } from '../../styles/theme';
 import EmployerSidebar from '../../components/EmployerSidebar';
 import api from '../../config/api';
+import { useResponsive } from '../../utils/responsive';
 
 const EmployerSocialUpdatesScreen = ({ navigation }) => {
+  const responsive = useResponsive();
+  const { isMobile } = responsive;
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [posts, setPosts] = useState([]);
@@ -176,28 +181,62 @@ const EmployerSocialUpdatesScreen = ({ navigation }) => {
   const renderPost = (p) => (
     <View key={p._id} style={styles.card}>
       <View style={styles.cardHeader}>
-        <Text style={styles.postTitle} numberOfLines={1}>{p.title}</Text>
+        <View style={styles.postHeaderLeft}>
+          <View style={styles.postTypeBadge}>
+            <Ionicons name="megaphone" size={14} color="#3B82F6" />
+            <Text style={styles.postTypeText}>{p.postType?.replace('_', ' ') || 'General'}</Text>
+          </View>
+          <Text style={styles.postTitle} numberOfLines={2}>{p.title}</Text>
+        </View>
         <View style={styles.headerActions}>
-          <TouchableOpacity style={[styles.smallBtn, styles.infoBtn]} onPress={()=>navigation.navigate('SocialUpdates') }>
-            <Ionicons name="eye-outline" size={16} color={colors.white} /><Text style={styles.smallBtnText}>View</Text>
+          <TouchableOpacity 
+            style={[styles.actionButton, styles.viewBtn]} 
+            onPress={()=>navigation.navigate('SocialUpdates')}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="eye-outline" size={16} color="#3B82F6" />
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.smallBtn, styles.successBtn]} onPress={()=>openEditModal(p)}>
-            <Ionicons name="create-outline" size={16} color={colors.white} /><Text style={styles.smallBtnText}>Edit</Text>
+          <TouchableOpacity 
+            style={[styles.actionButton, styles.editBtn]} 
+            onPress={()=>openEditModal(p)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="create-outline" size={16} color="#10B981" />
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.smallBtn, styles.dangerBtn]} onPress={()=>handleDelete(p._id)}>
-            <Ionicons name="trash-outline" size={16} color={colors.white} /><Text style={styles.smallBtnText}>Delete</Text>
+          <TouchableOpacity 
+            style={[styles.actionButton, styles.deleteBtn]} 
+            onPress={()=>handleDelete(p._id)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="trash-outline" size={16} color="#EF4444" />
           </TouchableOpacity>
         </View>
       </View>
       <Text style={styles.postExcerpt} numberOfLines={3}>{p.content}</Text>
       <View style={styles.metaRow}>
-        <View style={styles.metaItem}><Ionicons name="heart-outline" size={16} color={colors.error} /><Text style={styles.metaText}>{p.engagement?.likes || 0} Likes</Text></View>
-        <View style={styles.metaItem}><Ionicons name="chatbubble-ellipses-outline" size={16} color={colors.info} /><Text style={styles.metaText}>{p.engagement?.comments || 0} Comments</Text></View>
-        <View style={styles.metaItem}><Ionicons name="share-social-outline" size={16} color={colors.primary} /><Text style={styles.metaText}>{p.engagement?.shares || 0} Shares</Text></View>
+        <View style={[styles.metaItem, styles.likesItem]}>
+          <Ionicons name="heart" size={18} color="#EF4444" />
+          <Text style={styles.metaText}>{p.engagement?.likes || 0}</Text>
+        </View>
+        <View style={[styles.metaItem, styles.commentsItem]}>
+          <Ionicons name="chatbubble-ellipses" size={18} color="#3B82F6" />
+          <Text style={styles.metaText}>{p.engagement?.comments || 0}</Text>
+        </View>
+        <View style={[styles.metaItem, styles.sharesItem]}>
+          <Ionicons name="share-social" size={18} color="#8B5CF6" />
+          <Text style={styles.metaText}>{p.engagement?.shares || 0}</Text>
+        </View>
       </View>
       {p.tags && p.tags.length>0 && (
         <View style={styles.tagsRow}>
-          {p.tags.slice(0,4).map((t,i)=>(<View key={i} style={styles.tag}><Text style={styles.tagText}>#{t}</Text></View>))}
+          {p.tags.slice(0,4).map((t,i)=>(
+            <View key={i} style={styles.tag}>
+              <Text style={styles.tagText}>#{t}</Text>
+            </View>
+          ))}
+          {p.tags.length > 4 && (
+            <Text style={styles.moreTagsText}>+{p.tags.length - 4} more</Text>
+          )}
         </View>
       )}
     </View>
@@ -214,24 +253,94 @@ const EmployerSocialUpdatesScreen = ({ navigation }) => {
 
   return (
     <View style={styles.page}>
-      <View style={styles.sidebar}><EmployerSidebar permanent navigation={navigation} role="company" activeKey="social" /></View>
-      <View style={styles.content}>
-        <View style={styles.headerBar}>
-          <Text style={styles.headerTitle}>Social Updates</Text>
-          <TouchableOpacity style={styles.primaryBtn} onPress={()=>navigation.navigate('EmployerCreateSocialPost')}>
-            <Ionicons name="add-circle-outline" size={18} color={colors.white} />
-            <Text style={styles.primaryBtnText}>Create Post</Text>
-          </TouchableOpacity>
+      {!isMobile && (
+        <View style={styles.sidebar}>
+          <EmployerSidebar permanent navigation={navigation} role="company" activeKey="social" />
         </View>
+      )}
+      {isMobile && (
+        <EmployerSidebar 
+          visible={sidebarOpen} 
+          onClose={() => setSidebarOpen(false)} 
+          navigation={navigation} 
+          role="company" 
+          activeKey="social" 
+        />
+      )}
+      {isMobile && (
+        <TouchableOpacity 
+          style={styles.menuButton}
+          onPress={() => setSidebarOpen(true)}
+        >
+          <Ionicons name="menu" size={24} color={colors.text} />
+        </TouchableOpacity>
+      )}
+      <View style={[styles.content, isMobile && styles.contentMobile]}>
+        <LinearGradient
+          colors={['#FFFFFF', '#F8FAFC']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.headerBar, isMobile && styles.headerBarMobile]}
+        >
+          <View style={[styles.headerLeft, isMobile && styles.headerLeftMobile]}>
+            <View style={[styles.headerIconContainer, isMobile && styles.headerIconContainerMobile]}>
+              <Ionicons name="megaphone" size={isMobile ? 24 : 28} color="#3B82F6" />
+            </View>
+            <View>
+              <Text style={[styles.headerTitle, isMobile && styles.headerTitleMobile]}>Social Updates</Text>
+              <Text style={[styles.headerSubtitle, isMobile && styles.headerSubtitleMobile]}>Manage and track your social posts</Text>
+            </View>
+          </View>
+          <TouchableOpacity 
+            style={styles.primaryBtn} 
+            onPress={()=>navigation.navigate('EmployerCreateSocialPost')}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={['#3B82F6', '#2563EB']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.primaryBtnGradient}
+            >
+              <Ionicons name="add-circle" size={20} color="#FFFFFF" />
+              <Text style={styles.primaryBtnText}>Create Post</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </LinearGradient>
 
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.lg }} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[colors.primary]} tintColor={colors.primary} />}>
+        <ScrollView 
+          style={{ flex: 1 }} 
+          contentContainerStyle={styles.scrollContent} 
+          refreshControl={
+            <RefreshControl 
+              refreshing={refreshing} 
+              onRefresh={handleRefresh} 
+              colors={[colors.primary]} 
+              tintColor={colors.primary} 
+            />
+          }
+        >
           {posts.length === 0 ? (
             <View style={styles.empty}>
-              <Ionicons name="newspaper-outline" size={64} color={colors.textSecondary} />
+              <View style={styles.emptyIconContainer}>
+                <Ionicons name="newspaper-outline" size={80} color="#CBD5E1" />
+              </View>
               <Text style={styles.emptyTitle}>No posts yet</Text>
               <Text style={styles.emptySub}>Create your first social update for everyone to see</Text>
-              <TouchableOpacity style={styles.primaryBtn} onPress={()=>navigation.navigate('CreateSocialPost')}>
-                <Text style={styles.primaryBtnText}>Create Post</Text>
+              <TouchableOpacity 
+                style={styles.emptyButton} 
+                onPress={()=>navigation.navigate('EmployerCreateSocialPost')}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={['#3B82F6', '#2563EB']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.emptyButtonGradient}
+                >
+                  <Ionicons name="add-circle" size={20} color="#FFFFFF" />
+                  <Text style={styles.emptyButtonText}>Create Your First Post</Text>
+                </LinearGradient>
               </TouchableOpacity>
             </View>
           ) : (
@@ -412,27 +521,205 @@ const EmployerSocialUpdatesScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  page: { flex: 1, flexDirection: 'row', backgroundColor: colors.background },
+  page: { flex: 1, flexDirection: 'row', backgroundColor: '#F1F5F9' },
   sidebar: { width: 280, backgroundColor: colors.sidebarBackground },
+  menuButton: {
+    position: 'absolute',
+    top: spacing.md,
+    left: spacing.md,
+    zIndex: 1000,
+    backgroundColor: '#FFFFFF',
+    padding: spacing.sm,
+    borderRadius: borderRadius.md,
+    ...shadows.sm,
+  },
   content: { flex: 1 },
-  headerBar: { padding: spacing.xl, borderBottomWidth: 1, borderBottomColor: colors.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  headerTitle: { ...typography.h3, color: colors.text, fontWeight: '700' },
-  primaryBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, backgroundColor: colors.primary, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: borderRadius.md },
-  primaryBtnText: { ...typography.button, color: colors.white, fontWeight: '600' },
+  contentMobile: {
+    paddingTop: spacing.xl + 40,
+  },
+  headerBar: { 
+    padding: spacing.xl, 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center',
+    ...shadows.md,
+  },
+  headerBarMobile: {
+    padding: spacing.md,
+    paddingTop: spacing.xl + 40,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    flex: 1,
+  },
+  headerLeftMobile: {
+    gap: spacing.sm,
+  },
+  headerIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: borderRadius.md,
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerIconContainerMobile: {
+    width: 48,
+    height: 48,
+  },
+  headerTitle: { 
+    fontSize: 28, 
+    fontWeight: '800', 
+    color: '#1E293B',
+    letterSpacing: -0.5,
+  },
+  headerTitleMobile: {
+    fontSize: 22,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: '#64748B',
+    marginTop: 4,
+    fontWeight: '500',
+  },
+  headerSubtitleMobile: {
+    fontSize: 12,
+  },
+  primaryBtn: { 
+    borderRadius: borderRadius.md,
+    overflow: 'hidden',
+    ...shadows.sm,
+  },
+  primaryBtnGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+  },
+  primaryBtnText: { 
+    fontSize: 15,
+    fontWeight: '700', 
+    color: '#FFFFFF',
+  },
   loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   loadingText: { ...typography.body1, color: colors.textSecondary, marginTop: spacing.sm },
-  empty: { alignItems: 'center', padding: spacing.xl },
-  emptyTitle: { ...typography.h5, color: colors.text, fontWeight: '700', marginTop: spacing.md },
-  emptySub: { ...typography.body1, color: colors.textSecondary, marginVertical: spacing.sm },
-  card: { backgroundColor: colors.cardBackground, borderRadius: borderRadius.lg, padding: spacing.lg, marginBottom: spacing.md, ...shadows.sm },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xs },
-  postTitle: { ...typography.h6, color: colors.text, fontWeight: '700', flex: 1, marginRight: spacing.md },
-  headerActions: { flexDirection: 'row', gap: spacing.sm },
-  smallBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: spacing.sm, paddingVertical: 6, borderRadius: 8 },
-  smallBtnText: { ...typography.caption, color: colors.white, fontWeight: '600' },
-  infoBtn: { backgroundColor: colors.info },
-  successBtn: { backgroundColor: colors.success },
-  dangerBtn: { backgroundColor: colors.error },
+  scrollContent: { 
+    padding: spacing.lg,
+    paddingBottom: spacing.xxl,
+  },
+  empty: { 
+    alignItems: 'center', 
+    justifyContent: 'center',
+    padding: spacing.xxl,
+    minHeight: 400,
+  },
+  emptyIconContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.lg,
+  },
+  emptyTitle: { 
+    fontSize: 24,
+    fontWeight: '800', 
+    color: '#1E293B',
+    marginBottom: spacing.sm,
+  },
+  emptySub: { 
+    fontSize: 15,
+    color: '#64748B', 
+    marginBottom: spacing.xl,
+    textAlign: 'center',
+    maxWidth: 400,
+  },
+  emptyButton: {
+    borderRadius: borderRadius.md,
+    overflow: 'hidden',
+    ...shadows.sm,
+  },
+  emptyButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+  },
+  emptyButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  card: { 
+    backgroundColor: '#FFFFFF', 
+    borderRadius: borderRadius.lg, 
+    padding: spacing.xl, 
+    marginBottom: spacing.lg, 
+    ...shadows.md,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  cardHeader: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'flex-start', 
+    marginBottom: spacing.md,
+  },
+  postHeaderLeft: {
+    flex: 1,
+    marginRight: spacing.md,
+  },
+  postTypeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: borderRadius.sm,
+    alignSelf: 'flex-start',
+    marginBottom: spacing.sm,
+  },
+  postTypeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#3B82F6',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  postTitle: { 
+    fontSize: 20,
+    fontWeight: '700', 
+    color: '#1E293B',
+    lineHeight: 28,
+  },
+  headerActions: { 
+    flexDirection: 'row', 
+    gap: spacing.xs,
+  },
+  actionButton: {
+    width: 36,
+    height: 36,
+    borderRadius: borderRadius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+  },
+  viewBtn: {
+    borderColor: '#DBEAFE',
+  },
+  editBtn: {
+    borderColor: '#D1FAE5',
+  },
+  deleteBtn: {
+    borderColor: '#FEE2E2',
+  },
   // Modal Styles
   modalContainer: { flex: 1, backgroundColor: colors.white },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.border },
@@ -448,7 +735,7 @@ const styles = StyleSheet.create({
   imagesPreviewContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
   imagePreviewWrapper: { position: 'relative', width: 100, height: 100 },
   imagePreview: { width: '100%', height: '100%', borderRadius: borderRadius.md, backgroundColor: colors.border },
-  removeImageButton: { position: 'absolute', top: -8, right: -8, backgroundColor: colors.white, borderRadius: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 3, elevation: 3 },
+  removeImageButton: { position: 'absolute', top: -8, right: -8, backgroundColor: colors.white, borderRadius: 12, ...(Platform.OS === 'web' ? { boxShadow: '0 2px 3px rgba(0, 0, 0, 0.2)' } : { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 3, elevation: 3 }) },
   addImageButton: { borderWidth: 2, borderColor: colors.border, borderStyle: 'dashed', borderRadius: borderRadius.md, padding: spacing.lg, alignItems: 'center', backgroundColor: '#F9FAFB' },
   addImageButtonText: { ...typography.body2, fontWeight: '600', color: colors.primary, marginTop: spacing.xs },
   addImageButtonSubtext: { ...typography.caption, color: colors.textSecondary, marginTop: 4 },
@@ -457,13 +744,67 @@ const styles = StyleSheet.create({
   cancelButtonText: { ...typography.button, fontWeight: '600', color: colors.text },
   saveButton: { flex: 1, padding: spacing.md, borderRadius: borderRadius.md, backgroundColor: colors.primary, alignItems: 'center' },
   saveButtonText: { ...typography.button, fontWeight: '600', color: colors.white },
-  postExcerpt: { ...typography.body2, color: colors.textSecondary, marginTop: spacing.xs },
-  metaRow: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.sm },
-  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  metaText: { ...typography.caption, color: colors.textSecondary, fontWeight: '600' },
-  tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: spacing.sm },
-  tag: { backgroundColor: colors.primary + '12', paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: 12 },
-  tagText: { ...typography.caption, color: colors.primary },
+  postExcerpt: { 
+    fontSize: 15,
+    color: '#64748B', 
+    lineHeight: 24,
+    marginTop: spacing.md,
+  },
+  metaRow: { 
+    flexDirection: 'row', 
+    gap: spacing.lg, 
+    marginTop: spacing.lg,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  metaItem: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.sm,
+  },
+  likesItem: {
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+  },
+  commentsItem: {
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+  },
+  sharesItem: {
+    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+  },
+  metaText: { 
+    fontSize: 13,
+    fontWeight: '700', 
+    color: '#1E293B',
+  },
+  tagsRow: { 
+    flexDirection: 'row', 
+    flexWrap: 'wrap', 
+    gap: spacing.sm, 
+    marginTop: spacing.md,
+    alignItems: 'center',
+  },
+  tag: { 
+    backgroundColor: 'rgba(59, 130, 246, 0.1)', 
+    paddingHorizontal: spacing.md, 
+    paddingVertical: spacing.xs, 
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.2)',
+  },
+  tagText: { 
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#3B82F6',
+  },
+  moreTagsText: {
+    fontSize: 12,
+    color: '#64748B',
+    fontStyle: 'italic',
+  },
 });
 
 export default EmployerSocialUpdatesScreen;

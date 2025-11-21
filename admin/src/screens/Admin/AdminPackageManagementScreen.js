@@ -16,8 +16,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import AdminLayout from '../../components/Admin/AdminLayout';
 import { API_URL } from '../../config/api';
+import { useResponsive } from '../../utils/responsive';
 
 const AdminPackageManagementScreen = ({ navigation }) => {
+  const responsive = useResponsive();
+  const isMobile = responsive.isMobile;
+  const isTablet = responsive.isTablet;
+  const dynamicStyles = getStyles(isMobile, isTablet);
+  
   const handleLogout = () => navigation.replace('AdminLogin');
   const handleNavigate = (screen) => navigation.navigate(screen);
 
@@ -340,70 +346,70 @@ const AdminPackageManagementScreen = ({ navigation }) => {
   };
 
   const renderPackageCard = (pkg) => (
-    <View key={pkg._id} style={styles.packageCard}>
-      <View style={styles.packageHeader}>
-        <View style={styles.packageTitleRow}>
-          <Text style={styles.packageName}>{pkg.name}</Text>
-          <View style={styles.badgeContainer}>
+    <View key={pkg._id} style={dynamicStyles.packageCard}>
+      <View style={dynamicStyles.packageHeader}>
+        <View style={dynamicStyles.packageTitleRow}>
+          <Text style={dynamicStyles.packageName}>{pkg.name}</Text>
+          <View style={dynamicStyles.badgeContainer}>
             {pkg.isFeatured && (
-              <View style={styles.featuredBadge}>
+              <View style={dynamicStyles.featuredBadge}>
                 <Ionicons name="star" size={12} color="#FFD700" />
-                <Text style={styles.badgeText}>Featured</Text>
+                <Text style={dynamicStyles.badgeText}>Featured</Text>
               </View>
             )}
-            <View style={[styles.statusBadge, pkg.isActive ? styles.activeBadge : styles.inactiveBadge]}>
-              <Text style={styles.badgeText}>{pkg.isActive ? 'Active' : 'Inactive'}</Text>
+            <View style={[dynamicStyles.statusBadge, pkg.isActive ? dynamicStyles.activeBadge : dynamicStyles.inactiveBadge]}>
+              <Text style={dynamicStyles.badgeText}>{pkg.isActive ? 'Active' : 'Inactive'}</Text>
             </View>
-            <View style={styles.typeBadge}>
-              <Text style={styles.badgeText}>{pkg.packageType}</Text>
+            <View style={dynamicStyles.typeBadge}>
+              <Text style={dynamicStyles.badgeText}>{pkg.packageType}</Text>
             </View>
           </View>
         </View>
-        <Text style={styles.packageDescription}>{pkg.description}</Text>
-        <View style={styles.packageDetailsRow}>
-          <View style={styles.detailItem}>
+        <Text style={dynamicStyles.packageDescription}>{pkg.description}</Text>
+        <View style={dynamicStyles.packageDetailsRow}>
+          <View style={dynamicStyles.detailItem}>
             <Ionicons name="cash-outline" size={16} color="#666" />
-            <Text style={styles.detailText}>
+            <Text style={dynamicStyles.detailText}>
               {pkg.currency} {pkg.price?.toLocaleString()}
             </Text>
           </View>
-          <View style={styles.detailItem}>
+          <View style={dynamicStyles.detailItem}>
             <Ionicons name="time-outline" size={16} color="#666" />
-            <Text style={styles.detailText}>
+            <Text style={dynamicStyles.detailText}>
               {pkg.periodValue} {pkg.period}
             </Text>
           </View>
           {pkg.gstApplicable && (
-            <View style={styles.detailItem}>
+            <View style={dynamicStyles.detailItem}>
               <Ionicons name="receipt-outline" size={16} color="#666" />
-              <Text style={styles.detailText}>GST Applicable</Text>
+              <Text style={dynamicStyles.detailText}>GST Applicable</Text>
             </View>
           )}
         </View>
         {pkg.features && pkg.features.length > 0 && (
-          <View style={styles.featuresSection}>
-            <Text style={styles.featuresTitle}>Features:</Text>
+          <View style={dynamicStyles.featuresSection}>
+            <Text style={dynamicStyles.featuresTitle}>Features:</Text>
             {pkg.features.slice(0, 3).map((feature, index) => (
-              <View key={index} style={styles.featureItem}>
+              <View key={index} style={dynamicStyles.featureItem}>
                 <Ionicons
                   name={feature.included ? "checkmark-circle" : "close-circle"}
                   size={14}
                   color={feature.included ? "#4CAF50" : "#F44336"}
                 />
-                <Text style={styles.featureText}>
+                <Text style={dynamicStyles.featureText}>
                   {feature.name}: {feature.value}
                 </Text>
               </View>
             ))}
             {pkg.features.length > 3 && (
-              <Text style={styles.moreFeatures}>+{pkg.features.length - 3} more features</Text>
+              <Text style={dynamicStyles.moreFeatures}>+{pkg.features.length - 3} more features</Text>
             )}
           </View>
         )}
       </View>
-      <View style={styles.packageActions}>
+      <View style={dynamicStyles.packageActions}>
         <TouchableOpacity
-          style={[styles.actionButton, styles.toggleButton]}
+          style={[dynamicStyles.actionButton, dynamicStyles.toggleButton]}
           onPress={() => toggleActive(pkg)}
         >
           <Ionicons
@@ -411,12 +417,12 @@ const AdminPackageManagementScreen = ({ navigation }) => {
             size={18}
             color="#2196F3"
           />
-          <Text style={styles.actionButtonText}>
+          <Text style={dynamicStyles.actionButtonText}>
             {pkg.isActive ? 'Deactivate' : 'Activate'}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.actionButton, styles.toggleButton]}
+          style={[dynamicStyles.actionButton, dynamicStyles.toggleButton]}
           onPress={() => toggleFeatured(pkg)}
         >
           <Ionicons
@@ -424,23 +430,23 @@ const AdminPackageManagementScreen = ({ navigation }) => {
             size={18}
             color="#FFD700"
           />
-          <Text style={styles.actionButtonText}>
+          <Text style={dynamicStyles.actionButtonText}>
             {pkg.isFeatured ? 'Unfeatured' : 'Featured'}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.actionButton, styles.editButton]}
+          style={[dynamicStyles.actionButton, dynamicStyles.editButton]}
           onPress={() => openEditModal(pkg)}
         >
           <Ionicons name="create-outline" size={18} color="#4CAF50" />
-          <Text style={styles.actionButtonText}>Edit</Text>
+          <Text style={dynamicStyles.actionButtonText}>Edit</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.actionButton, styles.deleteButton]}
+          style={[dynamicStyles.actionButton, dynamicStyles.deleteButton]}
           onPress={() => handleDelete(pkg)}
         >
           <Ionicons name="trash-outline" size={18} color="#F44336" />
-          <Text style={styles.actionButtonText}>Delete</Text>
+          <Text style={dynamicStyles.actionButtonText}>Delete</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -449,36 +455,47 @@ const AdminPackageManagementScreen = ({ navigation }) => {
   const renderModal = () => (
     <Modal
       visible={modalVisible}
-      animationType="slide"
+      animationType="fade"
       transparent={true}
       onRequestClose={() => setModalVisible(false)}
     >
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>
+      <TouchableOpacity 
+        style={dynamicStyles.modalOverlay}
+        activeOpacity={1}
+        onPress={() => setModalVisible(false)}
+      >
+        <TouchableOpacity 
+          activeOpacity={1}
+          onPress={(e) => e.stopPropagation()}
+        >
+        <View style={dynamicStyles.modalContent}>
+          <View style={dynamicStyles.modalHeader}>
+            <Text style={dynamicStyles.modalTitle}>
               {editMode ? 'Edit Package' : 'Add New Package'}
             </Text>
-            <TouchableOpacity onPress={() => setModalVisible(false)}>
-              <Ionicons name="close" size={24} color="#666" />
+            <TouchableOpacity 
+              onPress={() => setModalVisible(false)}
+              style={dynamicStyles.modalCloseButton}
+            >
+              <Ionicons name="close" size={24} color="#64748B" />
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+          <ScrollView style={dynamicStyles.modalBody} showsVerticalScrollIndicator={false}>
             {/* Basic Information */}
-            <Text style={styles.sectionTitle}>Basic Information</Text>
+            <Text style={dynamicStyles.sectionTitle}>Basic Information</Text>
             
-            <Text style={styles.label}>Package Name *</Text>
+            <Text style={dynamicStyles.label}>Package Name *</Text>
             <TextInput
-              style={styles.input}
+              style={dynamicStyles.input}
               value={formData.name}
               onChangeText={(text) => setFormData({ ...formData, name: text })}
               placeholder="e.g., Professional Package"
             />
 
-            <Text style={styles.label}>Description *</Text>
+            <Text style={dynamicStyles.label}>Description *</Text>
             <TextInput
-              style={[styles.input, styles.textArea]}
+              style={[dynamicStyles.input, dynamicStyles.textArea]}
               value={formData.description}
               onChangeText={(text) => setFormData({ ...formData, description: text })}
               placeholder="Package description"
@@ -486,22 +503,22 @@ const AdminPackageManagementScreen = ({ navigation }) => {
               numberOfLines={3}
             />
 
-            <View style={styles.row}>
-              <View style={styles.halfColumn}>
-                <Text style={styles.label}>Price *</Text>
+            <View style={dynamicStyles.row}>
+              <View style={dynamicStyles.halfColumn}>
+                <Text style={dynamicStyles.label}>Price *</Text>
                 <TextInput
-                  style={styles.input}
+                  style={dynamicStyles.input}
                   value={formData.price}
                   onChangeText={(text) => setFormData({ ...formData, price: text })}
                   placeholder="0"
                   keyboardType="numeric"
                 />
               </View>
-              <View style={styles.halfColumn}>
-                <Text style={styles.label}>Currency</Text>
-                <View style={styles.pickerContainer}>
+              <View style={dynamicStyles.halfColumn}>
+                <Text style={dynamicStyles.label}>Currency</Text>
+                <View style={dynamicStyles.pickerContainer}>
                   <TouchableOpacity
-                    style={styles.pickerButton}
+                    style={dynamicStyles.pickerButton}
                     onPress={() => {
                       Alert.alert('Select Currency', '', [
                         { text: 'INR', onPress: () => setFormData({ ...formData, currency: 'INR' }) },
@@ -510,29 +527,29 @@ const AdminPackageManagementScreen = ({ navigation }) => {
                       ]);
                     }}
                   >
-                    <Text style={styles.pickerText}>{formData.currency}</Text>
+                    <Text style={dynamicStyles.pickerText}>{formData.currency}</Text>
                     <Ionicons name="chevron-down" size={20} color="#666" />
                   </TouchableOpacity>
                 </View>
               </View>
             </View>
 
-            <View style={styles.row}>
-              <View style={styles.halfColumn}>
-                <Text style={styles.label}>Period Value *</Text>
+            <View style={dynamicStyles.row}>
+              <View style={dynamicStyles.halfColumn}>
+                <Text style={dynamicStyles.label}>Period Value *</Text>
                 <TextInput
-                  style={styles.input}
+                  style={dynamicStyles.input}
                   value={formData.periodValue}
                   onChangeText={(text) => setFormData({ ...formData, periodValue: text })}
                   placeholder="1"
                   keyboardType="numeric"
                 />
               </View>
-              <View style={styles.halfColumn}>
-                <Text style={styles.label}>Period *</Text>
-                <View style={styles.pickerContainer}>
+              <View style={dynamicStyles.halfColumn}>
+                <Text style={dynamicStyles.label}>Period *</Text>
+                <View style={dynamicStyles.pickerContainer}>
                   <TouchableOpacity
-                    style={styles.pickerButton}
+                    style={dynamicStyles.pickerButton}
                     onPress={() => {
                       Alert.alert('Select Period', '', [
                         { text: 'Days', onPress: () => setFormData({ ...formData, period: 'days' }) },
@@ -541,36 +558,36 @@ const AdminPackageManagementScreen = ({ navigation }) => {
                       ]);
                     }}
                   >
-                    <Text style={styles.pickerText}>{formData.period}</Text>
+                    <Text style={dynamicStyles.pickerText}>{formData.period}</Text>
                     <Ionicons name="chevron-down" size={20} color="#666" />
                   </TouchableOpacity>
                 </View>
               </View>
             </View>
 
-            <Text style={styles.label}>Package Type *</Text>
-            <View style={styles.radioGroup}>
+            <Text style={dynamicStyles.label}>Package Type *</Text>
+            <View style={dynamicStyles.radioGroup}>
               <TouchableOpacity
-                style={[styles.radioButton, formData.packageType === 'employer' && styles.radioButtonActive]}
+                style={[dynamicStyles.radioButton, formData.packageType === 'employer' && dynamicStyles.radioButtonActive]}
                 onPress={() => setFormData({ ...formData, packageType: 'employer' })}
               >
-                <Text style={[styles.radioText, formData.packageType === 'employer' && styles.radioTextActive]}>
+                <Text style={[dynamicStyles.radioText, formData.packageType === 'employer' && dynamicStyles.radioTextActive]}>
                   Employer
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.radioButton, formData.packageType === 'candidate' && styles.radioButtonActive]}
+                style={[dynamicStyles.radioButton, formData.packageType === 'candidate' && dynamicStyles.radioButtonActive]}
                 onPress={() => setFormData({ ...formData, packageType: 'candidate' })}
               >
-                <Text style={[styles.radioText, formData.packageType === 'candidate' && styles.radioTextActive]}>
+                <Text style={[dynamicStyles.radioText, formData.packageType === 'candidate' && dynamicStyles.radioTextActive]}>
                   Candidate
                 </Text>
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.label}>Display Order</Text>
+            <Text style={dynamicStyles.label}>Display Order</Text>
             <TextInput
-              style={styles.input}
+              style={dynamicStyles.input}
               value={formData.displayOrder}
               onChangeText={(text) => setFormData({ ...formData, displayOrder: text })}
               placeholder="0"
@@ -578,10 +595,10 @@ const AdminPackageManagementScreen = ({ navigation }) => {
             />
 
             {/* Settings */}
-            <Text style={styles.sectionTitle}>Settings</Text>
+            <Text style={dynamicStyles.sectionTitle}>Settings</Text>
             
-            <View style={styles.switchRow}>
-              <Text style={styles.switchLabel}>Active</Text>
+            <View style={dynamicStyles.switchRow}>
+              <Text style={dynamicStyles.switchLabel}>Active</Text>
               <Switch
                 value={formData.isActive}
                 onValueChange={(value) => setFormData({ ...formData, isActive: value })}
@@ -590,8 +607,8 @@ const AdminPackageManagementScreen = ({ navigation }) => {
               />
             </View>
 
-            <View style={styles.switchRow}>
-              <Text style={styles.switchLabel}>Featured</Text>
+            <View style={dynamicStyles.switchRow}>
+              <Text style={dynamicStyles.switchLabel}>Featured</Text>
               <Switch
                 value={formData.isFeatured}
                 onValueChange={(value) => setFormData({ ...formData, isFeatured: value })}
@@ -600,8 +617,8 @@ const AdminPackageManagementScreen = ({ navigation }) => {
               />
             </View>
 
-            <View style={styles.switchRow}>
-              <Text style={styles.switchLabel}>GST Applicable</Text>
+            <View style={dynamicStyles.switchRow}>
+              <Text style={dynamicStyles.switchLabel}>GST Applicable</Text>
               <Switch
                 value={formData.gstApplicable}
                 onValueChange={(value) => setFormData({ ...formData, gstApplicable: value })}
@@ -610,8 +627,8 @@ const AdminPackageManagementScreen = ({ navigation }) => {
               />
             </View>
 
-            <View style={styles.switchRow}>
-              <Text style={styles.switchLabel}>Support Included</Text>
+            <View style={dynamicStyles.switchRow}>
+              <Text style={dynamicStyles.switchLabel}>Support Included</Text>
               <Switch
                 value={formData.supportIncluded}
                 onValueChange={(value) => setFormData({ ...formData, supportIncluded: value })}
@@ -622,9 +639,9 @@ const AdminPackageManagementScreen = ({ navigation }) => {
 
             {formData.supportIncluded && (
               <>
-                <Text style={styles.label}>Support Details</Text>
+                <Text style={dynamicStyles.label}>Support Details</Text>
                 <TextInput
-                  style={[styles.input, styles.textArea]}
+                  style={[dynamicStyles.input, dynamicStyles.textArea]}
                   value={formData.supportDetails}
                   onChangeText={(text) => setFormData({ ...formData, supportDetails: text })}
                   placeholder="e.g., 24/7 Email Support"
@@ -635,44 +652,44 @@ const AdminPackageManagementScreen = ({ navigation }) => {
             )}
 
             {/* Features Section */}
-            <Text style={styles.sectionTitle}>Features</Text>
+            <Text style={dynamicStyles.sectionTitle}>Features</Text>
             
-            <View style={styles.featureInputGroup}>
+            <View style={dynamicStyles.featureInputGroup}>
               <TextInput
-                style={[styles.input, styles.featureInput]}
+                style={[dynamicStyles.input, dynamicStyles.featureInput]}
                 value={featureName}
                 onChangeText={setFeatureName}
                 placeholder="Feature name (e.g., Job Posts)"
               />
               <TextInput
-                style={[styles.input, styles.featureInput]}
+                style={[dynamicStyles.input, dynamicStyles.featureInput]}
                 value={featureValue}
                 onChangeText={setFeatureValue}
                 placeholder="Value (e.g., 10)"
               />
-              <View style={styles.featureIncludedRow}>
-                <Text style={styles.featureIncludedLabel}>Included:</Text>
+              <View style={dynamicStyles.featureIncludedRow}>
+                <Text style={dynamicStyles.featureIncludedLabel}>Included:</Text>
                 <Switch
                   value={featureIncluded}
                   onValueChange={setFeatureIncluded}
                   trackColor={{ false: '#ccc', true: '#4CAF50' }}
                 />
               </View>
-              <TouchableOpacity style={styles.addFeatureButton} onPress={addFeature}>
+              <TouchableOpacity style={dynamicStyles.addFeatureButton} onPress={addFeature}>
                 <Ionicons name="add-circle" size={24} color="#2196F3" />
               </TouchableOpacity>
             </View>
 
             {formData.features.length > 0 && (
-              <View style={styles.featuresListContainer}>
+              <View style={dynamicStyles.featuresListContainer}>
                 {formData.features.map((feature, index) => (
-                  <View key={index} style={styles.featureListItem}>
+                  <View key={index} style={dynamicStyles.featureListItem}>
                     <Ionicons
                       name={feature.included ? "checkmark-circle" : "close-circle"}
                       size={16}
                       color={feature.included ? "#4CAF50" : "#F44336"}
                     />
-                    <Text style={styles.featureListText}>
+                    <Text style={dynamicStyles.featureListText}>
                       {feature.name}: {feature.value}
                     </Text>
                     <TouchableOpacity onPress={() => removeFeature(index)}>
@@ -684,24 +701,25 @@ const AdminPackageManagementScreen = ({ navigation }) => {
             )}
           </ScrollView>
 
-          <View style={styles.modalFooter}>
+          <View style={dynamicStyles.modalFooter}>
             <TouchableOpacity
-              style={[styles.modalButton, styles.cancelButton]}
+              style={[dynamicStyles.modalButton, dynamicStyles.cancelButton]}
               onPress={() => setModalVisible(false)}
             >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
+              <Text style={dynamicStyles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.modalButton, styles.submitButton]}
+              style={[dynamicStyles.modalButton, dynamicStyles.submitButton]}
               onPress={handleSubmit}
             >
-              <Text style={styles.submitButtonText}>
+              <Text style={dynamicStyles.submitButtonText}>
                 {editMode ? 'Update' : 'Create'} Package
               </Text>
             </TouchableOpacity>
           </View>
         </View>
-      </View>
+        </TouchableOpacity>
+      </TouchableOpacity>
     </Modal>
   );
 
@@ -713,9 +731,9 @@ const AdminPackageManagementScreen = ({ navigation }) => {
         onNavigate={handleNavigate}
         onLogout={handleLogout}
       >
-        <View style={styles.loadingContainer}>
+        <View style={dynamicStyles.loadingContainer}>
           <ActivityIndicator size="large" color="#2196F3" />
-          <Text style={styles.loadingText}>Loading packages...</Text>
+          <Text style={dynamicStyles.loadingText}>Loading packages...</Text>
         </View>
       </AdminLayout>
     );
@@ -728,51 +746,51 @@ const AdminPackageManagementScreen = ({ navigation }) => {
       onNavigate={handleNavigate}
       onLogout={handleLogout}
     >
-      <View style={styles.container}>
-        <View style={styles.header}>
+      <View style={dynamicStyles.container}>
+        <View style={dynamicStyles.header}>
           <View>
-            <Text style={styles.pageTitle}>Package Management</Text>
-            <Text style={styles.pageSubtitle}>Manage subscription packages</Text>
+            <Text style={dynamicStyles.pageTitle}>Package Management</Text>
+            <Text style={dynamicStyles.pageSubtitle}>Manage subscription packages</Text>
           </View>
-          <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
+          <TouchableOpacity style={dynamicStyles.addButton} onPress={openAddModal}>
             <Ionicons name="add-circle" size={20} color="#fff" />
-            <Text style={styles.addButtonText}>Add New</Text>
+            <Text style={dynamicStyles.addButtonText}>Add New</Text>
           </TouchableOpacity>
         </View>
 
         {/* Search and Filter */}
-        <View style={styles.searchSection}>
-          <View style={styles.searchContainer}>
+        <View style={dynamicStyles.searchSection}>
+          <View style={dynamicStyles.searchContainer}>
             <Ionicons name="search" size={20} color="#666" />
             <TextInput
-              style={styles.searchInput}
+              style={dynamicStyles.searchInput}
               value={searchQuery}
               onChangeText={setSearchQuery}
               placeholder="Search package management..."
             />
           </View>
-          <View style={styles.filterButtons}>
+          <View style={dynamicStyles.filterButtons}>
             <TouchableOpacity
-              style={[styles.filterButton, selectedType === 'all' && styles.filterButtonActive]}
+              style={[dynamicStyles.filterButton, selectedType === 'all' && dynamicStyles.filterButtonActive]}
               onPress={() => setSelectedType('all')}
             >
-              <Text style={[styles.filterButtonText, selectedType === 'all' && styles.filterButtonTextActive]}>
+              <Text style={[dynamicStyles.filterButtonText, selectedType === 'all' && dynamicStyles.filterButtonTextActive]}>
                 All ({packages.length})
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.filterButton, selectedType === 'employer' && styles.filterButtonActive]}
+              style={[dynamicStyles.filterButton, selectedType === 'employer' && dynamicStyles.filterButtonActive]}
               onPress={() => setSelectedType('employer')}
             >
-              <Text style={[styles.filterButtonText, selectedType === 'employer' && styles.filterButtonTextActive]}>
+              <Text style={[dynamicStyles.filterButtonText, selectedType === 'employer' && dynamicStyles.filterButtonTextActive]}>
                 Employer ({packages.filter(p => p.packageType === 'employer').length})
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.filterButton, selectedType === 'candidate' && styles.filterButtonActive]}
+              style={[dynamicStyles.filterButton, selectedType === 'candidate' && dynamicStyles.filterButtonActive]}
               onPress={() => setSelectedType('candidate')}
             >
-              <Text style={[styles.filterButtonText, selectedType === 'candidate' && styles.filterButtonTextActive]}>
+              <Text style={[dynamicStyles.filterButtonText, selectedType === 'candidate' && dynamicStyles.filterButtonTextActive]}>
                 Candidate ({packages.filter(p => p.packageType === 'candidate').length})
               </Text>
             </TouchableOpacity>
@@ -780,12 +798,12 @@ const AdminPackageManagementScreen = ({ navigation }) => {
         </View>
 
         {/* Packages List */}
-        <ScrollView style={styles.packagesList} showsVerticalScrollIndicator={false}>
+        <ScrollView style={dynamicStyles.packagesList} showsVerticalScrollIndicator={false}>
           {filteredPackages.length === 0 ? (
-            <View style={styles.emptyContainer}>
+            <View style={dynamicStyles.emptyContainer}>
               <Ionicons name="folder-open-outline" size={64} color="#ccc" />
-              <Text style={styles.emptyText}>No package management found</Text>
-              <Text style={styles.emptySubtext}>
+              <Text style={dynamicStyles.emptyText}>No package management found</Text>
+              <Text style={dynamicStyles.emptySubtext}>
                 {searchQuery ? 'Try adjusting your search' : 'Get started by adding a new package'}
               </Text>
             </View>
@@ -800,7 +818,7 @@ const AdminPackageManagementScreen = ({ navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (isMobile, isTablet) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
@@ -1066,47 +1084,68 @@ const styles = StyleSheet.create({
   // Modal Styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: 32,
   },
   modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 28,
+    padding: 0,
     width: '100%',
-    maxWidth: 600,
+    maxWidth: 680,
     maxHeight: '90%',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 8,
-      },
-      web: {
-        boxShadow: '0 4px 8px rgba(0,0,0,0.3)',
-      },
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    elevation: 25,
+    overflow: 'hidden',
+    ...(Platform.OS === 'web' && {
+      boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05)',
     }),
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 44,
+    paddingTop: 44,
+    paddingBottom: 24,
+    borderBottomWidth: 2,
+    borderBottomColor: '#E2E8F0',
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#0F172A',
+    letterSpacing: -0.3,
+  },
+  modalCloseButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F8FAFC',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
   },
   modalBody: {
-    padding: 20,
+    padding: 44,
+    maxHeight: '60vh',
+    backgroundColor: '#FFFFFF',
+    overflow: 'hidden',
+    ...(Platform.OS === 'web' && {
+      maxHeight: 'calc(85vh - 200px)',
+    }),
   },
   sectionTitle: {
     fontSize: 16,
@@ -1276,5 +1315,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
 });
+
+const styles = StyleSheet.create({});
 
 export default AdminPackageManagementScreen;

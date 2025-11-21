@@ -11,6 +11,12 @@ const socketIo = require('socket.io');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
+// Import utilities
+const ensureLogsDir = require('./utils/ensureLogsDir');
+ensureLogsDir(); // Ensure logs directory exists before importing logger
+const logger = require('./utils/logger');
+const asyncHandler = require('./utils/asyncHandler');
+
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
@@ -93,8 +99,34 @@ app.use(express.static('../web'));
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Logging
-app.use(morgan('combined'));
+// Enhanced logging middleware
+if (process.env.NODE_ENV === 'development') {
+  app.use(morgan('dev'));
+} else {
+  // Custom morgan format for production
+  morgan.token('custom', (req, res) => {
+    return `${req.method} ${req.originalUrl || req.url} ${res.statusCode}`;
+  });
+  app.use(morgan('custom', {
+    stream: {
+      write: (message) => {
+        logger.info(message.trim());
+      }
+    }
+  }));
+}
+
+// Request logging middleware
+app.use((req, res, next) => {
+  const start = Date.now();
+  
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    logger.http(req, res, duration);
+  });
+  
+  next();
+});
 
 // MongoDB connection
 const connectDB = require('./config/database');
@@ -166,18 +198,38 @@ app.post('/api/employer/login', async (req, res) => {
     }
     
     if (!user) {
-      return res.status(400).json({ message: 'Invalid credentials' });
+      logger.warn('Employer login failed: User not found', {
+        loginId: loginId.substring(0, 10) + '***',
+        userType: userType,
+        employerType: employerType,
+        ip: req.ip
+      });
+      return res.status(400).json({ message: 'No account found with this login ID. Please check your credentials or create a new account' });
     }
 
     // Check if account is active
     if (!user.isActive) {
-      return res.status(400).json({ message: 'Account is deactivated' });
+      logger.warn('Employer login failed: Account deactivated', {
+        userId: user._id,
+        email: user.email,
+        userType: user.userType,
+        employerType: user.employerType,
+        ip: req.ip
+      });
+      return res.status(400).json({ message: 'Account is deactivated. Please contact support' });
     }
 
     // Check password
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
-      return res.status(400).json({ message: 'Invalid credentials' });
+      logger.warn('Employer login failed: Incorrect password', {
+        userId: user._id,
+        email: user.email,
+        userType: user.userType,
+        employerType: user.employerType,
+        ip: req.ip
+      });
+      return res.status(400).json({ message: 'Incorrect password. Please try again' });
     }
 
     // Validate employer type
@@ -235,6 +287,7 @@ app.use('/api/resume', require('./routes/resume'));
 app.use('/api/jobs', require('./routes/jobs'));
 app.use('/api/blogs', require('./routes/blogs'));
 app.use('/api/users', require('./routes/users'));
+app.use('/api/payments', require('./routes/payments'));
 app.use('/api/applications', require('./routes/applications'));
 app.use('/api/employers', require('./routes/employers'));
 app.use('/api/admin', require('./routes/admin'));
@@ -298,9 +351,38 @@ app.get('/api/packages', async (req, res) => {
   }
 });
 
-// Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', message: 'Server is running' });
+// Health check endpoint with detailed status
+app.get('/api/health', async (req, res) => {
+  try {
+    const dbStatus = require('./config/database').getConnectionStatus();
+    const healthStatus = {
+      status: 'OK',
+      message: 'Server is running',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      environment: process.env.NODE_ENV || 'development',
+      database: {
+        connected: dbStatus.isConnected,
+        state: dbStatus.state,
+        host: dbStatus.host
+      },
+      memory: {
+        used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + ' MB',
+        total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024) + ' MB'
+      }
+    };
+
+    // Return 503 if database is not connected
+    const statusCode = dbStatus.isConnected ? 200 : 503;
+    res.status(statusCode).json(healthStatus);
+  } catch (error) {
+    logger.error('Health check error', error);
+    res.status(500).json({
+      status: 'ERROR',
+      message: 'Health check failed',
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal error'
+    });
+  }
 });
 
 // Favicon endpoints to prevent 500 errors
@@ -312,9 +394,63 @@ app.get('/favicon.png', (req, res) => {
   res.status(204).end(); // No content
 });
 
-// 404 handler (must be before error handler)
+// 404 handler for API routes
+app.use('/api/*', (req, res) => {
+  logger.warn(`API route not found: ${req.method} ${req.originalUrl}`, {
+    ip: req.ip,
+    userAgent: req.get('user-agent')
+  });
+  res.status(404).json({ 
+    success: false,
+    message: 'API route not found',
+    path: req.originalUrl 
+  });
+});
+
+// 404 handler for non-API routes (SPA fallback)
+// This handles client-side routing for production deployments
 app.use('*', (req, res) => {
-  res.status(404).json({ message: 'Route not found' });
+  // If it's an API request that wasn't caught, return JSON
+  if (req.path.startsWith('/api')) {
+    return res.status(404).json({ 
+      success: false,
+      message: 'API route not found',
+      path: req.originalUrl 
+    });
+  }
+  
+  // For non-API routes, check if it's a static file request
+  const ext = path.extname(req.path);
+  if (ext && ext !== '.html') {
+    // Static file not found
+    logger.warn(`Static file not found: ${req.originalUrl}`);
+    return res.status(404).json({ 
+      success: false,
+      message: 'Resource not found' 
+    });
+  }
+  
+  // For SPA routing, serve index.html if it exists
+  // This allows client-side routing to work on refresh
+  const webPath = path.join(__dirname, '../web');
+  const indexPath = path.join(webPath, 'index.html');
+  
+  const fs = require('fs');
+  if (fs.existsSync(indexPath)) {
+    logger.debug(`Serving index.html for SPA route: ${req.originalUrl}`);
+    return res.sendFile(indexPath);
+  }
+  
+  // Fallback: return 404 JSON
+  logger.warn(`Route not found: ${req.method} ${req.originalUrl}`, {
+    ip: req.ip,
+    userAgent: req.get('user-agent')
+  });
+  res.status(404).json({ 
+    success: false,
+    message: 'Route not found',
+    path: req.originalUrl 
+  });
 });
 
 // Error handling middleware (must be after all routes and 404 handler)
@@ -325,6 +461,9 @@ io.use(async (socket, next) => {
   try {
     const token = socket.handshake.auth.token;
     if (!token) {
+      logger.warn('WebSocket connection rejected: No token provided', {
+        ip: socket.handshake.address
+      });
       return next(new Error('Authentication error'));
     }
 
@@ -333,6 +472,10 @@ io.use(async (socket, next) => {
     const user = await User.findById(decoded.id).select('-password');
     
     if (!user || !user.isActive) {
+      logger.warn('WebSocket connection rejected: Invalid or inactive user', {
+        userId: decoded.id,
+        ip: socket.handshake.address
+      });
       return next(new Error('Authentication error'));
     }
 
@@ -340,13 +483,21 @@ io.use(async (socket, next) => {
     socket.user = user;
     next();
   } catch (error) {
+    logger.error('WebSocket authentication error', error, {
+      ip: socket.handshake.address,
+      errorType: error.name
+    });
     next(new Error('Authentication error'));
   }
 });
 
 // WebSocket connection handling
 io.on('connection', (socket) => {
-  console.log(`User ${socket.user.firstName} ${socket.user.lastName} connected`);
+  logger.info(`WebSocket user connected: ${socket.user?.firstName} ${socket.user?.lastName}`, {
+    userId: socket.userId,
+    userType: socket.user?.userType,
+    ip: socket.handshake.address
+  });
 
   // Join user to their personal room
   socket.join(`user_${socket.userId}`);
@@ -368,18 +519,39 @@ io.on('connection', (socket) => {
 
   // Handle joining conversation rooms
   socket.on('join_conversation', (conversationId) => {
-    socket.join(`conversation_${conversationId}`);
+    try {
+      socket.join(`conversation_${conversationId}`);
+      logger.debug(`User ${socket.userId} joined conversation ${conversationId}`);
+    } catch (error) {
+      logger.error('Error joining conversation room', error, {
+        userId: socket.userId,
+        conversationId
+      });
+    }
   });
 
   // Handle leaving conversation rooms
   socket.on('leave_conversation', (conversationId) => {
-    socket.leave(`conversation_${conversationId}`);
+    try {
+      socket.leave(`conversation_${conversationId}`);
+      logger.debug(`User ${socket.userId} left conversation ${conversationId}`);
+    } catch (error) {
+      logger.error('Error leaving conversation room', error, {
+        userId: socket.userId,
+        conversationId
+      });
+    }
   });
 
   // Handle new messages
   socket.on('send_message', async (data) => {
     try {
       const { conversationId, content, replyTo } = data;
+      
+      if (!conversationId || !content) {
+        socket.emit('error', { message: 'Missing required fields' });
+        return;
+      }
       
       // Validate conversation access
       const Conversation = require('./models/Conversation');
@@ -433,38 +605,62 @@ io.on('connection', (socket) => {
       });
 
     } catch (error) {
-      console.error('Error handling message:', error);
+      logger.error('Error handling WebSocket message', error, {
+        userId: socket.userId,
+        conversationId: data?.conversationId
+      });
       socket.emit('error', { message: 'Error sending message' });
     }
   });
 
   // Handle typing indicators
   socket.on('typing_start', (data) => {
-    socket.to(`conversation_${data.conversationId}`).emit('user_typing', {
-      userId: socket.userId,
-      userName: `${socket.user.firstName} ${socket.user.lastName}`,
-      conversationId: data.conversationId
-    });
+    try {
+      socket.to(`conversation_${data.conversationId}`).emit('user_typing', {
+        userId: socket.userId,
+        userName: `${socket.user.firstName} ${socket.user.lastName}`,
+        conversationId: data.conversationId
+      });
+    } catch (error) {
+      logger.error('Error handling typing_start', error, {
+        userId: socket.userId
+      });
+    }
   });
 
   socket.on('typing_stop', (data) => {
-    socket.to(`conversation_${data.conversationId}`).emit('user_stopped_typing', {
-      userId: socket.userId,
-      conversationId: data.conversationId
-    });
+    try {
+      socket.to(`conversation_${data.conversationId}`).emit('user_stopped_typing', {
+        userId: socket.userId,
+        conversationId: data.conversationId
+      });
+    } catch (error) {
+      logger.error('Error handling typing_stop', error, {
+        userId: socket.userId
+      });
+    }
   });
 
   // Handle user status updates
   socket.on('update_status', (status) => {
-    socket.broadcast.emit('user_status_update', {
-      userId: socket.userId,
-      status: status
-    });
+    try {
+      socket.broadcast.emit('user_status_update', {
+        userId: socket.userId,
+        status: status
+      });
+    } catch (error) {
+      logger.error('Error handling status update', error, {
+        userId: socket.userId
+      });
+    }
   });
 
   // Handle disconnection
-  socket.on('disconnect', () => {
-    console.log(`User ${socket.user.firstName} ${socket.user.lastName} disconnected`);
+  socket.on('disconnect', (reason) => {
+    logger.info(`WebSocket user disconnected: ${socket.user?.firstName} ${socket.user?.lastName}`, {
+      userId: socket.userId,
+      reason: reason
+    });
     socket.broadcast.emit('user_offline', {
       userId: socket.userId
     });
@@ -472,13 +668,18 @@ io.on('connection', (socket) => {
 
   // Handle socket errors
   socket.on('error', (error) => {
-    console.error('Socket error:', error);
+    logger.error('Socket error', error, {
+      userId: socket.userId,
+      errorType: error.name
+    });
   });
 });
 
 // Handle Socket.IO server errors
 io.on('error', (error) => {
-  console.error('Socket.IO server error:', error);
+  logger.error('Socket.IO server error', error, {
+    type: 'socketio_server_error'
+  });
 });
 
 // Make io available to routes
@@ -491,44 +692,63 @@ jobNotificationService.start();
 const PORT = process.env.PORT || 5000;
 
 // Global process error handlers - MUST be after server creation
+// These handlers prevent the server from crashing on unexpected errors
+
+// Critical errors that should cause shutdown
+const CRITICAL_ERRORS = [
+  'EADDRINUSE',      // Port already in use
+  'EACCES',          // Permission denied
+  'ENOTFOUND',       // DNS lookup failed (critical config issue)
+  'ECONNREFUSED'     // Critical connection refused (if it's our DB)
+];
+
 process.on('uncaughtException', (error) => {
-  console.error('='.repeat(100));
-  console.error('UNCAUGHT EXCEPTION! Application shutting down...');
-  console.error('Error:', error.name, ':', error.message);
-  console.error('Stack:', error.stack);
-  console.error('='.repeat(100));
-  
-  // Close server gracefully
-  server.close(() => {
-    console.log('Server closed due to uncaught exception');
-    process.exit(1);
+  logger.error('UNCAUGHT EXCEPTION', error, {
+    type: 'uncaughtException',
+    critical: CRITICAL_ERRORS.includes(error.code)
   });
   
-  // Force exit after 10 seconds if graceful shutdown fails
-  setTimeout(() => {
-    console.error('Forced exit after timeout');
-    process.exit(1);
-  }, 10000);
+  // Only exit for critical errors
+  const isCritical = CRITICAL_ERRORS.includes(error.code) || 
+                     error.message.includes('Cannot find module') ||
+                     error.message.includes('MODULE_NOT_FOUND');
+  
+  if (isCritical) {
+    logger.error('Critical error detected, shutting down server', error);
+    // Close server gracefully
+    server.close(() => {
+      logger.info('Server closed due to critical uncaught exception');
+      process.exit(1);
+    });
+    
+    // Force exit after 10 seconds if graceful shutdown fails
+    setTimeout(() => {
+      logger.error('Forced exit after timeout');
+      process.exit(1);
+    }, 10000);
+  } else {
+    // Non-critical errors: log and continue
+    logger.warn('Non-critical uncaught exception, server will continue running', {
+      error: error.message,
+      code: error.code
+    });
+  }
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('='.repeat(100));
-  console.error('UNHANDLED REJECTION! Application shutting down...');
-  console.error('Promise:', promise);
-  console.error('Reason:', reason);
-  console.error('='.repeat(100));
+  const error = reason instanceof Error ? reason : new Error(String(reason));
   
-  // Close server gracefully
-  server.close(() => {
-    console.log('Server closed due to unhandled rejection');
-    process.exit(1);
+  logger.error('UNHANDLED REJECTION', error, {
+    type: 'unhandledRejection',
+    promise: promise.toString().substring(0, 200)
   });
   
-  // Force exit after 10 seconds if graceful shutdown fails
-  setTimeout(() => {
-    console.error('Forced exit after timeout');
-    process.exit(1);
-  }, 10000);
+  // Don't exit on unhandled rejections - log and continue
+  // Most unhandled rejections are from async operations that can be recovered
+  logger.warn('Unhandled rejection logged, server will continue running');
+  
+  // In production, you might want to restart the process after too many rejections
+  // For now, we'll just log them
 });
 
 // SIGTERM handler (graceful shutdown)
@@ -549,10 +769,44 @@ process.on('SIGTERM', () => {
 });
 
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Server accessible at http://localhost:${PORT} and http://0.0.0.0:${PORT}`);
-  console.log(`For Android emulator, use: http://10.0.2.2:${PORT}`);
-  console.log('Freejobwala Chat Feature is active');
+  logger.info(`Server started successfully on port ${PORT}`, {
+    port: PORT,
+    environment: process.env.NODE_ENV || 'development',
+    nodeVersion: process.version
+  });
+  console.log(`✅ Server running on port ${PORT}`);
+  console.log(`   Accessible at http://localhost:${PORT} and http://0.0.0.0:${PORT}`);
+  console.log(`   For Android emulator, use: http://10.0.2.2:${PORT}`);
+  console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log('   Freejobwala Chat Feature is active');
+});
+
+// Handle server errors
+server.on('error', (error) => {
+  logger.error('Server error', error, {
+    type: 'serverError',
+    port: PORT
+  });
+  
+  if (error.code === 'EADDRINUSE') {
+    logger.error(`Port ${PORT} is already in use. Please use a different port.`);
+    process.exit(1);
+  } else {
+    logger.error('Server error occurred, attempting to recover...');
+  }
+});
+
+// Handle client errors
+server.on('clientError', (error, socket) => {
+  logger.warn('Client error', error, {
+    type: 'clientError',
+    remoteAddress: socket.remoteAddress
+  });
+  
+  // End the connection gracefully
+  if (!socket.destroyed) {
+    socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
+  }
 });
 
 module.exports = app;

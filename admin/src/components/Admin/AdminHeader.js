@@ -1,21 +1,128 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useResponsive } from '../../utils/responsive';
+
+// Define getStyles before the component to avoid hoisting issues
+const getStyles = (isMobile, isTablet) => StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: isMobile ? 14 : 16,
+    paddingHorizontal: isMobile ? 16 : isTablet ? 20 : 24,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.06)',
+    elevation: 3,
+    ...(Platform.OS === 'web' ? {
+      position: 'sticky',
+      top: 0,
+      zIndex: 100,
+      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04)',
+      backdropFilter: 'blur(10px)',
+    } : {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 8,
+    }),
+  },
+  leftSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    minWidth: 0,
+  },
+  menuButton: {
+    marginRight: isMobile ? 12 : 16,
+    padding: 8,
+    borderRadius: 8,
+    ...(Platform.OS === 'web' && {
+      transition: 'background-color 0.2s',
+      cursor: 'pointer',
+      ':hover': {
+        backgroundColor: 'rgba(0, 0, 0, 0.04)',
+      },
+    }),
+  },
+  title: {
+    fontSize: isMobile ? 18 : isTablet ? 20 : 22,
+    fontWeight: '700',
+    color: '#1A202C',
+    flex: 1,
+    letterSpacing: -0.3,
+    ...(Platform.OS === 'web' && {
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      whiteSpace: 'nowrap',
+    }),
+  },
+  rightSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexShrink: 0,
+  },
+  userInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: isTablet ? 14 : 18,
+    maxWidth: isTablet ? 150 : 200,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+    backgroundColor: 'rgba(74, 144, 226, 0.08)',
+    ...(Platform.OS === 'web' && {
+      overflow: 'hidden',
+      transition: 'background-color 0.2s',
+      cursor: 'default',
+    }),
+  },
+  userName: {
+    marginLeft: 8,
+    fontSize: isTablet ? 13 : 14,
+    color: '#2D3748',
+    fontWeight: '600',
+    ...(Platform.OS === 'web' && {
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      whiteSpace: 'nowrap',
+    }),
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EF4444',
+    paddingVertical: isMobile ? 8 : 10,
+    paddingHorizontal: isMobile ? 12 : 16,
+    borderRadius: 10,
+    gap: 6,
+    ...(Platform.OS === 'web' && {
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+      boxShadow: '0 2px 4px rgba(239, 68, 68, 0.2)',
+      ':hover': {
+        backgroundColor: '#DC2626',
+        transform: 'translateY(-1px)',
+        boxShadow: '0 4px 8px rgba(239, 68, 68, 0.3)',
+      },
+      ':active': {
+        transform: 'translateY(0)',
+      },
+    }),
+  },
+  logoutText: {
+    color: '#FFF',
+    fontSize: isMobile ? 12 : isTablet ? 13 : 14,
+    marginLeft: isMobile ? 4 : 6,
+    fontWeight: '600',
+  },
+});
 
 const AdminHeader = ({ title, user, onLogout, onMenuToggle }) => {
-  const [dimensions, setDimensions] = useState(() => Dimensions.get('window'));
-
-  useEffect(() => {
-    const subscription = Dimensions.addEventListener('change', ({ window }) => {
-      setDimensions(window);
-    });
-
-    return () => subscription?.remove();
-  }, []);
-
-  const width = dimensions?.width || Dimensions.get('window').width;
-  const isMobile = width < 768;
-  const isTablet = width >= 768 && width < 1024;
+  const responsive = useResponsive();
+  const isMobile = responsive.isMobile;
+  const isTablet = responsive.isTablet;
   const styles = getStyles(isMobile, isTablet);
 
   return (
@@ -43,96 +150,6 @@ const AdminHeader = ({ title, user, onLogout, onMenuToggle }) => {
     </View>
   );
 };
-
-const getStyles = (isMobile, isTablet) => StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#FFF',
-    paddingVertical: isMobile ? 12 : 15,
-    paddingHorizontal: isMobile ? 12 : isTablet ? 16 : 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    ...(Platform.OS === 'web' && {
-      position: 'sticky',
-      top: 0,
-      zIndex: 100,
-    }),
-  },
-  leftSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    minWidth: 0,
-  },
-  menuButton: {
-    marginRight: isMobile ? 10 : 15,
-    padding: 4,
-  },
-  title: {
-    fontSize: isMobile ? 16 : isTablet ? 18 : 20,
-    fontWeight: '600',
-    color: '#333',
-    flex: 1,
-    ...(Platform.OS === 'web' && {
-      overflow: 'hidden',
-      textOverflow: 'ellipsis',
-      whiteSpace: 'nowrap',
-    }),
-  },
-  rightSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexShrink: 0,
-  },
-  userInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: isTablet ? 12 : 15,
-    maxWidth: isTablet ? 150 : 200,
-    ...(Platform.OS === 'web' && {
-      overflow: 'hidden',
-    }),
-  },
-  userName: {
-    marginLeft: 8,
-    fontSize: isTablet ? 13 : 14,
-    color: '#666',
-    fontWeight: '500',
-    ...(Platform.OS === 'web' && {
-      overflow: 'hidden',
-      textOverflow: 'ellipsis',
-      whiteSpace: 'nowrap',
-    }),
-  },
-  logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#E74C3C',
-    paddingVertical: isMobile ? 6 : 8,
-    paddingHorizontal: isMobile ? 10 : 15,
-    borderRadius: 6,
-    ...(Platform.OS === 'web' && {
-      cursor: 'pointer',
-      transition: 'background-color 0.2s',
-      ':hover': {
-        backgroundColor: '#C0392B',
-      },
-    }),
-  },
-  logoutText: {
-    color: '#FFF',
-    fontSize: isMobile ? 12 : isTablet ? 13 : 14,
-    marginLeft: isMobile ? 4 : 6,
-    fontWeight: '600',
-  },
-});
 
 export default AdminHeader;
 

@@ -20,8 +20,6 @@ const MultiSelectField = ({
 }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [showAddNew, setShowAddNew] = useState(false);
-  const [newOptionText, setNewOptionText] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [dynamicOptions, setDynamicOptions] = useState(options);
 
@@ -53,15 +51,28 @@ const MultiSelectField = ({
     onSelect(value.filter(v => v.value !== optionToRemove.value));
   };
 
-  const handleAddNew = async () => {
-    if (newOptionText.trim() && onAddNew) {
-      if (typeof onAddNew === 'function' && onAddNew.constructor.name === 'AsyncFunction') {
-        await onAddNew(newOptionText.trim());
-      } else {
-        onAddNew(newOptionText.trim());
+  const handleAddNew = async (newValue) => {
+    if (newValue && newValue.trim() && onAddNew) {
+      try {
+        const trimmedValue = newValue.trim();
+        
+        // Call the onAddNew callback (which will add to options, call API, and select the item)
+        if (typeof onAddNew === 'function' && onAddNew.constructor.name === 'AsyncFunction') {
+          await onAddNew(trimmedValue);
+        } else {
+          onAddNew(trimmedValue);
+        }
+        
+        // Wait a moment for the parent to update options and value
+        // Then refresh dynamicOptions to include the newly added option
+        setTimeout(() => {
+          setDynamicOptions(options);
+        }, 100);
+        
+        setSearchQuery(''); // Clear search after adding
+      } catch (error) {
+        console.error('Error adding new option:', error);
       }
-      setNewOptionText('');
-      setShowAddNew(false);
     }
   };
 
@@ -127,13 +138,18 @@ const MultiSelectField = ({
       <Modal
         visible={modalVisible}
         transparent
-        animationType="slide"
+        animationType="fade"
         onRequestClose={() => setModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
+          <TouchableOpacity 
+            style={styles.modalOverlayTouchable}
+            activeOpacity={1}
+            onPress={() => setModalVisible(false)}
+          />
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <View>
+              <View style={styles.modalHeaderContent}>
                 <Text style={styles.modalTitle}>{label || 'Select options'}</Text>
                 {maxSelections && (
                   <Text style={styles.modalSubtitle}>
@@ -141,13 +157,16 @@ const MultiSelectField = ({
                   </Text>
                 )}
               </View>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Ionicons name="close" size={24} color={colors.text} />
+              <TouchableOpacity 
+                onPress={() => setModalVisible(false)}
+                style={styles.closeButton}
+              >
+                <Ionicons name="close" size={22} color="#64748b" />
               </TouchableOpacity>
             </View>
 
             <View style={styles.searchContainer}>
-              <Ionicons name="search" size={20} color={colors.textSecondary} style={styles.searchIcon} />
+              <Ionicons name="search" size={18} color="#94a3b8" style={styles.searchIcon} />
               <TextInput
                 style={styles.searchInput}
                 placeholder="Search options..."
@@ -172,39 +191,18 @@ const MultiSelectField = ({
                     setDynamicOptions(options);
                   }
                 }}
-                placeholderTextColor={colors.textLight}
+                placeholderTextColor="#94a3b8"
               />
               {isSearching && (
                 <Text style={styles.searchingText}>Searching...</Text>
               )}
             </View>
 
-            {allowAddNew && (
-              <TouchableOpacity
-                style={styles.addNewButton}
-                onPress={() => setShowAddNew(!showAddNew)}
-              >
-                <Ionicons name="add-circle-outline" size={20} color={colors.primary} />
-                <Text style={styles.addNewButtonText}>Add New Option</Text>
-              </TouchableOpacity>
-            )}
-
-            {showAddNew && (
-              <View style={styles.addNewContainer}>
-                <TextInput
-                  style={styles.addNewInput}
-                  placeholder="Enter new option"
-                  value={newOptionText}
-                  onChangeText={setNewOptionText}
-                  placeholderTextColor={colors.textLight}
-                />
-                <TouchableOpacity style={styles.addNewSubmit} onPress={handleAddNew}>
-                  <Text style={styles.addNewSubmitText}>Add</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-
-            <ScrollView style={styles.optionsList}>
+            <ScrollView 
+              style={styles.optionsList}
+              nestedScrollEnabled
+              showsVerticalScrollIndicator={true}
+            >
               {isSearching && (
                 <View style={styles.searchingContainer}>
                   <Text style={styles.searchingText}>Searching...</Text>
@@ -219,10 +217,12 @@ const MultiSelectField = ({
                     key={option.value || index}
                     style={[
                       styles.option,
+                      isSelected && styles.optionSelected,
                       isDisabled && styles.optionDisabled
                     ]}
                     onPress={() => handleToggle(option)}
                     disabled={isDisabled}
+                    activeOpacity={0.7}
                   >
                     <View style={styles.checkboxContainer}>
                       <View style={[
@@ -230,11 +230,12 @@ const MultiSelectField = ({
                         isSelected && styles.checkboxSelected
                       ]}>
                         {isSelected && (
-                          <Ionicons name="checkmark" size={16} color={colors.textWhite} />
+                          <Ionicons name="checkmark" size={14} color="#ffffff" />
                         )}
                       </View>
                       <Text style={[
                         styles.optionText,
+                        isSelected && styles.optionTextSelected,
                         isDisabled && styles.optionTextDisabled
                       ]}>
                         {option.label}
@@ -243,8 +244,33 @@ const MultiSelectField = ({
                   </TouchableOpacity>
                 );
               })}
-              {filteredOptions.length === 0 && (
-                <Text style={styles.noResultsText}>No results found</Text>
+              {/* Show add new option when search query doesn't match and allowAddNew is true */}
+              {allowAddNew && searchQuery.trim() && filteredOptions.length === 0 && !isSearching && (
+                <TouchableOpacity
+                  style={styles.addNewOptionItem}
+                  onPress={() => handleAddNew(searchQuery)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="add-circle" size={20} color="#4f46e5" />
+                  <Text style={styles.addNewOptionText}>Add "{searchQuery}"</Text>
+                </TouchableOpacity>
+              )}
+              {/* Show add new option when search query doesn't match existing options exactly */}
+              {allowAddNew && searchQuery.trim() && filteredOptions.length > 0 && 
+               !filteredOptions.some(opt => opt.label.toLowerCase() === searchQuery.toLowerCase()) && (
+                <TouchableOpacity
+                  style={styles.addNewOptionItem}
+                  onPress={() => handleAddNew(searchQuery)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="add-circle" size={20} color="#4f46e5" />
+                  <Text style={styles.addNewOptionText}>Add "{searchQuery}"</Text>
+                </TouchableOpacity>
+              )}
+              {filteredOptions.length === 0 && !searchQuery.trim() && !isSearching && (
+                <View style={styles.noResultsContainer}>
+                  <Text style={styles.noResultsText}>No results found</Text>
+                </View>
               )}
             </ScrollView>
 
@@ -252,6 +278,7 @@ const MultiSelectField = ({
               <TouchableOpacity
                 style={styles.doneButton}
                 onPress={() => setModalVisible(false)}
+                activeOpacity={0.8}
               >
                 <Text style={styles.doneButtonText}>Done</Text>
               </TouchableOpacity>
@@ -333,96 +360,115 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.lg,
+  },
+  modalOverlayTouchable: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
   },
   modalContent: {
-    backgroundColor: colors.cardBackground,
-    borderTopLeftRadius: borderRadius.lg,
-    borderTopRightRadius: borderRadius.lg,
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    width: '100%',
+    maxWidth: 500,
     maxHeight: '80%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 8,
+    zIndex: 1,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     padding: spacing.lg,
+    paddingBottom: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: '#e2e8f0',
+  },
+  modalHeaderContent: {
+    flex: 1,
   },
   modalTitle: {
-    ...typography.h5,
-    color: colors.text,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1e293b',
+    flex: 1,
   },
   modalSubtitle: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginTop: 2,
+    fontSize: 13,
+    color: '#64748b',
+    marginTop: 4,
+    fontWeight: '500',
+  },
+  closeButton: {
+    padding: spacing.xs,
+    marginLeft: spacing.md,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     margin: spacing.lg,
+    marginTop: spacing.md,
     marginBottom: spacing.md,
-    backgroundColor: colors.background,
-    borderRadius: borderRadius.md,
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
     paddingHorizontal: spacing.md,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
   },
   searchIcon: {
     marginRight: spacing.sm,
   },
   searchInput: {
     flex: 1,
-    paddingVertical: spacing.md,
-    fontSize: 16,
-    color: colors.text,
+    paddingVertical: spacing.sm + 2,
+    fontSize: 15,
+    color: '#1e293b',
   },
-  addNewButton: {
+  addNewOptionItem: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
     marginHorizontal: spacing.lg,
-    marginBottom: spacing.md,
-    padding: spacing.sm,
+    marginVertical: 2,
+    borderRadius: 8,
+    backgroundColor: '#eef2ff',
+    borderWidth: 1,
+    borderColor: '#c7d2fe',
+    borderStyle: 'dashed',
   },
-  addNewButtonText: {
+  addNewOptionText: {
     marginLeft: spacing.sm,
-    color: colors.primary,
+    color: '#4f46e5',
     fontWeight: '600',
-  },
-  addNewContainer: {
-    flexDirection: 'row',
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.md,
-    gap: spacing.sm,
-  },
-  addNewInput: {
-    flex: 1,
-    backgroundColor: colors.background,
-    borderRadius: borderRadius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    fontSize: 16,
-    color: colors.text,
-  },
-  addNewSubmit: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.md,
-    justifyContent: 'center',
-  },
-  addNewSubmitText: {
-    color: colors.textWhite,
-    fontWeight: '600',
+    fontSize: 15,
   },
   optionsList: {
+    maxHeight: 300,
     paddingHorizontal: spacing.lg,
-    maxHeight: 400,
+    paddingBottom: spacing.md,
   },
   option: {
     paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
+    borderBottomColor: '#f1f5f9',
+    borderRadius: 8,
+    marginVertical: 2,
+  },
+  optionSelected: {
+    backgroundColor: '#eef2ff',
+    borderBottomColor: 'transparent',
   },
   optionDisabled: {
     opacity: 0.5,
@@ -432,45 +478,61 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   checkbox: {
-    width: 24,
-    height: 24,
+    width: 22,
+    height: 22,
     borderRadius: 6,
     borderWidth: 2,
-    borderColor: colors.border,
+    borderColor: '#cbd5e1',
     marginRight: spacing.md,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#ffffff',
   },
   checkboxSelected: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+    backgroundColor: '#4f46e5',
+    borderColor: '#4f46e5',
   },
   optionText: {
-    fontSize: 16,
-    color: colors.text,
+    fontSize: 15,
+    color: '#1e293b',
+    flex: 1,
+  },
+  optionTextSelected: {
+    color: '#4f46e5',
+    fontWeight: '600',
   },
   optionTextDisabled: {
-    color: colors.textLight,
+    color: '#94a3b8',
+  },
+  noResultsContainer: {
+    paddingVertical: spacing.xl,
+    alignItems: 'center',
   },
   noResultsText: {
     textAlign: 'center',
-    color: colors.textSecondary,
-    paddingVertical: spacing.xl,
+    color: '#64748b',
+    fontSize: 14,
   },
   modalFooter: {
     padding: spacing.lg,
+    paddingTop: spacing.md,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
+    borderTopColor: '#e2e8f0',
   },
   doneButton: {
-    backgroundColor: colors.primary,
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
+    backgroundColor: '#4f46e5',
+    padding: spacing.md + 2,
+    borderRadius: 12,
     alignItems: 'center',
+    shadowColor: '#4f46e5',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   doneButtonText: {
-    color: colors.textWhite,
-    fontWeight: '600',
+    color: '#ffffff',
+    fontWeight: '700',
     fontSize: 16,
   },
   searchingContainer: {
@@ -478,8 +540,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   searchingText: {
-    ...typography.caption,
-    color: colors.textSecondary,
+    fontSize: 13,
+    color: '#64748b',
     fontStyle: 'italic',
   },
 });

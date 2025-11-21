@@ -32,6 +32,7 @@ import AdminSMTPSettingsScreen from '../screens/Admin/AdminSMTPSettingsScreen';
 import AdminEmailLogsScreen from '../screens/Admin/AdminEmailLogsScreen';
 import AdminSocialUpdatesScreen from '../screens/Admin/AdminSocialUpdatesScreen';
 import AdminPackageManagementScreen from '../screens/Admin/AdminPackageManagementScreen';
+import AdminRazorpayIntegrationScreen from '../screens/Admin/AdminRazorpayIntegrationScreen';
 import AdminAdvertisementManagementScreen from '../screens/Admin/AdminAdvertisementManagementScreen';
 import AdminLiveChatSupportScreen from '../screens/Admin/AdminLiveChatSupportScreen';
 import AdminResumeSearchScreen from '../screens/Admin/AdminResumeSearchScreen';
@@ -48,7 +49,9 @@ import AdminPostJobScreen from '../screens/Admin/AdminPostJobScreen';
 import AdminJobTitlesScreen from '../screens/Admin/MasterData/AdminJobTitlesScreen';
 import AdminKeySkillsScreen from '../screens/Admin/MasterData/AdminKeySkillsScreen';
 import AdminIndustriesScreen from '../screens/Admin/MasterData/AdminIndustriesScreen';
+import AdminSubIndustriesScreen from '../screens/Admin/MasterData/AdminSubIndustriesScreen';
 import AdminDepartmentsScreen from '../screens/Admin/MasterData/AdminDepartmentsScreen';
+import AdminSubDepartmentsScreen from '../screens/Admin/MasterData/AdminSubDepartmentsScreen';
 import AdminCoursesScreen from '../screens/Admin/MasterData/AdminCoursesScreen';
 import AdminSpecializationsScreen from '../screens/Admin/MasterData/AdminSpecializationsScreen';
 import AdminEducationFieldsScreen from '../screens/Admin/MasterData/AdminEducationFieldsScreen';
@@ -85,221 +88,239 @@ const AdminNavigator = () => {
         <Stack.Screen 
           name="AdminDashboard" 
           component={AdminDashboardScreen}
-          options={{ title: 'Admin Dashboard' }}
+          options={{ 
+            title: 'Admin Dashboard',
+            headerShown: false
+          }}
         />
         
         {/* Admin Management Screens */}
         <Stack.Screen 
           name="AdminUsers" 
           component={AdminUsersScreen}
-          options={{ title: 'Users Management' }}
+          options={{ title: 'Users Management', headerShown: false }}
         />
         <Stack.Screen 
           name="AdminJobs" 
           component={AdminJobsScreen}
-          options={{ title: 'Jobs Management' }}
+          options={{ title: 'Jobs Management', headerShown: false }}
         />
         <Stack.Screen 
           name="AdminJobDetails" 
           component={AdminJobDetailsScreen}
-          options={{ title: 'Job Details' }}
+          options={{ title: 'Job Details', headerShown: false }}
         />
         <Stack.Screen 
           name="AdminApplications" 
           component={AdminApplicationsScreen}
-          options={{ title: 'Applications Management' }}
+          options={{ title: 'Applications Management', headerShown: false }}
         />
         <Stack.Screen 
           name="AdminApplicationDetails" 
           component={AdminApplicationDetailsScreen}
-          options={{ title: 'Application Details' }}
+          options={{ title: 'Application Details', headerShown: false }}
         />
         <Stack.Screen 
           name="AdminRoleManagement" 
           component={AdminRoleManagementScreen}
-          options={{ title: 'Role Management' }}
+          options={{ title: 'Role Management', headerShown: false }}
         />
         <Stack.Screen 
           name="AdminTeamLimits" 
           component={AdminTeamLimitsScreen}
-          options={{ title: 'Team Limits' }}
+          options={{ title: 'Team Limits', headerShown: false }}
         />
         <Stack.Screen 
           name="AdminBlogs" 
           component={AdminBlogsScreen}
-          options={{ title: 'Blogs Management' }}
+          options={{ title: 'Blogs Management', headerShown: false }}
         />
         <Stack.Screen 
           name="AdminVerification" 
           component={AdminVerificationScreen}
-          options={{ title: 'Verification' }}
+          options={{ title: 'Verification', headerShown: false }}
         />
         <Stack.Screen 
           name="AdminKYC" 
           component={AdminKYCScreen}
-          options={{ title: 'KYC Management' }}
+          options={{ title: 'KYC Management', headerShown: false }}
         />
         <Stack.Screen 
           name="AdminSalesEnquiry" 
           component={AdminSalesEnquiryScreen}
-          options={{ title: 'Sales Enquiry' }}
+          options={{ title: 'Sales Enquiry', headerShown: false }}
         />
         <Stack.Screen 
           name="AdminAnalytics" 
           component={AdminAnalyticsScreen}
-          options={{ title: 'Analytics' }}
+          options={{ title: 'Analytics', headerShown: false }}
         />
         <Stack.Screen 
           name="AdminSettings" 
           component={AdminSettingsScreen}
-          options={{ title: 'Settings' }}
+          options={{ title: 'Settings', headerShown: false }}
         />
         <Stack.Screen 
           name="GeneralSettings" 
           component={GeneralSettingsScreen}
-          options={{ title: 'General Settings' }}
+          options={{ title: 'General Settings', headerShown: false }}
         />
         <Stack.Screen 
           name="SecuritySettings" 
           component={SecuritySettingsScreen}
-          options={{ title: 'Security Settings' }}
+          options={{ title: 'Security Settings', headerShown: false }}
         />
         <Stack.Screen 
           name="EmailConfiguration" 
           component={EmailConfigurationScreen}
-          options={{ title: 'Email Configuration' }}
+          options={{ title: 'Email Configuration', headerShown: false }}
         />
         <Stack.Screen 
           name="PaymentSettings" 
           component={PaymentSettingsScreen}
-          options={{ title: 'Payment Settings' }}
+          options={{ title: 'Payment Settings', headerShown: false }}
         />
         <Stack.Screen 
           name="NotificationSettings" 
           component={NotificationSettingsScreen}
-          options={{ title: 'Notification Settings' }}
+          options={{ title: 'Notification Settings', headerShown: false }}
         />
         <Stack.Screen 
           name="AdminEmailTemplates" 
           component={AdminEmailTemplatesScreen}
-          options={{ title: 'Email Templates' }}
+          options={{ title: 'Email Templates', headerShown: false }}
         />
         <Stack.Screen 
           name="AdminSMTPSettings" 
           component={AdminSMTPSettingsScreen}
-          options={{ title: 'SMTP Settings' }}
+          options={{ title: 'SMTP Settings', headerShown: false }}
         />
         <Stack.Screen 
           name="AdminEmailLogs" 
           component={AdminEmailLogsScreen}
-          options={{ title: 'Email Logs' }}
+          options={{ title: 'Email Logs', headerShown: false }}
         />
         <Stack.Screen 
           name="AdminSocialUpdates" 
           component={AdminSocialUpdatesScreen}
-          options={{ title: 'Social Updates' }}
+          options={{ title: 'Social Updates', headerShown: false }}
         />
         <Stack.Screen 
           name="AdminPackageManagement" 
           component={AdminPackageManagementScreen}
-          options={{ title: 'Package Management' }}
+          options={{ title: 'Package Management', headerShown: false }}
+        />
+        <Stack.Screen 
+          name="AdminRazorpayIntegration" 
+          component={AdminRazorpayIntegrationScreen}
+          options={{ title: 'Razorpay Integration', headerShown: false }}
         />
         <Stack.Screen 
           name="AdminAdvertisementManagement" 
           component={AdminAdvertisementManagementScreen}
-          options={{ title: 'Advertisement Management' }}
+          options={{ title: 'Advertisement Management', headerShown: false }}
         />
         <Stack.Screen 
           name="AdminLiveChatSupport" 
           component={AdminLiveChatSupportScreen}
-          options={{ title: 'Live Chat Support' }}
+          options={{ title: 'Live Chat Support', headerShown: false }}
         />
         <Stack.Screen 
           name="AdminResumeSearch" 
           component={AdminResumeSearchScreen}
-          options={{ title: 'Resume Search' }}
+          options={{ title: 'Resume Search', headerShown: false }}
         />
         <Stack.Screen 
           name="AdminResumeManagement" 
           component={AdminResumeManagementScreen}
-          options={{ title: 'Resume Management' }}
+          options={{ title: 'Resume Management', headerShown: false }}
         />
         <Stack.Screen 
           name="AdminCandidateSearch" 
           component={AdminCandidateSearchScreen}
-          options={{ title: 'Candidate Search' }}
+          options={{ title: 'Candidate Search', headerShown: false }}
         />
         <Stack.Screen 
           name="AdminCandidateDetails" 
           component={AdminCandidateDetailsScreen}
-          options={{ title: 'Candidate Details' }}
+          options={{ title: 'Candidate Details', headerShown: false }}
         />
         <Stack.Screen 
           name="AdminJobAlerts" 
           component={AdminJobAlertsScreen}
-          options={{ title: 'Job Alerts' }}
+          options={{ title: 'Job Alerts', headerShown: false }}
         />
         <Stack.Screen 
           name="AdminHomepage" 
           component={AdminHomepageScreen}
-          options={{ title: 'Homepage Management' }}
+          options={{ title: 'Homepage Management', headerShown: false }}
         />
         <Stack.Screen 
           name="AdminFreejobwalaChat" 
           component={AdminFreejobwalaChatScreen}
-          options={{ title: 'Freejobwala Chat' }}
+          options={{ title: 'Freejobwala Chat', headerShown: false }}
         />
         <Stack.Screen 
           name="AdminLogoManagement" 
           component={AdminLogoManagementScreen}
-          options={{ title: 'Logo Management' }}
+          options={{ title: 'Logo Management', headerShown: false }}
         />
         <Stack.Screen 
           name="AdminPostJob" 
           component={AdminPostJobScreen}
-          options={{ title: 'Post Job' }}
+          options={{ title: 'Post Job', headerShown: false }}
         />
         
         {/* Admin Master Data Screens */}
         <Stack.Screen 
           name="AdminJobTitles" 
           component={AdminJobTitlesScreen}
-          options={{ title: 'Job Titles' }}
+          options={{ title: 'Job Titles', headerShown: false }}
         />
         <Stack.Screen 
           name="AdminKeySkills" 
           component={AdminKeySkillsScreen}
-          options={{ title: 'Key Skills' }}
+          options={{ title: 'Key Skills', headerShown: false }}
         />
         <Stack.Screen 
           name="AdminIndustries" 
           component={AdminIndustriesScreen}
-          options={{ title: 'Industries' }}
+          options={{ title: 'Industries', headerShown: false }}
+        />
+        <Stack.Screen 
+          name="AdminSubIndustries" 
+          component={AdminSubIndustriesScreen}
+          options={{ title: 'Sub-Industries', headerShown: false }}
         />
         <Stack.Screen 
           name="AdminDepartments" 
           component={AdminDepartmentsScreen}
-          options={{ title: 'Departments' }}
+          options={{ title: 'Departments', headerShown: false }}
+        />
+        <Stack.Screen 
+          name="AdminSubDepartments" 
+          component={AdminSubDepartmentsScreen}
+          options={{ title: 'Sub-Departments', headerShown: false }}
         />
         <Stack.Screen 
           name="AdminCourses" 
           component={AdminCoursesScreen}
-          options={{ title: 'Courses' }}
+          options={{ title: 'Courses', headerShown: false }}
         />
         <Stack.Screen 
           name="AdminSpecializations" 
           component={AdminSpecializationsScreen}
-          options={{ title: 'Specializations' }}
+          options={{ title: 'Specializations', headerShown: false }}
         />
         <Stack.Screen 
           name="AdminEducationFields" 
           component={AdminEducationFieldsScreen}
-          options={{ title: 'Education Fields' }}
+          options={{ title: 'Education Fields', headerShown: false }}
         />
         <Stack.Screen 
           name="AdminLocations" 
           component={AdminLocationsScreen}
-          options={{ title: 'Locations' }}
+          options={{ title: 'Locations', headerShown: false }}
         />
       </Stack.Navigator>
     </NavigationContainer>

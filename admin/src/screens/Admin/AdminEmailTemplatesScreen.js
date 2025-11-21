@@ -10,14 +10,22 @@ import {
   Alert,
   Modal,
   RefreshControl,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
 import AdminLayout from '../../components/Admin/AdminLayout';
 import api from '../../config/api';
-import { colors, spacing, typography, borderRadius } from '../../styles/theme';
+import { colors, spacing, typography, borderRadius, shadows } from '../../styles/theme';
+import { useResponsive } from '../../utils/responsive';
 
 const AdminEmailTemplatesScreen = ({ navigation }) => {
+  const responsive = useResponsive();
+  const isMobile = responsive.isMobile;
+  const isTablet = responsive.isTablet;
+  const dynamicStyles = getStyles(isMobile, isTablet);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [templates, setTemplates] = useState([]);
@@ -43,6 +51,9 @@ const AdminEmailTemplatesScreen = ({ navigation }) => {
   // Modal State
   const [modalVisible, setModalVisible] = useState(false);
   const [editMode, setEditMode] = useState(false);
+  const [modalTab, setModalTab] = useState('create'); // 'create' or 'upload'
+  const [uploading, setUploading] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState(null);
   const [currentTemplate, setCurrentTemplate] = useState({
     name: '',
     type: 'jobseeker_welcome',
@@ -97,6 +108,8 @@ const AdminEmailTemplatesScreen = ({ navigation }) => {
 
   const openCreateModal = () => {
     setEditMode(false);
+    setModalTab('create');
+    setUploadedFile(null);
     setCurrentTemplate({
       name: '',
       type: 'jobseeker_welcome',
@@ -106,6 +119,114 @@ const AdminEmailTemplatesScreen = ({ navigation }) => {
       isActive: true,
     });
     setModalVisible(true);
+  };
+
+  const handleFileUpload = async () => {
+    try {
+      if (Platform.OS === 'web') {
+        // Web file upload using input element
+        return new Promise((resolve) => {
+          const input = document.createElement('input');
+          input.type = 'file';
+          input.accept = '.html,.htm,.txt';
+          input.style.display = 'none';
+          document.body.appendChild(input);
+          
+          input.onchange = async (e) => {
+            const file = e.target.files[0];
+            document.body.removeChild(input);
+            
+            if (!file) {
+              resolve();
+              return;
+            }
+
+            setUploading(true);
+            setUploadedFile({ name: file.name, size: file.size });
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+              const fileContent = event.target.result;
+              processFileContent(fileContent, file.name, file.type);
+              resolve();
+            };
+            reader.onerror = () => {
+              Alert.alert('Error', 'Failed to read file.');
+              setUploading(false);
+              resolve();
+            };
+            reader.readAsText(file);
+          };
+          
+          input.oncancel = () => {
+            document.body.removeChild(input);
+            resolve();
+          };
+          
+          input.click();
+        });
+      } else {
+        // Native file picker
+        const result = await DocumentPicker.getDocumentAsync({
+          type: ['text/html', 'text/plain', 'application/html'],
+          copyToCacheDirectory: true,
+        });
+
+        if (result.type === 'cancel') {
+          return;
+        }
+
+        setUploading(true);
+        setUploadedFile(result);
+
+        const fileContent = await FileSystem.readAsStringAsync(result.uri);
+        processFileContent(fileContent, result.name, result.mimeType);
+      }
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      Alert.alert('Error', 'Failed to upload file. Please try again.');
+      setUploading(false);
+    }
+  };
+
+  const processFileContent = (fileContent, fileName, mimeType) => {
+    try {
+      // Extract HTML content
+      let htmlContent = '';
+      let textContent = '';
+      
+      if (mimeType === 'text/html' || fileName.endsWith('.html') || fileName.endsWith('.htm')) {
+        htmlContent = fileContent;
+        // Extract text from HTML (basic extraction)
+        textContent = fileContent.replace(/<[^>]*>/g, '').trim();
+      } else {
+        textContent = fileContent;
+        htmlContent = fileContent.replace(/\n/g, '<br>');
+      }
+
+      // Try to extract subject from file name or content
+      let subject = fileName.replace(/\.(html|htm|txt)$/i, '');
+      const subjectMatch = fileContent.match(/<title[^>]*>(.*?)<\/title>/i) || 
+                          fileContent.match(/Subject:\s*(.+)/i);
+      if (subjectMatch) {
+        subject = subjectMatch[1].trim();
+      }
+
+      setCurrentTemplate({
+        ...currentTemplate,
+        name: subject || fileName.replace(/\.(html|htm|txt)$/i, ''),
+        subject: subject || 'Email Subject',
+        htmlContent: htmlContent,
+        textContent: textContent,
+      });
+
+      Alert.alert('Success', 'Template file loaded successfully!');
+    } catch (error) {
+      console.error('Error processing file:', error);
+      Alert.alert('Error', 'Failed to process file content.');
+    } finally {
+      setUploading(false);
+    }
   };
 
   const openEditModal = (template) => {
@@ -157,12 +278,37 @@ const AdminEmailTemplatesScreen = ({ navigation }) => {
       }
 
       if (response.success) {
+        setModalVisible(false);
+        setUploadedFile(null);
+        // Reset filters to show all templates
+        const resetFilters = { page: 1, limit: 10, type: '', search: '' };
+        setFilters(resetFilters);
+        // Reload data with reset filters
+        try {
+          setLoading(true);
+          const [templatesResponse, statsResponse] = await Promise.all([
+            api.getEmailTemplates(resetFilters),
+            api.getEmailTemplateStats(),
+          ]);
+
+          if (templatesResponse.success) {
+            setTemplates(templatesResponse.data);
+            setPagination(templatesResponse.pagination);
+          }
+
+          if (statsResponse.success) {
+            setStats(statsResponse.data);
+          }
+        } catch (error) {
+          console.error('Error loading templates:', error);
+        } finally {
+          setLoading(false);
+        }
+        
         Alert.alert(
           'Success',
           `Email template ${editMode ? 'updated' : 'created'} successfully`
         );
-        setModalVisible(false);
-        loadData();
       } else {
         Alert.alert('Error', response.message || 'Failed to save template');
       }
@@ -257,41 +403,41 @@ const AdminEmailTemplatesScreen = ({ navigation }) => {
   };
 
   const renderStatCard = (title, value, icon, color) => (
-    <View style={[styles.statCard, { borderLeftColor: color }]}>
-      <View style={styles.statIconContainer}>
+    <View style={[dynamicStyles.statCard, { borderLeftColor: color }]}>
+      <View style={dynamicStyles.statIconContainer}>
         <Ionicons name={icon} size={24} color={color} />
       </View>
-      <View style={styles.statContent}>
-        <Text style={styles.statValue}>{value}</Text>
-        <Text style={styles.statTitle}>{title}</Text>
+      <View style={dynamicStyles.statContent}>
+        <Text style={dynamicStyles.statValue}>{value}</Text>
+        <Text style={dynamicStyles.statTitle}>{title}</Text>
       </View>
     </View>
   );
 
   const renderTemplateCard = (template) => (
-    <View key={template._id} style={styles.templateCard}>
-      <View style={styles.templateHeader}>
-        <View style={styles.templateTitleContainer}>
-          <Text style={styles.templateName}>{template.name}</Text>
-          <View style={styles.templateBadges}>
-            <View style={[styles.badge, styles.typeBadge]}>
-              <Text style={styles.badgeText}>
+    <View key={template._id} style={dynamicStyles.templateCard}>
+      <View style={dynamicStyles.templateHeader}>
+        <View style={dynamicStyles.templateTitleContainer}>
+          <Text style={dynamicStyles.templateName}>{template.name}</Text>
+          <View style={dynamicStyles.templateBadges}>
+            <View style={[dynamicStyles.badge, dynamicStyles.typeBadge]}>
+              <Text style={dynamicStyles.badgeText}>
                 {getTemplateTypeLabel(template.type)}
               </Text>
             </View>
             {template.isDefault && (
-              <View style={[styles.badge, styles.defaultBadge]}>
+              <View style={[dynamicStyles.badge, dynamicStyles.defaultBadge]}>
                 <Ionicons name="star" size={12} color="#FFF" />
-                <Text style={styles.badgeText}>Default</Text>
+                <Text style={dynamicStyles.badgeText}>Default</Text>
               </View>
             )}
             <View
               style={[
-                styles.badge,
-                template.isActive ? styles.activeBadge : styles.inactiveBadge,
+                dynamicStyles.badge,
+                template.isActive ? dynamicStyles.activeBadge : dynamicStyles.inactiveBadge,
               ]}
             >
-              <Text style={styles.badgeText}>
+              <Text style={dynamicStyles.badgeText}>
                 {template.isActive ? 'Active' : 'Inactive'}
               </Text>
             </View>
@@ -299,54 +445,54 @@ const AdminEmailTemplatesScreen = ({ navigation }) => {
         </View>
       </View>
 
-      <View style={styles.templateDetails}>
-        <View style={styles.detailRow}>
+      <View style={dynamicStyles.templateDetails}>
+        <View style={dynamicStyles.detailRow}>
           <Ionicons name="mail-outline" size={16} color={colors.textSecondary} />
-          <Text style={styles.detailText} numberOfLines={1}>
+          <Text style={dynamicStyles.detailText} numberOfLines={1}>
             {template.subject}
           </Text>
         </View>
-        <View style={styles.detailRow}>
+        <View style={dynamicStyles.detailRow}>
           <Ionicons name="stats-chart-outline" size={16} color={colors.textSecondary} />
-          <Text style={styles.detailText}>
+          <Text style={dynamicStyles.detailText}>
             Used {template.usageCount || 0} times
           </Text>
         </View>
         {template.lastUsed && (
-          <View style={styles.detailRow}>
+          <View style={dynamicStyles.detailRow}>
             <Ionicons name="time-outline" size={16} color={colors.textSecondary} />
-            <Text style={styles.detailText}>
+            <Text style={dynamicStyles.detailText}>
               Last used: {new Date(template.lastUsed).toLocaleDateString()}
             </Text>
           </View>
         )}
       </View>
 
-      <View style={styles.templateActions}>
+      <View style={dynamicStyles.templateActions}>
         <TouchableOpacity
-          style={styles.actionButton}
+          style={dynamicStyles.actionButton}
           onPress={() => openEditModal(template)}
         >
           <Ionicons name="create-outline" size={20} color={colors.primary} />
-          <Text style={styles.actionButtonText}>Edit</Text>
+          <Text style={dynamicStyles.actionButtonText}>Edit</Text>
         </TouchableOpacity>
 
         {!template.isDefault && (
           <TouchableOpacity
-            style={styles.actionButton}
+            style={dynamicStyles.actionButton}
             onPress={() => handleSetDefault(template)}
           >
             <Ionicons name="star-outline" size={20} color="#F59E0B" />
-            <Text style={styles.actionButtonText}>Set Default</Text>
+            <Text style={dynamicStyles.actionButtonText}>Set Default</Text>
           </TouchableOpacity>
         )}
 
         <TouchableOpacity
-          style={styles.actionButton}
+          style={dynamicStyles.actionButton}
           onPress={() => handleDelete(template)}
         >
           <Ionicons name="trash-outline" size={20} color={colors.error} />
-          <Text style={styles.actionButtonText}>Delete</Text>
+          <Text style={dynamicStyles.actionButtonText}>Delete</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -360,9 +506,9 @@ const AdminEmailTemplatesScreen = ({ navigation }) => {
         onNavigate={handleNavigate}
         onLogout={handleLogout}
       >
-        <View style={styles.loadingContainer}>
+        <View style={dynamicStyles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading templates...</Text>
+          <Text style={dynamicStyles.loadingText}>Loading templates...</Text>
         </View>
       </AdminLayout>
     );
@@ -376,51 +522,51 @@ const AdminEmailTemplatesScreen = ({ navigation }) => {
       onLogout={handleLogout}
     >
       <ScrollView
-        style={styles.container}
+        style={dynamicStyles.container}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
         {/* Header */}
-        <View style={styles.header}>
+        <View style={dynamicStyles.header}>
           <View>
-            <Text style={styles.pageTitle}>Email Templates</Text>
-            <Text style={styles.pageSubtitle}>
+            <Text style={dynamicStyles.pageTitle}>Email Templates</Text>
+            <Text style={dynamicStyles.pageSubtitle}>
               Manage email templates for automated communications
             </Text>
           </View>
-          <View style={styles.headerActions}>
+          <View style={dynamicStyles.headerActions}>
             <TouchableOpacity
-              style={styles.secondaryButton}
+              style={dynamicStyles.secondaryButton}
               onPress={handleInitializeDefaults}
             >
               <Ionicons name="download-outline" size={20} color={colors.primary} />
-              <Text style={styles.secondaryButtonText}>Initialize Defaults</Text>
+              <Text style={dynamicStyles.secondaryButtonText}>Initialize Defaults</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.primaryButton} onPress={openCreateModal}>
+            <TouchableOpacity style={dynamicStyles.primaryButton} onPress={openCreateModal}>
               <Ionicons name="add-circle-outline" size={20} color="#FFF" />
-              <Text style={styles.primaryButtonText}>Create Template</Text>
+              <Text style={dynamicStyles.primaryButtonText}>Create Template</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Statistics */}
-        <View style={styles.statsContainer}>
+        <View style={dynamicStyles.statsContainer}>
           {renderStatCard('Total Templates', stats.total || 0, 'mail-outline', colors.primary)}
           {renderStatCard('Active', stats.active || 0, 'checkmark-circle-outline', colors.success)}
           {renderStatCard('Inactive', stats.inactive || 0, 'close-circle-outline', colors.error)}
         </View>
 
         {/* Filters */}
-        <View style={styles.filtersContainer}>
-          <View style={styles.filterRow}>
-            <View style={styles.pickerContainer}>
-              <Text style={styles.filterLabel}>Template Type</Text>
-              <View style={styles.picker}>
+        <View style={dynamicStyles.filtersContainer}>
+          <View style={dynamicStyles.filterRow}>
+            <View style={dynamicStyles.pickerContainer}>
+              <Text style={dynamicStyles.filterLabel}>Template Type</Text>
+              <View style={dynamicStyles.picker}>
                 <Picker
                   selectedValue={filters.type}
                   onValueChange={(value) => setFilters({ ...filters, type: value, page: 1 })}
-                  style={styles.pickerInput}
+                  style={dynamicStyles.pickerInput}
                 >
                   <Picker.Item label="All Types" value="" />
                   <Picker.Item label="Jobseeker Welcome" value="jobseeker_welcome" />
@@ -436,16 +582,16 @@ const AdminEmailTemplatesScreen = ({ navigation }) => {
         </View>
 
         {/* Templates List */}
-        <View style={styles.templatesContainer}>
+        <View style={dynamicStyles.templatesContainer}>
           {templates.length === 0 ? (
-            <View style={styles.emptyState}>
+            <View style={dynamicStyles.emptyState}>
               <Ionicons name="mail-outline" size={64} color={colors.border} />
-              <Text style={styles.emptyStateTitle}>No templates found</Text>
-              <Text style={styles.emptyStateText}>
+              <Text style={dynamicStyles.emptyStateTitle}>No templates found</Text>
+              <Text style={dynamicStyles.emptyStateText}>
                 Create your first email template to get started
               </Text>
-              <TouchableOpacity style={styles.emptyStateButton} onPress={openCreateModal}>
-                <Text style={styles.emptyStateButtonText}>Create Template</Text>
+              <TouchableOpacity style={dynamicStyles.emptyStateButton} onPress={openCreateModal}>
+                <Text style={dynamicStyles.emptyStateButtonText}>Create Template</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -455,21 +601,21 @@ const AdminEmailTemplatesScreen = ({ navigation }) => {
 
         {/* Pagination */}
         {pagination.pages > 1 && (
-          <View style={styles.paginationContainer}>
+          <View style={dynamicStyles.paginationContainer}>
             <TouchableOpacity
-              style={[styles.paginationButton, filters.page === 1 && styles.paginationButtonDisabled]}
+              style={[dynamicStyles.paginationButton, filters.page === 1 && dynamicStyles.paginationButtonDisabled]}
               onPress={() => setFilters({ ...filters, page: filters.page - 1 })}
               disabled={filters.page === 1}
             >
               <Ionicons name="chevron-back" size={20} color={filters.page === 1 ? colors.border : colors.primary} />
             </TouchableOpacity>
-            <Text style={styles.paginationText}>
+            <Text style={dynamicStyles.paginationText}>
               Page {pagination.current} of {pagination.pages}
             </Text>
             <TouchableOpacity
               style={[
-                styles.paginationButton,
-                filters.page === pagination.pages && styles.paginationButtonDisabled,
+                dynamicStyles.paginationButton,
+                filters.page === pagination.pages && dynamicStyles.paginationButtonDisabled,
               ]}
               onPress={() => setFilters({ ...filters, page: filters.page + 1 })}
               disabled={filters.page === pagination.pages}
@@ -487,25 +633,131 @@ const AdminEmailTemplatesScreen = ({ navigation }) => {
       {/* Create/Edit Modal */}
       <Modal
         visible={modalVisible}
-        animationType="slide"
-        transparent={false}
+        animationType="fade"
+        transparent={true}
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>
-              {editMode ? 'Edit Template' : 'Create Template'}
-            </Text>
-            <TouchableOpacity onPress={() => setModalVisible(false)}>
-              <Ionicons name="close" size={28} color={colors.text} />
-            </TouchableOpacity>
-          </View>
+        <TouchableOpacity 
+          style={dynamicStyles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => {
+            setModalVisible(false);
+            setUploadedFile(null);
+          }}
+        >
+          <TouchableOpacity 
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
+          >
+          <View style={dynamicStyles.modalContainer}>
+            <View style={dynamicStyles.modalHeader}>
+              <Text style={dynamicStyles.modalTitle}>
+                {editMode ? 'Edit Template' : 'Create Template'}
+              </Text>
+              <TouchableOpacity 
+                style={dynamicStyles.modalCloseButton}
+                onPress={() => {
+                  setModalVisible(false);
+                  setUploadedFile(null);
+                }}
+              >
+                <Ionicons name="close" size={24} color="#64748B" />
+              </TouchableOpacity>
+            </View>
 
-          <ScrollView style={styles.modalContent}>
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Template Name *</Text>
+            {!editMode && (
+              <View style={dynamicStyles.modalTabs}>
+                <TouchableOpacity
+                  style={[dynamicStyles.modalTab, modalTab === 'create' && dynamicStyles.modalTabActive]}
+                  onPress={() => setModalTab('create')}
+                >
+                  <Ionicons 
+                    name="create-outline" 
+                    size={20} 
+                    color={modalTab === 'create' ? colors.primary : colors.textSecondary} 
+                  />
+                  <Text style={[dynamicStyles.modalTabText, modalTab === 'create' && dynamicStyles.modalTabTextActive]}>
+                    Create Custom
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[dynamicStyles.modalTab, modalTab === 'upload' && dynamicStyles.modalTabActive]}
+                  onPress={() => setModalTab('upload')}
+                >
+                  <Ionicons 
+                    name="cloud-upload-outline" 
+                    size={20} 
+                    color={modalTab === 'upload' ? colors.primary : colors.textSecondary} 
+                  />
+                  <Text style={[dynamicStyles.modalTabText, modalTab === 'upload' && dynamicStyles.modalTabTextActive]}>
+                    Upload Template
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+          <ScrollView style={dynamicStyles.modalContent} showsVerticalScrollIndicator={false}>
+            {modalTab === 'upload' && !editMode && (
+              <View style={dynamicStyles.uploadSection}>
+                <View style={dynamicStyles.uploadBox}>
+                  {uploadedFile ? (
+                    <View style={dynamicStyles.uploadedFileInfo}>
+                      <Ionicons name="document-text" size={48} color={colors.primary} />
+                      <Text style={dynamicStyles.uploadedFileName}>{uploadedFile.name}</Text>
+                      <Text style={dynamicStyles.uploadedFileSize}>
+                        {(uploadedFile.size / 1024).toFixed(2)} KB
+                      </Text>
+                      <TouchableOpacity
+                        style={dynamicStyles.removeFileButton}
+                        onPress={() => {
+                          setUploadedFile(null);
+                          setCurrentTemplate({
+                            ...currentTemplate,
+                            name: '',
+                            subject: '',
+                            htmlContent: '',
+                            textContent: '',
+                          });
+                        }}
+                      >
+                        <Ionicons name="close-circle" size={20} color={colors.error} />
+                        <Text style={dynamicStyles.removeFileText}>Remove File</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <>
+                      <Ionicons name="cloud-upload-outline" size={64} color={colors.textSecondary} />
+                      <Text style={dynamicStyles.uploadTitle}>Upload Template File</Text>
+                      <Text style={dynamicStyles.uploadSubtitle}>
+                        Select an HTML or text file to import as template
+                      </Text>
+                      <TouchableOpacity
+                        style={dynamicStyles.uploadButton}
+                        onPress={handleFileUpload}
+                        disabled={uploading}
+                      >
+                        {uploading ? (
+                          <ActivityIndicator size="small" color={colors.white} />
+                        ) : (
+                          <>
+                            <Ionicons name="folder-open-outline" size={20} color={colors.white} />
+                            <Text style={dynamicStyles.uploadButtonText}>Choose File</Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+                      <Text style={dynamicStyles.uploadHint}>
+                        Supported formats: .html, .htm, .txt
+                      </Text>
+                    </>
+                  )}
+                </View>
+              </View>
+            )}
+
+            <View style={dynamicStyles.inputGroup}>
+              <Text style={dynamicStyles.label}>Template Name *</Text>
               <TextInput
-                style={styles.input}
+                style={dynamicStyles.input}
                 value={currentTemplate.name}
                 onChangeText={(text) =>
                   setCurrentTemplate({ ...currentTemplate, name: text })
@@ -515,15 +767,15 @@ const AdminEmailTemplatesScreen = ({ navigation }) => {
               />
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Template Type *</Text>
-              <View style={styles.picker}>
+            <View style={dynamicStyles.inputGroup}>
+              <Text style={dynamicStyles.label}>Template Type *</Text>
+              <View style={dynamicStyles.picker}>
                 <Picker
                   selectedValue={currentTemplate.type}
                   onValueChange={(value) =>
                     setCurrentTemplate({ ...currentTemplate, type: value })
                   }
-                  style={styles.pickerInput}
+                  style={dynamicStyles.pickerInput}
                 >
                   <Picker.Item label="Jobseeker Welcome" value="jobseeker_welcome" />
                   <Picker.Item label="Employer Welcome" value="employer_welcome" />
@@ -535,10 +787,10 @@ const AdminEmailTemplatesScreen = ({ navigation }) => {
               </View>
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Email Subject *</Text>
+            <View style={dynamicStyles.inputGroup}>
+              <Text style={dynamicStyles.label}>Email Subject *</Text>
               <TextInput
-                style={styles.input}
+                style={dynamicStyles.input}
                 value={currentTemplate.subject}
                 onChangeText={(text) =>
                   setCurrentTemplate({ ...currentTemplate, subject: text })
@@ -548,13 +800,33 @@ const AdminEmailTemplatesScreen = ({ navigation }) => {
               />
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>HTML Content *</Text>
-              <Text style={styles.hint}>
-                Use variables: {'{'}{'{'} userName {'}'}{'}'}, {'{'}{'{'} companyName {'}'}{'}'}, {'{'}{'{'} jobTitle {'}'}{'}'}, etc.
+            <View style={dynamicStyles.inputGroup}>
+              <View style={dynamicStyles.labelRow}>
+                <Text style={dynamicStyles.label}>HTML Content *</Text>
+                <View style={dynamicStyles.variablesContainer}>
+                  <Text style={dynamicStyles.variablesLabel}>Variables:</Text>
+                  <View style={dynamicStyles.variablesList}>
+                    {['userName', 'companyName', 'jobTitle', 'email', 'phone'].map((varName) => (
+                      <TouchableOpacity
+                        key={varName}
+                        style={dynamicStyles.variableTag}
+                        onPress={() => {
+                          const currentContent = currentTemplate.htmlContent || '';
+                          const newContent = currentContent + `{{ ${varName} }}`;
+                          setCurrentTemplate({ ...currentTemplate, htmlContent: newContent });
+                        }}
+                      >
+                        <Text style={dynamicStyles.variableText}>{`{{ ${varName} }}`}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              </View>
+              <Text style={dynamicStyles.hint}>
+                Click on variables above to insert them into your template
               </Text>
               <TextInput
-                style={[styles.input, styles.textArea]}
+                style={[dynamicStyles.input, dynamicStyles.textArea]}
                 value={currentTemplate.htmlContent}
                 onChangeText={(text) =>
                   setCurrentTemplate({ ...currentTemplate, htmlContent: text })
@@ -562,15 +834,15 @@ const AdminEmailTemplatesScreen = ({ navigation }) => {
                 placeholder="Enter HTML content..."
                 placeholderTextColor={colors.textSecondary}
                 multiline
-                numberOfLines={10}
+                numberOfLines={12}
                 textAlignVertical="top"
               />
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Plain Text Content (Optional)</Text>
+            <View style={dynamicStyles.inputGroup}>
+              <Text style={dynamicStyles.label}>Plain Text Content (Optional)</Text>
               <TextInput
-                style={[styles.input, styles.textArea]}
+                style={[dynamicStyles.input, dynamicStyles.textArea]}
                 value={currentTemplate.textContent}
                 onChangeText={(text) =>
                   setCurrentTemplate({ ...currentTemplate, textContent: text })
@@ -583,12 +855,12 @@ const AdminEmailTemplatesScreen = ({ navigation }) => {
               />
             </View>
 
-            <View style={styles.switchRow}>
-              <Text style={styles.switchLabel}>Active Template</Text>
+            <View style={dynamicStyles.switchRow}>
+              <Text style={dynamicStyles.switchLabel}>Active Template</Text>
               <TouchableOpacity
                 style={[
-                  styles.switchButton,
-                  currentTemplate.isActive && styles.switchButtonActive,
+                  dynamicStyles.switchButton,
+                  currentTemplate.isActive && dynamicStyles.switchButtonActive,
                 ]}
                 onPress={() =>
                   setCurrentTemplate({
@@ -599,45 +871,47 @@ const AdminEmailTemplatesScreen = ({ navigation }) => {
               >
                 <View
                   style={[
-                    styles.switchThumb,
-                    currentTemplate.isActive && styles.switchThumbActive,
+                    dynamicStyles.switchThumb,
+                    currentTemplate.isActive && dynamicStyles.switchThumbActive,
                   ]}
                 />
               </TouchableOpacity>
             </View>
           </ScrollView>
 
-          <View style={styles.modalFooter}>
+          <View style={dynamicStyles.modalFooter}>
             <TouchableOpacity
-              style={styles.cancelButton}
+              style={dynamicStyles.cancelButton}
               onPress={() => setModalVisible(false)}
             >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
+              <Text style={dynamicStyles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.saveButton}
+              style={dynamicStyles.saveButton}
               onPress={handleSave}
               disabled={saving}
             >
               {saving ? (
                 <ActivityIndicator size="small" color="#FFF" />
               ) : (
-                <Text style={styles.saveButtonText}>
+                <Text style={dynamicStyles.saveButtonText}>
                   {editMode ? 'Update' : 'Create'}
                 </Text>
               )}
             </TouchableOpacity>
           </View>
-        </View>
+          </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
     </AdminLayout>
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (isMobile, isTablet) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: colors.background,
   },
   loadingContainer: {
     flex: 1,
@@ -655,18 +929,18 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     padding: spacing.lg,
-    backgroundColor: '#FFF',
+    backgroundColor: colors.white,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.borderLight,
+    marginBottom: spacing.md,
   },
   pageTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
+    ...typography.h3,
     color: colors.text,
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   pageSubtitle: {
-    fontSize: 14,
+    ...typography.body2,
     color: colors.textSecondary,
   },
   headerActions: {
@@ -677,31 +951,33 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.primary,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm + 2,
     borderRadius: borderRadius.md,
     gap: spacing.xs,
+    ...shadows.sm,
   },
   primaryButtonText: {
-    color: '#FFF',
+    ...typography.button,
+    color: colors.white,
     fontSize: 14,
-    fontWeight: '600',
   },
   secondaryButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    backgroundColor: colors.white,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm + 2,
     borderRadius: borderRadius.md,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.primary,
     gap: spacing.xs,
+    ...shadows.xs,
   },
   secondaryButtonText: {
+    ...typography.button,
     color: colors.primary,
     fontSize: 14,
-    fontWeight: '600',
   },
   statsContainer: {
     flexDirection: 'row',
@@ -711,15 +987,13 @@ const styles = StyleSheet.create({
   statCard: {
     flex: 1,
     flexDirection: 'row',
-    backgroundColor: '#FFF',
+    backgroundColor: colors.white,
     borderRadius: borderRadius.lg,
     padding: spacing.md,
     borderLeftWidth: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    ...shadows.md,
   },
   statIconContainer: {
     width: 48,
@@ -778,15 +1052,13 @@ const styles = StyleSheet.create({
     paddingTop: 0,
   },
   templateCard: {
-    backgroundColor: '#FFF',
+    backgroundColor: colors.white,
     borderRadius: borderRadius.lg,
     padding: spacing.lg,
     marginBottom: spacing.md,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    ...shadows.md,
   },
   templateHeader: {
     marginBottom: spacing.md,
@@ -911,26 +1183,204 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   // Modal Styles
-  modalContainer: {
+  modalOverlay: {
     flex: 1,
-    backgroundColor: '#FFF',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.lg + 8,
+  },
+  modalContainer: {
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.xl + 16,
+    padding: 0,
+    width: '100%',
+    maxWidth: 800,
+    maxHeight: '90%',
+    ...shadows.lg,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    elevation: 25,
+    overflow: 'hidden',
+    ...(Platform.OS === 'web' && {
+      boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05)',
+    }),
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: borderRadius.xl + 16,
+    borderTopRightRadius: borderRadius.xl + 16,
+    paddingHorizontal: spacing.xl + 20,
+    paddingTop: spacing.xl + 20,
+    paddingBottom: spacing.lg + 8,
+    borderBottomWidth: 2,
+    borderBottomColor: '#E2E8F0',
   },
   modalTitle: {
+    ...typography.h4,
+    color: '#0F172A',
+    marginBottom: 0,
+    fontWeight: '700',
     fontSize: 24,
-    fontWeight: 'bold',
+    letterSpacing: -0.3,
+  },
+  modalCloseButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F8FAFC',
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...shadows.sm,
+    elevation: 2,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+  },
+  modalTabs: {
+    flexDirection: 'row',
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderLight,
+    gap: spacing.sm,
+  },
+  modalTab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.md,
+    gap: spacing.xs,
+    marginBottom: -1,
+  },
+  modalTabActive: {
+    borderBottomWidth: 2,
+    borderBottomColor: colors.primary,
+  },
+  modalTabText: {
+    ...typography.body2,
+    color: colors.textSecondary,
+    fontWeight: '500',
+  },
+  modalTabTextActive: {
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  uploadSection: {
+    marginBottom: spacing.lg,
+  },
+  uploadBox: {
+    borderWidth: 2,
+    borderColor: colors.border,
+    borderStyle: 'dashed',
+    borderRadius: borderRadius.lg,
+    padding: spacing.xl,
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    minHeight: 200,
+    justifyContent: 'center',
+  },
+  uploadTitle: {
+    ...typography.h6,
     color: colors.text,
+    marginTop: spacing.md,
+    marginBottom: spacing.xs,
+  },
+  uploadSubtitle: {
+    ...typography.body2,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: spacing.lg,
+  },
+  uploadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.lg,
+    borderRadius: borderRadius.md,
+    gap: spacing.xs,
+    ...shadows.sm,
+  },
+  uploadButtonText: {
+    ...typography.button,
+    color: colors.white,
+    fontSize: 14,
+  },
+  uploadHint: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: spacing.sm,
+    fontStyle: 'italic',
+  },
+  uploadedFileInfo: {
+    alignItems: 'center',
+    width: '100%',
+  },
+  uploadedFileName: {
+    ...typography.body1,
+    color: colors.text,
+    fontWeight: '600',
+    marginTop: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  uploadedFileSize: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginBottom: spacing.md,
+  },
+  removeFileButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    borderRadius: borderRadius.sm,
+    backgroundColor: '#FEE2E2',
+  },
+  removeFileText: {
+    ...typography.caption,
+    color: colors.error,
+    fontWeight: '600',
+  },
+  labelRow: {
+    marginBottom: spacing.xs,
+  },
+  variablesContainer: {
+    marginTop: spacing.sm,
+  },
+  variablesLabel: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontWeight: '600',
+    marginBottom: spacing.xs,
+  },
+  variablesList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+  },
+  variableTag: {
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.sm,
+    borderWidth: 1,
+    borderColor: colors.primary + '20',
+  },
+  variableText: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   modalContent: {
     flex: 1,
     padding: spacing.lg,
+    maxHeight: 500,
   },
   inputGroup: {
     marginBottom: spacing.lg,
@@ -948,16 +1398,20 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   input: {
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.border,
     borderRadius: borderRadius.md,
     padding: spacing.md,
-    fontSize: 14,
+    ...typography.body1,
     color: colors.text,
-    backgroundColor: '#FFF',
+    backgroundColor: colors.white,
+    fontSize: 15,
+    ...shadows.xs,
   },
   textArea: {
-    minHeight: 120,
+    minHeight: 200,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    fontSize: 13,
   },
   switchRow: {
     flexDirection: 'row',
@@ -999,28 +1453,33 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     flex: 1,
-    padding: spacing.md,
+    paddingVertical: spacing.sm + 4,
+    paddingHorizontal: spacing.md,
     borderRadius: borderRadius.md,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.border,
     alignItems: 'center',
+    backgroundColor: colors.white,
+    ...shadows.xs,
   },
   cancelButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
+    ...typography.button,
+    color: colors.textSecondary,
+    fontSize: 15,
   },
   saveButton: {
     flex: 1,
-    padding: spacing.md,
+    paddingVertical: spacing.sm + 4,
+    paddingHorizontal: spacing.md,
     borderRadius: borderRadius.md,
     backgroundColor: colors.primary,
     alignItems: 'center',
+    ...shadows.md,
   },
   saveButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFF',
+    ...typography.button,
+    color: colors.white,
+    fontSize: isMobile ? 14 : isTablet ? 14.5 : 15,
   },
 });
 

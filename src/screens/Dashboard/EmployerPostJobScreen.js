@@ -1,13 +1,18 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, StyleSheet, Alert, ScrollView, Text } from 'react-native';
-import { colors, spacing, borderRadius, typography } from '../../styles/theme';
+import { View, StyleSheet, Alert, ScrollView, Text, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { colors, spacing, borderRadius, typography, shadows } from '../../styles/theme';
 import EmployerSidebar from '../../components/EmployerSidebar';
 import MultiStepJobPostForm from '../../components/MultiStepJobPostForm';
 import api from '../../config/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useResponsive } from '../../utils/responsive';
 
 const DRAFTS_INDEX_KEY = 'jobDrafts:index';
 const EmployerPostJobScreen = ({ navigation, route }) => {
+  const responsive = useResponsive();
+  const { isMobile } = responsive;
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [draftMeta, setDraftMeta] = useState({ draftId: null, initialData: {}, initialStep: 0 });
 
   useEffect(() => {
@@ -144,13 +149,32 @@ const EmployerPostJobScreen = ({ navigation, route }) => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.sidebarWrapper}>
-        <EmployerSidebar permanent navigation={navigation} role="company" activeKey="postJob" />
-      </View>
-      <ScrollView contentContainerStyle={styles.contentWrapper}>
-        <View style={styles.headerBar}>
-          <Text style={styles.headerTitle}>Post New Job</Text>
-          <Text style={styles.headerSubtitle}>Fill the details below to publish your job</Text>
+      {!isMobile && (
+        <View style={styles.sidebarWrapper}>
+          <EmployerSidebar permanent navigation={navigation} role="company" activeKey="postJob" />
+        </View>
+      )}
+      {isMobile && (
+        <EmployerSidebar 
+          visible={sidebarOpen} 
+          onClose={() => setSidebarOpen(false)} 
+          navigation={navigation} 
+          role="company" 
+          activeKey="postJob" 
+        />
+      )}
+      {isMobile && (
+        <TouchableOpacity 
+          style={styles.menuButton}
+          onPress={() => setSidebarOpen(true)}
+        >
+          <Ionicons name="menu" size={24} color={colors.text} />
+        </TouchableOpacity>
+      )}
+      <ScrollView contentContainerStyle={[styles.contentWrapper, isMobile && styles.contentWrapperMobile]}>
+        <View style={[styles.headerBar, isMobile && styles.headerBarMobile]}>
+          <Text style={[styles.headerTitle, isMobile && styles.headerTitleMobile]}>Post New Job</Text>
+          <Text style={[styles.headerSubtitle, isMobile && styles.headerSubtitleMobile]}>Fill the details below to publish your job</Text>
         </View>
         <View style={styles.formWrapper}>
           <MultiStepJobPostForm 
@@ -174,12 +198,26 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F6FA'
   },
   sidebarWrapper: {
-    width: 260,
+    width: 280,
+  },
+  menuButton: {
+    position: 'absolute',
+    top: spacing.md,
+    left: spacing.md,
+    zIndex: 1000,
+    backgroundColor: '#FFFFFF',
+    padding: spacing.sm,
+    borderRadius: borderRadius.md,
+    ...shadows.sm,
   },
   contentWrapper: {
     flexGrow: 1,
     padding: spacing.md,
     paddingBottom: spacing.xxl,
+  },
+  contentWrapperMobile: {
+    padding: spacing.sm,
+    paddingTop: spacing.xl + 40,
   },
   headerBar: {
     backgroundColor: '#FFF',
@@ -189,14 +227,24 @@ const styles = StyleSheet.create({
     borderColor: '#E0E0E0',
     marginBottom: spacing.lg,
   },
+  headerBarMobile: {
+    padding: spacing.md,
+  },
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
     color: '#333',
     marginBottom: 4,
   },
+  headerTitleMobile: {
+    fontSize: 18,
+  },
   headerSubtitle: {
     color: '#666',
+    fontSize: 14,
+  },
+  headerSubtitleMobile: {
+    fontSize: 12,
   },
   formWrapper: {
     backgroundColor: 'transparent',

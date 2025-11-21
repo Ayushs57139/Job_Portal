@@ -8,13 +8,19 @@ import {
   ActivityIndicator,
   Alert,
   Switch,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AdminLayout from '../../../components/Admin/AdminLayout';
 import api from '../../../config/api';
 import { colors, spacing, typography, borderRadius } from '../../../styles/theme';
+import { useResponsive } from '../../../utils/responsive';
 
 const NotificationSettingsScreen = ({ navigation }) => {
+  const responsive = useResponsive();
+  const isMobile = responsive.isMobile;
+  const isTablet = responsive.isTablet;
+  const dynamicStyles = getStyles(isMobile, isTablet);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState({
@@ -76,9 +82,9 @@ const NotificationSettingsScreen = ({ navigation }) => {
   if (loading) {
     return (
       <AdminLayout title="Notification Settings" activeScreen="AdminSettings" onNavigate={handleNavigate} onLogout={handleLogout}>
-        <View style={styles.loadingContainer}>
+        <View style={dynamicStyles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading settings...</Text>
+          <Text style={dynamicStyles.loadingText}>Loading settings...</Text>
         </View>
       </AdminLayout>
     );
@@ -86,25 +92,25 @@ const NotificationSettingsScreen = ({ navigation }) => {
 
   return (
     <AdminLayout title="Notification Settings" activeScreen="AdminSettings" onNavigate={handleNavigate} onLogout={handleLogout}>
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+      <ScrollView style={dynamicStyles.container} showsVerticalScrollIndicator={false}>
+        <View style={dynamicStyles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={dynamicStyles.backButton}>
             <Ionicons name="arrow-back" size={24} color={colors.primary} />
           </TouchableOpacity>
-          <View style={styles.headerTextContainer}>
-            <Text style={styles.pageTitle}>Notification Settings</Text>
-            <Text style={styles.pageSubtitle}>Manage notification preferences</Text>
+          <View style={dynamicStyles.headerTextContainer}>
+            <Text style={dynamicStyles.pageTitle}>Notification Settings</Text>
+            <Text style={dynamicStyles.pageSubtitle}>Manage notification preferences</Text>
           </View>
         </View>
 
         {/* Global Notification Settings */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Global Settings</Text>
+        <View style={dynamicStyles.section}>
+          <Text style={dynamicStyles.sectionTitle}>Global Settings</Text>
           
-          <View style={styles.switchRow}>
-            <View style={styles.switchLabelContainer}>
-              <Text style={styles.switchLabel}>Push Notifications</Text>
-              <Text style={styles.switchDescription}>
+          <View style={dynamicStyles.switchRow}>
+            <View style={dynamicStyles.switchLabelContainer}>
+              <Text style={dynamicStyles.switchLabel}>Push Notifications</Text>
+              <Text style={dynamicStyles.switchDescription}>
                 Enable push notifications across the platform
               </Text>
             </View>
@@ -116,10 +122,10 @@ const NotificationSettingsScreen = ({ navigation }) => {
             />
           </View>
 
-          <View style={styles.switchRow}>
-            <View style={styles.switchLabelContainer}>
-              <Text style={styles.switchLabel}>Email Notifications</Text>
-              <Text style={styles.switchDescription}>
+          <View style={dynamicStyles.switchRow}>
+            <View style={dynamicStyles.switchLabelContainer}>
+              <Text style={dynamicStyles.switchLabel}>Email Notifications</Text>
+              <Text style={dynamicStyles.switchDescription}>
                 Enable email notifications across the platform
               </Text>
             </View>
@@ -131,10 +137,10 @@ const NotificationSettingsScreen = ({ navigation }) => {
             />
           </View>
 
-          <View style={styles.switchRow}>
-            <View style={styles.switchLabelContainer}>
-              <Text style={styles.switchLabel}>SMS Notifications</Text>
-              <Text style={styles.switchDescription}>
+          <View style={dynamicStyles.switchRow}>
+            <View style={dynamicStyles.switchLabelContainer}>
+              <Text style={dynamicStyles.switchLabel}>SMS Notifications</Text>
+              <Text style={dynamicStyles.switchDescription}>
                 Enable SMS notifications across the platform
               </Text>
             </View>
@@ -148,15 +154,15 @@ const NotificationSettingsScreen = ({ navigation }) => {
         </View>
 
         {/* User Notification Types */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>User Notification Types</Text>
+        <View style={dynamicStyles.section}>
+          <Text style={dynamicStyles.sectionTitle}>User Notification Types</Text>
           
           {/* Job Alerts */}
-          <View style={styles.notificationTypeCard}>
-            <Text style={styles.notificationTypeTitle}>Job Alerts</Text>
-            <View style={styles.notificationChannels}>
-              <View style={styles.channelRow}>
-                <Text style={styles.channelLabel}>Email</Text>
+          <View style={dynamicStyles.notificationTypeCard}>
+            <Text style={dynamicStyles.notificationTypeTitle}>Job Alerts</Text>
+            <View style={dynamicStyles.notificationChannels}>
+              <View style={dynamicStyles.channelRow}>
+                <Text style={dynamicStyles.channelLabel}>Email</Text>
                 <Switch
                   value={settings.notificationTypes.jobAlerts.email}
                   onValueChange={(value) => setSettings({
@@ -170,8 +176,8 @@ const NotificationSettingsScreen = ({ navigation }) => {
                   thumbColor={colors.white}
                 />
               </View>
-              <View style={styles.channelRow}>
-                <Text style={styles.channelLabel}>Push</Text>
+              <View style={dynamicStyles.channelRow}>
+                <Text style={dynamicStyles.channelLabel}>Push</Text>
                 <Switch
                   value={settings.notificationTypes.jobAlerts.push}
                   onValueChange={(value) => setSettings({
@@ -185,8 +191,8 @@ const NotificationSettingsScreen = ({ navigation }) => {
                   thumbColor={colors.white}
                 />
               </View>
-              <View style={styles.channelRow}>
-                <Text style={styles.channelLabel}>SMS</Text>
+              <View style={dynamicStyles.channelRow}>
+                <Text style={dynamicStyles.channelLabel}>SMS</Text>
                 <Switch
                   value={settings.notificationTypes.jobAlerts.sms}
                   onValueChange={(value) => setSettings({
@@ -204,11 +210,11 @@ const NotificationSettingsScreen = ({ navigation }) => {
           </View>
 
           {/* Application Updates */}
-          <View style={styles.notificationTypeCard}>
-            <Text style={styles.notificationTypeTitle}>Application Updates</Text>
-            <View style={styles.notificationChannels}>
-              <View style={styles.channelRow}>
-                <Text style={styles.channelLabel}>Email</Text>
+          <View style={dynamicStyles.notificationTypeCard}>
+            <Text style={dynamicStyles.notificationTypeTitle}>Application Updates</Text>
+            <View style={dynamicStyles.notificationChannels}>
+              <View style={dynamicStyles.channelRow}>
+                <Text style={dynamicStyles.channelLabel}>Email</Text>
                 <Switch
                   value={settings.notificationTypes.applicationUpdates.email}
                   onValueChange={(value) => setSettings({
@@ -222,8 +228,8 @@ const NotificationSettingsScreen = ({ navigation }) => {
                   thumbColor={colors.white}
                 />
               </View>
-              <View style={styles.channelRow}>
-                <Text style={styles.channelLabel}>Push</Text>
+              <View style={dynamicStyles.channelRow}>
+                <Text style={dynamicStyles.channelLabel}>Push</Text>
                 <Switch
                   value={settings.notificationTypes.applicationUpdates.push}
                   onValueChange={(value) => setSettings({
@@ -241,11 +247,11 @@ const NotificationSettingsScreen = ({ navigation }) => {
           </View>
 
           {/* New Job Posted */}
-          <View style={styles.notificationTypeCard}>
-            <Text style={styles.notificationTypeTitle}>New Job Posted</Text>
-            <View style={styles.notificationChannels}>
-              <View style={styles.channelRow}>
-                <Text style={styles.channelLabel}>Email</Text>
+          <View style={dynamicStyles.notificationTypeCard}>
+            <Text style={dynamicStyles.notificationTypeTitle}>New Job Posted</Text>
+            <View style={dynamicStyles.notificationChannels}>
+              <View style={dynamicStyles.channelRow}>
+                <Text style={dynamicStyles.channelLabel}>Email</Text>
                 <Switch
                   value={settings.notificationTypes.newJobPosted.email}
                   onValueChange={(value) => setSettings({
@@ -259,8 +265,8 @@ const NotificationSettingsScreen = ({ navigation }) => {
                   thumbColor={colors.white}
                 />
               </View>
-              <View style={styles.channelRow}>
-                <Text style={styles.channelLabel}>Push</Text>
+              <View style={dynamicStyles.channelRow}>
+                <Text style={dynamicStyles.channelLabel}>Push</Text>
                 <Switch
                   value={settings.notificationTypes.newJobPosted.push}
                   onValueChange={(value) => setSettings({
@@ -278,11 +284,11 @@ const NotificationSettingsScreen = ({ navigation }) => {
           </View>
 
           {/* Account Activity */}
-          <View style={styles.notificationTypeCard}>
-            <Text style={styles.notificationTypeTitle}>Account Activity</Text>
-            <View style={styles.notificationChannels}>
-              <View style={styles.channelRow}>
-                <Text style={styles.channelLabel}>Email</Text>
+          <View style={dynamicStyles.notificationTypeCard}>
+            <Text style={dynamicStyles.notificationTypeTitle}>Account Activity</Text>
+            <View style={dynamicStyles.notificationChannels}>
+              <View style={dynamicStyles.channelRow}>
+                <Text style={dynamicStyles.channelLabel}>Email</Text>
                 <Switch
                   value={settings.notificationTypes.accountActivity.email}
                   onValueChange={(value) => setSettings({
@@ -300,11 +306,11 @@ const NotificationSettingsScreen = ({ navigation }) => {
           </View>
 
           {/* Marketing */}
-          <View style={styles.notificationTypeCard}>
-            <Text style={styles.notificationTypeTitle}>Marketing</Text>
-            <View style={styles.notificationChannels}>
-              <View style={styles.channelRow}>
-                <Text style={styles.channelLabel}>Email</Text>
+          <View style={dynamicStyles.notificationTypeCard}>
+            <Text style={dynamicStyles.notificationTypeTitle}>Marketing</Text>
+            <View style={dynamicStyles.notificationChannels}>
+              <View style={dynamicStyles.channelRow}>
+                <Text style={dynamicStyles.channelLabel}>Email</Text>
                 <Switch
                   value={settings.notificationTypes.marketing.email}
                   onValueChange={(value) => setSettings({
@@ -323,11 +329,11 @@ const NotificationSettingsScreen = ({ navigation }) => {
         </View>
 
         {/* Admin Notifications */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Admin Notifications</Text>
+        <View style={dynamicStyles.section}>
+          <Text style={dynamicStyles.sectionTitle}>Admin Notifications</Text>
           
-          <View style={styles.switchRow}>
-            <Text style={styles.switchLabel}>New User Registration</Text>
+          <View style={dynamicStyles.switchRow}>
+            <Text style={dynamicStyles.switchLabel}>New User Registration</Text>
             <Switch
               value={settings.adminNotifications.newUserRegistration}
               onValueChange={(value) => setSettings({
@@ -339,8 +345,8 @@ const NotificationSettingsScreen = ({ navigation }) => {
             />
           </View>
 
-          <View style={styles.switchRow}>
-            <Text style={styles.switchLabel}>New Job Posting</Text>
+          <View style={dynamicStyles.switchRow}>
+            <Text style={dynamicStyles.switchLabel}>New Job Posting</Text>
             <Switch
               value={settings.adminNotifications.newJobPosting}
               onValueChange={(value) => setSettings({
@@ -352,8 +358,8 @@ const NotificationSettingsScreen = ({ navigation }) => {
             />
           </View>
 
-          <View style={styles.switchRow}>
-            <Text style={styles.switchLabel}>New Application</Text>
+          <View style={dynamicStyles.switchRow}>
+            <Text style={dynamicStyles.switchLabel}>New Application</Text>
             <Switch
               value={settings.adminNotifications.newApplication}
               onValueChange={(value) => setSettings({
@@ -365,8 +371,8 @@ const NotificationSettingsScreen = ({ navigation }) => {
             />
           </View>
 
-          <View style={styles.switchRow}>
-            <Text style={styles.switchLabel}>System Errors</Text>
+          <View style={dynamicStyles.switchRow}>
+            <Text style={dynamicStyles.switchLabel}>System Errors</Text>
             <Switch
               value={settings.adminNotifications.systemErrors}
               onValueChange={(value) => setSettings({
@@ -378,8 +384,8 @@ const NotificationSettingsScreen = ({ navigation }) => {
             />
           </View>
 
-          <View style={styles.switchRow}>
-            <Text style={styles.switchLabel}>Payment Received</Text>
+          <View style={dynamicStyles.switchRow}>
+            <Text style={dynamicStyles.switchLabel}>Payment Received</Text>
             <Switch
               value={settings.adminNotifications.paymentReceived}
               onValueChange={(value) => setSettings({
@@ -394,7 +400,7 @@ const NotificationSettingsScreen = ({ navigation }) => {
 
         {/* Save Button */}
         <TouchableOpacity
-          style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+          style={[dynamicStyles.saveButton, saving && dynamicStyles.saveButtonDisabled]}
           onPress={handleSave}
           disabled={saving}
         >
@@ -403,18 +409,18 @@ const NotificationSettingsScreen = ({ navigation }) => {
           ) : (
             <>
               <Ionicons name="notifications" size={20} color={colors.white} />
-              <Text style={styles.saveButtonText}>Save Notification Settings</Text>
+              <Text style={dynamicStyles.saveButtonText}>Save Notification Settings</Text>
             </>
           )}
         </TouchableOpacity>
 
-        <View style={styles.bottomSpacing} />
+        <View style={dynamicStyles.bottomSpacing} />
       </ScrollView>
     </AdminLayout>
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (isMobile, isTablet) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -458,11 +464,15 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.md,
     padding: spacing.lg,
     borderRadius: borderRadius.lg,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+    } : {
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+    }),
   },
   sectionTitle: {
     ...typography.h3,
@@ -534,6 +544,8 @@ const styles = StyleSheet.create({
     height: spacing.xxl,
   },
 });
+
+const styles = StyleSheet.create({});
 
 export default NotificationSettingsScreen;
 

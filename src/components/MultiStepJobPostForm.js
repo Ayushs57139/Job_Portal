@@ -9,8 +9,10 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, typography, shadows } from '../styles/theme';
+import api from '../config/api';
 import { formSteps } from '../data/jobPostFormConfig';
 import { INDUSTRIES_DATA, getSubIndustries } from '../data/industriesData';
 import { DEPARTMENTS_DATA, getSubDepartments } from '../data/departmentsData';
@@ -42,6 +44,7 @@ const MultiStepJobPostForm = ({ onSubmit, initialData = {}, onCancel, onChange, 
   const [formData, setFormData] = useState(initialData);
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [optionsUpdateKey, setOptionsUpdateKey] = useState(0); // Force re-render when options change
   const scrollViewRef = useRef(null);
 
   const currentStepData = formSteps[currentStep];
@@ -456,7 +459,9 @@ const MultiStepJobPostForm = ({ onSubmit, initialData = {}, onCancel, onChange, 
 
       case 'multiselect':
         // Get dynamic options for dependent fields or use static options
-        const multiselectOptions = field.dependsOn ? getDynamicOptions(field) : (field.options || []);
+        // Create a new array reference to ensure React detects changes
+        const baseOptions = field.dependsOn ? getDynamicOptions(field) : (field.options || []);
+        const multiselectOptions = [...baseOptions]; // Create new array reference
         
         // Check if parent field has selections for dependent fields
         const parentHasSelections = field.dependsOn ? 
@@ -476,9 +481,76 @@ const MultiStepJobPostForm = ({ onSubmit, initialData = {}, onCancel, onChange, 
             onSelect={(value) => handleFieldChange(field.name, value)}
             maxSelections={field.maxSelections}
             allowAddNew={field.allowAddNew}
-            onAddNew={(newValue) => {
-              const newOption = { value: newValue.toLowerCase().replace(/\s+/g, '_'), label: newValue };
-              field.options.push(newOption);
+            onAddNew={async (newValue) => {
+              try {
+                let newOption = null;
+                
+                // Call appropriate API based on field name
+                if (field.name === 'keySkills') {
+                  const response = await api.addKeySkill(newValue);
+                  if (response.success || response.keySkill) {
+                    // Create the option with proper normalization
+                    newOption = { value: newValue.toLowerCase().replace(/\s+/g, '_').replace(/\//g, '_').replace(/\(/g, '').replace(/\)/g, ''), label: newValue };
+                    if (field.options) {
+                      field.options.push(newOption);
+                    }
+                    // Force component re-render to include new option
+                    setOptionsUpdateKey(prev => prev + 1);
+                    // Select the new option immediately
+                    const currentValue = formData[field.name] || [];
+                    const isAlreadySelected = currentValue.some(v => v.value === newOption.value);
+                    if (!isAlreadySelected) {
+                      handleFieldChange(field.name, [...currentValue, newOption]);
+                      // Show success after a brief delay to ensure state updates
+                      setTimeout(() => {
+                        Alert.alert('Success', 'Key skill added successfully');
+                      }, 100);
+                    } else {
+                      Alert.alert('Success', 'Key skill added successfully');
+                    }
+                  }
+                } else if (field.name === 'jobRoles') {
+                  const response = await api.addJobRole(newValue);
+                  if (response.success || response.jobRole) {
+                    // Create the option with proper normalization
+                    newOption = { value: newValue.toLowerCase().replace(/\s+/g, '_').replace(/\//g, '_').replace(/\(/g, '').replace(/\)/g, '').replace(/-/g, '_'), label: newValue };
+                    if (field.options) {
+                      field.options.push(newOption);
+                    }
+                    // Force component re-render to include new option
+                    setOptionsUpdateKey(prev => prev + 1);
+                    // Select the new option immediately
+                    const currentValue = formData[field.name] || [];
+                    const isAlreadySelected = currentValue.some(v => v.value === newOption.value);
+                    if (!isAlreadySelected) {
+                      handleFieldChange(field.name, [...currentValue, newOption]);
+                      // Show success after a brief delay to ensure state updates
+                      setTimeout(() => {
+                        Alert.alert('Success', 'Job role added successfully');
+                      }, 100);
+                    } else {
+                      Alert.alert('Success', 'Job role added successfully');
+                    }
+                  }
+                } else {
+                  // For other multiselect fields
+                  newOption = { value: newValue.toLowerCase().replace(/\s+/g, '_'), label: newValue };
+                  if (field.options) {
+                    field.options.push(newOption);
+                  }
+                  // Force component re-render to include new option
+                  setOptionsUpdateKey(prev => prev + 1);
+                  // Select the new option immediately
+                  const currentValue = formData[field.name] || [];
+                  const isAlreadySelected = currentValue.some(v => v.value === newOption.value);
+                  if (!isAlreadySelected) {
+                    handleFieldChange(field.name, [...currentValue, newOption]);
+                  }
+                }
+              } catch (error) {
+                console.error('Error adding new item:', error);
+                Alert.alert('Error', error.message || 'Failed to add new item. Please try again.');
+              }
             }}
           />
         );
@@ -493,8 +565,29 @@ const MultiStepJobPostForm = ({ onSubmit, initialData = {}, onCancel, onChange, 
             onChangeText={(value) => handleFieldChange(field.name, value)}
             onSelect={(value) => handleFieldChange(field.name, value.label)}
             allowAddNew={field.allowAddNew}
-            onAddNew={(newValue) => {
-              handleFieldChange(field.name, newValue);
+            onAddNew={async (newValue) => {
+              try {
+                // Call appropriate API based on field name
+                if (field.name === 'companyName') {
+                  const response = await api.addCompany(newValue);
+                  if (response.success || response.company) {
+                    Alert.alert('Success', 'Company added successfully');
+                    handleFieldChange(field.name, newValue);
+                  }
+                } else if (field.name === 'jobTitle') {
+                  const response = await api.addJobTitle(newValue);
+                  if (response.success || response.jobTitle) {
+                    Alert.alert('Success', 'Job title added successfully');
+                    handleFieldChange(field.name, newValue);
+                  }
+                } else {
+                  // For other autocomplete fields, just update the value
+                  handleFieldChange(field.name, newValue);
+                }
+              } catch (error) {
+                console.error('Error adding new item:', error);
+                Alert.alert('Error', error.message || 'Failed to add new item. Please try again.');
+              }
             }}
             multiline={field.multiline}
             numberOfLines={field.numberOfLines}
@@ -562,59 +655,62 @@ const MultiStepJobPostForm = ({ onSubmit, initialData = {}, onCancel, onChange, 
     }
   };
 
-  // Render progress indicator
-  const renderProgressIndicator = () => {
+  // Render left sidebar with steps
+  const renderSidebar = () => {
     return (
-      <View style={styles.progressContainer}>
-        <View style={styles.progressBar}>
-          <View 
-            style={[
-              styles.progressFill, 
-              { width: `${((currentStep + 1) / formSteps.length) * 100}%` }
-            ]} 
-          />
-        </View>
-        <Text style={styles.progressText}>
-          Step {currentStep + 1} of {formSteps.length}
-        </Text>
-      </View>
-    );
-  };
-
-  // Render step navigation dots
-  const renderStepNavigation = () => {
-    return (
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false}
-        style={styles.stepNavigationContainer}
-        contentContainerStyle={styles.stepNavigationContent}
+      <LinearGradient
+        colors={['#ffffff', '#f8fafc', '#f1f5f9']}
+        style={styles.sidebar}
       >
-        {formSteps.map((step, index) => (
-          <TouchableOpacity
-            key={index}
-            style={styles.stepNumberButton}
-            onPress={() => jumpToStep(index)}
-          >
-            <View style={[
-              styles.stepNumberCircle,
-              index === currentStep && styles.stepNumberCircleActive,
-              index < currentStep && styles.stepNumberCircleCompleted,
-            ]}>
-              <Text style={[
-                styles.stepNumberText,
-                (index === currentStep || index < currentStep) && styles.stepNumberTextActive
-              ]}>{index + 1}</Text>
-            </View>
-            <Text style={[
-              styles.stepNumberLabel,
-              index === currentStep && styles.stepNumberLabelActive
-            ]} numberOfLines={1}>
-              {step.title}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+        <View style={styles.sidebarHeader}>
+          <View style={styles.sidebarTitleContainer}>
+            <Ionicons name="briefcase" size={24} color="#4f46e5" style={styles.sidebarTitleIcon} />
+            <Text style={styles.sidebarTitle}>Post a job</Text>
+          </View>
+        </View>
+        <ScrollView style={styles.stepsListScroll} contentContainerStyle={styles.stepsList}>
+          {formSteps.map((step, index) => (
+            <TouchableOpacity
+              key={index}
+              style={styles.stepItem}
+              onPress={() => jumpToStep(index)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.stepItemContent}>
+                <View style={styles.stepConnector}>
+                  {index > 0 && (
+                    <View style={[
+                      styles.stepConnectorLineTop,
+                      index <= currentStep && styles.stepConnectorLineActive
+                    ]} />
+                  )}
+                  <View style={[
+                    styles.stepCircle,
+                    index === currentStep && styles.stepCircleActive,
+                    index < currentStep && styles.stepCircleCompleted,
+                  ]}>
+                    {index < currentStep && (
+                      <Ionicons name="checkmark" size={14} color="#ffffff" />
+                    )}
+                  </View>
+                  {index < formSteps.length - 1 && (
+                    <View style={[
+                      styles.stepConnectorLineBottom,
+                      index < currentStep && styles.stepConnectorLineActive
+                    ]} />
+                  )}
+                </View>
+                <Text style={[
+                  styles.stepItemLabel,
+                  index === currentStep && styles.stepItemLabelActive
+                ]}>
+                  {step.title}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </LinearGradient>
     );
   };
 
@@ -625,55 +721,54 @@ const MultiStepJobPostForm = ({ onSubmit, initialData = {}, onCancel, onChange, 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
       >
-        <ScrollView
-          ref={scrollViewRef}
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={true}
-        >
-          <View style={styles.header}>
-            <View style={styles.headerContent}>
-              <Text style={styles.headerTitle}>{currentStepData.title}</Text>
-              <Text style={styles.headerSubtitle}>
-                Step {currentStep + 1} of {formSteps.length}
-              </Text>
-            </View>
-            {onCancel && (
-              <TouchableOpacity onPress={onCancel} style={styles.closeButton}>
-                <Ionicons name="close" size={24} color="#64748b" />
-              </TouchableOpacity>
-            )}
+        <View style={styles.mainLayout}>
+          {renderSidebar()}
+          <View style={styles.contentArea}>
+            <ScrollView
+              ref={scrollViewRef}
+              style={styles.scrollView}
+              contentContainerStyle={styles.scrollContent}
+              showsVerticalScrollIndicator={true}
+            >
+              <View style={styles.header}>
+                <View style={styles.headerContent}>
+                  <Text style={styles.headerTitle}>{currentStepData.title}</Text>
+                </View>
+                {onCancel && (
+                  <TouchableOpacity onPress={onCancel} style={styles.closeButton}>
+                    <Ionicons name="close" size={24} color="#64748b" />
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <View style={styles.formContainer}>
+                {currentStepData.fields.map((field) => renderField(field))}
+              </View>
+
+              <View style={styles.footer}>
+                <View style={styles.buttonRow}>
+                  {!isFirstStep && (
+                    <TouchableOpacity
+                      style={styles.secondaryButton}
+                      onPress={handlePrevious}
+                    >
+                      <Ionicons name="arrow-back" size={20} color="#4f46e5" />
+                      <Text style={styles.secondaryButtonText}>Previous</Text>
+                    </TouchableOpacity>
+                  )}
+
+                  <Button
+                    title={isLastStep ? 'Submit Job Post' : 'Next'}
+                    onPress={handleNext}
+                    loading={isSubmitting}
+                    style={[styles.primaryButton, isFirstStep && styles.fullWidthButton]}
+                    icon={isLastStep ? 'checkmark-circle-outline' : 'arrow-forward'}
+                  />
+                </View>
+              </View>
+            </ScrollView>
           </View>
-
-          {renderProgressIndicator()}
-          {renderStepNavigation()}
-
-          <View style={styles.formContainer}>
-            {currentStepData.fields.map((field) => renderField(field))}
-          </View>
-
-          <View style={styles.footer}>
-            <View style={styles.buttonRow}>
-              {!isFirstStep && (
-                <TouchableOpacity
-                  style={styles.secondaryButton}
-                  onPress={handlePrevious}
-                >
-                  <Ionicons name="arrow-back" size={20} color="#4f46e5" />
-                  <Text style={styles.secondaryButtonText}>Previous</Text>
-                </TouchableOpacity>
-              )}
-
-              <Button
-                title={isLastStep ? 'Submit Job Post' : 'Next'}
-                onPress={handleNext}
-                loading={isSubmitting}
-                style={[styles.primaryButton, isFirstStep && styles.fullWidthButton]}
-                icon={isLastStep ? 'checkmark-circle-outline' : 'arrow-forward'}
-              />
-            </View>
-          </View>
-        </ScrollView>
+        </View>
       </KeyboardAvoidingView>
     </View>
   );
@@ -682,10 +777,127 @@ const MultiStepJobPostForm = ({ onSubmit, initialData = {}, onCancel, onChange, 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#f1f5f9',
   },
   keyboardView: {
     flex: 1,
+  },
+  mainLayout: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+  sidebar: {
+    width: 300,
+    borderRightWidth: 1,
+    borderRightColor: '#e2e8f0',
+    ...shadows.md,
+  },
+  sidebarHeader: {
+    padding: spacing.xl + 4,
+    paddingBottom: spacing.lg + 4,
+    borderBottomWidth: 2,
+    borderBottomColor: '#e2e8f0',
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+  },
+  sidebarTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  sidebarTitleIcon: {
+    marginRight: spacing.sm,
+  },
+  sidebarTitle: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#1e293b',
+    letterSpacing: -0.5,
+  },
+  stepsListScroll: {
+    flex: 1,
+  },
+  stepsList: {
+    padding: spacing.md,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.xl,
+  },
+  stepItem: {
+    marginBottom: 0,
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.xs,
+    borderRadius: 12,
+    marginHorizontal: spacing.xs,
+  },
+  stepItemContent: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  stepConnector: {
+    width: 28,
+    alignItems: 'center',
+    marginRight: spacing.md,
+    position: 'relative',
+  },
+  stepConnectorLineTop: {
+    width: 3,
+    height: 24,
+    backgroundColor: '#e2e8f0',
+    position: 'absolute',
+    top: -24,
+    left: 12,
+    borderRadius: 2,
+  },
+  stepConnectorLineBottom: {
+    width: 3,
+    height: 24,
+    backgroundColor: '#e2e8f0',
+    position: 'absolute',
+    bottom: -24,
+    left: 12,
+    borderRadius: 2,
+  },
+  stepConnectorLineActive: {
+    backgroundColor: '#4f46e5',
+  },
+  stepCircle: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#f1f5f9',
+    borderWidth: 3,
+    borderColor: '#cbd5e1',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
+    ...shadows.sm,
+  },
+  stepCircleActive: {
+    backgroundColor: '#4f46e5',
+    borderColor: '#4f46e5',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    ...shadows.md,
+  },
+  stepCircleCompleted: {
+    backgroundColor: '#10b981',
+    borderColor: '#10b981',
+    ...shadows.sm,
+  },
+  stepItemLabel: {
+    flex: 1,
+    fontSize: 14,
+    color: '#64748b',
+    fontWeight: '500',
+    lineHeight: 20,
+  },
+  stepItemLabelActive: {
+    color: '#4f46e5',
+    fontWeight: '700',
+    fontSize: 15,
+  },
+  contentArea: {
+    flex: 1,
+    backgroundColor: '#f1f5f9',
   },
   scrollView: {
     flex: 1,
@@ -697,139 +909,52 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    padding: spacing.xl,
-    paddingTop: spacing.xl + 8,
+    padding: spacing.xl + 4,
+    paddingTop: spacing.xl + 12,
     backgroundColor: '#ffffff',
     borderBottomWidth: 0,
-    ...shadows.md,
+    ...shadows.lg,
   },
   headerContent: {
     flex: 1,
   },
   headerTitle: {
     ...typography.h4,
-    fontSize: 28,
-    fontWeight: '700',
+    fontSize: 30,
+    fontWeight: '800',
     color: '#1e293b',
-    marginBottom: spacing.xs,
     letterSpacing: -0.5,
-  },
-  headerSubtitle: {
-    ...typography.caption,
-    fontSize: 14,
-    color: '#64748b',
-    fontWeight: '500',
+    lineHeight: 36,
   },
   closeButton: {
-    padding: spacing.xs,
-  },
-  progressContainer: {
-    padding: spacing.xl,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.lg,
-    backgroundColor: '#f8fafc',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
-  },
-  progressBar: {
-    height: 8,
-    backgroundColor: '#e2e8f0',
-    borderRadius: borderRadius.full,
-    overflow: 'hidden',
-    marginBottom: spacing.md,
-    ...shadows.sm,
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#4f46e5',
-    borderRadius: borderRadius.full,
-  },
-  progressText: {
-    ...typography.caption,
-    fontSize: 13,
-    color: '#64748b',
-    textAlign: 'center',
-    fontWeight: '600',
-  },
-  stepNavigationContainer: {
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
-    ...shadows.sm,
-  },
-  stepNavigationContent: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.lg,
-    gap: spacing.md,
-  },
-  stepNumberButton: {
-    alignItems: 'center',
-    marginHorizontal: spacing.xs,
-    minWidth: 80,
-  },
-  stepNumberCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    padding: spacing.sm,
+    borderRadius: 8,
     backgroundColor: '#f1f5f9',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-    borderWidth: 3,
-    borderColor: '#cbd5e1',
-    ...shadows.sm,
-  },
-  stepNumberCircleActive: {
-    backgroundColor: '#4f46e5',
-    borderColor: '#4f46e5',
-    ...shadows.md,
-  },
-  stepNumberCircleCompleted: {
-    backgroundColor: '#10b981',
-    borderColor: '#10b981',
-  },
-  stepNumberText: {
-    ...typography.button,
-    color: '#64748b',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  stepNumberTextActive: {
-    color: '#ffffff',
-  },
-  stepNumberLabel: {
-    ...typography.caption,
-    color: '#64748b',
-    textAlign: 'center',
-    fontSize: 10,
-    fontWeight: '500',
-  },
-  stepNumberLabelActive: {
-    color: '#4f46e5',
-    fontWeight: '700',
   },
   formContainer: {
-    padding: spacing.xl,
+    padding: spacing.xl + 8,
     backgroundColor: '#ffffff',
-    marginTop: spacing.md,
-    marginHorizontal: spacing.lg,
-    borderRadius: 16,
-    ...shadows.sm,
+    margin: spacing.lg + 4,
+    marginTop: spacing.lg,
+    borderRadius: 20,
+    ...shadows.lg,
     borderWidth: 1,
     borderColor: '#e2e8f0',
   },
   footer: {
-    padding: spacing.xl,
+    padding: spacing.xl + 8,
     backgroundColor: '#ffffff',
-    marginTop: spacing.lg,
+    margin: spacing.lg + 4,
+    marginTop: spacing.lg + 4,
     marginBottom: spacing.xl,
-    borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
-    ...shadows.md,
+    borderRadius: 20,
+    ...shadows.lg,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
   },
   buttonRow: {
     flexDirection: 'row',
-    gap: spacing.md,
+    gap: spacing.md + 4,
     maxWidth: 800,
     alignSelf: 'center',
     width: '100%',
@@ -839,14 +964,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.md + 4,
-    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md + 6,
+    paddingHorizontal: spacing.lg + 4,
     backgroundColor: '#ffffff',
     borderWidth: 2,
     borderColor: '#4f46e5',
-    borderRadius: 12,
+    borderRadius: 14,
     gap: spacing.xs,
-    ...shadows.sm,
+    ...shadows.md,
   },
   secondaryButtonText: {
     ...typography.button,

@@ -73,7 +73,30 @@ const EmployerOptionsScreen = ({ navigation }) => {
         }
       }
     } catch (error) {
-      const errorMessage = error.message || 'Please check your credentials and try again';
+      // Parse error message from response
+      let errorMessage = error.message || 'Please check your credentials and try again';
+      const newErrors = {};
+      
+      // Check for specific error types
+      if (errorMessage.toLowerCase().includes('no account found') || 
+          errorMessage.toLowerCase().includes('email address') ||
+          errorMessage.toLowerCase().includes('login id')) {
+        newErrors.email = errorMessage;
+      } else if (errorMessage.toLowerCase().includes('password') || 
+                 errorMessage.toLowerCase().includes('incorrect password')) {
+        newErrors.password = errorMessage;
+      } else if (errorMessage.toLowerCase().includes('deactivated')) {
+        newErrors.general = errorMessage;
+      } else if (errorMessage.toLowerCase().includes('access denied') ||
+                 errorMessage.toLowerCase().includes('not authorized')) {
+        newErrors.general = errorMessage;
+      } else {
+        newErrors.general = errorMessage;
+      }
+      
+      setErrors(newErrors);
+      
+      // Also show in alert for visibility
       Alert.alert('Login Failed', errorMessage);
     } finally {
       setLoading(false);
@@ -227,6 +250,14 @@ const EmployerOptionsScreen = ({ navigation }) => {
                 </View>
               )}
             </View>
+
+            {/* General Error Message */}
+            {errors.general && (
+              <View style={styles.generalErrorContainer}>
+                <Ionicons name="alert-circle" size={18} color="#ef4444" />
+                <Text style={styles.generalErrorText}>{errors.general}</Text>
+              </View>
+            )}
 
             {/* Sign In Button */}
             <TouchableOpacity 
@@ -453,6 +484,23 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 13,
     color: '#ef4444',
+    fontWeight: '500',
+  },
+  generalErrorContainer: {
+    backgroundColor: '#fee2e2',
+    borderWidth: 1,
+    borderColor: '#ef4444',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  generalErrorText: {
+    fontSize: 14,
+    color: '#dc2626',
+    flex: 1,
     fontWeight: '500',
   },
   signInButtonWrapper: {

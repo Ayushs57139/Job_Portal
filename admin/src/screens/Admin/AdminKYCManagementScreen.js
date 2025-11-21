@@ -1,11 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, Alert, TextInput, Modal, Linking } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, Alert, TextInput, Modal, Linking, Platform } from 'react-native';
 import AdminLayout from '../../components/Admin/AdminLayout';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../../config/api';
+import { colors, spacing, typography, borderRadius, shadows } from '../../styles/theme';
+import { useResponsive } from '../../utils/responsive';
 
 const AdminKYCManagementScreen = ({ navigation }) => {
+  const responsive = useResponsive();
+  const isMobile = responsive.isMobile;
+  const isTablet = responsive.isTablet;
+  const dynamicStyles = getStyles(isMobile, isTablet);
   const [loading, setLoading] = useState(true);
   const [kycs, setKycs] = useState([]);
   const [filteredKycs, setFilteredKycs] = useState([]);
@@ -157,27 +163,27 @@ const AdminKYCManagementScreen = ({ navigation }) => {
     }
 
     return (
-      <View style={styles.documentItem} key={docName}>
-        <View style={styles.documentHeader}>
+      <View style={dynamicStyles.documentItem} key={docName}>
+        <View style={dynamicStyles.documentHeader}>
           <Ionicons name="document-text" size={20} color="#4A90E2" />
-          <Text style={styles.documentName}>{docName}</Text>
+          <Text style={dynamicStyles.documentName}>{docName}</Text>
         </View>
         {doc.idNumber && (
-          <Text style={styles.documentId}>ID: {doc.idNumber}</Text>
+          <Text style={dynamicStyles.documentId}>ID: {doc.idNumber}</Text>
         )}
         {doc.documentUrl ? (
           <TouchableOpacity
-            style={styles.viewDocButton}
+            style={dynamicStyles.viewDocButton}
             onPress={() => handleOpenDocument(doc.documentUrl)}
           >
             <Ionicons name="eye" size={16} color="#4A90E2" />
-            <Text style={styles.viewDocButtonText}>View Document</Text>
+            <Text style={dynamicStyles.viewDocButtonText}>View Document</Text>
           </TouchableOpacity>
         ) : (
-          <Text style={styles.noDocText}>No document uploaded</Text>
+          <Text style={dynamicStyles.noDocText}>No document uploaded</Text>
         )}
         {doc.uploadedAt && (
-          <Text style={styles.uploadDate}>
+          <Text style={dynamicStyles.uploadDate}>
             Uploaded: {new Date(doc.uploadedAt).toLocaleDateString()}
           </Text>
         )}
@@ -203,43 +209,43 @@ const AdminKYCManagementScreen = ({ navigation }) => {
       user={user}
       onLogout={handleLogout}
     >
-      <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-        <View style={styles.container}>
-          <View style={styles.headerSection}>
-            <Text style={styles.pageTitle}>KYC Management</Text>
-            <Text style={styles.pageSubtitle}>Manage Know Your Customer documents and verifications</Text>
+      <ScrollView style={dynamicStyles.scrollContainer} showsVerticalScrollIndicator={false}>
+        <View style={dynamicStyles.container}>
+          <View style={dynamicStyles.headerSection}>
+            <Text style={dynamicStyles.pageTitle}>KYC Management</Text>
+            <Text style={dynamicStyles.pageSubtitle}>Manage Know Your Customer documents and verifications</Text>
           </View>
 
           {/* Statistics Cards */}
-          <View style={styles.statsGrid}>
-            <View style={styles.statCard}>
+          <View style={dynamicStyles.statsGrid}>
+            <View style={dynamicStyles.statCard}>
               <Ionicons name="documents" size={24} color="#4A90E2" />
-              <Text style={styles.statNumber}>{stats.total}</Text>
-              <Text style={styles.statLabel}>Total KYC</Text>
+              <Text style={dynamicStyles.statNumber}>{stats.total}</Text>
+              <Text style={dynamicStyles.statLabel}>Total KYC</Text>
             </View>
-            <View style={styles.statCard}>
+            <View style={dynamicStyles.statCard}>
               <Ionicons name="time" size={24} color="#F39C12" />
-              <Text style={styles.statNumber}>{stats.submitted + stats.under_review}</Text>
-              <Text style={styles.statLabel}>Pending</Text>
+              <Text style={dynamicStyles.statNumber}>{stats.submitted + stats.under_review}</Text>
+              <Text style={dynamicStyles.statLabel}>Pending</Text>
             </View>
-            <View style={styles.statCard}>
+            <View style={dynamicStyles.statCard}>
               <Ionicons name="checkmark-circle" size={24} color="#27AE60" />
-              <Text style={styles.statNumber}>{stats.verified}</Text>
-              <Text style={styles.statLabel}>Verified</Text>
+              <Text style={dynamicStyles.statNumber}>{stats.verified}</Text>
+              <Text style={dynamicStyles.statLabel}>Verified</Text>
             </View>
-            <View style={styles.statCard}>
+            <View style={dynamicStyles.statCard}>
               <Ionicons name="close-circle" size={24} color="#E74C3C" />
-              <Text style={styles.statNumber}>{stats.rejected}</Text>
-              <Text style={styles.statLabel}>Rejected</Text>
+              <Text style={dynamicStyles.statNumber}>{stats.rejected}</Text>
+              <Text style={dynamicStyles.statLabel}>Rejected</Text>
             </View>
           </View>
 
           {/* Search Bar */}
-          <View style={styles.searchSection}>
-            <View style={styles.searchBar}>
+          <View style={dynamicStyles.searchSection}>
+            <View style={dynamicStyles.searchBar}>
               <Ionicons name="search" size={20} color="#999" />
               <TextInput
-                style={styles.searchInput}
+                style={dynamicStyles.searchInput}
                 placeholder="Search by name, email, or company..."
                 value={searchQuery}
                 onChangeText={setSearchQuery}
@@ -254,16 +260,16 @@ const AdminKYCManagementScreen = ({ navigation }) => {
           </View>
 
           {/* Filter Chips - Status */}
-          <View style={styles.filtersSection}>
-            <Text style={styles.filtersLabel}>Status:</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filtersScroll}>
+          <View style={dynamicStyles.filtersSection}>
+            <Text style={dynamicStyles.filtersLabel}>Status:</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={dynamicStyles.filtersScroll}>
               {['all', 'submitted', 'under_review', 'verified', 'rejected'].map(status => (
                 <TouchableOpacity
                   key={status}
-                  style={[styles.filterChip, selectedStatus === status && styles.filterChipActive]}
+                  style={[dynamicStyles.filterChip, selectedStatus === status && dynamicStyles.filterChipActive]}
                   onPress={() => setSelectedStatus(status)}
                 >
-                  <Text style={[styles.filterChipText, selectedStatus === status && styles.filterChipTextActive]}>
+                  <Text style={[dynamicStyles.filterChipText, selectedStatus === status && dynamicStyles.filterChipTextActive]}>
                     {status === 'all' ? 'All' : status.replace('_', ' ').toUpperCase()}
                   </Text>
                 </TouchableOpacity>
@@ -272,16 +278,16 @@ const AdminKYCManagementScreen = ({ navigation }) => {
           </View>
 
           {/* Filter Chips - User Type */}
-          <View style={styles.filtersSection}>
-            <Text style={styles.filtersLabel}>User Type:</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filtersScroll}>
+          <View style={dynamicStyles.filtersSection}>
+            <Text style={dynamicStyles.filtersLabel}>User Type:</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={dynamicStyles.filtersScroll}>
               {['all', 'company', 'consultancy', 'individual', 'freelancer'].map(type => (
                 <TouchableOpacity
                   key={type}
-                  style={[styles.filterChip, selectedUserType === type && styles.filterChipActive]}
+                  style={[dynamicStyles.filterChip, selectedUserType === type && dynamicStyles.filterChipActive]}
                   onPress={() => setSelectedUserType(type)}
                 >
-                  <Text style={[styles.filterChipText, selectedUserType === type && styles.filterChipTextActive]}>
+                  <Text style={[dynamicStyles.filterChipText, selectedUserType === type && dynamicStyles.filterChipTextActive]}>
                     {type === 'all' ? 'All' : type.charAt(0).toUpperCase() + type.slice(1)}
                   </Text>
                 </TouchableOpacity>
@@ -290,61 +296,61 @@ const AdminKYCManagementScreen = ({ navigation }) => {
           </View>
 
           {/* Results */}
-          <View style={styles.resultsSection}>
-            <Text style={styles.resultsText}>
+          <View style={dynamicStyles.resultsSection}>
+            <Text style={dynamicStyles.resultsText}>
               Showing {filteredKycs.length} {filteredKycs.length === 1 ? 'submission' : 'submissions'}
             </Text>
           </View>
 
           {/* KYC List */}
           {loading ? (
-            <View style={styles.loadingContainer}>
+            <View style={dynamicStyles.loadingContainer}>
               <ActivityIndicator size="large" color="#4A90E2" />
-              <Text style={styles.loadingText}>Loading KYC submissions...</Text>
+              <Text style={dynamicStyles.loadingText}>Loading KYC submissions...</Text>
             </View>
           ) : filteredKycs.length > 0 ? (
             filteredKycs.map((kyc, index) => (
-              <View key={kyc._id || index} style={styles.kycCard}>
-                <View style={styles.kycHeader}>
-                  <View style={styles.userInfo}>
-                    <Text style={styles.userName}>
+              <View key={kyc._id || index} style={dynamicStyles.kycCard}>
+                <View style={dynamicStyles.kycHeader}>
+                  <View style={dynamicStyles.userInfo}>
+                    <Text style={dynamicStyles.userName}>
                       {kyc.user?.firstName} {kyc.user?.lastName}
                     </Text>
-                    <Text style={styles.userEmail}>{kyc.user?.email}</Text>
+                    <Text style={dynamicStyles.userEmail}>{kyc.user?.email}</Text>
                     {kyc.user?.companyName && (
-                      <Text style={styles.companyName}>
+                      <Text style={dynamicStyles.companyName}>
                         <Ionicons name="business" size={14} color="#666" /> {kyc.user?.companyName}
                       </Text>
                     )}
                   </View>
-                  <View style={styles.badges}>
-                    <View style={[styles.typeBadge]}>
-                      <Text style={styles.typeBadgeText}>{kyc.userType}</Text>
+                  <View style={dynamicStyles.badges}>
+                    <View style={[dynamicStyles.typeBadge]}>
+                      <Text style={dynamicStyles.typeBadgeText}>{kyc.userType}</Text>
                     </View>
-                    <View style={[styles.statusBadge, styles[`${kyc.submissionStatus}Badge`]]}>
-                      <Text style={styles.statusBadgeText}>{kyc.submissionStatus.replace('_', ' ')}</Text>
+                    <View style={[dynamicStyles.statusBadge, styles[`${kyc.submissionStatus}Badge`]]}>
+                      <Text style={dynamicStyles.statusBadgeText}>{kyc.submissionStatus.replace('_', ' ')}</Text>
                     </View>
                   </View>
                 </View>
 
                 {kyc.companyType && (
-                  <View style={styles.companyTypeSection}>
+                  <View style={dynamicStyles.companyTypeSection}>
                     <Ionicons name="briefcase" size={16} color="#666" />
-                    <Text style={styles.companyTypeText}>{kyc.companyType}</Text>
+                    <Text style={dynamicStyles.companyTypeText}>{kyc.companyType}</Text>
                   </View>
                 )}
 
-                <View style={styles.kycMeta}>
-                  <View style={styles.metaItem}>
+                <View style={dynamicStyles.kycMeta}>
+                  <View style={dynamicStyles.metaItem}>
                     <Ionicons name="calendar" size={16} color="#999" />
-                    <Text style={styles.metaText}>
+                    <Text style={dynamicStyles.metaText}>
                       Submitted: {kyc.submittedAt ? new Date(kyc.submittedAt).toLocaleDateString() : 'N/A'}
                     </Text>
                   </View>
                   {kyc.reviewedAt && (
-                    <View style={styles.metaItem}>
+                    <View style={dynamicStyles.metaItem}>
                       <Ionicons name="checkmark-done" size={16} color="#999" />
-                      <Text style={styles.metaText}>
+                      <Text style={dynamicStyles.metaText}>
                         Reviewed: {new Date(kyc.reviewedAt).toLocaleDateString()}
                       </Text>
                     </View>
@@ -352,19 +358,19 @@ const AdminKYCManagementScreen = ({ navigation }) => {
                 </View>
 
                 <TouchableOpacity
-                  style={styles.viewDetailsButton}
+                  style={dynamicStyles.viewDetailsButton}
                   onPress={() => handleViewDetails(kyc)}
                 >
                   <Ionicons name="eye" size={20} color="#FFF" />
-                  <Text style={styles.viewDetailsButtonText}>View Details & Documents</Text>
+                  <Text style={dynamicStyles.viewDetailsButtonText}>View Details & Documents</Text>
                 </TouchableOpacity>
               </View>
             ))
           ) : (
-            <View style={styles.emptyState}>
+            <View style={dynamicStyles.emptyState}>
               <Ionicons name="document-outline" size={64} color="#CCC" />
-              <Text style={styles.emptyStateText}>No KYC submissions found</Text>
-              <Text style={styles.emptyStateSubtext}>
+              <Text style={dynamicStyles.emptyStateText}>No KYC submissions found</Text>
+              <Text style={dynamicStyles.emptyStateSubtext}>
                 {searchQuery ? 'Try adjusting your search or filters' : 'KYC submissions will appear here'}
               </Text>
             </View>
@@ -376,40 +382,52 @@ const AdminKYCManagementScreen = ({ navigation }) => {
       <Modal
         visible={detailsModalVisible}
         transparent={true}
-        animationType="slide"
+        animationType="fade"
         onRequestClose={() => setDetailsModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
-          <ScrollView style={styles.modalScrollView} showsVerticalScrollIndicator={false}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>KYC Details</Text>
-                <TouchableOpacity onPress={() => setDetailsModalVisible(false)}>
-                  <Ionicons name="close" size={28} color="#333" />
-                </TouchableOpacity>
-              </View>
+        <TouchableOpacity 
+          style={dynamicStyles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setDetailsModalVisible(false)}
+        >
+          <TouchableOpacity 
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
+          >
+          <View style={dynamicStyles.modalContent}>
+            <View style={dynamicStyles.modalHeader}>
+              <Text style={dynamicStyles.modalTitle}>KYC Details</Text>
+              <TouchableOpacity 
+                onPress={() => setDetailsModalVisible(false)}
+                style={dynamicStyles.modalCloseButton}
+              >
+                <Ionicons name="close" size={24} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView style={dynamicStyles.modalScrollView} showsVerticalScrollIndicator={false}>
 
               {selectedKyc && (
                 <>
                   {/* User Info */}
-                  <View style={styles.modalSection}>
-                    <Text style={styles.sectionTitle}>User Information</Text>
-                    <Text style={styles.sectionText}>
+                  <View style={dynamicStyles.modalSection}>
+                    <Text style={dynamicStyles.sectionTitle}>User Information</Text>
+                    <Text style={dynamicStyles.sectionText}>
                       Name: {selectedKyc.user?.firstName} {selectedKyc.user?.lastName}
                     </Text>
-                    <Text style={styles.sectionText}>Email: {selectedKyc.user?.email}</Text>
+                    <Text style={dynamicStyles.sectionText}>Email: {selectedKyc.user?.email}</Text>
                     {selectedKyc.user?.companyName && (
-                      <Text style={styles.sectionText}>Company: {selectedKyc.user?.companyName}</Text>
+                      <Text style={dynamicStyles.sectionText}>Company: {selectedKyc.user?.companyName}</Text>
                     )}
-                    <Text style={styles.sectionText}>Type: {selectedKyc.userType}</Text>
+                    <Text style={dynamicStyles.sectionText}>Type: {selectedKyc.userType}</Text>
                     {selectedKyc.companyType && (
-                      <Text style={styles.sectionText}>Company Type: {selectedKyc.companyType}</Text>
+                      <Text style={dynamicStyles.sectionText}>Company Type: {selectedKyc.companyType}</Text>
                     )}
                   </View>
 
                   {/* Documents */}
-                  <View style={styles.modalSection}>
-                    <Text style={styles.sectionTitle}>Submitted Documents</Text>
+                  <View style={dynamicStyles.modalSection}>
+                    <Text style={dynamicStyles.sectionTitle}>Submitted Documents</Text>
                     {selectedKyc.documents?.gstCertificate && renderDocument('GST Certificate', selectedKyc.documents.gstCertificate)}
                     {selectedKyc.documents?.certificateOfIncorporation && renderDocument('Certificate Of Incorporation', selectedKyc.documents.certificateOfIncorporation)}
                     {selectedKyc.documents?.udyamMsmeCertificate && renderDocument('UDYAM / MSME Certificate', selectedKyc.documents.udyamMsmeCertificate)}
@@ -423,10 +441,10 @@ const AdminKYCManagementScreen = ({ navigation }) => {
                   </View>
 
                   {/* Admin Notes */}
-                  <View style={styles.modalSection}>
-                    <Text style={styles.sectionTitle}>Admin Notes</Text>
+                  <View style={dynamicStyles.modalSection}>
+                    <Text style={dynamicStyles.sectionTitle}>Admin Notes</Text>
                     <TextInput
-                      style={styles.textArea}
+                      style={dynamicStyles.textArea}
                       value={adminNotes}
                       onChangeText={setAdminNotes}
                       placeholder="Add notes about this KYC submission..."
@@ -437,10 +455,10 @@ const AdminKYCManagementScreen = ({ navigation }) => {
 
                   {/* Rejection Reason (if rejecting) */}
                   {selectedKyc.submissionStatus !== 'verified' && (
-                    <View style={styles.modalSection}>
-                      <Text style={styles.sectionTitle}>Rejection Reason (if rejecting)</Text>
+                    <View style={dynamicStyles.modalSection}>
+                      <Text style={dynamicStyles.sectionTitle}>Rejection Reason (if rejecting)</Text>
                       <TextInput
-                        style={styles.textArea}
+                        style={dynamicStyles.textArea}
                         value={rejectionReason}
                         onChangeText={setRejectionReason}
                         placeholder="Provide reason if rejecting..."
@@ -452,58 +470,59 @@ const AdminKYCManagementScreen = ({ navigation }) => {
 
                   {/* Action Buttons */}
                   {selectedKyc.submissionStatus !== 'verified' && (
-                    <View style={styles.actionButtons}>
+                    <View style={dynamicStyles.actionButtons}>
                       <TouchableOpacity
-                        style={[styles.actionButton, styles.reviewButton]}
+                        style={[dynamicStyles.actionButton, dynamicStyles.reviewButton]}
                         onPress={() => handleUpdateStatus('under_review')}
                       >
                         <Ionicons name="time" size={20} color="#FFF" />
-                        <Text style={styles.actionButtonText}>Mark Under Review</Text>
+                        <Text style={dynamicStyles.actionButtonText}>Mark Under Review</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
-                        style={[styles.actionButton, styles.verifyButton]}
+                        style={[dynamicStyles.actionButton, dynamicStyles.verifyButton]}
                         onPress={() => handleUpdateStatus('verified')}
                       >
                         <Ionicons name="checkmark-circle" size={20} color="#FFF" />
-                        <Text style={styles.actionButtonText}>Verify KYC</Text>
+                        <Text style={dynamicStyles.actionButtonText}>Verify KYC</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
-                        style={[styles.actionButton, styles.rejectButton]}
+                        style={[dynamicStyles.actionButton, dynamicStyles.rejectButton]}
                         onPress={() => handleUpdateStatus('rejected')}
                       >
                         <Ionicons name="close-circle" size={20} color="#FFF" />
-                        <Text style={styles.actionButtonText}>Reject KYC</Text>
+                        <Text style={dynamicStyles.actionButtonText}>Reject KYC</Text>
                       </TouchableOpacity>
                     </View>
                   )}
                 </>
               )}
-            </View>
-          </ScrollView>
-        </View>
+            </ScrollView>
+          </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
     </AdminLayout>
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (isMobile, isTablet) => StyleSheet.create({
   scrollContainer: {
     flex: 1,
     backgroundColor: '#F5F6FA',
   },
   container: {
-    padding: 20,
+    padding: isMobile ? 12 : isTablet ? 16 : 20,
   },
   headerSection: {
-    marginBottom: 20,
+    marginBottom: isMobile ? 16 : isTablet ? 18 : 20,
   },
   pageTitle: {
-    fontSize: 28,
+    fontSize: isMobile ? 22 : isTablet ? 26 : 28,
     fontWeight: 'bold',
     color: '#333',
   },
   pageSubtitle: {
-    fontSize: 14,
+    fontSize: isMobile ? 12 : isTablet ? 13 : 14,
     color: '#666',
     marginTop: 4,
   },
@@ -752,32 +771,67 @@ const styles = StyleSheet.create({
   // Modal Styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  modalScrollView: {
-    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.lg + 8,
   },
   modalContent: {
-    backgroundColor: '#FFF',
-    margin: 20,
-    marginTop: 40,
-    marginBottom: 40,
-    borderRadius: 12,
-    padding: 20,
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.xl + 16,
+    padding: 0,
+    width: '100%',
+    maxWidth: 680,
+    maxHeight: '90%',
+    ...shadows.lg,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    elevation: 25,
+    overflow: 'hidden',
+    ...(Platform.OS === 'web' && {
+      boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05)',
+    }),
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
-    paddingBottom: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEE',
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: borderRadius.xl + 16,
+    borderTopRightRadius: borderRadius.xl + 16,
+    paddingHorizontal: spacing.xl + 20,
+    paddingTop: spacing.xl + 20,
+    paddingBottom: spacing.lg + 8,
+    borderBottomWidth: 2,
+    borderBottomColor: '#E2E8F0',
   },
   modalTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#333',
+    ...typography.h4,
+    color: '#0F172A',
+    marginBottom: 0,
+    fontWeight: '700',
+    fontSize: 24,
+    letterSpacing: -0.3,
+  },
+  modalCloseButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F8FAFC',
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...shadows.sm,
+    elevation: 2,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+  },
+  modalScrollView: {
+    padding: spacing.xl + 20,
+    maxHeight: '60vh',
+    backgroundColor: '#FFFFFF',
+    ...(Platform.OS === 'web' && {
+      maxHeight: 'calc(85vh - 200px)',
+    }),
   },
   modalSection: {
     marginBottom: 20,
@@ -876,6 +930,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+
+const styles = StyleSheet.create({});
 
 export default AdminKYCManagementScreen;
 

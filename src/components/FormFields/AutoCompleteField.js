@@ -27,8 +27,8 @@ const AutoCompleteField = ({
   const filteredSuggestions = value
     ? suggestions.filter(suggestion =>
         suggestion.label.toLowerCase().includes(value.toLowerCase())
-      )
-    : suggestions.slice(0, 10); // Show first 10 suggestions when empty
+      ).slice(0, 12) // Limit to 12 suggestions when searching
+    : suggestions.slice(0, 12); // Show first 12 suggestions when empty
 
   const handleSelect = (suggestion) => {
     if (onSelect) {
@@ -115,7 +115,7 @@ const AutoCompleteField = ({
         />
       </View>
 
-      {showSuggestions && filteredSuggestions.length > 0 && (
+      {showSuggestions && (filteredSuggestions.length > 0 || (allowAddNew && value && value.trim())) && (
         <View style={styles.suggestionsContainer}>
           <ScrollView 
             style={styles.suggestionsList}
@@ -136,13 +136,14 @@ const AutoCompleteField = ({
                 <Text style={styles.suggestionText}>{suggestion.label}</Text>
               </TouchableOpacity>
             ))}
-            {allowAddNew && value && !filteredSuggestions.some(s => s.label.toLowerCase() === value.toLowerCase()) && (
+            {allowAddNew && value && value.trim() && !filteredSuggestions.some(s => s.label.toLowerCase() === value.toLowerCase().trim()) && (
               <TouchableOpacity
                 style={styles.addNewSuggestion}
                 onPress={handleAddNew}
+                activeOpacity={0.7}
               >
-                <Ionicons name="add-circle-outline" size={18} color={colors.primary} />
-                <Text style={styles.addNewSuggestionText}>Add "{value}"</Text>
+                <Ionicons name="add-circle" size={20} color="#4f46e5" />
+                <Text style={styles.addNewSuggestionText}>Add "{value.trim()}"</Text>
               </TouchableOpacity>
             )}
           </ScrollView>
@@ -230,12 +231,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: spacing.md,
-    backgroundColor: colors.borderLight,
+    backgroundColor: '#eef2ff',
+    borderWidth: 1,
+    borderColor: '#c7d2fe',
+    borderStyle: 'dashed',
+    borderRadius: 8,
+    marginHorizontal: spacing.xs,
+    marginBottom: spacing.xs,
     gap: spacing.sm,
   },
   addNewSuggestionText: {
     fontSize: 15,
-    color: colors.primary,
+    color: '#4f46e5',
     fontWeight: '600',
   },
   errorText: {

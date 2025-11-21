@@ -10,6 +10,18 @@ const AdminIndustriesScreen = ({ navigation }) => {
       apiEndpoint="/admin/master-data/industries"
       screenName="AdminIndustries"
       fieldName="name"
+      showSubItems={true}
+      additionalFields={[
+        {
+          key: 'subcategories',
+          label: 'Sub-Industries',
+          type: 'text',
+          placeholder: 'Enter sub-industries (comma-separated)',
+          multiline: true,
+          numberOfLines: 4,
+          displayInList: false,
+        }
+      ]}
     />
   );
 };

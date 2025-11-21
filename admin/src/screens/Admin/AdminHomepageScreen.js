@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, TextInput, Alert, Modal, Switch } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, TextInput, Alert, Modal, Switch, Platform } from 'react-native';
 import AdminLayout from '../../components/Admin/AdminLayout';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../../config/api';
+import { useResponsive } from '../../utils/responsive';
 
 const AdminHomepageScreen = ({ navigation }) => {
+  const responsive = useResponsive();
+  const isMobile = responsive.isMobile;
+  const isTablet = responsive.isTablet;
+  const dynamicStyles = getStyles(isMobile, isTablet);
   const [loading, setLoading] = useState(true);
   const [config, setConfig] = useState(null);
   const [activeTab, setActiveTab] = useState('hero');
@@ -223,7 +228,7 @@ const AdminHomepageScreen = ({ navigation }) => {
   if (loading || !config) {
     return (
       <AdminLayout title="Homepage" activeScreen="AdminHomepage" onNavigate={handleNavigate} onLogout={handleLogout}>
-        <View style={styles.loadingContainer}>
+        <View style={dynamicStyles.loadingContainer}>
           <Text>Loading...</Text>
         </View>
       </AdminLayout>
@@ -232,73 +237,73 @@ const AdminHomepageScreen = ({ navigation }) => {
 
   return (
     <AdminLayout title="Homepage" activeScreen="AdminHomepage" onNavigate={handleNavigate} onLogout={handleLogout}>
-      <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-        <View style={styles.container}>
-          <View style={styles.headerSection}>
-            <Text style={styles.pageTitle}>Homepage Management</Text>
-            <Text style={styles.pageSubtitle}>Manage homepage content, banners, and sections</Text>
+      <ScrollView style={dynamicStyles.scrollContainer} showsVerticalScrollIndicator={false}>
+        <View style={dynamicStyles.container}>
+          <View style={dynamicStyles.headerSection}>
+            <Text style={dynamicStyles.pageTitle}>Homepage Management</Text>
+            <Text style={dynamicStyles.pageSubtitle}>Manage homepage content, banners, and sections</Text>
           </View>
 
           {/* Tabs */}
-          <View style={styles.tabs}>
+          <View style={dynamicStyles.tabs}>
             <TouchableOpacity
-              style={[styles.tab, activeTab === 'hero' && styles.activeTab]}
+              style={[dynamicStyles.tab, activeTab === 'hero' && dynamicStyles.activeTab]}
               onPress={() => setActiveTab('hero')}
             >
               <Ionicons name="star" size={20} color={activeTab === 'hero' ? '#4A90E2' : '#666'} />
-              <Text style={[styles.tabText, activeTab === 'hero' && styles.activeTabText]}>Hero Section</Text>
+              <Text style={[dynamicStyles.tabText, activeTab === 'hero' && dynamicStyles.activeTabText]}>Hero Section</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.tab, activeTab === 'banners' && styles.activeTab]}
+              style={[dynamicStyles.tab, activeTab === 'banners' && dynamicStyles.activeTab]}
               onPress={() => setActiveTab('banners')}
             >
               <Ionicons name="images" size={20} color={activeTab === 'banners' ? '#4A90E2' : '#666'} />
-              <Text style={[styles.tabText, activeTab === 'banners' && styles.activeTabText]}>Banners</Text>
+              <Text style={[dynamicStyles.tabText, activeTab === 'banners' && dynamicStyles.activeTabText]}>Banners</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.tab, activeTab === 'sections' && styles.activeTab]}
+              style={[dynamicStyles.tab, activeTab === 'sections' && dynamicStyles.activeTab]}
               onPress={() => setActiveTab('sections')}
             >
               <Ionicons name="grid" size={20} color={activeTab === 'sections' ? '#4A90E2' : '#666'} />
-              <Text style={[styles.tabText, activeTab === 'sections' && styles.activeTabText]}>Sections</Text>
+              <Text style={[dynamicStyles.tabText, activeTab === 'sections' && dynamicStyles.activeTabText]}>Sections</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.tab, activeTab === 'stats' && styles.activeTab]}
+              style={[dynamicStyles.tab, activeTab === 'stats' && dynamicStyles.activeTab]}
               onPress={() => setActiveTab('stats')}
             >
               <Ionicons name="stats-chart" size={20} color={activeTab === 'stats' ? '#4A90E2' : '#666'} />
-              <Text style={[styles.tabText, activeTab === 'stats' && styles.activeTabText]}>Statistics</Text>
+              <Text style={[dynamicStyles.tabText, activeTab === 'stats' && dynamicStyles.activeTabText]}>Statistics</Text>
             </TouchableOpacity>
           </View>
 
           {/* Hero Section Tab */}
           {activeTab === 'hero' && (
-            <View style={styles.tabContent}>
-              <Text style={styles.sectionTitle}>Hero Section Settings</Text>
+            <View style={dynamicStyles.tabContent}>
+              <Text style={dynamicStyles.sectionTitle}>Hero Section Settings</Text>
               
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Hero Title</Text>
+              <View style={dynamicStyles.formGroup}>
+                <Text style={dynamicStyles.label}>Hero Title</Text>
                 <TextInput
-                  style={styles.input}
+                  style={dynamicStyles.input}
                   value={config.hero.title}
                   onChangeText={(text) => updateHero('title', text)}
                   placeholder="Enter hero title"
                 />
               </View>
 
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Hero Subtitle</Text>
+              <View style={dynamicStyles.formGroup}>
+                <Text style={dynamicStyles.label}>Hero Subtitle</Text>
                 <TextInput
-                  style={styles.input}
+                  style={dynamicStyles.input}
                   value={config.hero.subtitle}
                   onChangeText={(text) => updateHero('subtitle', text)}
                   placeholder="Enter hero subtitle"
                 />
               </View>
 
-              <View style={styles.formGroup}>
-                <View style={styles.switchRow}>
-                  <Text style={styles.label}>Show Search Bar</Text>
+              <View style={dynamicStyles.formGroup}>
+                <View style={dynamicStyles.switchRow}>
+                  <Text style={dynamicStyles.label}>Show Search Bar</Text>
                   <Switch
                     value={config.hero.showSearchBar}
                     onValueChange={(value) => updateHero('showSearchBar', value)}
@@ -307,53 +312,53 @@ const AdminHomepageScreen = ({ navigation }) => {
                 </View>
               </View>
 
-              <TouchableOpacity style={styles.saveButton} onPress={saveHeroSection}>
+              <TouchableOpacity style={dynamicStyles.saveButton} onPress={saveHeroSection}>
                 <Ionicons name="save" size={20} color="#FFF" />
-                <Text style={styles.saveButtonText}>Save Hero Section</Text>
+                <Text style={dynamicStyles.saveButtonText}>Save Hero Section</Text>
               </TouchableOpacity>
             </View>
           )}
 
           {/* Banners Tab */}
           {activeTab === 'banners' && (
-            <View style={styles.tabContent}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Manage Banners</Text>
+            <View style={dynamicStyles.tabContent}>
+              <View style={dynamicStyles.sectionHeader}>
+                <Text style={dynamicStyles.sectionTitle}>Manage Banners</Text>
                 <TouchableOpacity
-                  style={styles.addButton}
+                  style={dynamicStyles.addButton}
                   onPress={() => setModalVisible(true)}
                 >
                   <Ionicons name="add" size={20} color="#FFF" />
-                  <Text style={styles.addButtonText}>Add Banner</Text>
+                  <Text style={dynamicStyles.addButtonText}>Add Banner</Text>
                 </TouchableOpacity>
               </View>
 
               {config.banners && config.banners.length > 0 ? (
                 config.banners.map((banner, index) => (
-                  <View key={index} style={styles.bannerCard}>
-                    <View style={styles.bannerHeader}>
-                      <Text style={styles.bannerTitle}>{banner.title}</Text>
+                  <View key={index} style={dynamicStyles.bannerCard}>
+                    <View style={dynamicStyles.bannerHeader}>
+                      <Text style={dynamicStyles.bannerTitle}>{banner.title}</Text>
                       <TouchableOpacity onPress={() => handleDeleteBanner(index)}>
                         <Ionicons name="trash" size={20} color="#E74C3C" />
                       </TouchableOpacity>
                     </View>
-                    <Text style={styles.bannerDescription}>{banner.description}</Text>
+                    <Text style={dynamicStyles.bannerDescription}>{banner.description}</Text>
                     {banner.imageUrl && (
-                      <Text style={styles.bannerInfo}>Image: {banner.imageUrl}</Text>
+                      <Text style={dynamicStyles.bannerInfo}>Image: {banner.imageUrl}</Text>
                     )}
-                    <View style={styles.bannerMeta}>
-                      <View style={[styles.colorBox, { backgroundColor: banner.backgroundColor }]} />
-                      <Text style={styles.bannerMetaText}>Order: {banner.order + 1}</Text>
-                      <View style={styles.enabledBadge}>
-                        <Text style={styles.enabledText}>{banner.enabled ? 'Enabled' : 'Disabled'}</Text>
+                    <View style={dynamicStyles.bannerMeta}>
+                      <View style={[dynamicStyles.colorBox, { backgroundColor: banner.backgroundColor }]} />
+                      <Text style={dynamicStyles.bannerMetaText}>Order: {banner.order + 1}</Text>
+                      <View style={dynamicStyles.enabledBadge}>
+                        <Text style={dynamicStyles.enabledText}>{banner.enabled ? 'Enabled' : 'Disabled'}</Text>
                       </View>
                     </View>
                   </View>
                 ))
               ) : (
-                <View style={styles.emptyState}>
+                <View style={dynamicStyles.emptyState}>
                   <Ionicons name="images-outline" size={64} color="#CCC" />
-                  <Text style={styles.emptyText}>No banners added yet</Text>
+                  <Text style={dynamicStyles.emptyText}>No banners added yet</Text>
                 </View>
               )}
             </View>
@@ -361,39 +366,39 @@ const AdminHomepageScreen = ({ navigation }) => {
 
           {/* Sections Tab */}
           {activeTab === 'sections' && (
-            <View style={styles.tabContent}>
-              <Text style={styles.sectionTitle}>Manage Homepage Sections</Text>
+            <View style={dynamicStyles.tabContent}>
+              <Text style={dynamicStyles.sectionTitle}>Manage Homepage Sections</Text>
 
               {/* Latest Jobs Section */}
-              <View style={styles.sectionCard}>
-                <View style={styles.sectionCardHeader}>
-                  <Text style={styles.sectionCardTitle}>Latest Jobs</Text>
+              <View style={dynamicStyles.sectionCard}>
+                <View style={dynamicStyles.sectionCardHeader}>
+                  <Text style={dynamicStyles.sectionCardTitle}>Latest Jobs</Text>
                   <Switch
                     value={config.sections.latestJobs.enabled}
                     onValueChange={(value) => updateSection('latestJobs', 'enabled', value)}
                     trackColor={{ false: '#E0E0E0', true: '#4A90E2' }}
                   />
                 </View>
-                <View style={styles.formGroup}>
-                  <Text style={styles.label}>Title</Text>
+                <View style={dynamicStyles.formGroup}>
+                  <Text style={dynamicStyles.label}>Title</Text>
                   <TextInput
-                    style={styles.input}
+                    style={dynamicStyles.input}
                     value={config.sections.latestJobs.title}
                     onChangeText={(text) => updateSection('latestJobs', 'title', text)}
                   />
                 </View>
-                <View style={styles.formGroup}>
-                  <Text style={styles.label}>Subtitle</Text>
+                <View style={dynamicStyles.formGroup}>
+                  <Text style={dynamicStyles.label}>Subtitle</Text>
                   <TextInput
-                    style={styles.input}
+                    style={dynamicStyles.input}
                     value={config.sections.latestJobs.subtitle}
                     onChangeText={(text) => updateSection('latestJobs', 'subtitle', text)}
                   />
                 </View>
-                <View style={styles.formGroup}>
-                  <Text style={styles.label}>Display Limit</Text>
+                <View style={dynamicStyles.formGroup}>
+                  <Text style={dynamicStyles.label}>Display Limit</Text>
                   <TextInput
-                    style={styles.input}
+                    style={dynamicStyles.input}
                     value={String(config.sections.latestJobs.limit)}
                     onChangeText={(text) => updateSection('latestJobs', 'limit', parseInt(text) || 6)}
                     keyboardType="numeric"
@@ -402,27 +407,27 @@ const AdminHomepageScreen = ({ navigation }) => {
               </View>
 
               {/* Top Companies Section */}
-              <View style={styles.sectionCard}>
-                <View style={styles.sectionCardHeader}>
-                  <Text style={styles.sectionCardTitle}>Top Companies</Text>
+              <View style={dynamicStyles.sectionCard}>
+                <View style={dynamicStyles.sectionCardHeader}>
+                  <Text style={dynamicStyles.sectionCardTitle}>Top Companies</Text>
                   <Switch
                     value={config.sections.topCompanies.enabled}
                     onValueChange={(value) => updateSection('topCompanies', 'enabled', value)}
                     trackColor={{ false: '#E0E0E0', true: '#4A90E2' }}
                   />
                 </View>
-                <View style={styles.formGroup}>
-                  <Text style={styles.label}>Title</Text>
+                <View style={dynamicStyles.formGroup}>
+                  <Text style={dynamicStyles.label}>Title</Text>
                   <TextInput
-                    style={styles.input}
+                    style={dynamicStyles.input}
                     value={config.sections.topCompanies.title}
                     onChangeText={(text) => updateSection('topCompanies', 'title', text)}
                   />
                 </View>
-                <View style={styles.formGroup}>
-                  <Text style={styles.label}>Subtitle</Text>
+                <View style={dynamicStyles.formGroup}>
+                  <Text style={dynamicStyles.label}>Subtitle</Text>
                   <TextInput
-                    style={styles.input}
+                    style={dynamicStyles.input}
                     value={config.sections.topCompanies.subtitle}
                     onChangeText={(text) => updateSection('topCompanies', 'subtitle', text)}
                   />
@@ -430,27 +435,27 @@ const AdminHomepageScreen = ({ navigation }) => {
               </View>
 
               {/* Career Blogs Section */}
-              <View style={styles.sectionCard}>
-                <View style={styles.sectionCardHeader}>
-                  <Text style={styles.sectionCardTitle}>Career Blogs</Text>
+              <View style={dynamicStyles.sectionCard}>
+                <View style={dynamicStyles.sectionCardHeader}>
+                  <Text style={dynamicStyles.sectionCardTitle}>Career Blogs</Text>
                   <Switch
                     value={config.sections.careerBlogs.enabled}
                     onValueChange={(value) => updateSection('careerBlogs', 'enabled', value)}
                     trackColor={{ false: '#E0E0E0', true: '#4A90E2' }}
                   />
                 </View>
-                <View style={styles.formGroup}>
-                  <Text style={styles.label}>Title</Text>
+                <View style={dynamicStyles.formGroup}>
+                  <Text style={dynamicStyles.label}>Title</Text>
                   <TextInput
-                    style={styles.input}
+                    style={dynamicStyles.input}
                     value={config.sections.careerBlogs.title}
                     onChangeText={(text) => updateSection('careerBlogs', 'title', text)}
                   />
                 </View>
-                <View style={styles.formGroup}>
-                  <Text style={styles.label}>Subtitle</Text>
+                <View style={dynamicStyles.formGroup}>
+                  <Text style={dynamicStyles.label}>Subtitle</Text>
                   <TextInput
-                    style={styles.input}
+                    style={dynamicStyles.input}
                     value={config.sections.careerBlogs.subtitle}
                     onChangeText={(text) => updateSection('careerBlogs', 'subtitle', text)}
                   />
@@ -458,56 +463,56 @@ const AdminHomepageScreen = ({ navigation }) => {
               </View>
 
               {/* Resume CTA Section */}
-              <View style={styles.sectionCard}>
-                <View style={styles.sectionCardHeader}>
-                  <Text style={styles.sectionCardTitle}>Resume CTA</Text>
+              <View style={dynamicStyles.sectionCard}>
+                <View style={dynamicStyles.sectionCardHeader}>
+                  <Text style={dynamicStyles.sectionCardTitle}>Resume CTA</Text>
                   <Switch
                     value={config.sections.resumeCTA.enabled}
                     onValueChange={(value) => updateSection('resumeCTA', 'enabled', value)}
                     trackColor={{ false: '#E0E0E0', true: '#4A90E2' }}
                   />
                 </View>
-                <View style={styles.formGroup}>
-                  <Text style={styles.label}>Title</Text>
+                <View style={dynamicStyles.formGroup}>
+                  <Text style={dynamicStyles.label}>Title</Text>
                   <TextInput
-                    style={styles.input}
+                    style={dynamicStyles.input}
                     value={config.sections.resumeCTA.title}
                     onChangeText={(text) => updateSection('resumeCTA', 'title', text)}
                   />
                 </View>
-                <View style={styles.formGroup}>
-                  <Text style={styles.label}>Subtitle</Text>
+                <View style={dynamicStyles.formGroup}>
+                  <Text style={dynamicStyles.label}>Subtitle</Text>
                   <TextInput
-                    style={styles.input}
+                    style={dynamicStyles.input}
                     value={config.sections.resumeCTA.subtitle}
                     onChangeText={(text) => updateSection('resumeCTA', 'subtitle', text)}
                   />
                 </View>
-                <View style={styles.formGroup}>
-                  <Text style={styles.label}>Button Text</Text>
+                <View style={dynamicStyles.formGroup}>
+                  <Text style={dynamicStyles.label}>Button Text</Text>
                   <TextInput
-                    style={styles.input}
+                    style={dynamicStyles.input}
                     value={config.sections.resumeCTA.buttonText}
                     onChangeText={(text) => updateSection('resumeCTA', 'buttonText', text)}
                   />
                 </View>
               </View>
 
-              <TouchableOpacity style={styles.saveButton} onPress={saveSections}>
+              <TouchableOpacity style={dynamicStyles.saveButton} onPress={saveSections}>
                 <Ionicons name="save" size={20} color="#FFF" />
-                <Text style={styles.saveButtonText}>Save Sections</Text>
+                <Text style={dynamicStyles.saveButtonText}>Save Sections</Text>
               </TouchableOpacity>
             </View>
           )}
 
           {/* Stats Tab */}
           {activeTab === 'stats' && (
-            <View style={styles.tabContent}>
-              <Text style={styles.sectionTitle}>Homepage Statistics</Text>
+            <View style={dynamicStyles.tabContent}>
+              <Text style={dynamicStyles.sectionTitle}>Homepage Statistics</Text>
 
-              <View style={styles.statCard}>
-                <View style={styles.switchRow}>
-                  <Text style={styles.statLabel}>Total Jobs</Text>
+              <View style={dynamicStyles.statCard}>
+                <View style={dynamicStyles.switchRow}>
+                  <Text style={dynamicStyles.statLabel}>Total Jobs</Text>
                   <Switch
                     value={config.stats.totalJobs.enabled}
                     onValueChange={(value) => updateStat('totalJobs', 'enabled', value)}
@@ -515,16 +520,16 @@ const AdminHomepageScreen = ({ navigation }) => {
                   />
                 </View>
                 <TextInput
-                  style={styles.input}
+                  style={dynamicStyles.input}
                   value={config.stats.totalJobs.display}
                   onChangeText={(text) => updateStat('totalJobs', 'display', text)}
                   placeholder="e.g., 5 lakh+"
                 />
               </View>
 
-              <View style={styles.statCard}>
-                <View style={styles.switchRow}>
-                  <Text style={styles.statLabel}>Total Companies</Text>
+              <View style={dynamicStyles.statCard}>
+                <View style={dynamicStyles.switchRow}>
+                  <Text style={dynamicStyles.statLabel}>Total Companies</Text>
                   <Switch
                     value={config.stats.totalCompanies.enabled}
                     onValueChange={(value) => updateStat('totalCompanies', 'enabled', value)}
@@ -532,16 +537,16 @@ const AdminHomepageScreen = ({ navigation }) => {
                   />
                 </View>
                 <TextInput
-                  style={styles.input}
+                  style={dynamicStyles.input}
                   value={config.stats.totalCompanies.display}
                   onChangeText={(text) => updateStat('totalCompanies', 'display', text)}
                   placeholder="e.g., 10,000+"
                 />
               </View>
 
-              <View style={styles.statCard}>
-                <View style={styles.switchRow}>
-                  <Text style={styles.statLabel}>Total Applicants</Text>
+              <View style={dynamicStyles.statCard}>
+                <View style={dynamicStyles.switchRow}>
+                  <Text style={dynamicStyles.statLabel}>Total Applicants</Text>
                   <Switch
                     value={config.stats.totalApplicants.enabled}
                     onValueChange={(value) => updateStat('totalApplicants', 'enabled', value)}
@@ -549,16 +554,16 @@ const AdminHomepageScreen = ({ navigation }) => {
                   />
                 </View>
                 <TextInput
-                  style={styles.input}
+                  style={dynamicStyles.input}
                   value={config.stats.totalApplicants.display}
                   onChangeText={(text) => updateStat('totalApplicants', 'display', text)}
                   placeholder="e.g., 1 million+"
                 />
               </View>
 
-              <TouchableOpacity style={styles.saveButton} onPress={saveStats}>
+              <TouchableOpacity style={dynamicStyles.saveButton} onPress={saveStats}>
                 <Ionicons name="save" size={20} color="#FFF" />
-                <Text style={styles.saveButtonText}>Save Statistics</Text>
+                <Text style={dynamicStyles.saveButtonText}>Save Statistics</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -572,30 +577,30 @@ const AdminHomepageScreen = ({ navigation }) => {
         animationType="fade"
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Add New Banner</Text>
+        <View style={dynamicStyles.modalOverlay}>
+          <View style={dynamicStyles.modalContent}>
+            <View style={dynamicStyles.modalHeader}>
+              <Text style={dynamicStyles.modalTitle}>Add New Banner</Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
                 <Ionicons name="close" size={24} color="#333" />
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.modalBody}>
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Title *</Text>
+            <ScrollView style={dynamicStyles.modalBody}>
+              <View style={dynamicStyles.formGroup}>
+                <Text style={dynamicStyles.label}>Title *</Text>
                 <TextInput
-                  style={styles.input}
+                  style={dynamicStyles.input}
                   value={bannerForm.title}
                   onChangeText={(text) => setBannerForm({ ...bannerForm, title: text })}
                   placeholder="Enter banner title"
                 />
               </View>
 
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Description *</Text>
+              <View style={dynamicStyles.formGroup}>
+                <Text style={dynamicStyles.label}>Description *</Text>
                 <TextInput
-                  style={[styles.input, styles.textArea]}
+                  style={[dynamicStyles.input, dynamicStyles.textArea]}
                   value={bannerForm.description}
                   onChangeText={(text) => setBannerForm({ ...bannerForm, description: text })}
                   placeholder="Enter banner description"
@@ -604,48 +609,48 @@ const AdminHomepageScreen = ({ navigation }) => {
                 />
               </View>
 
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Image URL</Text>
+              <View style={dynamicStyles.formGroup}>
+                <Text style={dynamicStyles.label}>Image URL</Text>
                 <TextInput
-                  style={styles.input}
+                  style={dynamicStyles.input}
                   value={bannerForm.imageUrl}
                   onChangeText={(text) => setBannerForm({ ...bannerForm, imageUrl: text })}
                   placeholder="Enter image URL"
                 />
               </View>
 
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Button Text</Text>
+              <View style={dynamicStyles.formGroup}>
+                <Text style={dynamicStyles.label}>Button Text</Text>
                 <TextInput
-                  style={styles.input}
+                  style={dynamicStyles.input}
                   value={bannerForm.buttonText}
                   onChangeText={(text) => setBannerForm({ ...bannerForm, buttonText: text })}
                   placeholder="e.g., Learn More"
                 />
               </View>
 
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Button Link</Text>
+              <View style={dynamicStyles.formGroup}>
+                <Text style={dynamicStyles.label}>Button Link</Text>
                 <TextInput
-                  style={styles.input}
+                  style={dynamicStyles.input}
                   value={bannerForm.buttonLink}
                   onChangeText={(text) => setBannerForm({ ...bannerForm, buttonLink: text })}
                   placeholder="e.g., /jobs"
                 />
               </View>
 
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Background Color</Text>
+              <View style={dynamicStyles.formGroup}>
+                <Text style={dynamicStyles.label}>Background Color</Text>
                 <TextInput
-                  style={styles.input}
+                  style={dynamicStyles.input}
                   value={bannerForm.backgroundColor}
                   onChangeText={(text) => setBannerForm({ ...bannerForm, backgroundColor: text })}
                   placeholder="#4A90E2"
                 />
               </View>
 
-              <TouchableOpacity style={styles.modalButton} onPress={handleAddBanner}>
-                <Text style={styles.modalButtonText}>Add Banner</Text>
+              <TouchableOpacity style={dynamicStyles.modalButton} onPress={handleAddBanner}>
+                <Text style={dynamicStyles.modalButtonText}>Add Banner</Text>
               </TouchableOpacity>
             </ScrollView>
           </View>
@@ -655,7 +660,7 @@ const AdminHomepageScreen = ({ navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (isMobile, isTablet) => StyleSheet.create({
   scrollContainer: {
     flex: 1,
     backgroundColor: '#F5F6FA',
@@ -916,5 +921,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+
+const styles = StyleSheet.create({});
 
 export default AdminHomepageScreen;

@@ -4,8 +4,12 @@ import AdminLayout from '../../components/Admin/AdminLayout';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../../config/api';
+import { useResponsive } from '../../utils/responsive';
 
 const AdminApplicationsScreen = ({ navigation }) => {
+  const responsive = useResponsive();
+  const isMobile = responsive.isMobile;
+  const isTablet = responsive.isTablet;
   const [loading, setLoading] = useState(true);
   const [applications, setApplications] = useState([]);
   const [filteredApplications, setFilteredApplications] = useState([]);
@@ -193,6 +197,8 @@ const AdminApplicationsScreen = ({ navigation }) => {
     }
   };
 
+  const dynamicStyles = getStyles(isMobile, isTablet);
+
   if (loading) {
     return (
       <AdminLayout
@@ -202,9 +208,9 @@ const AdminApplicationsScreen = ({ navigation }) => {
         user={user}
         onLogout={handleLogout}
       >
-        <View style={styles.loadingContainer}>
+        <View style={dynamicStyles.loadingContainer}>
           <ActivityIndicator size="large" color="#4A90E2" />
-          <Text style={styles.loadingText}>Loading applications...</Text>
+          <Text style={dynamicStyles.loadingText}>Loading applications...</Text>
         </View>
       </AdminLayout>
     );
@@ -218,18 +224,18 @@ const AdminApplicationsScreen = ({ navigation }) => {
       user={user}
       onLogout={handleLogout}
     >
-      <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-        <View style={styles.container}>
-          <View style={styles.headerSection}>
-            <Text style={styles.pageTitle}>Application Management</Text>
-            <Text style={styles.pageSubtitle}>Manage all job applications</Text>
+      <ScrollView style={dynamicStyles.scrollContainer} showsVerticalScrollIndicator={false}>
+        <View style={dynamicStyles.container}>
+          <View style={dynamicStyles.headerSection}>
+            <Text style={dynamicStyles.pageTitle}>Application Management</Text>
+            <Text style={dynamicStyles.pageSubtitle}>Manage all job applications</Text>
           </View>
 
-          <View style={styles.filterSection}>
-            <View style={styles.searchContainer}>
-              <Ionicons name="search" size={20} color="#999" style={styles.searchIcon} />
+          <View style={dynamicStyles.filterSection}>
+            <View style={dynamicStyles.searchContainer}>
+              <Ionicons name="search" size={20} color="#999" style={dynamicStyles.searchIcon} />
               <TextInput
-                style={styles.searchInput}
+                style={dynamicStyles.searchInput}
                 placeholder="Search by candidate name or job title..."
                 value={searchQuery}
                 onChangeText={setSearchQuery}
@@ -237,14 +243,14 @@ const AdminApplicationsScreen = ({ navigation }) => {
             </View>
 
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={styles.filterButtons}>
+              <View style={dynamicStyles.filterButtons}>
                 {['ALL', 'PENDING', 'REVIEWED', 'SHORTLISTED', 'ACCEPTED', 'REJECTED'].map(status => (
                   <TouchableOpacity
                     key={status}
-                    style={[styles.filterButton, filterStatus === status && styles.activeFilter]}
+                    style={[dynamicStyles.filterButton, filterStatus === status && dynamicStyles.activeFilter]}
                     onPress={() => setFilterStatus(status)}
                   >
-                    <Text style={[styles.filterButtonText, filterStatus === status && styles.activeFilterText]}>
+                    <Text style={[dynamicStyles.filterButtonText, filterStatus === status && dynamicStyles.activeFilterText]}>
                       {status.charAt(0) + status.slice(1).toLowerCase()}
                     </Text>
                   </TouchableOpacity>
@@ -253,61 +259,61 @@ const AdminApplicationsScreen = ({ navigation }) => {
             </ScrollView>
           </View>
 
-          <View style={styles.bulkActionsBar}>
-            <TouchableOpacity style={styles.bulkActionButton} onPress={handleBulkExport}>
+          <View style={dynamicStyles.bulkActionsBar}>
+            <TouchableOpacity style={dynamicStyles.bulkActionButton} onPress={handleBulkExport}>
               <Ionicons name="cloud-download-outline" size={18} color="#10B981" />
-              <Text style={styles.bulkActionButtonText}>Export All Applications</Text>
+              <Text style={dynamicStyles.bulkActionButtonText}>Export All Applications</Text>
             </TouchableOpacity>
           </View>
 
-          <View style={styles.statsBar}>
-            <Text style={styles.statsText}>Total Applications: {filteredApplications.length}</Text>
+          <View style={dynamicStyles.statsBar}>
+            <Text style={dynamicStyles.statsText}>Total Applications: {filteredApplications.length}</Text>
           </View>
 
-          <View style={styles.tableContainer}>
-            <View style={styles.table}>
-              <View style={styles.tableHeader}>
-                <Text style={[styles.tableHeaderText, styles.candidateColumn]}>Candidate</Text>
-                <Text style={[styles.tableHeaderText, styles.jobColumn]}>Job Title</Text>
-                <Text style={[styles.tableHeaderText, styles.emailColumn]}>Email</Text>
-                <Text style={[styles.tableHeaderText, styles.statusColumn]}>Status</Text>
-                <Text style={[styles.tableHeaderText, styles.appliedColumn]}>Applied On</Text>
-                <Text style={[styles.tableHeaderText, styles.actionsColumn]}>Actions</Text>
+          <View style={dynamicStyles.tableContainer}>
+            <View style={dynamicStyles.table}>
+              <View style={dynamicStyles.tableHeader}>
+                <Text style={[dynamicStyles.tableHeaderText, dynamicStyles.candidateColumn]}>Candidate</Text>
+                <Text style={[dynamicStyles.tableHeaderText, dynamicStyles.jobColumn]}>Job Title</Text>
+                <Text style={[dynamicStyles.tableHeaderText, dynamicStyles.emailColumn]}>Email</Text>
+                <Text style={[dynamicStyles.tableHeaderText, dynamicStyles.statusColumn]}>Status</Text>
+                <Text style={[dynamicStyles.tableHeaderText, dynamicStyles.appliedColumn]}>Applied On</Text>
+                <Text style={[dynamicStyles.tableHeaderText, dynamicStyles.actionsColumn]}>Actions</Text>
               </View>
 
               {filteredApplications.length > 0 ? (
                 filteredApplications.map((application, index) => {
                   const statusColors = getStatusColor(application.status?.toUpperCase() || 'PENDING');
                   return (
-                    <View key={application._id || index} style={styles.tableRow}>
-                      <Text style={[styles.tableCellText, styles.candidateColumn, styles.candidateName]}>
+                    <View key={application._id || index} style={dynamicStyles.tableRow}>
+                      <Text style={[dynamicStyles.tableCellText, dynamicStyles.candidateColumn, dynamicStyles.candidateName]}>
                         {application.candidateName || application.candidate?.name || application.fullName || 'N/A'}
                       </Text>
-                      <Text style={[styles.tableCellText, styles.jobColumn]}>
+                      <Text style={[dynamicStyles.tableCellText, dynamicStyles.jobColumn]}>
                         {application.jobTitle || application.job?.title || 'N/A'}
                       </Text>
-                      <Text style={[styles.tableCellText, styles.emailColumn]}>
+                      <Text style={[dynamicStyles.tableCellText, dynamicStyles.emailColumn]}>
                         {application.email || application.candidate?.email || 'N/A'}
                       </Text>
-                      <View style={styles.statusColumn}>
-                        <View style={[styles.statusBadge, { backgroundColor: statusColors.bg }]}>
-                          <Text style={[styles.statusBadgeText, { color: statusColors.text }]}>
+                      <View style={dynamicStyles.statusColumn}>
+                        <View style={[dynamicStyles.statusBadge, { backgroundColor: statusColors.bg }]}>
+                          <Text style={[dynamicStyles.statusBadgeText, { color: statusColors.text }]}>
                             {application.status?.toLowerCase() || 'pending'}
                           </Text>
                         </View>
                       </View>
-                      <Text style={[styles.tableCellText, styles.appliedColumn]}>
+                      <Text style={[dynamicStyles.tableCellText, dynamicStyles.appliedColumn]}>
                         {formatDate(application.createdAt || application.appliedAt)}
                       </Text>
-                      <View style={styles.actionsColumn}>
+                      <View style={dynamicStyles.actionsColumn}>
                         <TouchableOpacity
-                          style={styles.actionButton}
+                          style={dynamicStyles.actionButton}
                           onPress={() => navigation.navigate('AdminApplicationDetails', { applicationId: application._id })}
                         >
                           <Ionicons name="eye-outline" size={18} color="#4A90E2" />
                         </TouchableOpacity>
                         <TouchableOpacity
-                          style={[styles.actionButton, styles.deleteButton]}
+                          style={[dynamicStyles.actionButton, dynamicStyles.deleteButton]}
                           onPress={() => deleteApplication(application._id)}
                         >
                           <Ionicons name="trash-outline" size={18} color="#E74C3C" />
@@ -317,9 +323,9 @@ const AdminApplicationsScreen = ({ navigation }) => {
                   );
                 })
               ) : (
-                <View style={styles.emptyState}>
+                <View style={dynamicStyles.emptyState}>
                   <Ionicons name="document-text-outline" size={64} color="#CCC" />
-                  <Text style={styles.emptyStateText}>No applications found</Text>
+                  <Text style={dynamicStyles.emptyStateText}>No applications found</Text>
                 </View>
               )}
             </View>
@@ -330,12 +336,12 @@ const AdminApplicationsScreen = ({ navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (isMobile, isTablet) => StyleSheet.create({
   scrollContainer: {
     flex: 1,
   },
   container: {
-    padding: 20,
+    padding: isMobile ? 12 : isTablet ? 16 : 20,
   },
   loadingContainer: {
     flex: 1,
@@ -344,19 +350,19 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 10,
-    fontSize: 16,
+    fontSize: isMobile ? 14 : isTablet ? 15 : 16,
     color: '#666',
   },
   headerSection: {
-    marginBottom: 20,
+    marginBottom: isMobile ? 16 : isTablet ? 18 : 20,
   },
   pageTitle: {
-    fontSize: 28,
+    fontSize: isMobile ? 22 : isTablet ? 26 : 28,
     fontWeight: 'bold',
     color: '#333',
   },
   pageSubtitle: {
-    fontSize: 14,
+    fontSize: isMobile ? 12 : isTablet ? 13 : 14,
     color: '#666',
     marginTop: 4,
   },
@@ -426,11 +432,15 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
+    } : {
+      elevation: 1,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+    }),
   },
   bulkActionButtonText: {
     fontSize: 14,
@@ -455,35 +465,62 @@ const styles = StyleSheet.create({
   table: {
     backgroundColor: '#FFF',
     borderRadius: 12,
-    padding: 20,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    padding: isMobile ? 12 : isTablet ? 16 : 20,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+      overflowX: isMobile ? 'hidden' : 'auto',
+    } : {
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+    }),
   },
   tableHeader: {
     flexDirection: 'row',
     borderBottomWidth: 2,
     borderBottomColor: '#E0E0E0',
-    paddingBottom: 12,
-    marginBottom: 12,
+    paddingBottom: isMobile ? 10 : isTablet ? 11 : 12,
+    marginBottom: isMobile ? 10 : isTablet ? 11 : 12,
+    display: isMobile ? 'none' : 'flex',
+    ...(Platform.OS === 'web' && {
+      display: isMobile ? 'none' : 'flex',
+      minWidth: isTablet ? 700 : 900,
+    }),
   },
   tableHeaderText: {
-    fontSize: 14,
+    fontSize: isMobile ? 12 : isTablet ? 13 : 14,
     fontWeight: '600',
     color: '#666',
   },
   tableRow: {
-    flexDirection: 'row',
-    paddingVertical: 12,
+    flexDirection: isMobile ? 'column' : 'row',
+    paddingVertical: isMobile ? 16 : isTablet ? 14 : 12,
+    paddingHorizontal: isMobile ? 12 : 0,
     borderBottomWidth: 1,
     borderBottomColor: '#F5F5F5',
-    alignItems: 'center',
+    alignItems: isMobile ? 'flex-start' : 'center',
+    marginBottom: isMobile ? 12 : 0,
+    borderRadius: isMobile ? 12 : 0,
+    backgroundColor: isMobile ? '#FAFAFA' : 'transparent',
+    ...(Platform.OS === 'web' && {
+      minWidth: isTablet ? 700 : 900,
+      transition: 'background-color 0.2s',
+      ':hover': {
+        backgroundColor: isMobile ? '#F5F5F5' : 'rgba(0, 0, 0, 0.02)',
+      },
+    }),
   },
   tableCellText: {
-    fontSize: 14,
+    fontSize: isMobile ? 13 : isTablet ? 13.5 : 14,
     color: '#333',
+    marginBottom: isMobile ? 8 : 0,
+    ...(Platform.OS === 'web' && {
+      overflow: isMobile ? 'visible' : 'hidden',
+      textOverflow: isMobile ? 'clip' : 'ellipsis',
+      whiteSpace: isMobile ? 'normal' : 'nowrap',
+    }),
   },
   candidateColumn: {
     flex: 2,
@@ -532,11 +569,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyStateText: {
-    fontSize: 16,
+    fontSize: isMobile ? 14 : isTablet ? 15 : 16,
     color: '#999',
     marginTop: 15,
   },
 });
+
+const styles = StyleSheet.create({});
 
 export default AdminApplicationsScreen;
 

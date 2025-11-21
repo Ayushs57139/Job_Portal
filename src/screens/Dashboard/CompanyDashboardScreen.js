@@ -6,8 +6,11 @@ import { colors, spacing, borderRadius, typography, shadows } from '../../styles
 import Header from '../../components/Header';
 import EmployerSidebar from '../../components/EmployerSidebar';
 import api from '../../config/api';
+import { useResponsive } from '../../utils/responsive';
 
 const CompanyDashboardScreen = ({ navigation }) => {
+  const responsive = useResponsive();
+  const { isMobile, isTablet } = responsive;
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -199,11 +202,30 @@ const CompanyDashboardScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.sidebarWrapper}>
-        <EmployerSidebar permanent navigation={navigation} role="company" activeKey="overview" />
-      </View>
+      {!isMobile && (
+        <View style={styles.sidebarWrapper}>
+          <EmployerSidebar permanent navigation={navigation} role="company" activeKey="overview" />
+        </View>
+      )}
+      {isMobile && (
+        <EmployerSidebar 
+          visible={sidebarOpen} 
+          onClose={() => setSidebarOpen(false)} 
+          navigation={navigation} 
+          role="company" 
+          activeKey="overview" 
+        />
+      )}
+      {isMobile && (
+        <TouchableOpacity 
+          style={styles.menuButton}
+          onPress={() => setSidebarOpen(true)}
+        >
+          <Ionicons name="menu" size={24} color={colors.text} />
+        </TouchableOpacity>
+      )}
       <ScrollView 
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, isMobile && styles.scrollContentMobile]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -213,63 +235,114 @@ const CompanyDashboardScreen = ({ navigation }) => {
           />
         }
       >
-        {/* Header Section - Admin style */}
-        <View style={styles.headerBar}>
+        {/* Header Section - Modern style */}
+        <LinearGradient
+          colors={['#FFFFFF', '#F8FAFC']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.headerBar, isMobile && styles.headerBarMobile]}
+        >
           <View style={styles.headerLeft}>
-            <Text style={styles.headerTitle}>Company Dashboard</Text>
-            <Text style={styles.headerSubtitle}>
-              Welcome, {user?.firstName || 'User'}
-          </Text>
+            <View style={[styles.headerTitleContainer, isMobile && styles.headerTitleContainerMobile]}>
+              <Text style={[styles.headerTitle, isMobile && styles.headerTitleMobile]}>Company Dashboard</Text>
+              <View style={styles.headerBadge}>
+                <Ionicons name="checkmark-circle" size={14} color="#10B981" />
+                <Text style={styles.headerBadgeText}>Active</Text>
+              </View>
+            </View>
+            <Text style={[styles.headerSubtitle, isMobile && styles.headerSubtitleMobile]}>
+              Welcome back, <Text style={styles.headerName}>{user?.firstName || 'User'}</Text> 👋
+            </Text>
           </View>
           <TouchableOpacity 
-            style={styles.headerLogoutButton} 
+            style={[styles.headerLogoutButton, isMobile && styles.headerLogoutButtonMobile]} 
             onPress={() => {
               console.log('Logout button clicked');
               handleLogout();
             }}
-            activeOpacity={0.7}
+            activeOpacity={0.8}
             disabled={false}
           >
-            <Ionicons name="log-out-outline" size={18} color={'#FFF'} />
-            <Text style={styles.headerLogoutText}>Logout</Text>
+            <Ionicons name="log-out-outline" size={isMobile ? 16 : 18} color={'#FFF'} />
+            {!isMobile && <Text style={styles.headerLogoutText}>Logout</Text>}
           </TouchableOpacity>
+        </LinearGradient>
+
+        {/* Stats Cards - Modern Design */}
+        <View style={[styles.statsContainer, isMobile && styles.statsContainerMobile]}>
+          <LinearGradient
+            colors={['#3B82F6', '#2563EB']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.statCard, styles.statCardGradient, isMobile && styles.statCardMobile]}
+          >
+            <View style={[styles.statCardContent, isMobile && styles.statCardContentMobile]}>
+              <View style={[styles.statIconContainer, { backgroundColor: 'rgba(255,255,255,0.2)' }, isMobile && styles.statIconContainerMobile]}>
+                <Ionicons name="briefcase" size={isMobile ? 24 : 28} color="#FFFFFF" />
+              </View>
+              <View style={styles.statTextContainer}>
+                <Text style={[styles.statValue, isMobile && styles.statValueMobile]}>{stats.activeJobs}</Text>
+                <Text style={[styles.statLabel, isMobile && styles.statLabelMobile]}>Active Jobs</Text>
+              </View>
+            </View>
+            <View style={styles.statCardDecoration} />
+          </LinearGradient>
+
+          <LinearGradient
+            colors={['#10B981', '#059669']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.statCard, styles.statCardGradient, isMobile && styles.statCardMobile]}
+          >
+            <View style={[styles.statCardContent, isMobile && styles.statCardContentMobile]}>
+              <View style={[styles.statIconContainer, { backgroundColor: 'rgba(255,255,255,0.2)' }, isMobile && styles.statIconContainerMobile]}>
+                <Ionicons name="people" size={isMobile ? 24 : 28} color="#FFFFFF" />
+              </View>
+              <View style={styles.statTextContainer}>
+                <Text style={[styles.statValue, isMobile && styles.statValueMobile]}>{stats.totalApplications}</Text>
+                <Text style={[styles.statLabel, isMobile && styles.statLabelMobile]}>Applications</Text>
+              </View>
+            </View>
+            <View style={styles.statCardDecoration} />
+          </LinearGradient>
         </View>
 
-        {/* Stats Cards */}
-        <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
-            <View style={[styles.statIconContainer, { backgroundColor: 'rgba(74,144,226,0.15)' }]}>
-              <Ionicons name="briefcase" size={24} color="#4A90E2" />
+        <View style={[styles.statsContainer, isMobile && styles.statsContainerMobile]}>
+          <LinearGradient
+            colors={['#8B5CF6', '#7C3AED']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.statCard, styles.statCardGradient, isMobile && styles.statCardMobile]}
+          >
+            <View style={[styles.statCardContent, isMobile && styles.statCardContentMobile]}>
+              <View style={[styles.statIconContainer, { backgroundColor: 'rgba(255,255,255,0.2)' }, isMobile && styles.statIconContainerMobile]}>
+                <Ionicons name="checkmark-circle" size={isMobile ? 24 : 28} color="#FFFFFF" />
+              </View>
+              <View style={styles.statTextContainer}>
+                <Text style={[styles.statValue, isMobile && styles.statValueMobile]}>{stats.shortlistedCandidates}</Text>
+                <Text style={[styles.statLabel, isMobile && styles.statLabelMobile]}>Shortlisted</Text>
+              </View>
             </View>
-            <Text style={styles.statValue}>{stats.activeJobs}</Text>
-            <Text style={styles.statLabel}>Active Jobs</Text>
-          </View>
+            <View style={styles.statCardDecoration} />
+          </LinearGradient>
 
-          <View style={styles.statCard}>
-            <View style={[styles.statIconContainer, { backgroundColor: 'rgba(46,204,113,0.15)' }]}>
-              <Ionicons name="people" size={24} color="#2ECC71" />
+          <LinearGradient
+            colors={['#F59E0B', '#D97706']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.statCard, styles.statCardGradient, isMobile && styles.statCardMobile]}
+          >
+            <View style={[styles.statCardContent, isMobile && styles.statCardContentMobile]}>
+              <View style={[styles.statIconContainer, { backgroundColor: 'rgba(255,255,255,0.2)' }, isMobile && styles.statIconContainerMobile]}>
+                <Ionicons name="time" size={isMobile ? 24 : 28} color="#FFFFFF" />
+              </View>
+              <View style={styles.statTextContainer}>
+                <Text style={[styles.statValue, isMobile && styles.statValueMobile]}>{stats.pendingReviews}</Text>
+                <Text style={[styles.statLabel, isMobile && styles.statLabelMobile]}>Pending Review</Text>
+              </View>
             </View>
-            <Text style={styles.statValue}>{stats.totalApplications}</Text>
-            <Text style={styles.statLabel}>Applications</Text>
-          </View>
-        </View>
-
-        <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
-            <View style={[styles.statIconContainer, { backgroundColor: 'rgba(52,152,219,0.15)' }]}>
-              <Ionicons name="checkmark-circle" size={24} color="#3498DB" />
-            </View>
-            <Text style={styles.statValue}>{stats.shortlistedCandidates}</Text>
-            <Text style={styles.statLabel}>Shortlisted</Text>
-          </View>
-
-          <View style={styles.statCard}>
-            <View style={[styles.statIconContainer, { backgroundColor: 'rgba(241,196,15,0.15)' }]}>
-              <Ionicons name="time" size={24} color="#F1C40F" />
-            </View>
-            <Text style={styles.statValue}>{stats.pendingReviews}</Text>
-            <Text style={styles.statLabel}>Pending Review</Text>
-          </View>
+            <View style={styles.statCardDecoration} />
+          </LinearGradient>
         </View>
 
       </ScrollView>
@@ -281,10 +354,20 @@ const styles = StyleSheet.create({
   container: { 
     flex: 1, 
     flexDirection: 'row',
-    backgroundColor: '#F5F6FA' 
+    backgroundColor: '#F1F5F9' 
   },
   sidebarWrapper: {
-    width: 260,
+    width: 280,
+  },
+  menuButton: {
+    position: 'absolute',
+    top: spacing.md,
+    left: spacing.md,
+    zIndex: 1000,
+    backgroundColor: '#FFFFFF',
+    padding: spacing.sm,
+    borderRadius: borderRadius.md,
+    ...shadows.sm,
   },
   loadingContainer: {
     flex: 1,
@@ -299,79 +382,173 @@ const styles = StyleSheet.create({
   },
   scrollContent: { 
     flexGrow: 1,
-    padding: spacing.md,
+    padding: spacing.lg,
     paddingBottom: spacing.xxl,
   },
+  scrollContentMobile: {
+    padding: spacing.md,
+    paddingTop: spacing.xl + 40,
+  },
   headerBar: {
-    backgroundColor: '#FFF',
-    padding: spacing.lg,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
+    padding: spacing.xl,
+    borderRadius: borderRadius.lg,
     marginBottom: spacing.lg,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between'
+    justifyContent: 'space-between',
+    ...shadows.md,
+  },
+  headerBarMobile: {
+    padding: spacing.md,
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: spacing.md,
   },
   headerLeft: {
-    gap: 4,
+    gap: spacing.xs,
+    flex: 1,
+  },
+  headerTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    flexWrap: 'wrap',
+  },
+  headerTitleContainerMobile: {
+    gap: spacing.sm,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#1E293B',
+    letterSpacing: -0.5,
+  },
+  headerTitleMobile: {
+    fontSize: 22,
+  },
+  headerBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#D1FAE5',
+    paddingVertical: 4,
+    paddingHorizontal: spacing.sm,
+    borderRadius: borderRadius.full,
+    gap: 4,
+  },
+  headerBadgeText: {
+    fontSize: 11,
     fontWeight: '700',
-    color: '#333',
+    color: '#059669',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   headerSubtitle: {
-    marginTop: 4,
-    color: '#666',
+    marginTop: spacing.xs,
+    fontSize: 15,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  headerSubtitleMobile: {
+    fontSize: 13,
+  },
+  headerName: {
+    color: '#1E293B',
+    fontWeight: '700',
   },
   headerLogoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#E74C3C',
+    backgroundColor: '#EF4444',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: borderRadius.md,
+    gap: spacing.sm,
+    ...shadows.sm,
+  },
+  headerLogoutButtonMobile: {
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.md,
-    gap: 6,
-    cursor: 'pointer',
-    zIndex: 10,
+    alignSelf: 'flex-end',
   },
   headerLogoutText: {
     color: '#FFF',
-    fontWeight: '700'
+    fontWeight: '700',
+    fontSize: 14,
   },
   statsContainer: {
     flexDirection: 'row',
-    gap: spacing.sm,
-    marginBottom: spacing.sm,
+    gap: spacing.lg,
+    marginBottom: spacing.lg,
+  },
+  statsContainerMobile: {
+    flexDirection: 'column',
+    gap: spacing.md,
   },
   statCard: {
     flex: 1,
-    backgroundColor: '#FFF',
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
+    borderRadius: borderRadius.lg,
+    overflow: 'hidden',
+    ...shadows.lg,
+  },
+  statCardMobile: {
+    flex: 0,
+    width: '100%',
+  },
+  statCardGradient: {
+    position: 'relative',
+  },
+  statCardContent: {
+    padding: spacing.xl,
+    flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#EAEAEA',
+    gap: spacing.lg,
+  },
+  statCardContentMobile: {
+    padding: spacing.md,
+    gap: spacing.md,
   },
   statIconContainer: {
-    width: 48,
-    height: 48,
+    width: 64,
+    height: 64,
     borderRadius: borderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.xs,
+  },
+  statIconContainerMobile: {
+    width: 48,
+    height: 48,
+  },
+  statTextContainer: {
+    flex: 1,
   },
   statValue: {
-    ...typography.h3,
-    color: colors.text,
-    fontWeight: '700',
-    marginTop: spacing.xs,
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginBottom: spacing.xs,
+    letterSpacing: -1,
+  },
+  statValueMobile: {
+    fontSize: 24,
   },
   statLabel: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    textAlign: 'center',
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.9)',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  statLabelMobile: {
+    fontSize: 12,
+  },
+  statCardDecoration: {
+    position: 'absolute',
+    top: -20,
+    right: -20,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(255,255,255,0.1)',
   },
 });
 

@@ -366,9 +366,19 @@ class EmailTemplateService {
 
   // Create new template
   async createTemplate(templateData, adminUserId) {
-    templateData.createdBy = adminUserId;
-    templateData.lastModifiedBy = adminUserId;
-    return await EmailTemplate.create(templateData);
+    try {
+      // Clean up optional fields
+      if (templateData.textContent === '') {
+        templateData.textContent = undefined;
+      }
+      
+      templateData.createdBy = adminUserId;
+      templateData.lastModifiedBy = adminUserId;
+      return await EmailTemplate.create(templateData);
+    } catch (error) {
+      console.error('Error creating template:', error);
+      throw error;
+    }
   }
 
   // Update template
@@ -411,18 +421,24 @@ class EmailTemplateService {
 
   // Get template statistics
   async getTemplateStats() {
-    const stats = await EmailTemplate.aggregate([
-      {
-        $group: {
-          _id: '$type',
-          count: { $sum: 1 },
-          totalUsage: { $sum: '$usageCount' },
-          lastUsed: { $max: '$lastUsed' }
-        }
-      }
-    ]);
-    
-    return stats;
+    try {
+      const total = await EmailTemplate.countDocuments();
+      const active = await EmailTemplate.countDocuments({ isActive: true });
+      const inactive = await EmailTemplate.countDocuments({ isActive: false });
+      
+      return {
+        total: total || 0,
+        active: active || 0,
+        inactive: inactive || 0,
+      };
+    } catch (error) {
+      console.error('Error getting template stats:', error);
+      return {
+        total: 0,
+        active: 0,
+        inactive: 0,
+      };
+    }
   }
 }
 

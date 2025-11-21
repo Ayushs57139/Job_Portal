@@ -8,16 +8,23 @@ import { DropdownField, MultiSelectField, AutoCompleteField } from '../../compon
 import UserSidebar from '../../components/UserSidebar';
 import api from '../../config/api';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { useResponsive } from '../../utils/responsive';
 
 const isWeb = Platform.OS === 'web';
 
 const UserProfileScreen = ({ navigation }) => {
+  const responsive = useResponsive();
+  const isPhone = responsive.width <= 480;
+  const isMobile = responsive.isMobile;
+  const isTablet = responsive.isTablet;
+  const isDesktop = responsive.isDesktop;
+  const dynamicStyles = getStyles(isPhone, isMobile, isTablet, isDesktop);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [activeSection, setActiveSection] = useState('personal');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [datePickerMode, setDatePickerMode] = useState(null);
-  const [sidebarOpen, setSidebarOpen] = useState(isWeb);
+  const [sidebarOpen, setSidebarOpen] = useState(isWeb && !isPhone);
   const [currentUser, setCurrentUser] = useState(null);
   
   // Form Data
@@ -341,24 +348,45 @@ const UserProfileScreen = ({ navigation }) => {
   };
 
   const handleLogout = async () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: async () => {
-            await api.logout();
-            navigation.reset({
-              index: 0,
-              routes: [{ name: 'Home' }],
-            });
+    if (Platform.OS === 'web') {
+      // For web, use window.confirm
+      if (window.confirm('Are you sure you want to logout?')) {
+        try {
+          await api.logout();
+        } catch (error) {
+          console.log('Logout error:', error);
+        }
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Home' }],
+        });
+      }
+    } else {
+      // For mobile, use Alert
+      Alert.alert(
+        'Logout',
+        'Are you sure you want to logout?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Logout',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await api.logout();
+              } catch (error) {
+                console.log('Logout error:', error);
+              } finally {
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: 'Home' }],
+                });
+              }
+            },
           },
-        },
-      ]
-    );
+        ]
+      );
+    }
   };
 
   const loadProfile = async () => {
@@ -722,8 +750,8 @@ const UserProfileScreen = ({ navigation }) => {
   };
 
   const renderPersonalInfoSection = () => (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Personal Information</Text>
+    <View style={dynamicStyles.section}>
+      <Text style={dynamicStyles.sectionTitle}>Personal Information</Text>
       
         <Input
         label="Candidate Full Name"
@@ -764,14 +792,14 @@ const UserProfileScreen = ({ navigation }) => {
         />
 
       <TouchableOpacity
-        style={styles.datePickerButton}
+        style={dynamicStyles.datePickerButton}
         onPress={() => {
           setDatePickerMode('dateOfBirth');
           setShowDatePicker(true);
         }}
       >
-        <Ionicons name="calendar-outline" size={20} color={colors.textSecondary} style={styles.icon} />
-        <Text style={[styles.datePickerText, !formData.personalInfo.dateOfBirth && styles.placeholderText]}>
+        <Ionicons name="calendar-outline" size={isPhone ? 18 : 20} color={colors.textSecondary} style={dynamicStyles.icon} />
+        <Text style={[dynamicStyles.datePickerText, !formData.personalInfo.dateOfBirth && dynamicStyles.placeholderText]}>
           {formData.personalInfo.dateOfBirth ? formatDate(formData.personalInfo.dateOfBirth) : 'Date Of Birth'}
         </Text>
       </TouchableOpacity>
@@ -883,8 +911,8 @@ const UserProfileScreen = ({ navigation }) => {
   );
 
   const renderProfessionalSection = () => (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Professional Information</Text>
+    <View style={dynamicStyles.section}>
+      <Text style={dynamicStyles.sectionTitle}>Professional Information</Text>
       
       <AutoCompleteField
         label="Current Job Title/Designation"
@@ -1284,9 +1312,9 @@ const UserProfileScreen = ({ navigation }) => {
         maxSelections={3}
       />
 
-      <View style={styles.checkboxContainer}>
+      <View style={dynamicStyles.checkboxContainer}>
         <TouchableOpacity
-          style={styles.checkbox}
+          style={dynamicStyles.checkbox}
           onPress={() => updateField('professional', 'currentlyWorking', !formData.professional.currentlyWorking)}
         >
           <Ionicons
@@ -1294,7 +1322,7 @@ const UserProfileScreen = ({ navigation }) => {
             size={24}
             color={formData.professional.currentlyWorking ? colors.primary : colors.textSecondary}
           />
-          <Text style={styles.checkboxLabel}>Currently working in this company?</Text>
+          <Text style={dynamicStyles.checkboxLabel}>Currently working in this company?</Text>
         </TouchableOpacity>
       </View>
 
@@ -1552,9 +1580,9 @@ const UserProfileScreen = ({ navigation }) => {
   };
 
   const renderEducationSection = () => (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Education Information</Text>
-      <Text style={styles.sectionSubtitle}>Add your education details</Text>
+    <View style={dynamicStyles.section}>
+      <Text style={dynamicStyles.sectionTitle}>Education Information</Text>
+      <Text style={dynamicStyles.sectionSubtitle}>Add your education details</Text>
       
       {formData.education.map((edu, index) => {
         const isBasicEducation = edu.educationLevel && BASIC_EDUCATION_LEVELS.includes(edu.educationLevel);
@@ -1564,8 +1592,8 @@ const UserProfileScreen = ({ navigation }) => {
         const availableSpecializations = getSpecializationsForCourse(edu.educationLevel, edu.degree);
 
         return (
-          <View key={index} style={styles.educationCard}>
-            <Text style={styles.cardTitle}>Education #{index + 1}</Text>
+          <View key={index} style={dynamicStyles.educationCard}>
+            <Text style={dynamicStyles.cardTitle}>Education #{index + 1}</Text>
             
             <DropdownField
               label="Level of Education"
@@ -1675,7 +1703,7 @@ const UserProfileScreen = ({ navigation }) => {
                   setFormData(prev => ({ ...prev, education: newEducation }));
                 }}
                 variant="outline"
-                style={styles.removeButton}
+                style={dynamicStyles.removeButton}
               />
             )}
           </View>
@@ -1709,8 +1737,8 @@ const UserProfileScreen = ({ navigation }) => {
   );
 
   const renderLocationSection = () => (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Location Information</Text>
+    <View style={dynamicStyles.section}>
+      <Text style={dynamicStyles.sectionTitle}>Location Information</Text>
       
       <Input
         label="Current State"
@@ -1787,10 +1815,10 @@ const UserProfileScreen = ({ navigation }) => {
     const ensureArray = Array.isArray(links) ? links : links ? [links] : [];
     
     return (
-      <View style={styles.multiLinkContainer}>
-        <Text style={styles.multiLinkLabel}>{label}</Text>
+      <View style={dynamicStyles.multiLinkContainer}>
+        <Text style={dynamicStyles.multiLinkLabel}>{label}</Text>
         {ensureArray.map((link, index) => (
-          <View key={index} style={styles.linkItem}>
+          <View key={index} style={dynamicStyles.linkItem}>
             <Input
               value={link}
               onChangeText={(text) => {
@@ -1801,16 +1829,16 @@ const UserProfileScreen = ({ navigation }) => {
               placeholder={placeholder}
               icon={icon}
               keyboardType="url"
-              style={styles.linkInput}
+              style={dynamicStyles.linkInput}
             />
             <TouchableOpacity
               onPress={() => {
                 const updatedLinks = ensureArray.filter((_, i) => i !== index);
                 onUpdate(updatedLinks);
               }}
-              style={styles.removeLinkButton}
+              style={dynamicStyles.removeLinkButton}
             >
-              <Ionicons name="close-circle" size={24} color={colors.error} />
+              <Ionicons name="close-circle" size={isPhone ? 20 : 24} color={colors.error} />
             </TouchableOpacity>
           </View>
         ))}
@@ -1818,10 +1846,10 @@ const UserProfileScreen = ({ navigation }) => {
           onPress={() => {
             onUpdate([...ensureArray, '']);
           }}
-          style={styles.addLinkButton}
+          style={dynamicStyles.addLinkButton}
         >
-          <Ionicons name="add-circle-outline" size={20} color={colors.primary} />
-          <Text style={styles.addLinkText}>Add {label}</Text>
+          <Ionicons name="add-circle-outline" size={isPhone ? 18 : 20} color={colors.primary} />
+          <Text style={dynamicStyles.addLinkText}>Add {label}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -1844,12 +1872,12 @@ const UserProfileScreen = ({ navigation }) => {
     while (normalizedLinks.length < maxLength) normalizedLinks.push('');
     
     return (
-      <View style={styles.multiLinkContainer}>
-        <Text style={styles.multiLinkLabel}>Projects / Portfolios</Text>
+      <View style={dynamicStyles.multiLinkContainer}>
+        <Text style={dynamicStyles.multiLinkLabel}>Projects / Portfolios</Text>
         {normalizedNames.map((name, index) => (
-          <View key={index} style={styles.portfolioItem}>
-            <View style={styles.portfolioHeader}>
-              <Text style={styles.portfolioItemTitle}>Project #{index + 1}</Text>
+          <View key={index} style={dynamicStyles.portfolioItem}>
+            <View style={dynamicStyles.portfolioHeader}>
+              <Text style={dynamicStyles.portfolioItemTitle}>Project #{index + 1}</Text>
               <TouchableOpacity
                 onPress={() => {
                   const updatedNames = names.filter((_, i) => i !== index);
@@ -1868,9 +1896,9 @@ const UserProfileScreen = ({ navigation }) => {
                     }
                   }));
                 }}
-                style={styles.removeLinkButton}
+                style={dynamicStyles.removeLinkButton}
               >
-                <Ionicons name="close-circle" size={24} color={colors.error} />
+                <Ionicons name="close-circle" size={isPhone ? 20 : 24} color={colors.error} />
               </TouchableOpacity>
             </View>
             <Input
@@ -1895,7 +1923,7 @@ const UserProfileScreen = ({ navigation }) => {
               }}
               placeholder="Enter project/portfolio name"
               icon="briefcase-outline"
-              style={styles.portfolioInput}
+              style={dynamicStyles.portfolioInput}
             />
             <Input
               value={normalizedLinks[index] || ''}
@@ -1920,7 +1948,7 @@ const UserProfileScreen = ({ navigation }) => {
               placeholder="Enter project/portfolio link"
               icon="link-outline"
               keyboardType="url"
-              style={styles.portfolioInput}
+              style={dynamicStyles.portfolioInput}
             />
           </View>
         ))}
@@ -1943,18 +1971,18 @@ const UserProfileScreen = ({ navigation }) => {
               }
             }));
           }}
-          style={styles.addLinkButton}
+          style={dynamicStyles.addLinkButton}
         >
-          <Ionicons name="add-circle-outline" size={20} color={colors.primary} />
-          <Text style={styles.addLinkText}>Add Project/Portfolio</Text>
+          <Ionicons name="add-circle-outline" size={isPhone ? 18 : 20} color={colors.primary} />
+          <Text style={dynamicStyles.addLinkText}>Add Project/Portfolio</Text>
         </TouchableOpacity>
       </View>
     );
   };
 
   const renderAdditionalInfoSection = () => (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Additional Information</Text>
+    <View style={dynamicStyles.section}>
+      <Text style={dynamicStyles.sectionTitle}>Additional Information</Text>
       
       {renderMultipleLinksField(
         'Online Social Profile - Facebook',
@@ -2113,60 +2141,79 @@ const UserProfileScreen = ({ navigation }) => {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>Loading profile...</Text>
+      <View style={dynamicStyles.loadingContainer}>
+        <Text style={dynamicStyles.loadingText}>Loading profile...</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={dynamicStyles.container}>
       {/* Sidebar */}
-      {sidebarOpen && (
+      {/* Sidebar - Always visible on web desktop */}
+      {isWeb && !isPhone ? (
         <UserSidebar
           navigation={navigation}
           activeKey="profile"
-          onClose={!isWeb ? () => setSidebarOpen(false) : null}
+          onClose={null}
           badges={{}}
         />
-      )}
+      ) : sidebarOpen ? (
+        <>
+          {isPhone && (
+            <TouchableOpacity
+              style={dynamicStyles.backdrop}
+              onPress={() => setSidebarOpen(false)}
+              activeOpacity={1}
+            />
+          )}
+          <UserSidebar
+            navigation={navigation}
+            activeKey="profile"
+            onClose={isPhone ? () => setSidebarOpen(false) : (!isWeb ? () => setSidebarOpen(false) : null)}
+            badges={{}}
+          />
+        </>
+      ) : null}
 
       {/* Main Content */}
-      <View style={styles.mainContent}>
+      <View style={dynamicStyles.mainContent}>
         {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity 
-            onPress={() => setSidebarOpen(!sidebarOpen)}
-            style={styles.menuButton}
-          >
-            <Ionicons name="menu" size={24} color={colors.text} />
-          </TouchableOpacity>
+        <View style={dynamicStyles.header}>
+          {(!isWeb || isPhone) && (
+            <TouchableOpacity 
+              onPress={() => setSidebarOpen(!sidebarOpen)}
+              style={dynamicStyles.menuButton}
+            >
+              <Ionicons name="menu" size={isPhone ? 20 : 24} color={colors.text} />
+            </TouchableOpacity>
+          )}
           
-          <Text style={styles.headerTitle}>Profile</Text>
+          <Text style={dynamicStyles.headerTitle}>Profile</Text>
           
-          <View style={styles.headerRight}>
-            <View style={styles.userInfo}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{getUserInitials()}</Text>
+          <View style={dynamicStyles.headerRight}>
+            <View style={dynamicStyles.userInfo}>
+              <View style={dynamicStyles.avatar}>
+                <Text style={dynamicStyles.avatarText}>{getUserInitials()}</Text>
               </View>
-              <Text style={styles.userName}>{currentUser?.firstName || 'User'}</Text>
+              <Text style={dynamicStyles.userName}>{currentUser?.firstName || 'User'}</Text>
             </View>
-            <TouchableOpacity style={styles.logoutButtonHeader} onPress={handleLogout}>
-              <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
-              <Text style={styles.logoutTextHeader}>Logout</Text>
+            <TouchableOpacity style={dynamicStyles.logoutButtonHeader} onPress={handleLogout}>
+              <Ionicons name="arrow-forward" size={isPhone ? 14 : 16} color="#FFFFFF" />
+              <Text style={dynamicStyles.logoutTextHeader}>Logout</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Section Navigation */}
-        <View style={styles.sectionNavContainer}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.sectionNav}>
+        <View style={dynamicStyles.sectionNavContainer}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={dynamicStyles.sectionNav}>
             {sections.map(section => (
               <TouchableOpacity
                 key={section.id}
                 style={[
-                  styles.sectionNavItem,
-                  activeSection === section.id && styles.sectionNavItemActive
+                  dynamicStyles.sectionNavItem,
+                  activeSection === section.id && dynamicStyles.sectionNavItemActive
                 ]}
                 onPress={() => setActiveSection(section.id)}
               >
@@ -2177,8 +2224,8 @@ const UserProfileScreen = ({ navigation }) => {
                 />
                 <Text
                   style={[
-                    styles.sectionNavText,
-                    activeSection === section.id && styles.sectionNavTextActive
+                    dynamicStyles.sectionNavText,
+                    activeSection === section.id && dynamicStyles.sectionNavTextActive
                   ]}
                 >
                   {section.label}
@@ -2189,7 +2236,7 @@ const UserProfileScreen = ({ navigation }) => {
         </View>
 
         {/* Form Content */}
-        <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+        <ScrollView style={dynamicStyles.content} contentContainerStyle={dynamicStyles.contentContainer}>
         {activeSection === 'personal' && renderPersonalInfoSection()}
         {activeSection === 'professional' && renderProfessionalSection()}
         {activeSection === 'education' && renderEducationSection()}
@@ -2200,15 +2247,15 @@ const UserProfileScreen = ({ navigation }) => {
           title="Save Profile"
           onPress={handleSave}
           loading={saving}
-          style={styles.saveButton}
+          style={dynamicStyles.saveButton}
         />
       </ScrollView>
 
       {/* Date Picker Modal */}
       {showDatePicker && (
         <Modal transparent visible={showDatePicker} animationType="slide">
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
+          <View style={dynamicStyles.modalOverlay}>
+            <View style={dynamicStyles.modalContent}>
               <DateTimePicker
                 value={formData.personalInfo.dateOfBirth}
                 mode="date"
@@ -2233,284 +2280,349 @@ const UserProfileScreen = ({ navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    flexDirection: 'row',
-    backgroundColor: colors.background
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.background
-  },
-  loadingText: {
-    ...typography.body1,
-    color: colors.textSecondary
-  },
-  mainContent: {
-    flex: 1,
-    backgroundColor: '#FFFFFF'
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    backgroundColor: '#FFFFFF'
-  },
-  menuButton: {
-    marginRight: spacing.md
-  },
-  headerTitle: {
-    ...typography.h4,
-    color: colors.text,
-    fontWeight: '700',
-    flex: 1
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md
-  },
-  userInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm
-  },
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#4A90E2',
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  avatarText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600'
-  },
-  userName: {
-    ...typography.body2,
-    color: colors.text,
-    fontWeight: '500'
-  },
-  logoutButtonHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ef4444',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.md,
-    gap: spacing.xs
-  },
-  logoutTextHeader: {
-    ...typography.body2,
-    color: '#FFFFFF',
-    fontWeight: '600'
-  },
-  sectionNavContainer: {
-    backgroundColor: colors.cardBackground,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border
-  },
-  sectionNav: {
-    paddingVertical: spacing.sm
-  },
-  sectionNavItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    marginHorizontal: spacing.xs,
-    borderRadius: borderRadius.md,
-    gap: spacing.xs
-  },
-  sectionNavItemActive: {
-    backgroundColor: colors.primary + '20'
-  },
-  sectionNavText: {
-    ...typography.body2,
-    color: colors.textSecondary
-  },
-  sectionNavTextActive: {
-    color: colors.primary,
-    fontWeight: '600'
-  },
-  content: {
-    flex: 1
-  },
-  contentContainer: {
-    padding: spacing.lg
-  },
-  section: {
-    marginBottom: spacing.xl
-  },
-  sectionTitle: {
-    ...typography.h5,
-    fontWeight: 'bold',
-    color: colors.text,
-    marginBottom: spacing.md
-  },
-  sectionSubtitle: {
-    ...typography.body2,
-    color: colors.textSecondary,
-    marginBottom: spacing.md
-  },
-  educationCard: {
-    backgroundColor: colors.cardBackground,
-    padding: spacing.lg,
-    borderRadius: borderRadius.md,
-    marginBottom: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border
-  },
-  cardTitle: {
-    ...typography.h6,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: spacing.md
-  },
-  datePickerButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.cardBackground,
-    borderWidth: 2,
-    borderColor: colors.border,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    marginBottom: spacing.md
-  },
-  datePickerText: {
-    flex: 1,
-    fontSize: 16,
-    color: colors.text
-  },
-  placeholderText: {
-    color: colors.textLight
-  },
-  checkboxContainer: {
-    marginBottom: spacing.md
-  },
-  checkbox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm
-  },
-  checkboxLabel: {
-    ...typography.body2,
-    color: colors.text
-  },
-  saveButton: {
-    marginTop: spacing.xl,
-    marginBottom: spacing.xl
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end'
-  },
-  modalContent: {
-    backgroundColor: colors.cardBackground,
-    borderTopLeftRadius: borderRadius.lg,
-    borderTopRightRadius: borderRadius.lg,
-    padding: spacing.lg
-  },
-  label: {
-    ...typography.body2,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: spacing.xs
-  },
-  required: {
-    color: colors.error
-  },
-  selectedSkillsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: spacing.sm,
-    gap: spacing.sm
-  },
-  selectedSkill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.primary + '20',
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.sm,
-    borderRadius: borderRadius.sm,
-    gap: spacing.xs
-  },
-  selectedSkillText: {
-    ...typography.body2,
-    color: colors.primary,
-    fontWeight: '500'
-  },
-  removeButton: {
-    marginTop: spacing.md,
-    backgroundColor: colors.error + '20',
-    borderColor: colors.error
-  },
-  multiLinkContainer: {
-    marginBottom: spacing.lg
-  },
-  multiLinkLabel: {
-    ...typography.body2,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: spacing.sm
-  },
-  linkItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-    gap: spacing.sm
-  },
-  linkInput: {
-    flex: 1
-  },
-  removeLinkButton: {
-    padding: spacing.xs
-  },
-  addLinkButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing.md,
-    backgroundColor: colors.primary + '10',
-    borderRadius: borderRadius.md,
-    gap: spacing.sm,
-    marginTop: spacing.xs
-  },
-  addLinkText: {
-    ...typography.body2,
-    color: colors.primary,
-    fontWeight: '500'
-  },
-  portfolioItem: {
-    marginBottom: spacing.md,
-    padding: spacing.md,
-    backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.border
-  },
-  portfolioHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.sm
-  },
-  portfolioItemTitle: {
-    ...typography.body2,
-    fontWeight: '600',
-    color: colors.text
-  },
-  portfolioInput: {
-    marginBottom: spacing.sm
-  }
-});
+const getStyles = (isPhone, isMobile, isTablet, isDesktop) => {
+  const isWeb = Platform.OS === 'web';
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      flexDirection: isPhone ? 'column' : 'row',
+      backgroundColor: colors.background
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.background
+    },
+    loadingText: {
+      ...typography.body1,
+      color: colors.textSecondary,
+      fontSize: isPhone ? 14 : 16,
+    },
+    mainContent: {
+      flex: 1,
+      backgroundColor: '#FFFFFF',
+      ...(isWeb && !isPhone && {
+        marginLeft: isDesktop ? 280 : (isTablet ? 260 : 240),
+        width: `calc(100% - ${isDesktop ? 280 : (isTablet ? 260 : 240)}px)`,
+      }),
+      ...(isPhone && {
+        width: '100%',
+      }),
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: isPhone ? spacing.md : (isMobile ? spacing.lg : spacing.xl),
+      paddingVertical: isPhone ? spacing.sm : spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      backgroundColor: '#FFFFFF',
+      ...(isPhone && {
+        flexWrap: 'wrap',
+      }),
+    },
+    menuButton: {
+      marginRight: isPhone ? spacing.sm : spacing.md
+    },
+    headerTitle: {
+      ...typography.h4,
+      color: colors.text,
+      fontWeight: '700',
+      flex: 1,
+      fontSize: isPhone ? 18 : (isMobile ? 20 : (isTablet ? 22 : 24)),
+    },
+    headerRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: isPhone ? spacing.sm : spacing.md,
+      ...(isPhone && {
+        width: '100%',
+        marginTop: spacing.sm,
+        justifyContent: 'flex-end',
+      }),
+    },
+    userInfo: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: isPhone ? spacing.xs : spacing.sm,
+      ...(isPhone && {
+        flex: 1,
+      }),
+    },
+    avatar: {
+      width: isPhone ? 32 : (isMobile ? 36 : 40),
+      height: isPhone ? 32 : (isMobile ? 36 : 40),
+      borderRadius: isPhone ? 16 : (isMobile ? 18 : 20),
+      backgroundColor: '#4A90E2',
+      alignItems: 'center',
+      justifyContent: 'center'
+    },
+    avatarText: {
+      color: '#FFFFFF',
+      fontSize: isPhone ? 12 : (isMobile ? 14 : 16),
+      fontWeight: '600'
+    },
+    userName: {
+      ...typography.body2,
+      color: colors.text,
+      fontWeight: '500',
+      fontSize: isPhone ? 13 : (isMobile ? 14 : 16),
+      ...(isPhone && {
+        display: 'none',
+      }),
+    },
+    logoutButtonHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: '#ef4444',
+      paddingHorizontal: isPhone ? spacing.sm : spacing.md,
+      paddingVertical: isPhone ? spacing.xs : spacing.sm,
+      borderRadius: borderRadius.md,
+      gap: spacing.xs,
+      ...(isWeb && {
+        cursor: 'pointer',
+      }),
+    },
+    logoutTextHeader: {
+      ...typography.body2,
+      color: '#FFFFFF',
+      fontWeight: '600',
+      fontSize: isPhone ? 12 : 14,
+    },
+    sectionNavContainer: {
+      backgroundColor: colors.cardBackground,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border
+    },
+    sectionNav: {
+      paddingVertical: spacing.sm
+    },
+    sectionNavItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: isPhone ? spacing.md : spacing.lg,
+      paddingVertical: isPhone ? spacing.sm : spacing.md,
+      marginHorizontal: spacing.xs,
+      borderRadius: borderRadius.md,
+      gap: spacing.xs,
+      ...(isWeb && {
+        cursor: 'pointer',
+      }),
+    },
+    sectionNavItemActive: {
+      backgroundColor: colors.primary + '20'
+    },
+    sectionNavText: {
+      ...typography.body2,
+      color: colors.textSecondary,
+      fontSize: isPhone ? 13 : (isMobile ? 14 : 15),
+    },
+    sectionNavTextActive: {
+      color: colors.primary,
+      fontWeight: '600'
+    },
+    content: {
+      flex: 1
+    },
+    contentContainer: {
+      padding: isPhone ? spacing.md : (isMobile ? spacing.lg : spacing.xl)
+    },
+    section: {
+      marginBottom: isPhone ? spacing.lg : spacing.xl
+    },
+    sectionTitle: {
+      ...typography.h5,
+      fontWeight: 'bold',
+      color: colors.text,
+      marginBottom: spacing.md,
+      fontSize: isPhone ? 16 : (isMobile ? 18 : (isTablet ? 20 : 22)),
+    },
+    sectionSubtitle: {
+      ...typography.body2,
+      color: colors.textSecondary,
+      marginBottom: spacing.md,
+      fontSize: isPhone ? 13 : (isMobile ? 14 : 15),
+    },
+    educationCard: {
+      backgroundColor: colors.cardBackground,
+      padding: isPhone ? spacing.md : spacing.lg,
+      borderRadius: borderRadius.md,
+      marginBottom: spacing.md,
+      borderWidth: 1,
+      borderColor: colors.border
+    },
+    cardTitle: {
+      ...typography.h6,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: spacing.md,
+      fontSize: isPhone ? 14 : (isMobile ? 15 : 16),
+    },
+    datePickerButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.cardBackground,
+      borderWidth: 2,
+      borderColor: colors.border,
+      borderRadius: borderRadius.md,
+      padding: isPhone ? spacing.sm : spacing.md,
+      marginBottom: spacing.md,
+      ...(isWeb && {
+        cursor: 'pointer',
+      }),
+    },
+    datePickerText: {
+      flex: 1,
+      fontSize: isPhone ? 14 : (isMobile ? 15 : 16),
+      color: colors.text
+    },
+    placeholderText: {
+      color: colors.textLight
+    },
+    checkboxContainer: {
+      marginBottom: spacing.md
+    },
+    checkbox: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm
+    },
+    checkboxLabel: {
+      ...typography.body2,
+      color: colors.text,
+      fontSize: isPhone ? 13 : (isMobile ? 14 : 15),
+    },
+    saveButton: {
+      marginTop: isPhone ? spacing.lg : spacing.xl,
+      marginBottom: isPhone ? spacing.lg : spacing.xl
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'flex-end'
+    },
+    modalContent: {
+      backgroundColor: colors.cardBackground,
+      borderTopLeftRadius: borderRadius.lg,
+      borderTopRightRadius: borderRadius.lg,
+      padding: isPhone ? spacing.md : spacing.lg
+    },
+    label: {
+      ...typography.body2,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: spacing.xs,
+      fontSize: isPhone ? 13 : (isMobile ? 14 : 15),
+    },
+    required: {
+      color: colors.error
+    },
+    selectedSkillsContainer: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      marginTop: spacing.sm,
+      gap: isPhone ? spacing.xs : spacing.sm
+    },
+    selectedSkill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.primary + '20',
+      paddingVertical: spacing.xs,
+      paddingHorizontal: isPhone ? spacing.xs : spacing.sm,
+      borderRadius: borderRadius.sm,
+      gap: spacing.xs
+    },
+    selectedSkillText: {
+      ...typography.body2,
+      color: colors.primary,
+      fontWeight: '500',
+      fontSize: isPhone ? 12 : (isMobile ? 13 : 14),
+    },
+    removeButton: {
+      marginTop: spacing.md,
+      backgroundColor: colors.error + '20',
+      borderColor: colors.error,
+      ...(isWeb && {
+        cursor: 'pointer',
+      }),
+    },
+    multiLinkContainer: {
+      marginBottom: spacing.lg
+    },
+    multiLinkLabel: {
+      ...typography.body2,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: spacing.sm,
+      fontSize: isPhone ? 13 : (isMobile ? 14 : 15),
+    },
+    linkItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: spacing.sm,
+      gap: spacing.sm
+    },
+    linkInput: {
+      flex: 1
+    },
+    removeLinkButton: {
+      padding: spacing.xs,
+      ...(isWeb && {
+        cursor: 'pointer',
+      }),
+    },
+    addLinkButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: isPhone ? spacing.sm : spacing.md,
+      backgroundColor: colors.primary + '10',
+      borderRadius: borderRadius.md,
+      gap: spacing.sm,
+      marginTop: spacing.xs,
+      ...(isWeb && {
+        cursor: 'pointer',
+      }),
+    },
+    addLinkText: {
+      ...typography.body2,
+      color: colors.primary,
+      fontWeight: '500',
+      fontSize: isPhone ? 13 : (isMobile ? 14 : 15),
+    },
+    portfolioItem: {
+      marginBottom: spacing.md,
+      padding: isPhone ? spacing.sm : spacing.md,
+      backgroundColor: colors.cardBackground,
+      borderRadius: borderRadius.md,
+      borderWidth: 1,
+      borderColor: colors.border
+    },
+    portfolioHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: spacing.sm
+    },
+    portfolioItemTitle: {
+      ...typography.body2,
+      fontWeight: '600',
+      color: colors.text,
+      fontSize: isPhone ? 13 : (isMobile ? 14 : 15),
+    },
+    portfolioInput: {
+      marginBottom: spacing.sm
+    },
+    backdrop: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      zIndex: 999,
+    }
+  });
+};
 
 export default UserProfileScreen;

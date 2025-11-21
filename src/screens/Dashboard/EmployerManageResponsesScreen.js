@@ -12,11 +12,16 @@ import {
   TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { colors, spacing, borderRadius, typography, shadows } from '../../styles/theme';
 import EmployerSidebar from '../../components/EmployerSidebar';
 import api from '../../config/api';
+import { useResponsive } from '../../utils/responsive';
 
 const EmployerManageResponsesScreen = ({ navigation }) => {
+  const responsive = useResponsive();
+  const { isMobile } = responsive;
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [jobs, setJobs] = useState([]);
   const [selectedJob, setSelectedJob] = useState(null);
   const [applications, setApplications] = useState([]);
@@ -517,15 +522,46 @@ const EmployerManageResponsesScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.sidebarWrapper}>
-        <EmployerSidebar permanent navigation={navigation} role="company" activeKey="responses" />
-      </View>
-      
-      <View style={styles.contentWrapper}>
-        <View style={styles.headerBar}>
-          <Text style={styles.headerTitle}>Manage Job Responses</Text>
-          <Text style={styles.headerSubtitle}>Review and manage job applications</Text>
+      {!isMobile && (
+        <View style={styles.sidebarWrapper}>
+          <EmployerSidebar permanent navigation={navigation} role="company" activeKey="responses" />
         </View>
+      )}
+      {isMobile && (
+        <EmployerSidebar 
+          visible={sidebarOpen} 
+          onClose={() => setSidebarOpen(false)} 
+          navigation={navigation} 
+          role="company" 
+          activeKey="responses" 
+        />
+      )}
+      {isMobile && (
+        <TouchableOpacity 
+          style={styles.menuButton}
+          onPress={() => setSidebarOpen(true)}
+        >
+          <Ionicons name="menu" size={24} color={colors.text} />
+        </TouchableOpacity>
+      )}
+      
+      <View style={[styles.contentWrapper, isMobile && styles.contentWrapperMobile]}>
+        <LinearGradient
+          colors={['#FFFFFF', '#F8FAFC']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.headerBar, isMobile && styles.headerBarMobile]}
+        >
+          <View style={[styles.headerLeft, isMobile && styles.headerLeftMobile]}>
+            <View style={[styles.headerIconContainer, isMobile && styles.headerIconContainerMobile]}>
+              <Ionicons name="people" size={isMobile ? 24 : 28} color="#3B82F6" />
+            </View>
+            <View>
+              <Text style={[styles.headerTitle, isMobile && styles.headerTitleMobile]}>Manage Job Responses</Text>
+              <Text style={[styles.headerSubtitle, isMobile && styles.headerSubtitleMobile]}>Review and manage job applications</Text>
+            </View>
+          </View>
+        </LinearGradient>
 
         {jobs.length === 0 ? (
           <View style={styles.emptyState}>
@@ -636,15 +672,28 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     flexDirection: 'row',
-    backgroundColor: colors.background,
+    backgroundColor: '#F1F5F9',
   },
   sidebarWrapper: {
     width: 280,
     backgroundColor: colors.sidebarBackground,
   },
+  menuButton: {
+    position: 'absolute',
+    top: spacing.md,
+    left: spacing.md,
+    zIndex: 1000,
+    backgroundColor: '#FFFFFF',
+    padding: spacing.sm,
+    borderRadius: borderRadius.md,
+    ...shadows.sm,
+  },
   contentWrapper: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  contentWrapperMobile: {
+    paddingTop: spacing.xl + 40,
   },
   loadingContainer: {
     flex: 1,
@@ -659,18 +708,49 @@ const styles = StyleSheet.create({
   },
   headerBar: {
     padding: spacing.xl,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    ...shadows.md,
+  },
+  headerBarMobile: {
+    padding: spacing.md,
+    paddingTop: spacing.xl + 40,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  headerLeftMobile: {
+    gap: spacing.sm,
+  },
+  headerIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: borderRadius.md,
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerIconContainerMobile: {
+    width: 48,
+    height: 48,
   },
   headerTitle: {
-    ...typography.h3,
-    color: colors.text,
-    fontWeight: '700',
-    marginBottom: spacing.xs,
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#1E293B',
+    letterSpacing: -0.5,
+  },
+  headerTitleMobile: {
+    fontSize: 22,
   },
   headerSubtitle: {
-    ...typography.body2,
-    color: colors.textSecondary,
+    fontSize: 14,
+    color: '#64748B',
+    marginTop: 4,
+    fontWeight: '500',
+  },
+  headerSubtitleMobile: {
+    fontSize: 12,
   },
   emptyState: {
     flex: 1,
@@ -704,9 +784,11 @@ const styles = StyleSheet.create({
   },
   jobSelector: {
     margin: spacing.lg,
-    backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.md,
-    ...shadows.sm,
+    backgroundColor: '#FFFFFF',
+    borderRadius: borderRadius.lg,
+    ...shadows.md,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   jobSelectorContent: {
     flexDirection: 'row',
@@ -748,11 +830,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   applicationCard: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.md,
-    padding: spacing.lg,
-    marginBottom: spacing.md,
-    ...shadows.sm,
+    backgroundColor: '#FFFFFF',
+    borderRadius: borderRadius.lg,
+    padding: spacing.xl,
+    marginBottom: spacing.lg,
+    ...shadows.md,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   applicationHeader: {
     flexDirection: 'row',

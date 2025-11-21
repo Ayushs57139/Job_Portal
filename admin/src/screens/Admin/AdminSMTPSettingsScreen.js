@@ -10,14 +10,20 @@ import {
   Alert,
   Switch,
   RefreshControl,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import AdminLayout from '../../components/Admin/AdminLayout';
 import api from '../../config/api';
 import { colors, spacing, typography, borderRadius } from '../../styles/theme';
+import { useResponsive } from '../../utils/responsive';
 
 const AdminSMTPSettingsScreen = ({ navigation }) => {
+  const responsive = useResponsive();
+  const isMobile = responsive.isMobile;
+  const isTablet = responsive.isTablet;
+  const dynamicStyles = getStyles(isMobile, isTablet);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -221,9 +227,9 @@ const AdminSMTPSettingsScreen = ({ navigation }) => {
         onNavigate={handleNavigate}
         onLogout={handleLogout}
       >
-        <View style={styles.loadingContainer}>
+        <View style={dynamicStyles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading settings...</Text>
+          <Text style={dynamicStyles.loadingText}>Loading settings...</Text>
         </View>
       </AdminLayout>
     );
@@ -237,31 +243,31 @@ const AdminSMTPSettingsScreen = ({ navigation }) => {
       onLogout={handleLogout}
     >
       <ScrollView
-        style={styles.container}
+        style={dynamicStyles.container}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
         {/* Header */}
-        <View style={styles.header}>
+        <View style={dynamicStyles.header}>
           <View>
-            <Text style={styles.pageTitle}>SMTP Settings</Text>
-            <Text style={styles.pageSubtitle}>
+            <Text style={dynamicStyles.pageTitle}>SMTP Settings</Text>
+            <Text style={dynamicStyles.pageSubtitle}>
               Configure email server settings for sending emails
             </Text>
           </View>
-          <View style={styles.headerActions}>
+          <View style={dynamicStyles.headerActions}>
             <TouchableOpacity
-              style={styles.secondaryButton}
+              style={dynamicStyles.secondaryButton}
               onPress={handleResetSettings}
             >
               <Ionicons name="refresh-outline" size={20} color={colors.error} />
-              <Text style={[styles.secondaryButtonText, { color: colors.error }]}>
+              <Text style={[dynamicStyles.secondaryButtonText, { color: colors.error }]}>
                 Reset
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.primaryButton}
+              style={dynamicStyles.primaryButton}
               onPress={handleSave}
               disabled={saving}
             >
@@ -270,30 +276,30 @@ const AdminSMTPSettingsScreen = ({ navigation }) => {
               ) : (
                 <>
                   <Ionicons name="save-outline" size={20} color="#FFF" />
-                  <Text style={styles.primaryButtonText}>Save Settings</Text>
+                  <Text style={dynamicStyles.primaryButtonText}>Save Settings</Text>
                 </>
               )}
             </TouchableOpacity>
           </View>
         </View>
 
-        <View style={styles.content}>
+        <View style={dynamicStyles.content}>
           {/* Email Provider Section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Email Provider</Text>
-            <Text style={styles.sectionSubtitle}>
+          <View style={dynamicStyles.section}>
+            <Text style={dynamicStyles.sectionTitle}>Email Provider</Text>
+            <Text style={dynamicStyles.sectionSubtitle}>
               Select your email service provider
             </Text>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Provider</Text>
-              <View style={styles.picker}>
+            <View style={dynamicStyles.inputGroup}>
+              <Text style={dynamicStyles.label}>Provider</Text>
+              <View style={dynamicStyles.picker}>
                 <Picker
                   selectedValue={settings.provider}
                   onValueChange={(value) =>
                     setSettings({ ...settings, provider: value })
                   }
-                  style={styles.pickerInput}
+                  style={dynamicStyles.pickerInput}
                 >
                   <Picker.Item label="SMTP" value="smtp" />
                   <Picker.Item label="SendGrid (Coming Soon)" value="sendgrid" enabled={false} />
@@ -306,16 +312,16 @@ const AdminSMTPSettingsScreen = ({ navigation }) => {
 
           {/* SMTP Configuration */}
           {settings.provider === 'smtp' && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>SMTP Configuration</Text>
-              <Text style={styles.sectionSubtitle}>
+            <View style={dynamicStyles.section}>
+              <Text style={dynamicStyles.sectionTitle}>SMTP Configuration</Text>
+              <Text style={dynamicStyles.sectionSubtitle}>
                 Enter your SMTP server details
               </Text>
 
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>SMTP Host *</Text>
+              <View style={dynamicStyles.inputGroup}>
+                <Text style={dynamicStyles.label}>SMTP Host *</Text>
                 <TextInput
-                  style={styles.input}
+                  style={dynamicStyles.input}
                   value={settings.smtp.host}
                   onChangeText={(text) =>
                     setSettings({
@@ -328,15 +334,15 @@ const AdminSMTPSettingsScreen = ({ navigation }) => {
                   autoCapitalize="none"
                   keyboardType="url"
                 />
-                <Text style={styles.hint}>
+                <Text style={dynamicStyles.hint}>
                   Common: Gmail (smtp.gmail.com), Outlook (smtp.office365.com)
                 </Text>
               </View>
 
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>SMTP Port *</Text>
+              <View style={dynamicStyles.inputGroup}>
+                <Text style={dynamicStyles.label}>SMTP Port *</Text>
                 <TextInput
-                  style={styles.input}
+                  style={dynamicStyles.input}
                   value={String(settings.smtp.port)}
                   onChangeText={(text) =>
                     setSettings({
@@ -348,15 +354,15 @@ const AdminSMTPSettingsScreen = ({ navigation }) => {
                   placeholderTextColor={colors.textSecondary}
                   keyboardType="number-pad"
                 />
-                <Text style={styles.hint}>
+                <Text style={dynamicStyles.hint}>
                   Common ports: 587 (TLS), 465 (SSL), 25 (Non-secure)
                 </Text>
               </View>
 
-              <View style={styles.switchRow}>
-                <View style={styles.switchLabelContainer}>
-                  <Text style={styles.switchLabel}>Use SSL/TLS</Text>
-                  <Text style={styles.switchHint}>
+              <View style={dynamicStyles.switchRow}>
+                <View style={dynamicStyles.switchLabelContainer}>
+                  <Text style={dynamicStyles.switchLabel}>Use SSL/TLS</Text>
+                  <Text style={dynamicStyles.switchHint}>
                     Enable secure connection (recommended)
                   </Text>
                 </View>
@@ -373,10 +379,10 @@ const AdminSMTPSettingsScreen = ({ navigation }) => {
                 />
               </View>
 
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>SMTP Username *</Text>
+              <View style={dynamicStyles.inputGroup}>
+                <Text style={dynamicStyles.label}>SMTP Username *</Text>
                 <TextInput
-                  style={styles.input}
+                  style={dynamicStyles.input}
                   value={settings.smtp.username}
                   onChangeText={(text) =>
                     setSettings({
@@ -391,11 +397,11 @@ const AdminSMTPSettingsScreen = ({ navigation }) => {
                 />
               </View>
 
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>SMTP Password</Text>
-                <View style={styles.passwordContainer}>
+              <View style={dynamicStyles.inputGroup}>
+                <Text style={dynamicStyles.label}>SMTP Password</Text>
+                <View style={dynamicStyles.passwordContainer}>
                   <TextInput
-                    style={[styles.input, styles.passwordInput]}
+                    style={[dynamicStyles.input, dynamicStyles.passwordInput]}
                     value={settings.smtp.password}
                     onChangeText={(text) =>
                       setSettings({
@@ -409,7 +415,7 @@ const AdminSMTPSettingsScreen = ({ navigation }) => {
                     autoCapitalize="none"
                   />
                   <TouchableOpacity
-                    style={styles.passwordToggle}
+                    style={dynamicStyles.passwordToggle}
                     onPress={() => setShowPassword(!showPassword)}
                   >
                     <Ionicons
@@ -419,7 +425,7 @@ const AdminSMTPSettingsScreen = ({ navigation }) => {
                     />
                   </TouchableOpacity>
                 </View>
-                <Text style={styles.hint}>
+                <Text style={dynamicStyles.hint}>
                   For Gmail, use App Password instead of your regular password
                 </Text>
               </View>
@@ -427,16 +433,16 @@ const AdminSMTPSettingsScreen = ({ navigation }) => {
           )}
 
           {/* Email Settings */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Email Settings</Text>
-            <Text style={styles.sectionSubtitle}>
+          <View style={dynamicStyles.section}>
+            <Text style={dynamicStyles.sectionTitle}>Email Settings</Text>
+            <Text style={dynamicStyles.sectionSubtitle}>
               Configure sender information and limits
             </Text>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>From Email *</Text>
+            <View style={dynamicStyles.inputGroup}>
+              <Text style={dynamicStyles.label}>From Email *</Text>
               <TextInput
-                style={styles.input}
+                style={dynamicStyles.input}
                 value={settings.fromEmail}
                 onChangeText={(text) =>
                   setSettings({ ...settings, fromEmail: text })
@@ -446,15 +452,15 @@ const AdminSMTPSettingsScreen = ({ navigation }) => {
                 autoCapitalize="none"
                 keyboardType="email-address"
               />
-              <Text style={styles.hint}>
+              <Text style={dynamicStyles.hint}>
                 Email address that will appear as the sender
               </Text>
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>From Name *</Text>
+            <View style={dynamicStyles.inputGroup}>
+              <Text style={dynamicStyles.label}>From Name *</Text>
               <TextInput
-                style={styles.input}
+                style={dynamicStyles.input}
                 value={settings.fromName}
                 onChangeText={(text) =>
                   setSettings({ ...settings, fromName: text })
@@ -462,15 +468,15 @@ const AdminSMTPSettingsScreen = ({ navigation }) => {
                 placeholder="JobWala"
                 placeholderTextColor={colors.textSecondary}
               />
-              <Text style={styles.hint}>
+              <Text style={dynamicStyles.hint}>
                 Name that will appear as the sender
               </Text>
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Reply-To Email</Text>
+            <View style={dynamicStyles.inputGroup}>
+              <Text style={dynamicStyles.label}>Reply-To Email</Text>
               <TextInput
-                style={styles.input}
+                style={dynamicStyles.input}
                 value={settings.replyToEmail}
                 onChangeText={(text) =>
                   setSettings({ ...settings, replyToEmail: text })
@@ -480,15 +486,15 @@ const AdminSMTPSettingsScreen = ({ navigation }) => {
                 autoCapitalize="none"
                 keyboardType="email-address"
               />
-              <Text style={styles.hint}>
+              <Text style={dynamicStyles.hint}>
                 Email address for replies (optional)
               </Text>
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Daily Email Limit</Text>
+            <View style={dynamicStyles.inputGroup}>
+              <Text style={dynamicStyles.label}>Daily Email Limit</Text>
               <TextInput
-                style={styles.input}
+                style={dynamicStyles.input}
                 value={String(settings.dailyEmailLimit)}
                 onChangeText={(text) =>
                   setSettings({
@@ -500,15 +506,15 @@ const AdminSMTPSettingsScreen = ({ navigation }) => {
                 placeholderTextColor={colors.textSecondary}
                 keyboardType="number-pad"
               />
-              <Text style={styles.hint}>
+              <Text style={dynamicStyles.hint}>
                 Maximum number of emails to send per day
               </Text>
             </View>
 
-            <View style={styles.switchRow}>
-              <View style={styles.switchLabelContainer}>
-                <Text style={styles.switchLabel}>Enable Email Notifications</Text>
-                <Text style={styles.switchHint}>
+            <View style={dynamicStyles.switchRow}>
+              <View style={dynamicStyles.switchLabelContainer}>
+                <Text style={dynamicStyles.switchLabel}>Enable Email Notifications</Text>
+                <Text style={dynamicStyles.switchHint}>
                   Send automated email notifications to users
                 </Text>
               </View>
@@ -524,15 +530,15 @@ const AdminSMTPSettingsScreen = ({ navigation }) => {
           </View>
 
           {/* Test Email Section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Test Email Configuration</Text>
-            <Text style={styles.sectionSubtitle}>
+          <View style={dynamicStyles.section}>
+            <Text style={dynamicStyles.sectionTitle}>Test Email Configuration</Text>
+            <Text style={dynamicStyles.sectionSubtitle}>
               Send a test email to verify your SMTP settings
             </Text>
 
-            <View style={styles.testEmailContainer}>
+            <View style={dynamicStyles.testEmailContainer}>
               <TextInput
-                style={[styles.input, styles.testEmailInput]}
+                style={[dynamicStyles.input, dynamicStyles.testEmailInput]}
                 value={testEmail}
                 onChangeText={setTestEmail}
                 placeholder="Enter email address"
@@ -541,7 +547,7 @@ const AdminSMTPSettingsScreen = ({ navigation }) => {
                 keyboardType="email-address"
               />
               <TouchableOpacity
-                style={styles.testButton}
+                style={dynamicStyles.testButton}
                 onPress={handleTestEmail}
                 disabled={testing || !testEmail.trim()}
               >
@@ -550,28 +556,28 @@ const AdminSMTPSettingsScreen = ({ navigation }) => {
                 ) : (
                   <>
                     <Ionicons name="send-outline" size={20} color="#FFF" />
-                    <Text style={styles.testButtonText}>Send Test</Text>
+                    <Text style={dynamicStyles.testButtonText}>Send Test</Text>
                   </>
                 )}
               </TouchableOpacity>
             </View>
 
-            <View style={styles.infoBox}>
+            <View style={dynamicStyles.infoBox}>
               <Ionicons name="information-circle-outline" size={20} color={colors.primary} />
-              <Text style={styles.infoText}>
+              <Text style={dynamicStyles.infoText}>
                 Make sure to save your settings before sending a test email
               </Text>
             </View>
           </View>
 
           {/* Help Section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Need Help?</Text>
-            <View style={styles.helpCard}>
+          <View style={dynamicStyles.section}>
+            <Text style={dynamicStyles.sectionTitle}>Need Help?</Text>
+            <View style={dynamicStyles.helpCard}>
               <Ionicons name="help-circle-outline" size={24} color={colors.primary} />
-              <View style={styles.helpContent}>
-                <Text style={styles.helpTitle}>Gmail Setup Guide</Text>
-                <Text style={styles.helpText}>
+              <View style={dynamicStyles.helpContent}>
+                <Text style={dynamicStyles.helpTitle}>Gmail Setup Guide</Text>
+                <Text style={dynamicStyles.helpText}>
                   1. Enable 2-Step Verification in your Google Account{'\n'}
                   2. Go to Security → App passwords{'\n'}
                   3. Generate an app password for "Mail"{'\n'}
@@ -580,11 +586,11 @@ const AdminSMTPSettingsScreen = ({ navigation }) => {
               </View>
             </View>
 
-            <View style={styles.helpCard}>
+            <View style={dynamicStyles.helpCard}>
               <Ionicons name="shield-checkmark-outline" size={24} color={colors.success} />
-              <View style={styles.helpContent}>
-                <Text style={styles.helpTitle}>Security Best Practices</Text>
-                <Text style={styles.helpText}>
+              <View style={dynamicStyles.helpContent}>
+                <Text style={dynamicStyles.helpTitle}>Security Best Practices</Text>
+                <Text style={dynamicStyles.helpText}>
                   • Always use SSL/TLS for secure connections{'\n'}
                   • Use app-specific passwords instead of account passwords{'\n'}
                   • Set appropriate daily email limits to prevent abuse{'\n'}
@@ -599,7 +605,7 @@ const AdminSMTPSettingsScreen = ({ navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (isMobile, isTablet) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F5F7FA',
@@ -678,11 +684,15 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
     padding: spacing.lg,
     marginBottom: spacing.lg,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
+    } : {
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 4,
+    }),
   },
   sectionTitle: {
     fontSize: 20,
@@ -822,5 +832,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 });
+
+const styles = StyleSheet.create({});
 
 export default AdminSMTPSettingsScreen;

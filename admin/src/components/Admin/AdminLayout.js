@@ -124,10 +124,11 @@ const getStyles = (isMobile, isTablet, sidebarWidth, sidebarWidthMobile) => Styl
   container: {
     flex: 1,
     flexDirection: 'row',
-    backgroundColor: '#F5F6FA',
+    backgroundColor: '#F7FAFC',
     ...(Platform.OS === 'web' && {
       height: '100vh',
       overflow: 'hidden',
+      backgroundColor: '#F7FAFC',
     }),
   },
   desktopSidebar: {

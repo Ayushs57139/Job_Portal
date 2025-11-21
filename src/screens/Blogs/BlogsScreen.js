@@ -18,15 +18,17 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, typography, spacing, borderRadius, shadows } from '../../styles/theme';
 import Header from '../../components/Header';
 import api from '../../config/api';
+import { useResponsive } from '../../utils/responsive';
 
-const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
-const isPhone = width <= 480;
-const isMobile = width <= 600;
-const isTablet = width > 600 && width <= 1024;
-const isDesktop = width > 1024;
 
 const BlogsScreen = ({ navigation }) => {
+  const responsive = useResponsive();
+  const isPhone = responsive.width <= 480;
+  const isMobile = responsive.isMobile;
+  const isTablet = responsive.isTablet;
+  const isDesktop = responsive.isDesktop;
+  const dynamicStyles = getStyles(isPhone, isMobile, isTablet, isDesktop, responsive.width);
   const [blogs, setBlogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -174,7 +176,7 @@ const BlogsScreen = ({ navigation }) => {
     return (
       <TouchableOpacity
         key={blog._id}
-        style={[styles.blogCard, { opacity: loading ? 0 : 1 }]}
+        style={[dynamicStyles.blogCard, { opacity: loading ? 0 : 1 }]}
         onPress={() => {
           try {
             const params = blog.slug 
@@ -192,84 +194,84 @@ const BlogsScreen = ({ navigation }) => {
           colors={categoryColors}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={styles.blogHeader}
+          style={dynamicStyles.blogHeader}
         >
-          <View style={styles.blogHeaderContent}>
+          <View style={dynamicStyles.blogHeaderContent}>
             {blog.featured && (
-              <View style={styles.featuredBadge}>
+              <View style={dynamicStyles.featuredBadge}>
                 <LinearGradient
                   colors={['#FFD700', '#FFA500']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
-                  style={styles.featuredBadgeGradient}
+                  style={dynamicStyles.featuredBadgeGradient}
                 >
-                  <Ionicons name="star" size={12} color="#fff" />
-                  <Text style={styles.featuredText}>Featured</Text>
+                  <Ionicons name="star" size={isPhone ? 10 : 12} color="#fff" />
+                  <Text style={dynamicStyles.featuredText}>Featured</Text>
                 </LinearGradient>
               </View>
             )}
-            <View style={styles.categoryBadge}>
-              <Text style={styles.categoryText}>{blog.category}</Text>
+            <View style={dynamicStyles.categoryBadge}>
+              <Text style={dynamicStyles.categoryText}>{blog.category}</Text>
             </View>
           </View>
-          <View style={styles.blogHeaderIcon}>
-            <Ionicons name="newspaper-outline" size={32} color="rgba(255,255,255,0.3)" />
+          <View style={dynamicStyles.blogHeaderIcon}>
+            <Ionicons name="newspaper-outline" size={isPhone ? 28 : 32} color="rgba(255,255,255,0.3)" />
           </View>
         </LinearGradient>
 
-        <View style={styles.blogContent}>
-          <Text style={styles.blogTitle} numberOfLines={2}>
+        <View style={dynamicStyles.blogContent}>
+          <Text style={dynamicStyles.blogTitle} numberOfLines={2}>
             {blog.title}
           </Text>
-          <Text style={styles.blogExcerpt} numberOfLines={3}>
+          <Text style={dynamicStyles.blogExcerpt} numberOfLines={3}>
             {blog.excerpt || 'Read this insightful article to learn more...'}
           </Text>
 
           {blog.tags && blog.tags.length > 0 && (
-            <View style={styles.tagsContainer}>
+            <View style={dynamicStyles.tagsContainer}>
               {blog.tags.slice(0, 3).map((tag, tagIndex) => (
-                <View key={tagIndex} style={styles.tag}>
-                  <Text style={styles.tagText}>#{tag}</Text>
+                <View key={tagIndex} style={dynamicStyles.tag}>
+                  <Text style={dynamicStyles.tagText}>#{tag}</Text>
                 </View>
               ))}
             </View>
           )}
 
-          <View style={styles.blogMeta}>
-            <View style={styles.metaLeft}>
-              <View style={styles.metaItem}>
-                <View style={styles.metaIconContainer}>
-                  <Ionicons name="person-circle" size={14} color={colors.primary} />
+          <View style={dynamicStyles.blogMeta}>
+            <View style={dynamicStyles.metaLeft}>
+              <View style={dynamicStyles.metaItem}>
+                <View style={dynamicStyles.metaIconContainer}>
+                  <Ionicons name="person-circle" size={isPhone ? 12 : 14} color={colors.primary} />
                 </View>
-                <Text style={styles.metaText}>{blog.author || 'Admin'}</Text>
+                <Text style={dynamicStyles.metaText}>{blog.author || 'Admin'}</Text>
               </View>
-              <View style={styles.metaItem}>
-                <View style={styles.metaIconContainer}>
-                  <Ionicons name="time-outline" size={14} color={colors.primary} />
+              <View style={dynamicStyles.metaItem}>
+                <View style={dynamicStyles.metaIconContainer}>
+                  <Ionicons name="time-outline" size={isPhone ? 12 : 14} color={colors.primary} />
                 </View>
-                <Text style={styles.metaText}>{blog.readTime || '5 min'}</Text>
+                <Text style={dynamicStyles.metaText}>{blog.readTime || '5 min'}</Text>
               </View>
             </View>
-            <View style={styles.metaRight}>
-              <View style={styles.metaItem}>
-                <View style={styles.metaIconContainer}>
-                  <Ionicons name="eye-outline" size={14} color={colors.primary} />
+            <View style={dynamicStyles.metaRight}>
+              <View style={dynamicStyles.metaItem}>
+                <View style={dynamicStyles.metaIconContainer}>
+                  <Ionicons name="eye-outline" size={isPhone ? 12 : 14} color={colors.primary} />
                 </View>
-                <Text style={styles.metaText}>{blog.views || 0}</Text>
+                <Text style={dynamicStyles.metaText}>{blog.views || 0}</Text>
               </View>
             </View>
           </View>
 
-          <View style={styles.blogFooter}>
-            <View style={styles.dateContainer}>
-              <Ionicons name="calendar-outline" size={12} color={colors.textLight} />
-              <Text style={styles.dateText}>
+          <View style={dynamicStyles.blogFooter}>
+            <View style={dynamicStyles.dateContainer}>
+              <Ionicons name="calendar-outline" size={isPhone ? 10 : 12} color={colors.textLight} />
+              <Text style={dynamicStyles.dateText}>
                 {formatDate(blog.publishedAt || blog.createdAt)}
               </Text>
             </View>
-            <View style={styles.footerActions}>
+            <View style={dynamicStyles.footerActions}>
               <TouchableOpacity
-                style={styles.readMoreButton}
+                style={dynamicStyles.readMoreButton}
                 onPress={(e) => {
                   try {
                     if (e && e.stopPropagation) {
@@ -286,28 +288,28 @@ const BlogsScreen = ({ navigation }) => {
                 }}
                 activeOpacity={0.7}
               >
-                <Text style={styles.readMoreText}>Read More</Text>
-                <Ionicons name="arrow-forward" size={12} color={colors.primary} />
+                <Text style={dynamicStyles.readMoreText}>Read More</Text>
+                <Ionicons name="arrow-forward" size={isPhone ? 10 : 12} color={colors.primary} />
               </TouchableOpacity>
               {canEdit && (
-                <View style={styles.actionButtons}>
+                <View style={dynamicStyles.actionButtons}>
                   <TouchableOpacity
-                    style={styles.actionButton}
+                    style={dynamicStyles.actionButton}
                     onPress={(e) => {
                       e.stopPropagation();
                       navigation.navigate('CreateBlog', { blog });
                     }}
                   >
-                    <Ionicons name="create-outline" size={18} color={colors.primary} />
+                    <Ionicons name="create-outline" size={isPhone ? 16 : 18} color={colors.primary} />
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={styles.actionButton}
+                    style={dynamicStyles.actionButton}
                     onPress={(e) => {
                       e.stopPropagation();
                       handleDeleteBlog(blog._id);
                     }}
                   >
-                    <Ionicons name="trash-outline" size={18} color={colors.error} />
+                    <Ionicons name="trash-outline" size={isPhone ? 16 : 18} color={colors.error} />
                   </TouchableOpacity>
                 </View>
               )}
@@ -319,39 +321,39 @@ const BlogsScreen = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={dynamicStyles.container}>
       <Header />
 
       <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        style={dynamicStyles.scrollView}
+        contentContainerStyle={dynamicStyles.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />
         }
       >
         {/* Hero Section */}
-        <View style={styles.heroSection}>
-          <Text style={styles.heroTitle}>Latest Blogs & Articles</Text>
-          <Text style={styles.heroSubtitle}>
+        <View style={dynamicStyles.heroSection}>
+          <Text style={dynamicStyles.heroTitle}>Latest Blogs & Articles</Text>
+          <Text style={dynamicStyles.heroSubtitle}>
             Discover career insights, tips, and industry trends
           </Text>
-          <View style={styles.heroStatsRow}>
-            <View style={styles.heroStatCard}>
-              <Text style={styles.heroStatValue}>{pagination?.totalBlogs || blogs.length}</Text>
-              <Text style={styles.heroStatLabel}>Total Articles</Text>
+          <View style={dynamicStyles.heroStatsRow}>
+            <View style={dynamicStyles.heroStatCard}>
+              <Text style={dynamicStyles.heroStatValue}>{pagination?.totalBlogs || blogs.length}</Text>
+              <Text style={dynamicStyles.heroStatLabel}>Total Articles</Text>
             </View>
-            <View style={styles.heroStatCard}>
-              <Text style={styles.heroStatValue}>
+            <View style={dynamicStyles.heroStatCard}>
+              <Text style={dynamicStyles.heroStatValue}>
                 {blogs.filter(blog => blog.featured).length}
               </Text>
-              <Text style={styles.heroStatLabel}>Featured</Text>
+              <Text style={dynamicStyles.heroStatLabel}>Featured</Text>
             </View>
-            <View style={styles.heroStatCard}>
-              <Text style={styles.heroStatValue}>
+            <View style={dynamicStyles.heroStatCard}>
+              <Text style={dynamicStyles.heroStatValue}>
                 {categories.length - 1}
               </Text>
-              <Text style={styles.heroStatLabel}>Categories</Text>
+              <Text style={dynamicStyles.heroStatLabel}>Categories</Text>
             </View>
           </View>
         </View>
@@ -361,16 +363,16 @@ const BlogsScreen = ({ navigation }) => {
           colors={['#667EEA', '#764BA2', '#F093FB']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
-          style={styles.searchContainerGradient}
+          style={dynamicStyles.searchContainerGradient}
         >
-          <View style={styles.searchContainer}>
-            <View style={styles.searchRow}>
-              <View style={styles.searchInputWrapper}>
-                <View style={styles.searchIconWrapper}>
+          <View style={dynamicStyles.searchContainer}>
+            <View style={dynamicStyles.searchRow}>
+              <View style={dynamicStyles.searchInputWrapper}>
+                <View style={dynamicStyles.searchIconWrapper}>
                   <Ionicons name="search" size={isPhone ? 18 : (isMobile ? 20 : (isTablet ? 22 : 24))} color={colors.primary} />
                 </View>
                 <TextInput
-                  style={styles.searchInput}
+                  style={dynamicStyles.searchInput}
                   placeholder={isPhone ? "Search blogs..." : "Search blogs, topics, or keywords..."}
                   value={searchQuery}
                   onChangeText={setSearchQuery}
@@ -379,17 +381,17 @@ const BlogsScreen = ({ navigation }) => {
                 {searchQuery.length > 0 && (
                   <TouchableOpacity 
                     onPress={() => setSearchQuery('')}
-                    style={styles.clearButton}
+                    style={dynamicStyles.clearButton}
                     activeOpacity={0.7}
                   >
-                    <Ionicons name="close-circle" size={22} color={colors.textSecondary} />
+                    <Ionicons name="close-circle" size={isPhone ? 20 : 22} color={colors.textSecondary} />
                   </TouchableOpacity>
                 )}
               </View>
 
               {canCreateBlog() && (
                 <TouchableOpacity
-                  style={styles.createButton}
+                  style={dynamicStyles.createButton}
                   onPress={() => navigation.navigate('CreateBlog')}
                   activeOpacity={0.8}
                 >
@@ -397,10 +399,10 @@ const BlogsScreen = ({ navigation }) => {
                     colors={['#667EEA', '#764BA2']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
-                    style={styles.createButtonGradient}
+                    style={dynamicStyles.createButtonGradient}
                   >
-                    <Ionicons name="add-circle" size={22} color="#fff" />
-                    <Text style={styles.createButtonText}>Write Blog</Text>
+                    <Ionicons name="add-circle" size={isPhone ? 20 : 22} color="#fff" />
+                    <Text style={dynamicStyles.createButtonText}>Write Blog</Text>
                   </LinearGradient>
                 </TouchableOpacity>
               )}
@@ -409,12 +411,12 @@ const BlogsScreen = ({ navigation }) => {
         </LinearGradient>
 
         {/* Categories */}
-        <View style={styles.categoriesWrapper}>
+        <View style={dynamicStyles.categoriesWrapper}>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            style={styles.categoriesScroll}
-            contentContainerStyle={styles.categoriesContent}
+            style={dynamicStyles.categoriesScroll}
+            contentContainerStyle={dynamicStyles.categoriesContent}
           >
             {categories.map((category) => {
               const isActive = selectedCategory === category.id;
@@ -422,8 +424,8 @@ const BlogsScreen = ({ navigation }) => {
                 <TouchableOpacity
                   key={category.id}
                   style={[
-                    styles.categoryChip,
-                    isActive && styles.categoryChipActive,
+                    dynamicStyles.categoryChip,
+                    isActive && dynamicStyles.categoryChipActive,
                   ]}
                   onPress={() => setSelectedCategory(category.id)}
                   activeOpacity={0.7}
@@ -433,27 +435,27 @@ const BlogsScreen = ({ navigation }) => {
                       colors={['#667EEA', '#764BA2']}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
-                      style={styles.categoryChipGradient}
+                      style={dynamicStyles.categoryChipGradient}
                     >
                       <Ionicons
                         name={category.icon}
-                        size={20}
+                        size={isPhone ? 18 : 20}
                         color="#fff"
                       />
-                      <Text style={styles.categoryChipTextActive}>
+                      <Text style={dynamicStyles.categoryChipTextActive}>
                         {category.label}
                       </Text>
                     </LinearGradient>
                   ) : (
-                    <View style={styles.categoryChipInactive}>
-                      <View style={styles.categoryIconContainer}>
+                    <View style={dynamicStyles.categoryChipInactive}>
+                      <View style={dynamicStyles.categoryIconContainer}>
                         <Ionicons
                           name={category.icon}
-                          size={20}
+                          size={isPhone ? 18 : 20}
                           color={colors.primary}
                         />
                       </View>
-                      <Text style={styles.categoryChipText}>
+                      <Text style={dynamicStyles.categoryChipText}>
                         {category.label}
                       </Text>
                     </View>
@@ -465,31 +467,31 @@ const BlogsScreen = ({ navigation }) => {
         </View>
 
         {/* Blogs List */}
-        <View style={styles.blogsSection}>
+        <View style={dynamicStyles.blogsSection}>
           {loading ? (
-            <View style={styles.loadingContainer}>
+            <View style={dynamicStyles.loadingContainer}>
               <ActivityIndicator size="large" color={colors.primary} />
-              <Text style={styles.loadingText}>Loading blogs...</Text>
+              <Text style={dynamicStyles.loadingText}>Loading blogs...</Text>
             </View>
           ) : blogs.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Ionicons name="document-text-outline" size={64} color={colors.textLight} />
-              <Text style={styles.emptyText}>No blogs found</Text>
-              <Text style={styles.emptySubtext}>
+            <View style={dynamicStyles.emptyContainer}>
+              <Ionicons name="document-text-outline" size={isPhone ? 56 : (isMobile ? 60 : 64)} color={colors.textLight} />
+              <Text style={dynamicStyles.emptyText}>No blogs found</Text>
+              <Text style={dynamicStyles.emptySubtext}>
                 {searchQuery ? 'Try a different search term' : 'Be the first to write a blog!'}
               </Text>
             </View>
           ) : (
             <>
-              <View style={styles.resultsHeader}>
-                <View style={styles.resultsHeaderContent}>
-                  <Ionicons name="library-outline" size={24} color={colors.primary} />
-                  <Text style={styles.resultsText}>
+              <View style={dynamicStyles.resultsHeader}>
+                <View style={dynamicStyles.resultsHeaderContent}>
+                  <Ionicons name="library-outline" size={isPhone ? 20 : 24} color={colors.primary} />
+                  <Text style={dynamicStyles.resultsText}>
                     {pagination?.totalBlogs || blogs.length} {blogs.length === 1 ? 'Blog' : 'Blogs'} Found
                   </Text>
                 </View>
               </View>
-              <View style={styles.blogsGrid}>
+              <View style={dynamicStyles.blogsGrid}>
                 {blogs.map((blog, index) => renderBlogCard(blog, index))}
               </View>
             </>
@@ -500,7 +502,9 @@ const BlogsScreen = ({ navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (isPhone, isMobile, isTablet, isDesktop, width) => {
+  const isWeb = Platform.OS === 'web';
+  return StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -941,6 +945,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     textAlign: 'center',
   },
-});
+  });
+};
 
 export default BlogsScreen;

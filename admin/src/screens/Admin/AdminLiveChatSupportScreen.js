@@ -10,14 +10,20 @@ import {
   RefreshControl,
   Modal,
   ScrollView,
-  Alert
+  Alert,
+  Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AdminLayout from '../../components/Admin/AdminLayout';
 import api from '../../config/api';
-import { colors, spacing, typography, borderRadius } from '../../styles/theme';
+import { colors, spacing, typography, borderRadius, shadows } from '../../styles/theme';
+import { useResponsive } from '../../utils/responsive';
 
 const AdminLiveChatSupportScreen = ({ navigation }) => {
+  const responsive = useResponsive();
+  const isMobile = responsive.isMobile;
+  const isTablet = responsive.isTablet;
+  const dynamicStyles = getStyles(isMobile, isTablet);
   const [conversations, setConversations] = useState([]);
   const [filteredConversations, setFilteredConversations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -195,39 +201,39 @@ const AdminLiveChatSupportScreen = ({ navigation }) => {
 
     return (
       <TouchableOpacity 
-        style={[styles.conversationItem, hasUnread && styles.unreadConversation]}
+        style={[dynamicStyles.conversationItem, hasUnread && dynamicStyles.unreadConversation]}
         onPress={() => openConversation(item)}
       >
-        <View style={styles.avatarContainer}>
-          <View style={[styles.avatar, hasUnread && styles.avatarUnread]}>
-            <Text style={styles.avatarText}>
+        <View style={dynamicStyles.avatarContainer}>
+          <View style={[dynamicStyles.avatar, hasUnread && dynamicStyles.avatarUnread]}>
+            <Text style={dynamicStyles.avatarText}>
               {participantInfo.name.charAt(0).toUpperCase()}
             </Text>
           </View>
-          {hasUnread && <View style={styles.unreadBadge} />}
+          {hasUnread && <View style={dynamicStyles.unreadBadge} />}
         </View>
         
-        <View style={styles.conversationContent}>
-          <View style={styles.conversationHeader}>
-            <Text style={[styles.participantName, hasUnread && styles.unreadText]}>
+        <View style={dynamicStyles.conversationContent}>
+          <View style={dynamicStyles.conversationHeader}>
+            <Text style={[dynamicStyles.participantName, hasUnread && dynamicStyles.unreadText]}>
               {participantInfo.name}
             </Text>
-            <Text style={styles.timestamp}>
+            <Text style={dynamicStyles.timestamp}>
               {formatTime(item.lastMessage?.timestamp)}
             </Text>
           </View>
           
-          <View style={styles.conversationBody}>
-            <Text style={styles.userType}>{participantInfo.type}</Text>
+          <View style={dynamicStyles.conversationBody}>
+            <Text style={dynamicStyles.userType}>{participantInfo.type}</Text>
             {item.subject && (
-              <Text style={styles.subject} numberOfLines={1}>
+              <Text style={dynamicStyles.subject} numberOfLines={1}>
                 {item.subject}
               </Text>
             )}
           </View>
           
           {item.lastMessage && (
-            <Text style={styles.lastMessage} numberOfLines={2}>
+            <Text style={dynamicStyles.lastMessage} numberOfLines={2}>
               {item.lastMessage.content}
             </Text>
           )}
@@ -244,20 +250,20 @@ const AdminLiveChatSupportScreen = ({ navigation }) => {
 
   const renderUserItem = ({ item }) => (
     <TouchableOpacity 
-      style={styles.userItem}
+      style={dynamicStyles.userItem}
       onPress={() => startNewChat(item)}
     >
-      <View style={styles.avatar}>
-        <Text style={styles.avatarText}>
+      <View style={dynamicStyles.avatar}>
+        <Text style={dynamicStyles.avatarText}>
           {item.firstName?.charAt(0).toUpperCase() || 'U'}
         </Text>
       </View>
       
-      <View style={styles.userInfo}>
-        <Text style={styles.userName}>
+      <View style={dynamicStyles.userInfo}>
+        <Text style={dynamicStyles.userName}>
           {item.firstName} {item.lastName}
         </Text>
-        <Text style={styles.userType}>
+        <Text style={dynamicStyles.userType}>
           {item.userType === 'employer' 
             ? (item.employerType === 'company' ? 'Company' : 'Consultancy')
             : 'Job Seeker'}
@@ -272,19 +278,30 @@ const AdminLiveChatSupportScreen = ({ navigation }) => {
     <Modal
       visible={showFilterModal}
       transparent
-      animationType="slide"
+      animationType="fade"
       onRequestClose={() => setShowFilterModal(false)}
     >
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Filter Conversations</Text>
-            <TouchableOpacity onPress={() => setShowFilterModal(false)}>
-              <Ionicons name="close" size={24} color={colors.text} />
+      <TouchableOpacity 
+        style={dynamicStyles.modalOverlay}
+        activeOpacity={1}
+        onPress={() => setShowFilterModal(false)}
+      >
+        <TouchableOpacity 
+          activeOpacity={1}
+          onPress={(e) => e.stopPropagation()}
+        >
+        <View style={dynamicStyles.modalContent}>
+          <View style={dynamicStyles.modalHeader}>
+            <Text style={dynamicStyles.modalTitle}>Filter Conversations</Text>
+            <TouchableOpacity 
+              onPress={() => setShowFilterModal(false)}
+              style={dynamicStyles.modalCloseButton}
+            >
+              <Ionicons name="close" size={24} color="#64748B" />
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.filterOptions}>
+          <ScrollView style={dynamicStyles.filterOptions}>
             {[
               { key: 'all', label: 'All Conversations', icon: 'chatbubbles' },
               { key: 'jobseeker', label: 'Job Seekers', icon: 'person' },
@@ -294,8 +311,8 @@ const AdminLiveChatSupportScreen = ({ navigation }) => {
               <TouchableOpacity
                 key={filter.key}
                 style={[
-                  styles.filterOption,
-                  selectedFilter === filter.key && styles.filterOptionSelected
+                  dynamicStyles.filterOption,
+                  selectedFilter === filter.key && dynamicStyles.filterOptionSelected
                 ]}
                 onPress={() => {
                   setSelectedFilter(filter.key);
@@ -308,8 +325,8 @@ const AdminLiveChatSupportScreen = ({ navigation }) => {
                   color={selectedFilter === filter.key ? colors.primary : colors.text} 
                 />
                 <Text style={[
-                  styles.filterLabel,
-                  selectedFilter === filter.key && styles.filterLabelSelected
+                  dynamicStyles.filterLabel,
+                  selectedFilter === filter.key && dynamicStyles.filterLabelSelected
                 ]}>
                   {filter.label}
                 </Text>
@@ -320,7 +337,8 @@ const AdminLiveChatSupportScreen = ({ navigation }) => {
             ))}
           </ScrollView>
         </View>
-      </View>
+        </TouchableOpacity>
+      </TouchableOpacity>
     </Modal>
   );
 
@@ -328,22 +346,33 @@ const AdminLiveChatSupportScreen = ({ navigation }) => {
     <Modal
       visible={showNewChatModal}
       transparent
-      animationType="slide"
+      animationType="fade"
       onRequestClose={() => setShowNewChatModal(false)}
     >
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Start New Chat</Text>
-            <TouchableOpacity onPress={() => setShowNewChatModal(false)}>
-              <Ionicons name="close" size={24} color={colors.text} />
+      <TouchableOpacity 
+        style={dynamicStyles.modalOverlay}
+        activeOpacity={1}
+        onPress={() => setShowNewChatModal(false)}
+      >
+        <TouchableOpacity 
+          activeOpacity={1}
+          onPress={(e) => e.stopPropagation()}
+        >
+        <View style={dynamicStyles.modalContent}>
+          <View style={dynamicStyles.modalHeader}>
+            <Text style={dynamicStyles.modalTitle}>Start New Chat</Text>
+            <TouchableOpacity 
+              onPress={() => setShowNewChatModal(false)}
+              style={dynamicStyles.modalCloseButton}
+            >
+              <Ionicons name="close" size={24} color="#64748B" />
             </TouchableOpacity>
           </View>
 
-          <View style={styles.searchContainer}>
-            <Ionicons name="search" size={20} color={colors.textSecondary} style={styles.searchIcon} />
+          <View style={dynamicStyles.searchContainer}>
+            <Ionicons name="search" size={20} color={colors.textSecondary} style={dynamicStyles.searchIcon} />
             <TextInput
-              style={styles.searchInput}
+              style={dynamicStyles.searchInput}
               placeholder="Search users by name..."
               placeholderTextColor={colors.textSecondary}
               value={userSearchQuery}
@@ -355,7 +384,7 @@ const AdminLiveChatSupportScreen = ({ navigation }) => {
           </View>
 
           {searchingUsers ? (
-            <View style={styles.loadingContainer}>
+            <View style={dynamicStyles.loadingContainer}>
               <ActivityIndicator size="large" color={colors.primary} />
             </View>
           ) : (
@@ -363,11 +392,11 @@ const AdminLiveChatSupportScreen = ({ navigation }) => {
               data={availableUsers}
               renderItem={renderUserItem}
               keyExtractor={(item) => item._id}
-              style={styles.userList}
+              style={dynamicStyles.userList}
               ListEmptyComponent={
-                <View style={styles.emptyState}>
+                <View style={dynamicStyles.emptyState}>
                   <Ionicons name="people-outline" size={48} color={colors.textLight} />
-                  <Text style={styles.emptyText}>
+                  <Text style={dynamicStyles.emptyText}>
                     {userSearchQuery ? 'No users found' : 'Search for users to start chatting'}
                   </Text>
                 </View>
@@ -375,16 +404,17 @@ const AdminLiveChatSupportScreen = ({ navigation }) => {
             />
           )}
         </View>
-      </View>
+        </TouchableOpacity>
+      </TouchableOpacity>
     </Modal>
   );
 
   if (loading) {
     return (
       <AdminLayout title="Live Chat Support" activeScreen="AdminLiveChatSupport" onNavigate={handleNavigate} onLogout={handleLogout}>
-        <View style={styles.loadingContainer}>
+        <View style={dynamicStyles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading conversations...</Text>
+          <Text style={dynamicStyles.loadingText}>Loading conversations...</Text>
         </View>
       </AdminLayout>
     );
@@ -392,20 +422,20 @@ const AdminLiveChatSupportScreen = ({ navigation }) => {
 
   return (
     <AdminLayout title="Live Chat Support" activeScreen="AdminLiveChatSupport" onNavigate={handleNavigate} onLogout={handleLogout}>
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.pageTitle}>Live Chat Support</Text>
-          <Text style={styles.pageSubtitle}>
+      <View style={dynamicStyles.container}>
+        <View style={dynamicStyles.header}>
+          <Text style={dynamicStyles.pageTitle}>Live Chat Support</Text>
+          <Text style={dynamicStyles.pageSubtitle}>
             {filteredConversations.length} conversation{filteredConversations.length !== 1 ? 's' : ''}
           </Text>
         </View>
 
         {/* Search and Filter Bar */}
-        <View style={styles.searchBar}>
-          <View style={styles.searchContainer}>
-            <Ionicons name="search" size={20} color={colors.textSecondary} style={styles.searchIcon} />
+        <View style={dynamicStyles.searchBar}>
+          <View style={dynamicStyles.searchContainer}>
+            <Ionicons name="search" size={20} color={colors.textSecondary} style={dynamicStyles.searchIcon} />
             <TextInput
-              style={styles.searchInput}
+              style={dynamicStyles.searchInput}
               placeholder="Search conversations..."
               placeholderTextColor={colors.textSecondary}
               value={searchQuery}
@@ -419,7 +449,7 @@ const AdminLiveChatSupportScreen = ({ navigation }) => {
           </View>
 
           <TouchableOpacity 
-            style={[styles.filterButton, selectedFilter !== 'all' && styles.filterButtonActive]}
+            style={[dynamicStyles.filterButton, selectedFilter !== 'all' && dynamicStyles.filterButtonActive]}
             onPress={() => setShowFilterModal(true)}
           >
             <Ionicons 
@@ -430,7 +460,7 @@ const AdminLiveChatSupportScreen = ({ navigation }) => {
           </TouchableOpacity>
 
           <TouchableOpacity 
-            style={styles.newChatButton}
+            style={dynamicStyles.newChatButton}
             onPress={() => {
               setShowNewChatModal(true);
               loadAvailableUsers();
@@ -445,7 +475,7 @@ const AdminLiveChatSupportScreen = ({ navigation }) => {
           data={filteredConversations}
           renderItem={renderConversationItem}
           keyExtractor={(item) => item._id}
-          style={styles.conversationsList}
+          style={dynamicStyles.conversationsList}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -454,23 +484,23 @@ const AdminLiveChatSupportScreen = ({ navigation }) => {
             />
           }
           ListEmptyComponent={
-            <View style={styles.emptyState}>
+            <View style={dynamicStyles.emptyState}>
               <Ionicons name="chatbubbles-outline" size={64} color={colors.textLight} />
-              <Text style={styles.emptyTitle}>No conversations yet</Text>
-              <Text style={styles.emptyText}>
+              <Text style={dynamicStyles.emptyTitle}>No conversations yet</Text>
+              <Text style={dynamicStyles.emptyText}>
                 {searchQuery || selectedFilter !== 'all'
                   ? 'No conversations match your search or filter'
                   : 'Start a new conversation to begin chatting with users'}
               </Text>
               <TouchableOpacity 
-                style={styles.startChatButton}
+                style={dynamicStyles.startChatButton}
                 onPress={() => {
                   setShowNewChatModal(true);
                   loadAvailableUsers();
                 }}
               >
                 <Ionicons name="add-circle-outline" size={20} color={colors.white} />
-                <Text style={styles.startChatButtonText}>Start New Chat</Text>
+                <Text style={dynamicStyles.startChatButtonText}>Start New Chat</Text>
               </TouchableOpacity>
             </View>
           }
@@ -483,7 +513,7 @@ const AdminLiveChatSupportScreen = ({ navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (isMobile, isTablet) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -497,9 +527,10 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     ...typography.body1,
     color: colors.textSecondary,
+    fontSize: isMobile ? 13 : isTablet ? 14 : 15,
   },
   header: {
-    padding: spacing.lg,
+    padding: isMobile ? spacing.md : isTablet ? spacing.lg - 4 : spacing.lg,
     backgroundColor: colors.white,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
@@ -508,10 +539,12 @@ const styles = StyleSheet.create({
     ...typography.h2,
     color: colors.text,
     marginBottom: spacing.xs,
+    fontSize: isMobile ? 22 : isTablet ? 26 : 28,
   },
   pageSubtitle: {
     ...typography.body2,
     color: colors.textSecondary,
+    fontSize: isMobile ? 12 : isTablet ? 13 : 14,
   },
   searchBar: {
     flexDirection: 'row',
@@ -754,5 +787,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+
+const styles = StyleSheet.create({});
 
 export default AdminLiveChatSupportScreen;

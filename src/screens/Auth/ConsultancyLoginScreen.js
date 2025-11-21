@@ -70,8 +70,32 @@ const ConsultancyLoginScreen = ({ navigation }) => {
         }
       }
     } catch (error) {
-      const errorMessage = error.message || 'Please check your credentials and try again';
-      setGeneralError(errorMessage);
+      // Parse error message from response
+      let errorMessage = error.message || 'Please check your credentials and try again';
+      
+      // Check for specific error types
+      if (errorMessage.toLowerCase().includes('no account found') || 
+          errorMessage.toLowerCase().includes('email address') ||
+          errorMessage.toLowerCase().includes('login id')) {
+        setErrors({ email: errorMessage });
+        setGeneralError('');
+      } else if (errorMessage.toLowerCase().includes('password') || 
+                 errorMessage.toLowerCase().includes('incorrect password')) {
+        setErrors({ password: errorMessage });
+        setGeneralError('');
+      } else if (errorMessage.toLowerCase().includes('deactivated')) {
+        setGeneralError(errorMessage);
+        setErrors({});
+      } else if (errorMessage.toLowerCase().includes('access denied') ||
+                 errorMessage.toLowerCase().includes('not authorized')) {
+        setGeneralError(errorMessage);
+        setErrors({});
+      } else {
+        setGeneralError(errorMessage);
+        setErrors({});
+      }
+      
+      // Also show in alert for visibility
       Alert.alert('Login Failed', errorMessage);
     } finally {
       setLoading(false);

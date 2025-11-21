@@ -11,15 +11,18 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, typography, shadows } from '../styles/theme';
 import api from '../config/api';
+import { useResponsive } from '../utils/responsive';
 
-const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
-const isPhone = width <= 480;
-const isMobile = width <= 600;
-const isTablet = width > 600 && width <= 1024;
-const isDesktop = width > 1024;
 
 const TrendingJobRoles = ({ navigation }) => {
+  const responsive = useResponsive();
+  const isPhone = responsive.width <= 480;
+  const isMobile = responsive.isMobile;
+  const isTablet = responsive.isTablet;
+  const isDesktop = responsive.isDesktop;
+  const dynamicStyles = getStyles(isPhone, isMobile, isTablet, isDesktop, responsive.width);
+  
   const [jobRoles, setJobRoles] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -110,29 +113,29 @@ const TrendingJobRoles = ({ navigation }) => {
 
   const renderJobRoleCard = ({ item }) => (
     <TouchableOpacity
-      style={styles.card}
+      style={dynamicStyles.card}
       onPress={() => handleRoleClick(item)}
       activeOpacity={0.7}
     >
-      <View style={styles.cardIconContainer}>
-        <View style={[styles.iconBackground, { backgroundColor: getColorForCategory(item.category) + '20' }]}>
+      <View style={dynamicStyles.cardIconContainer}>
+        <View style={[dynamicStyles.iconBackground, { backgroundColor: getColorForCategory(item.category) + '20' }]}>
           <Ionicons 
             name={getIconForCategory(item.category)} 
-            size={isMobile ? 20 : 24} 
+            size={isPhone ? 18 : (isMobile ? 20 : 24)} 
             color={getColorForCategory(item.category)} 
           />
         </View>
       </View>
-      <View style={styles.cardContent}>
-        <Text style={styles.cardTitle} numberOfLines={2}>
+      <View style={dynamicStyles.cardContent}>
+        <Text style={dynamicStyles.cardTitle} numberOfLines={2}>
           {item.name}
         </Text>
-        <Text style={styles.cardCount}>
+        <Text style={dynamicStyles.cardCount}>
           {item.jobCount || 0} openings
         </Text>
       </View>
-      <View style={styles.cardArrow}>
-        <Ionicons name="chevron-forward" size={isMobile ? 18 : 20} color={colors.textSecondary} />
+      <View style={dynamicStyles.cardArrow}>
+        <Ionicons name="chevron-forward" size={isPhone ? 16 : (isMobile ? 18 : 20)} color={colors.textSecondary} />
       </View>
     </TouchableOpacity>
   );
@@ -150,42 +153,44 @@ const TrendingJobRoles = ({ navigation }) => {
     : isMobile 
     ? 2 
     : isTablet 
-    ? (width > 900 ? 3 : 2)
+    ? (responsive.width > 900 ? 3 : 2)
     : isDesktop 
-    ? (width > 1400 ? 4 : width > 1200 ? 4 : 3)
+    ? (responsive.width > 1400 ? 4 : responsive.width > 1200 ? 4 : 3)
     : 2;
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Trending job roles on JobWala</Text>
+    <View style={dynamicStyles.container}>
+      <View style={dynamicStyles.header}>
+        <Text style={dynamicStyles.title}>Trending job roles on JobWala</Text>
       </View>
 
-      <View style={styles.cardsContainer}>
+      <View style={dynamicStyles.cardsContainer}>
         <FlatList
           data={jobRoles}
           renderItem={renderJobRoleCard}
           keyExtractor={(item) => item.id}
           numColumns={numColumns}
-          scrollEnabled={false}
-          columnWrapperStyle={numColumns > 1 ? styles.row : null}
+          scrollEnabled={isPhone || isMobile}
+          nestedScrollEnabled={true}
+          showsVerticalScrollIndicator={false}
+          columnWrapperStyle={numColumns > 1 ? dynamicStyles.row : null}
           key={`${numColumns}-columns`}
         />
       </View>
 
       <TouchableOpacity
-        style={styles.viewAllButton}
+        style={dynamicStyles.viewAllButton}
         onPress={() => navigation.navigate('Jobs')}
         activeOpacity={0.7}
       >
-        <Text style={styles.viewAllText}>View all</Text>
-        <Ionicons name="chevron-forward" size={16} color="#10B981" />
+        <Text style={dynamicStyles.viewAllText}>View all</Text>
+        <Ionicons name="chevron-forward" size={isPhone ? 14 : 16} color="#10B981" />
       </TouchableOpacity>
     </View>
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (isPhone, isMobile, isTablet, isDesktop, width) => StyleSheet.create({
   container: {
     paddingVertical: isPhone ? spacing.lg : (isMobile ? spacing.xl : isTablet ? spacing.xl : spacing.xxl),
     paddingHorizontal: isPhone ? spacing.sm : (isMobile ? spacing.md : isTablet ? spacing.lg : spacing.xl),

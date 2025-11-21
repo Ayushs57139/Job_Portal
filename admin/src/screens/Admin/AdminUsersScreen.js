@@ -7,8 +7,12 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { API_URL } from '../../config/api';
+import { useResponsive } from '../../utils/responsive';
 
 const AdminUsersScreen = ({ navigation }) => {
+  const responsive = useResponsive();
+  const isMobile = responsive.isMobile;
+  const isTablet = responsive.isTablet;
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState([]);
   const [filteredUsers, setFilteredUsers] = useState([]);
@@ -463,6 +467,8 @@ Mike Johnson,mike@example.com,JOBSEEKER,Password123!`;
     return `${day}-${month}-${year}`;
   };
 
+  const dynamicStyles = getStyles(isMobile, isTablet);
+
   if (loading) {
     return (
       <AdminLayout
@@ -472,9 +478,9 @@ Mike Johnson,mike@example.com,JOBSEEKER,Password123!`;
         user={user}
         onLogout={handleLogout}
       >
-        <View style={styles.loadingContainer}>
+        <View style={dynamicStyles.loadingContainer}>
           <ActivityIndicator size="large" color="#4A90E2" />
-          <Text style={styles.loadingText}>Loading users...</Text>
+          <Text style={dynamicStyles.loadingText}>Loading users...</Text>
         </View>
       </AdminLayout>
     );
@@ -488,145 +494,147 @@ Mike Johnson,mike@example.com,JOBSEEKER,Password123!`;
       user={user}
       onLogout={handleLogout}
     >
-      <View style={styles.container}>
-        <View style={styles.headerSection}>
+      <View style={dynamicStyles.container}>
+        <View style={dynamicStyles.headerSection}>
           <View>
-            <Text style={styles.pageTitle}>User Management</Text>
-            <Text style={styles.pageSubtitle}>Manage all registered users</Text>
+            <Text style={dynamicStyles.pageTitle}>User Management</Text>
+            <Text style={dynamicStyles.pageSubtitle}>Manage all registered users</Text>
           </View>
-          <View style={styles.bulkActionsContainer}>
+          <View style={dynamicStyles.bulkActionsContainer}>
             <TouchableOpacity
-              style={styles.addUserButton}
+              style={dynamicStyles.addUserButton}
               onPress={() => setAddUserModalVisible(true)}
             >
               <Ionicons name="person-add-outline" size={18} color="#FFF" />
-              <Text style={styles.addUserButtonText}>Add User</Text>
+              <Text style={dynamicStyles.addUserButtonText}>Add User</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.sampleButton}
+              style={dynamicStyles.sampleButton}
               onPress={downloadSampleCSV}
               disabled={importExportLoading}
             >
               <Ionicons name="document-text-outline" size={18} color="#9B59B6" />
-              <Text style={styles.sampleButtonText}>Sample CSV</Text>
+              <Text style={dynamicStyles.sampleButtonText}>Sample CSV</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.importButton}
+              style={dynamicStyles.importButton}
               onPress={handleBulkImport}
               disabled={importExportLoading}
             >
               <Ionicons name="cloud-upload-outline" size={18} color="#FFF" />
-              <Text style={styles.importButtonText}>
+              <Text style={dynamicStyles.importButtonText}>
                 {importExportLoading ? 'Processing...' : 'Import CSV'}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.exportButton}
+              style={dynamicStyles.exportButton}
               onPress={handleBulkExport}
               disabled={importExportLoading}
             >
               <Ionicons name="cloud-download-outline" size={18} color="#FFF" />
-              <Text style={styles.exportButtonText}>
+              <Text style={dynamicStyles.exportButtonText}>
                 {importExportLoading ? 'Processing...' : 'Export CSV'}
               </Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        <View style={styles.filterSection}>
-          <View style={styles.searchContainer}>
-            <Ionicons name="search" size={20} color="#999" style={styles.searchIcon} />
+        <View style={dynamicStyles.filterSection}>
+          <View style={dynamicStyles.searchContainer}>
+            <Ionicons name="search" size={20} color="#999" style={dynamicStyles.searchIcon} />
             <TextInput
-              style={styles.searchInput}
+              style={dynamicStyles.searchInput}
               placeholder="Search by name or email..."
               value={searchQuery}
               onChangeText={setSearchQuery}
             />
           </View>
 
-          <View style={styles.filterButtons}>
+          <View style={dynamicStyles.filterButtons}>
             <TouchableOpacity
-              style={[styles.filterButton, filterRole === 'ALL' && styles.activeFilter]}
+              style={[dynamicStyles.filterButton, filterRole === 'ALL' && dynamicStyles.activeFilter]}
               onPress={() => setFilterRole('ALL')}
             >
-              <Text style={[styles.filterButtonText, filterRole === 'ALL' && styles.activeFilterText]}>
+              <Text style={[dynamicStyles.filterButtonText, filterRole === 'ALL' && dynamicStyles.activeFilterText]}>
                 All
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.filterButton, filterRole === 'JOBSEEKER' && styles.activeFilter]}
+              style={[dynamicStyles.filterButton, filterRole === 'JOBSEEKER' && dynamicStyles.activeFilter]}
               onPress={() => setFilterRole('JOBSEEKER')}
             >
-              <Text style={[styles.filterButtonText, filterRole === 'JOBSEEKER' && styles.activeFilterText]}>
+              <Text style={[dynamicStyles.filterButtonText, filterRole === 'JOBSEEKER' && dynamicStyles.activeFilterText]}>
                 Job Seekers
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.filterButton, filterRole === 'EMPLOYER' && styles.activeFilter]}
+              style={[dynamicStyles.filterButton, filterRole === 'EMPLOYER' && dynamicStyles.activeFilter]}
               onPress={() => setFilterRole('EMPLOYER')}
             >
-              <Text style={[styles.filterButtonText, filterRole === 'EMPLOYER' && styles.activeFilterText]}>
+              <Text style={[dynamicStyles.filterButtonText, filterRole === 'EMPLOYER' && dynamicStyles.activeFilterText]}>
                 Employers
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.filterButton, filterRole === 'COMPANY' && styles.activeFilter]}
+              style={[dynamicStyles.filterButton, filterRole === 'COMPANY' && dynamicStyles.activeFilter]}
               onPress={() => setFilterRole('COMPANY')}
             >
-              <Text style={[styles.filterButtonText, filterRole === 'COMPANY' && styles.activeFilterText]}>
+              <Text style={[dynamicStyles.filterButtonText, filterRole === 'COMPANY' && dynamicStyles.activeFilterText]}>
                 Company
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.filterButton, filterRole === 'CONSULTANCY' && styles.activeFilter]}
+              style={[dynamicStyles.filterButton, filterRole === 'CONSULTANCY' && dynamicStyles.activeFilter]}
               onPress={() => setFilterRole('CONSULTANCY')}
             >
-              <Text style={[styles.filterButtonText, filterRole === 'CONSULTANCY' && styles.activeFilterText]}>
+              <Text style={[dynamicStyles.filterButtonText, filterRole === 'CONSULTANCY' && dynamicStyles.activeFilterText]}>
                 Consultancy
               </Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        <View style={styles.statsBar}>
-          <Text style={styles.statsText}>Total Users: {filteredUsers.length}</Text>
+        <View style={dynamicStyles.statsBar}>
+          <Text style={dynamicStyles.statsText}>Total Users: {filteredUsers.length}</Text>
         </View>
 
-        <ScrollView style={styles.tableContainer} showsVerticalScrollIndicator={false}>
-          <View style={styles.table}>
-            <View style={styles.tableHeader}>
-              <Text style={[styles.tableHeaderText, styles.nameColumn]}>Name</Text>
-              <Text style={[styles.tableHeaderText, styles.emailColumn]}>Email</Text>
-              <Text style={[styles.tableHeaderText, styles.roleColumn]}>Role</Text>
-              <Text style={[styles.tableHeaderText, styles.verifiedColumn]}>Verified</Text>
-              <Text style={[styles.tableHeaderText, styles.statusColumn]}>Status</Text>
-              <Text style={[styles.tableHeaderText, styles.lastActiveColumn]}>Last Active</Text>
-              <Text style={[styles.tableHeaderText, styles.joinedColumn]}>Joined</Text>
-              <Text style={[styles.tableHeaderText, styles.actionsColumn]}>Actions</Text>
+        <ScrollView style={dynamicStyles.tableContainer} showsVerticalScrollIndicator={false}>
+          <View style={dynamicStyles.table}>
+            {!isMobile && (
+            <View style={dynamicStyles.tableHeader}>
+              <Text style={[dynamicStyles.tableHeaderText, dynamicStyles.nameColumn]}>Name</Text>
+              <Text style={[dynamicStyles.tableHeaderText, dynamicStyles.emailColumn]}>Email</Text>
+              <Text style={[dynamicStyles.tableHeaderText, dynamicStyles.roleColumn]}>Role</Text>
+              <Text style={[dynamicStyles.tableHeaderText, dynamicStyles.verifiedColumn]}>Verified</Text>
+              <Text style={[dynamicStyles.tableHeaderText, dynamicStyles.statusColumn]}>Status</Text>
+              <Text style={[dynamicStyles.tableHeaderText, dynamicStyles.lastActiveColumn]}>Last Active</Text>
+              <Text style={[dynamicStyles.tableHeaderText, dynamicStyles.joinedColumn]}>Joined</Text>
+              <Text style={[dynamicStyles.tableHeaderText, dynamicStyles.actionsColumn]}>Actions</Text>
             </View>
+            )}
 
             {filteredUsers.length > 0 ? (
               filteredUsers.map((user, index) => (
-                <View key={user._id || index} style={styles.tableRow}>
-                  <Text style={[styles.tableCellText, styles.nameColumn, styles.nameText]}>
+                <View key={user._id || index} style={isMobile ? dynamicStyles.mobileCard : dynamicStyles.tableRow}>
+                  <Text style={[dynamicStyles.tableCellText, dynamicStyles.nameColumn, dynamicStyles.nameText]}>
                     {user.name || 'N/A'}
                   </Text>
-                  <Text style={[styles.tableCellText, styles.emailColumn]}>
+                  <Text style={[dynamicStyles.tableCellText, dynamicStyles.emailColumn]}>
                     {user.email || 'N/A'}
                   </Text>
-                  <View style={styles.roleColumn}>
+                  <View style={dynamicStyles.roleColumn}>
                     <View style={[
-                      styles.roleBadge,
-                      user.role === 'JOBSEEKER' && styles.jobseekerBadge,
-                      user.role === 'EMPLOYER' && styles.employerBadge,
+                      dynamicStyles.roleBadge,
+                      user.role === 'JOBSEEKER' && dynamicStyles.jobseekerBadge,
+                      user.role === 'EMPLOYER' && dynamicStyles.employerBadge,
                     ]}>
-                      <Text style={styles.roleBadgeText}>{user.role || 'N/A'}</Text>
+                      <Text style={dynamicStyles.roleBadgeText}>{user.role || 'N/A'}</Text>
                     </View>
                   </View>
-                  <View style={styles.verifiedColumn}>
+                  <View style={dynamicStyles.verifiedColumn}>
                     <View style={[
-                      styles.verifiedBadge,
-                      user.isVerified ? styles.verifiedYes : styles.verifiedNo,
+                      dynamicStyles.verifiedBadge,
+                      user.isVerified ? dynamicStyles.verifiedYes : dynamicStyles.verifiedNo,
                     ]}>
                       <Ionicons 
                         name={user.isVerified ? 'checkmark-circle' : 'close-circle'} 
@@ -634,49 +642,49 @@ Mike Johnson,mike@example.com,JOBSEEKER,Password123!`;
                         color={user.isVerified ? '#27AE60' : '#E74C3C'} 
                       />
                       <Text style={[
-                        styles.verifiedText,
-                        user.isVerified ? styles.verifiedYesText : styles.verifiedNoText
+                        dynamicStyles.verifiedText,
+                        user.isVerified ? dynamicStyles.verifiedYesText : dynamicStyles.verifiedNoText
                       ]}>
                         {user.isVerified ? 'Yes' : 'No'}
                       </Text>
                     </View>
                   </View>
-                  <View style={styles.statusColumn}>
+                  <View style={dynamicStyles.statusColumn}>
                     <TouchableOpacity
                       style={[
-                        styles.statusBadge,
-                        user.isActive ? styles.activeBadge : styles.inactiveBadge,
+                        dynamicStyles.statusBadge,
+                        user.isActive ? dynamicStyles.activeBadge : dynamicStyles.inactiveBadge,
                       ]}
                       onPress={() => toggleUserStatus(user._id, user.isActive)}
                     >
-                      <Text style={styles.statusBadgeText}>
+                      <Text style={dynamicStyles.statusBadgeText}>
                         {user.isActive ? 'ACTIVE' : 'INACTIVE'}
                       </Text>
                     </TouchableOpacity>
                   </View>
-                  <Text style={[styles.tableCellText, styles.lastActiveColumn]}>
+                  <Text style={[dynamicStyles.tableCellText, dynamicStyles.lastActiveColumn]}>
                     {user.lastActive ? formatDate(user.lastActive) : 'Never'}
                   </Text>
-                  <Text style={[styles.tableCellText, styles.joinedColumn]}>
+                  <Text style={[dynamicStyles.tableCellText, dynamicStyles.joinedColumn]}>
                     {formatDate(user.createdAt)}
                   </Text>
-                  <View style={styles.actionsColumn}>
+                  <View style={dynamicStyles.actionsColumn}>
                     {!user.isVerified && (
                       <TouchableOpacity
-                        style={[styles.actionButton, styles.verifyButton]}
+                        style={[dynamicStyles.actionButton, dynamicStyles.verifyButton]}
                         onPress={() => verifyUser(user._id)}
                       >
                         <Ionicons name="shield-checkmark-outline" size={18} color="#27AE60" />
                       </TouchableOpacity>
                     )}
                     <TouchableOpacity
-                      style={styles.actionButton}
+                      style={dynamicStyles.actionButton}
                       onPress={() => viewUser(user)}
                     >
                       <Ionicons name="eye-outline" size={18} color="#4A90E2" />
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[styles.actionButton, styles.deleteButton]}
+                      style={[dynamicStyles.actionButton, dynamicStyles.deleteButton]}
                       onPress={() => deleteUser(user._id)}
                     >
                       <Ionicons name="trash-outline" size={18} color="#E74C3C" />
@@ -685,9 +693,9 @@ Mike Johnson,mike@example.com,JOBSEEKER,Password123!`;
                 </View>
               ))
             ) : (
-              <View style={styles.emptyState}>
+              <View style={dynamicStyles.emptyState}>
                 <Ionicons name="people-outline" size={64} color="#CCC" />
-                <Text style={styles.emptyStateText}>No users found</Text>
+                <Text style={dynamicStyles.emptyStateText}>No users found</Text>
               </View>
             )}
           </View>
@@ -700,41 +708,49 @@ Mike Johnson,mike@example.com,JOBSEEKER,Password123!`;
           animationType="fade"
           onRequestClose={() => setViewModalVisible(false)}
         >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>User Details</Text>
+          <TouchableOpacity 
+            style={dynamicStyles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setViewModalVisible(false)}
+          >
+            <TouchableOpacity 
+              activeOpacity={1}
+              onPress={(e) => e.stopPropagation()}
+            >
+            <View style={dynamicStyles.modalContent}>
+              <View style={dynamicStyles.modalHeader}>
+                <Text style={dynamicStyles.modalTitle}>User Details</Text>
                 <TouchableOpacity
                   onPress={() => setViewModalVisible(false)}
-                  style={styles.closeButton}
+                  style={dynamicStyles.modalCloseButton}
                 >
-                  <Ionicons name="close" size={24} color="#666" />
+                  <Ionicons name="close" size={24} color="#64748B" />
                 </TouchableOpacity>
               </View>
               
               {selectedUser && (
-                <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Name:</Text>
-                    <Text style={styles.detailValue}>{selectedUser.name || 'N/A'}</Text>
+                <ScrollView style={dynamicStyles.modalBody} showsVerticalScrollIndicator={false}>
+                  <View style={dynamicStyles.detailRow}>
+                    <Text style={dynamicStyles.detailLabel}>Name:</Text>
+                    <Text style={dynamicStyles.detailValue}>{selectedUser.name || 'N/A'}</Text>
                   </View>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Email:</Text>
-                    <Text style={styles.detailValue}>{selectedUser.email || 'N/A'}</Text>
+                  <View style={dynamicStyles.detailRow}>
+                    <Text style={dynamicStyles.detailLabel}>Email:</Text>
+                    <Text style={dynamicStyles.detailValue}>{selectedUser.email || 'N/A'}</Text>
                   </View>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Phone:</Text>
-                    <Text style={styles.detailValue}>{selectedUser.phone || 'N/A'}</Text>
+                  <View style={dynamicStyles.detailRow}>
+                    <Text style={dynamicStyles.detailLabel}>Phone:</Text>
+                    <Text style={dynamicStyles.detailValue}>{selectedUser.phone || 'N/A'}</Text>
                   </View>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Role:</Text>
-                    <Text style={styles.detailValue}>{selectedUser.role || 'N/A'}</Text>
+                  <View style={dynamicStyles.detailRow}>
+                    <Text style={dynamicStyles.detailLabel}>Role:</Text>
+                    <Text style={dynamicStyles.detailValue}>{selectedUser.role || 'N/A'}</Text>
                   </View>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Verified:</Text>
+                  <View style={dynamicStyles.detailRow}>
+                    <Text style={dynamicStyles.detailLabel}>Verified:</Text>
                     <View style={[
-                      styles.verifiedBadge,
-                      selectedUser.isVerified ? styles.verifiedYes : styles.verifiedNo,
+                      dynamicStyles.verifiedBadge,
+                      selectedUser.isVerified ? dynamicStyles.verifiedYes : dynamicStyles.verifiedNo,
                     ]}>
                       <Ionicons 
                         name={selectedUser.isVerified ? 'checkmark-circle' : 'close-circle'} 
@@ -742,57 +758,58 @@ Mike Johnson,mike@example.com,JOBSEEKER,Password123!`;
                         color={selectedUser.isVerified ? '#27AE60' : '#E74C3C'} 
                       />
                       <Text style={[
-                        styles.verifiedText,
-                        selectedUser.isVerified ? styles.verifiedYesText : styles.verifiedNoText
+                        dynamicStyles.verifiedText,
+                        selectedUser.isVerified ? dynamicStyles.verifiedYesText : dynamicStyles.verifiedNoText
                       ]}>
                         {selectedUser.isVerified ? 'Yes' : 'No'}
                       </Text>
                     </View>
                   </View>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Status:</Text>
+                  <View style={dynamicStyles.detailRow}>
+                    <Text style={dynamicStyles.detailLabel}>Status:</Text>
                     <View style={[
-                      styles.statusBadge,
-                      selectedUser.isActive ? styles.activeBadge : styles.inactiveBadge,
+                      dynamicStyles.statusBadge,
+                      selectedUser.isActive ? dynamicStyles.activeBadge : dynamicStyles.inactiveBadge,
                     ]}>
-                      <Text style={styles.statusBadgeText}>
+                      <Text style={dynamicStyles.statusBadgeText}>
                         {selectedUser.isActive ? 'ACTIVE' : 'INACTIVE'}
                       </Text>
                     </View>
                   </View>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Last Active:</Text>
-                    <Text style={styles.detailValue}>
+                  <View style={dynamicStyles.detailRow}>
+                    <Text style={dynamicStyles.detailLabel}>Last Active:</Text>
+                    <Text style={dynamicStyles.detailValue}>
                       {selectedUser.lastActive ? formatDate(selectedUser.lastActive) : 'Never'}
                     </Text>
                   </View>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Last Modified:</Text>
-                    <Text style={styles.detailValue}>
+                  <View style={dynamicStyles.detailRow}>
+                    <Text style={dynamicStyles.detailLabel}>Last Modified:</Text>
+                    <Text style={dynamicStyles.detailValue}>
                       {selectedUser.lastModified ? formatDate(selectedUser.lastModified) : 'N/A'}
                     </Text>
                   </View>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Joined:</Text>
-                    <Text style={styles.detailValue}>{formatDate(selectedUser.createdAt)}</Text>
+                  <View style={dynamicStyles.detailRow}>
+                    <Text style={dynamicStyles.detailLabel}>Joined:</Text>
+                    <Text style={dynamicStyles.detailValue}>{formatDate(selectedUser.createdAt)}</Text>
                   </View>
                   
                   {!selectedUser.isVerified && (
                     <TouchableOpacity
-                      style={styles.verifyButtonLarge}
+                      style={dynamicStyles.verifyButtonLarge}
                       onPress={() => {
                         setViewModalVisible(false);
                         verifyUser(selectedUser._id);
                       }}
                     >
                       <Ionicons name="shield-checkmark" size={20} color="#FFF" />
-                      <Text style={styles.verifyButtonText}>Verify User</Text>
+                      <Text style={dynamicStyles.verifyButtonText}>Verify User</Text>
                     </TouchableOpacity>
                   )}
                 </ScrollView>
               )}
             </View>
-          </View>
+            </TouchableOpacity>
+          </TouchableOpacity>
         </Modal>
 
         {/* Add User Modal */}
@@ -802,43 +819,51 @@ Mike Johnson,mike@example.com,JOBSEEKER,Password123!`;
           animationType="fade"
           onRequestClose={() => setAddUserModalVisible(false)}
         >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Add New User</Text>
+          <TouchableOpacity 
+            style={dynamicStyles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setAddUserModalVisible(false)}
+          >
+            <TouchableOpacity 
+              activeOpacity={1}
+              onPress={(e) => e.stopPropagation()}
+            >
+            <View style={dynamicStyles.modalContent}>
+              <View style={dynamicStyles.modalHeader}>
+                <Text style={dynamicStyles.modalTitle}>Add New User</Text>
                 <TouchableOpacity
                   onPress={() => setAddUserModalVisible(false)}
-                  style={styles.closeButton}
+                  style={dynamicStyles.modalCloseButton}
                 >
-                  <Ionicons name="close" size={24} color="#666" />
+                  <Ionicons name="close" size={24} color="#64748B" />
                 </TouchableOpacity>
               </View>
               
-              <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-                <View style={styles.formGroup}>
-                  <Text style={styles.formLabel}>First Name *</Text>
+              <ScrollView style={dynamicStyles.modalBody} showsVerticalScrollIndicator={false}>
+                <View style={dynamicStyles.formGroup}>
+                  <Text style={dynamicStyles.formLabel}>First Name *</Text>
                   <TextInput
-                    style={styles.formInput}
+                    style={dynamicStyles.formInput}
                     placeholder="Enter first name"
                     value={newUserData.firstName}
                     onChangeText={(text) => setNewUserData({...newUserData, firstName: text})}
                   />
                 </View>
 
-                <View style={styles.formGroup}>
-                  <Text style={styles.formLabel}>Last Name *</Text>
+                <View style={dynamicStyles.formGroup}>
+                  <Text style={dynamicStyles.formLabel}>Last Name *</Text>
                   <TextInput
-                    style={styles.formInput}
+                    style={dynamicStyles.formInput}
                     placeholder="Enter last name"
                     value={newUserData.lastName}
                     onChangeText={(text) => setNewUserData({...newUserData, lastName: text})}
                   />
                 </View>
 
-                <View style={styles.formGroup}>
-                  <Text style={styles.formLabel}>Email *</Text>
+                <View style={dynamicStyles.formGroup}>
+                  <Text style={dynamicStyles.formLabel}>Email *</Text>
                   <TextInput
-                    style={styles.formInput}
+                    style={dynamicStyles.formInput}
                     placeholder="Enter email address"
                     value={newUserData.email}
                     onChangeText={(text) => setNewUserData({...newUserData, email: text})}
@@ -847,10 +872,10 @@ Mike Johnson,mike@example.com,JOBSEEKER,Password123!`;
                   />
                 </View>
 
-                <View style={styles.formGroup}>
-                  <Text style={styles.formLabel}>Phone</Text>
+                <View style={dynamicStyles.formGroup}>
+                  <Text style={dynamicStyles.formLabel}>Phone</Text>
                   <TextInput
-                    style={styles.formInput}
+                    style={dynamicStyles.formInput}
                     placeholder="Enter phone number"
                     value={newUserData.phone}
                     onChangeText={(text) => setNewUserData({...newUserData, phone: text})}
@@ -858,10 +883,10 @@ Mike Johnson,mike@example.com,JOBSEEKER,Password123!`;
                   />
                 </View>
 
-                <View style={styles.formGroup}>
-                  <Text style={styles.formLabel}>Password *</Text>
+                <View style={dynamicStyles.formGroup}>
+                  <Text style={dynamicStyles.formLabel}>Password *</Text>
                   <TextInput
-                    style={styles.formInput}
+                    style={dynamicStyles.formInput}
                     placeholder="Enter password (min 6 characters)"
                     value={newUserData.password}
                     onChangeText={(text) => setNewUserData({...newUserData, password: text})}
@@ -869,33 +894,33 @@ Mike Johnson,mike@example.com,JOBSEEKER,Password123!`;
                   />
                 </View>
 
-                <View style={styles.formGroup}>
-                  <Text style={styles.formLabel}>Role *</Text>
-                  <View style={styles.roleSelector}>
+                <View style={dynamicStyles.formGroup}>
+                  <Text style={dynamicStyles.formLabel}>Role *</Text>
+                  <View style={dynamicStyles.roleSelector}>
                     <TouchableOpacity
                       style={[
-                        styles.roleOption,
-                        newUserData.role === 'JOBSEEKER' && styles.roleOptionActive
+                        dynamicStyles.roleOption,
+                        newUserData.role === 'JOBSEEKER' && dynamicStyles.roleOptionActive
                       ]}
                       onPress={() => setNewUserData({...newUserData, role: 'JOBSEEKER'})}
                     >
                       <Text style={[
-                        styles.roleOptionText,
-                        newUserData.role === 'JOBSEEKER' && styles.roleOptionTextActive
+                        dynamicStyles.roleOptionText,
+                        newUserData.role === 'JOBSEEKER' && dynamicStyles.roleOptionTextActive
                       ]}>
                         Job Seeker
                       </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[
-                        styles.roleOption,
-                        newUserData.role === 'EMPLOYER' && styles.roleOptionActive
+                        dynamicStyles.roleOption,
+                        newUserData.role === 'EMPLOYER' && dynamicStyles.roleOptionActive
                       ]}
                       onPress={() => setNewUserData({...newUserData, role: 'EMPLOYER', employerType: newUserData.employerType || ''})}
                     >
                       <Text style={[
-                        styles.roleOptionText,
-                        newUserData.role === 'EMPLOYER' && styles.roleOptionTextActive
+                        dynamicStyles.roleOptionText,
+                        newUserData.role === 'EMPLOYER' && dynamicStyles.roleOptionTextActive
                       ]}>
                         Employer
                       </Text>
@@ -904,33 +929,33 @@ Mike Johnson,mike@example.com,JOBSEEKER,Password123!`;
                 </View>
 
                 {newUserData.role === 'EMPLOYER' && (
-                  <View style={styles.formGroup}>
-                    <Text style={styles.formLabel}>Employer Type *</Text>
-                    <View style={styles.roleSelector}>
+                  <View style={dynamicStyles.formGroup}>
+                    <Text style={dynamicStyles.formLabel}>Employer Type *</Text>
+                    <View style={dynamicStyles.roleSelector}>
                       <TouchableOpacity
                         style={[
-                          styles.roleOption,
-                          newUserData.employerType === 'company' && styles.roleOptionActive
+                          dynamicStyles.roleOption,
+                          newUserData.employerType === 'company' && dynamicStyles.roleOptionActive
                         ]}
                         onPress={() => setNewUserData({...newUserData, employerType: 'company'})}
                       >
                         <Text style={[
-                          styles.roleOptionText,
-                          newUserData.employerType === 'company' && styles.roleOptionTextActive
+                          dynamicStyles.roleOptionText,
+                          newUserData.employerType === 'company' && dynamicStyles.roleOptionTextActive
                         ]}>
                           Company
                         </Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={[
-                          styles.roleOption,
-                          newUserData.employerType === 'consultancy' && styles.roleOptionActive
+                          dynamicStyles.roleOption,
+                          newUserData.employerType === 'consultancy' && dynamicStyles.roleOptionActive
                         ]}
                         onPress={() => setNewUserData({...newUserData, employerType: 'consultancy'})}
                       >
                         <Text style={[
-                          styles.roleOptionText,
-                          newUserData.employerType === 'consultancy' && styles.roleOptionTextActive
+                          dynamicStyles.roleOptionText,
+                          newUserData.employerType === 'consultancy' && dynamicStyles.roleOptionTextActive
                         ]}>
                           Consultancy
                         </Text>
@@ -940,22 +965,23 @@ Mike Johnson,mike@example.com,JOBSEEKER,Password123!`;
                 )}
 
                 <TouchableOpacity
-                  style={styles.submitButton}
+                  style={dynamicStyles.submitButton}
                   onPress={handleAddUser}
                 >
                   <Ionicons name="person-add" size={20} color="#FFF" />
-                  <Text style={styles.submitButtonText}>Create User</Text>
+                  <Text style={dynamicStyles.submitButtonText}>Create User</Text>
                 </TouchableOpacity>
               </ScrollView>
             </View>
-          </View>
+            </TouchableOpacity>
+          </TouchableOpacity>
         </Modal>
       </View>
     </AdminLayout>
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (isMobile, isTablet) => StyleSheet.create({
   container: {
     flex: 1,
   },
@@ -970,37 +996,50 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   headerSection: {
-    flexDirection: 'row',
+    flexDirection: isMobile ? 'column' : 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
+    alignItems: isMobile ? 'flex-start' : 'center',
+    marginBottom: isMobile ? 16 : isTablet ? 18 : 20,
+    gap: isMobile ? 12 : 0,
   },
   pageTitle: {
-    fontSize: 28,
+    fontSize: isMobile ? 22 : isTablet ? 26 : 28,
     fontWeight: 'bold',
     color: '#333',
   },
   pageSubtitle: {
-    fontSize: 14,
+    fontSize: isMobile ? 12 : isTablet ? 13 : 14,
     color: '#666',
     marginTop: 4,
   },
   bulkActionsContainer: {
-    flexDirection: 'row',
-    gap: 10,
+    flexDirection: isMobile ? 'column' : 'row',
+    gap: isMobile ? 8 : 10,
+    flexWrap: isMobile ? 'nowrap' : 'wrap',
+    ...(Platform.OS === 'web' && {
+      flexWrap: isMobile ? 'wrap' : 'nowrap',
+    }),
   },
   addUserButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#E67E22',
-    paddingVertical: 10,
-    paddingHorizontal: 15,
+    paddingVertical: isMobile ? 8 : isTablet ? 9 : 10,
+    paddingHorizontal: isMobile ? 12 : isTablet ? 14 : 15,
     borderRadius: 8,
     gap: 6,
+    ...(Platform.OS === 'web' && {
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+      ':hover': {
+        backgroundColor: '#D35400',
+        transform: 'translateY(-1px)',
+      },
+    }),
   },
   addUserButtonText: {
     color: '#FFF',
-    fontSize: 14,
+    fontSize: isMobile ? 12 : isTablet ? 13 : 14,
     fontWeight: '600',
   },
   sampleButton: {
@@ -1048,13 +1087,17 @@ const styles = StyleSheet.create({
   filterSection: {
     backgroundColor: '#FFF',
     borderRadius: 12,
-    padding: 15,
-    marginBottom: 15,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    padding: isMobile ? 12 : isTablet ? 14 : 15,
+    marginBottom: isMobile ? 12 : isTablet ? 14 : 15,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+    } : {
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+    }),
   },
   searchContainer: {
     flexDirection: 'row',
@@ -1089,7 +1132,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#4A90E2',
   },
   filterButtonText: {
-    fontSize: 14,
+    fontSize: isMobile ? 12 : isTablet ? 13 : 14,
     fontWeight: '500',
     color: '#666',
   },
@@ -1104,45 +1147,112 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   statsText: {
-    fontSize: 14,
+    fontSize: isMobile ? 13 : isTablet ? 13.5 : 14,
     fontWeight: '600',
     color: '#333',
   },
   tableContainer: {
     flex: 1,
   },
+  mobileCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: isMobile ? 14 : 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    ...(Platform.OS === 'web' && {
+      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+      transition: 'transform 0.2s, box-shadow 0.2s',
+      ':hover': {
+        transform: 'translateY(-2px)',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+      },
+    }),
+  },
+  mobileCardRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  mobileCardLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6B7280',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  mobileCardValue: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#111827',
+    flex: 1,
+    textAlign: 'right',
+    marginLeft: 12,
+  },
   table: {
     backgroundColor: '#FFF',
     borderRadius: 12,
-    padding: 20,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    padding: isMobile ? 12 : isTablet ? 16 : 20,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+      overflowX: isMobile ? 'hidden' : 'auto',
+    } : {
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+    }),
   },
   tableHeader: {
     flexDirection: 'row',
     borderBottomWidth: 2,
     borderBottomColor: '#E0E0E0',
-    paddingBottom: 12,
-    marginBottom: 12,
+    paddingBottom: isMobile ? 10 : isTablet ? 11 : 12,
+    marginBottom: isMobile ? 10 : isTablet ? 11 : 12,
+    display: isMobile ? 'none' : 'flex',
+    ...(Platform.OS === 'web' && {
+      display: isMobile ? 'none' : 'flex',
+      minWidth: isTablet ? 700 : 900,
+    }),
   },
   tableHeaderText: {
-    fontSize: 14,
+    fontSize: isMobile ? 12 : isTablet ? 13 : 14,
     fontWeight: '600',
     color: '#666',
   },
   tableRow: {
-    flexDirection: 'row',
-    paddingVertical: 12,
+    flexDirection: isMobile ? 'column' : 'row',
+    paddingVertical: isMobile ? 16 : isTablet ? 14 : 12,
+    paddingHorizontal: isMobile ? 12 : 0,
     borderBottomWidth: 1,
     borderBottomColor: '#F5F5F5',
-    alignItems: 'center',
+    alignItems: isMobile ? 'flex-start' : 'center',
+    marginBottom: isMobile ? 12 : 0,
+    borderRadius: isMobile ? 12 : 0,
+    backgroundColor: isMobile ? '#FAFAFA' : 'transparent',
+    ...(Platform.OS === 'web' && {
+      minWidth: isTablet ? 700 : 900,
+      transition: 'background-color 0.2s',
+      ':hover': {
+        backgroundColor: isMobile ? '#F5F5F5' : 'rgba(0, 0, 0, 0.02)',
+      },
+    }),
   },
   tableCellText: {
-    fontSize: 14,
+    fontSize: isMobile ? 13 : isTablet ? 13.5 : 14,
     color: '#333',
+    marginBottom: isMobile ? 8 : 0,
+    ...(Platform.OS === 'web' && {
+      overflow: isMobile ? 'visible' : 'hidden',
+      textOverflow: isMobile ? 'clip' : 'ellipsis',
+      whiteSpace: isMobile ? 'normal' : 'nowrap',
+    }),
   },
   nameColumn: {
     flex: 1.8,
@@ -1270,36 +1380,78 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: 32,
   },
   modalContent: {
-    backgroundColor: '#FFF',
-    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 28,
+    padding: 0,
+    width: isMobile ? '95%' : isTablet ? '85%' : '70%',
+    maxWidth: isMobile ? '100%' : 700,
+    maxHeight: isMobile ? '90%' : '85%',
+    ...(Platform.OS === 'web' && {
+      maxWidth: isMobile ? '95%' : isTablet ? '600px' : '700px',
+    }),
     width: '100%',
-    maxWidth: 600,
-    maxHeight: '80%',
+    maxWidth: 680,
+    maxHeight: '90%',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    elevation: 25,
+    overflow: 'hidden',
+    ...(Platform.OS === 'web' && {
+      boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05)',
+    }),
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 44,
+    paddingTop: 44,
+    paddingBottom: 24,
+    borderBottomWidth: 2,
+    borderBottomColor: '#E2E8F0',
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#0F172A',
+    letterSpacing: -0.3,
   },
-  closeButton: {
-    padding: 4,
+  modalCloseButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F8FAFC',
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
+    } : {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.1,
+      shadowRadius: 2,
+      elevation: 2,
+    }),
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
   },
   modalBody: {
-    padding: 20,
+    padding: 44,
+    maxHeight: '60vh',
+    backgroundColor: '#FFFFFF',
+    overflow: 'hidden',
+    ...(Platform.OS === 'web' && {
+      maxHeight: 'calc(85vh - 200px)',
+    }),
   },
   detailRow: {
     flexDirection: 'row',
@@ -1325,10 +1477,10 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   formLabel: {
-    fontSize: 14,
+    fontSize: isMobile ? 13 : isTablet ? 13.5 : 14,
     fontWeight: '600',
     color: '#333',
-    marginBottom: 8,
+    marginBottom: isMobile ? 6 : isTablet ? 7 : 8,
   },
   formInput: {
     backgroundColor: '#F5F6FA',
@@ -1379,10 +1531,12 @@ const styles = StyleSheet.create({
   },
   submitButtonText: {
     color: '#FFF',
-    fontSize: 16,
+    fontSize: isMobile ? 14 : isTablet ? 15 : 16,
     fontWeight: '600',
   },
 });
+
+const styles = StyleSheet.create({});
 
 export default AdminUsersScreen;
 

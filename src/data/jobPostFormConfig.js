@@ -28,6 +28,11 @@ export const companyTypeOptions = [
   { value: 'consultancy', label: 'Consultancy' },
 ];
 
+export const employerTypeOptions = [
+  { value: 'company', label: 'Company/Business' },
+  { value: 'consultancy', label: 'Consultancy' },
+];
+
 export const employeeCountOptions = [
   { value: '0-10', label: '0-10' },
   { value: '11-25', label: '11-25' },
@@ -410,6 +415,15 @@ export const formSteps = [
     title: 'Company & Job Details',
     fields: [
       {
+        name: 'employerType',
+        label: "You're posting this job as a:",
+        type: 'dropdown',
+        placeholder: 'Select employer type',
+        icon: 'business-outline',
+        required: true,
+        options: employerTypeOptions,
+      },
+      {
         name: 'companyName',
         label: 'Company Name / Consultancy Name',
         type: 'autocomplete',
@@ -440,11 +454,12 @@ export const formSteps = [
       {
         name: 'jobTitle',
         label: 'Job Title / Designation',
-        type: 'dropdown',
+        type: 'autocomplete',
         placeholder: 'Type or Select Existing Suggestion',
         icon: 'briefcase-outline',
         required: true,
-        options: jobTitleOptions,
+        allowAddNew: true,
+        suggestions: jobTitleOptions,
       },
       {
         name: 'keySkills',
@@ -454,6 +469,7 @@ export const formSteps = [
         icon: 'star-outline',
         required: true,
         maxSelections: 12,
+        allowAddNew: true,
         options: keySkillsOptions,
       },
     ],

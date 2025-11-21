@@ -1,21 +1,75 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useResponsive } from '../../utils/responsive';
+
+// Define getStyles before the component to avoid hoisting issues
+const getStyles = (isMobile, isTablet) => StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: isMobile ? 16 : isTablet ? 18 : 22,
+    alignItems: 'center',
+    elevation: 4,
+    marginBottom: isMobile ? 12 : 15,
+    flex: isMobile ? 1 : 1,
+    marginHorizontal: isMobile ? 4 : 8,
+    minWidth: isMobile ? 'calc(50% - 8px)' : undefined,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.04)',
+    ...(Platform.OS === 'web' ? {
+      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.08)',
+      cursor: 'default',
+      ':hover': {
+        transform: 'translateY(-2px)',
+        boxShadow: '0 8px 20px rgba(0, 0, 0, 0.15), 0 4px 8px rgba(0, 0, 0, 0.1)',
+      },
+    } : {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.12,
+      shadowRadius: 12,
+    }),
+  },
+  iconContainer: {
+    width: isMobile ? 56 : isTablet ? 60 : 64,
+    height: isMobile ? 56 : isTablet ? 60 : 64,
+    borderRadius: isMobile ? 28 : isTablet ? 30 : 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: isMobile ? 14 : 16,
+    ...(Platform.OS === 'web' && {
+      transition: 'transform 0.3s ease',
+    }),
+  },
+  textContainer: {
+    flex: 1,
+    minWidth: 0,
+  },
+  count: {
+    fontSize: isMobile ? 28 : isTablet ? 32 : 36,
+    fontWeight: '800',
+    color: '#1A202C',
+    letterSpacing: -0.5,
+    ...(Platform.OS === 'web' && {
+      fontFeatureSettings: '"tnum"',
+    }),
+  },
+  label: {
+    fontSize: isMobile ? 13 : isTablet ? 14 : 15,
+    color: '#718096',
+    marginTop: 6,
+    fontWeight: '600',
+    letterSpacing: 0.2,
+  },
+});
 
 const StatCard = ({ icon, iconColor, iconBg, count, label }) => {
-  const [dimensions, setDimensions] = useState(() => Dimensions.get('window'));
-
-  useEffect(() => {
-    const subscription = Dimensions.addEventListener('change', ({ window }) => {
-      setDimensions(window);
-    });
-
-    return () => subscription?.remove();
-  }, []);
-
-  const width = dimensions?.width || Dimensions.get('window').width;
-  const isMobile = width < 768;
-  const isTablet = width >= 768 && width < 1024;
+  const responsive = useResponsive();
+  const isMobile = responsive.isMobile;
+  const isTablet = responsive.isTablet;
   const styles = getStyles(isMobile, isTablet);
 
   return (
@@ -30,47 +84,6 @@ const StatCard = ({ icon, iconColor, iconBg, count, label }) => {
     </View>
   );
 };
-
-const getStyles = (isMobile, isTablet) => StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    backgroundColor: '#FFF',
-    borderRadius: 12,
-    padding: isMobile ? 14 : isTablet ? 16 : 20,
-    alignItems: 'center',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    marginBottom: isMobile ? 12 : 15,
-    flex: isMobile ? 1 : 1,
-    marginHorizontal: isMobile ? 4 : 8,
-    minWidth: isMobile ? 'calc(50% - 8px)' : undefined,
-  },
-  iconContainer: {
-    width: isMobile ? 48 : isTablet ? 52 : 56,
-    height: isMobile ? 48 : isTablet ? 52 : 56,
-    borderRadius: isMobile ? 24 : isTablet ? 26 : 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: isMobile ? 12 : 15,
-  },
-  textContainer: {
-    flex: 1,
-    minWidth: 0,
-  },
-  count: {
-    fontSize: isMobile ? 24 : isTablet ? 28 : 32,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  label: {
-    fontSize: isMobile ? 12 : isTablet ? 13 : 14,
-    color: '#666',
-    marginTop: 4,
-  },
-});
 
 export default StatCard;
 

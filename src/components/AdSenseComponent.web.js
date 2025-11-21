@@ -123,16 +123,29 @@ const AdSenseComponent = ({
   }
 
   // Calculate dimensions
+  // Extract width and height safely to avoid "height is not defined" error
+  const styleWidth = style && style.width !== undefined ? style.width : undefined;
+  const styleHeight = style && style.height !== undefined ? style.height : undefined;
+  
+  // Build container style safely, avoiding any potential getters or computed properties
   const containerStyle = {
-    width: style.width || '100%',
-    height: style.height || 'auto',
-    minHeight: style.height || 90,
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
-    ...style,
+    width: styleWidth || '100%',
+    height: styleHeight || 'auto',
+    minHeight: styleHeight || 90,
   };
+  
+  // Safely copy other style properties (excluding width/height)
+  if (style) {
+    for (const key in style) {
+      if (key !== 'width' && key !== 'height' && style.hasOwnProperty(key)) {
+        containerStyle[key] = style[key];
+      }
+    }
+  }
 
   // For web platform, render AdSense component
   // Use dynamic require to avoid bundling issues on Android
@@ -151,8 +164,8 @@ const AdSenseComponent = ({
           className: 'adsbygoogle',
           style: {
             display: 'block',
-            width: style.width || '100%',
-            height: style.height || 'auto',
+            width: styleWidth || '100%',
+            height: styleHeight || 'auto',
           },
           'data-ad-client': adClient,
           'data-ad-slot': adSlot,

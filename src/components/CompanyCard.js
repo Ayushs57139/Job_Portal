@@ -3,16 +3,18 @@ import { View, Text, TouchableOpacity, StyleSheet, Platform, Dimensions } from '
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { colors, spacing, borderRadius, shadows, typography } from '../styles/theme';
+import { useResponsive } from '../utils/responsive';
 
-const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
-const isPhone = width <= 480;
-const isMobile = width <= 600;
-const isTablet = width > 600 && width <= 1024;
-const isDesktop = width > 1024;
 
 const CompanyCard = ({ company }) => {
   const navigation = useNavigation();
+  const responsive = useResponsive();
+  const isPhone = responsive.width <= 480;
+  const isMobile = responsive.isMobile;
+  const isTablet = responsive.isTablet;
+  const isDesktop = responsive.isDesktop;
+  const dynamicStyles = getStyles(isPhone, isMobile, isTablet, isDesktop);
 
   // Get company initials for avatar
   const getInitials = (name) => {
@@ -95,83 +97,83 @@ const CompanyCard = ({ company }) => {
 
   return (
     <TouchableOpacity 
-      style={styles.card}
+      style={dynamicStyles.card}
       onPress={() => navigation.navigate('CompanyDetails', { companyId: company._id })}
       activeOpacity={0.9}
     >
-      <View style={styles.trustBadge}>
-        <Ionicons name="shield-checkmark" size={14} color="#4338CA" />
-        <Text style={styles.trustBadgeText}>{company.isFeatured ? 'Featured partner' : 'Verified'}</Text>
+      <View style={dynamicStyles.trustBadge}>
+        <Ionicons name="shield-checkmark" size={isPhone ? 12 : 14} color="#4338CA" />
+        <Text style={dynamicStyles.trustBadgeText}>{company.isFeatured ? 'Featured partner' : 'Verified'}</Text>
       </View>
 
-      <View style={styles.header}>
-        <View style={[styles.avatar, { backgroundColor: getAvatarColor(company.profile?.company?.name || company.name) }]}>
-          <Text style={styles.avatarText}>{getInitials(company.profile?.company?.name || company.name)}</Text>
+      <View style={dynamicStyles.header}>
+        <View style={[dynamicStyles.avatar, { backgroundColor: getAvatarColor(company.profile?.company?.name || company.name) }]}>
+          <Text style={dynamicStyles.avatarText}>{getInitials(company.profile?.company?.name || company.name)}</Text>
         </View>
         
-        <View style={styles.headerInfo}>
-          <Text style={styles.companyName} numberOfLines={1}>
+        <View style={dynamicStyles.headerInfo}>
+          <Text style={dynamicStyles.companyName} numberOfLines={1}>
             {company.profile?.company?.name || company.name}
           </Text>
-          <View style={styles.industryBadge}>
-            <Text style={styles.industryText}>
+          <View style={dynamicStyles.industryBadge}>
+            <Text style={dynamicStyles.industryText}>
               {company.profile?.company?.industry || company.industry || 'Technology'}
             </Text>
           </View>
         </View>
       </View>
 
-      <View style={styles.statsRow}>
-        <Text style={styles.openPositions}>
+      <View style={dynamicStyles.statsRow}>
+        <Text style={dynamicStyles.openPositions}>
           {company.openPositions || 0} open {company.openPositions === 1 ? 'position' : 'positions'}
         </Text>
         
         {company.rating && (
-          <View style={styles.ratingContainer}>
-            <View style={styles.stars}>
+          <View style={dynamicStyles.ratingContainer}>
+            <View style={dynamicStyles.stars}>
               {renderStars(company.rating)}
             </View>
-            <Text style={styles.ratingText}>
+            <Text style={dynamicStyles.ratingText}>
               {company.rating}/5
             </Text>
           </View>
         )}
       </View>
 
-      <View style={styles.metaChips}>
-        <View style={styles.metaChip}>
-          <Ionicons name="location-outline" size={14} color="#4338CA" />
-          <Text style={styles.metaChipText}>{location}</Text>
+      <View style={dynamicStyles.metaChips}>
+        <View style={dynamicStyles.metaChip}>
+          <Ionicons name="location-outline" size={isPhone ? 12 : 14} color="#4338CA" />
+          <Text style={dynamicStyles.metaChipText}>{location}</Text>
         </View>
-        <View style={styles.metaChip}>
-          <Ionicons name="briefcase-outline" size={14} color="#4338CA" />
-          <Text style={styles.metaChipText}>{companyType}</Text>
+        <View style={dynamicStyles.metaChip}>
+          <Ionicons name="briefcase-outline" size={isPhone ? 12 : 14} color="#4338CA" />
+          <Text style={dynamicStyles.metaChipText}>{companyType}</Text>
         </View>
-        <View style={styles.metaChip}>
-          <Ionicons name="people-outline" size={14} color="#4338CA" />
-          <Text style={styles.metaChipText}>{employeeCount}</Text>
+        <View style={dynamicStyles.metaChip}>
+          <Ionicons name="people-outline" size={isPhone ? 12 : 14} color="#4338CA" />
+          <Text style={dynamicStyles.metaChipText}>{employeeCount}</Text>
         </View>
       </View>
 
-      <Text style={styles.description} numberOfLines={2}>
+      <Text style={dynamicStyles.description} numberOfLines={2}>
         {company.profile?.company?.description || company.description || 'Leading company in the industry'}
       </Text>
 
-      <View style={styles.cardFooter}>
-        <View style={styles.viewJobsButton}>
-          <Text style={styles.viewJobsText}>View Jobs</Text>
-          <Ionicons name="arrow-forward" size={16} color="#FFFFFF" style={{ marginLeft: 8 }} />
+      <View style={dynamicStyles.cardFooter}>
+        <View style={dynamicStyles.viewJobsButton}>
+          <Text style={dynamicStyles.viewJobsText}>View Jobs</Text>
+          <Ionicons name="arrow-forward" size={isPhone ? 14 : 16} color="#FFFFFF" style={{ marginLeft: 8 }} />
         </View>
-        <View style={styles.hiringTag}>
-          <Ionicons name="flash" size={14} color="#10B981" />
-          <Text style={styles.hiringTagText}>{hiringStatus}</Text>
+        <View style={dynamicStyles.hiringTag}>
+          <Ionicons name="flash" size={isPhone ? 12 : 14} color="#10B981" />
+          <Text style={dynamicStyles.hiringTagText}>{hiringStatus}</Text>
         </View>
       </View>
     </TouchableOpacity>
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (isPhone, isMobile, isTablet, isDesktop) => StyleSheet.create({
   card: {
     backgroundColor: colors.cardBackground,
     borderRadius: borderRadius.xl,

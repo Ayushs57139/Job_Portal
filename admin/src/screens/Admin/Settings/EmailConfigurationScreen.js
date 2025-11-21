@@ -9,14 +9,20 @@ import {
   ActivityIndicator,
   Alert,
   Switch,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import AdminLayout from '../../../components/Admin/AdminLayout';
 import api from '../../../config/api';
 import { colors, spacing, typography, borderRadius } from '../../../styles/theme';
+import { useResponsive } from '../../../utils/responsive';
 
 const EmailConfigurationScreen = ({ navigation }) => {
+  const responsive = useResponsive();
+  const isMobile = responsive.isMobile;
+  const isTablet = responsive.isTablet;
+  const dynamicStyles = getStyles(isMobile, isTablet);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -97,9 +103,9 @@ const EmailConfigurationScreen = ({ navigation }) => {
   if (loading) {
     return (
       <AdminLayout title="Email Configuration" activeScreen="AdminSettings" onNavigate={handleNavigate} onLogout={handleLogout}>
-        <View style={styles.loadingContainer}>
+        <View style={dynamicStyles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading settings...</Text>
+          <Text style={dynamicStyles.loadingText}>Loading settings...</Text>
         </View>
       </AdminLayout>
     );
@@ -107,28 +113,28 @@ const EmailConfigurationScreen = ({ navigation }) => {
 
   return (
     <AdminLayout title="Email Configuration" activeScreen="AdminSettings" onNavigate={handleNavigate} onLogout={handleLogout}>
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+      <ScrollView style={dynamicStyles.container} showsVerticalScrollIndicator={false}>
+        <View style={dynamicStyles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={dynamicStyles.backButton}>
             <Ionicons name="arrow-back" size={24} color={colors.primary} />
           </TouchableOpacity>
-          <View style={styles.headerTextContainer}>
-            <Text style={styles.pageTitle}>Email Configuration</Text>
-            <Text style={styles.pageSubtitle}>Configure email delivery settings</Text>
+          <View style={dynamicStyles.headerTextContainer}>
+            <Text style={dynamicStyles.pageTitle}>Email Configuration</Text>
+            <Text style={dynamicStyles.pageSubtitle}>Configure email delivery settings</Text>
           </View>
         </View>
 
         {/* Email Provider */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Email Provider</Text>
+        <View style={dynamicStyles.section}>
+          <Text style={dynamicStyles.sectionTitle}>Email Provider</Text>
           
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Provider</Text>
-            <View style={styles.pickerContainer}>
+          <View style={dynamicStyles.inputGroup}>
+            <Text style={dynamicStyles.label}>Provider</Text>
+            <View style={dynamicStyles.pickerContainer}>
               <Picker
                 selectedValue={settings.provider}
                 onValueChange={(value) => setSettings({ ...settings, provider: value })}
-                style={styles.picker}
+                style={dynamicStyles.picker}
               >
                 <Picker.Item label="SMTP" value="smtp" />
                 <Picker.Item label="SendGrid" value="sendgrid" />
@@ -141,13 +147,13 @@ const EmailConfigurationScreen = ({ navigation }) => {
 
         {/* SMTP Configuration */}
         {settings.provider === 'smtp' && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>SMTP Configuration</Text>
+          <View style={dynamicStyles.section}>
+            <Text style={dynamicStyles.sectionTitle}>SMTP Configuration</Text>
             
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>SMTP Host</Text>
+            <View style={dynamicStyles.inputGroup}>
+              <Text style={dynamicStyles.label}>SMTP Host</Text>
               <TextInput
-                style={styles.input}
+                style={dynamicStyles.input}
                 value={settings.smtp.host}
                 onChangeText={(text) => setSettings({ ...settings, smtp: { ...settings.smtp, host: text } })}
                 placeholder="smtp.gmail.com"
@@ -156,10 +162,10 @@ const EmailConfigurationScreen = ({ navigation }) => {
               />
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>SMTP Port</Text>
+            <View style={dynamicStyles.inputGroup}>
+              <Text style={dynamicStyles.label}>SMTP Port</Text>
               <TextInput
-                style={styles.input}
+                style={dynamicStyles.input}
                 value={String(settings.smtp.port)}
                 onChangeText={(text) => setSettings({ ...settings, smtp: { ...settings.smtp, port: parseInt(text) || 587 } })}
                 placeholder="587"
@@ -168,8 +174,8 @@ const EmailConfigurationScreen = ({ navigation }) => {
               />
             </View>
 
-            <View style={styles.switchRow}>
-              <Text style={styles.switchLabel}>Use SSL/TLS</Text>
+            <View style={dynamicStyles.switchRow}>
+              <Text style={dynamicStyles.switchLabel}>Use SSL/TLS</Text>
               <Switch
                 value={settings.smtp.secure}
                 onValueChange={(value) => setSettings({ ...settings, smtp: { ...settings.smtp, secure: value } })}
@@ -178,10 +184,10 @@ const EmailConfigurationScreen = ({ navigation }) => {
               />
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>SMTP Username</Text>
+            <View style={dynamicStyles.inputGroup}>
+              <Text style={dynamicStyles.label}>SMTP Username</Text>
               <TextInput
-                style={styles.input}
+                style={dynamicStyles.input}
                 value={settings.smtp.username}
                 onChangeText={(text) => setSettings({ ...settings, smtp: { ...settings.smtp, username: text } })}
                 placeholder="your-email@gmail.com"
@@ -191,10 +197,10 @@ const EmailConfigurationScreen = ({ navigation }) => {
               />
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>SMTP Password</Text>
+            <View style={dynamicStyles.inputGroup}>
+              <Text style={dynamicStyles.label}>SMTP Password</Text>
               <TextInput
-                style={styles.input}
+                style={dynamicStyles.input}
                 value={settings.smtp.password}
                 onChangeText={(text) => setSettings({ ...settings, smtp: { ...settings.smtp, password: text } })}
                 placeholder="Enter password"
@@ -206,13 +212,13 @@ const EmailConfigurationScreen = ({ navigation }) => {
         )}
 
         {/* Email Settings */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Email Settings</Text>
+        <View style={dynamicStyles.section}>
+          <Text style={dynamicStyles.sectionTitle}>Email Settings</Text>
           
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>From Email</Text>
+          <View style={dynamicStyles.inputGroup}>
+            <Text style={dynamicStyles.label}>From Email</Text>
             <TextInput
-              style={styles.input}
+              style={dynamicStyles.input}
               value={settings.fromEmail}
               onChangeText={(text) => setSettings({ ...settings, fromEmail: text })}
               placeholder="noreply@freejobwala.com"
@@ -222,10 +228,10 @@ const EmailConfigurationScreen = ({ navigation }) => {
             />
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>From Name</Text>
+          <View style={dynamicStyles.inputGroup}>
+            <Text style={dynamicStyles.label}>From Name</Text>
             <TextInput
-              style={styles.input}
+              style={dynamicStyles.input}
               value={settings.fromName}
               onChangeText={(text) => setSettings({ ...settings, fromName: text })}
               placeholder="Free Job Wala"
@@ -233,10 +239,10 @@ const EmailConfigurationScreen = ({ navigation }) => {
             />
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Reply-To Email</Text>
+          <View style={dynamicStyles.inputGroup}>
+            <Text style={dynamicStyles.label}>Reply-To Email</Text>
             <TextInput
-              style={styles.input}
+              style={dynamicStyles.input}
               value={settings.replyToEmail}
               onChangeText={(text) => setSettings({ ...settings, replyToEmail: text })}
               placeholder="support@freejobwala.com"
@@ -246,10 +252,10 @@ const EmailConfigurationScreen = ({ navigation }) => {
             />
           </View>
 
-          <View style={styles.switchRow}>
-            <View style={styles.switchLabelContainer}>
-              <Text style={styles.switchLabel}>Enable Email Notifications</Text>
-              <Text style={styles.switchDescription}>
+          <View style={dynamicStyles.switchRow}>
+            <View style={dynamicStyles.switchLabelContainer}>
+              <Text style={dynamicStyles.switchLabel}>Enable Email Notifications</Text>
+              <Text style={dynamicStyles.switchDescription}>
                 Allow platform to send email notifications
               </Text>
             </View>
@@ -261,10 +267,10 @@ const EmailConfigurationScreen = ({ navigation }) => {
             />
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Daily Email Limit</Text>
+          <View style={dynamicStyles.inputGroup}>
+            <Text style={dynamicStyles.label}>Daily Email Limit</Text>
             <TextInput
-              style={styles.input}
+              style={dynamicStyles.input}
               value={String(settings.dailyEmailLimit)}
               onChangeText={(text) => setSettings({ ...settings, dailyEmailLimit: parseInt(text) || 1000 })}
               placeholder="1000"
@@ -275,15 +281,15 @@ const EmailConfigurationScreen = ({ navigation }) => {
         </View>
 
         {/* Test Email */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Test Email Configuration</Text>
-          <Text style={styles.description}>
+        <View style={dynamicStyles.section}>
+          <Text style={dynamicStyles.sectionTitle}>Test Email Configuration</Text>
+          <Text style={dynamicStyles.description}>
             Send a test email to verify your configuration
           </Text>
           
-          <View style={styles.testEmailRow}>
+          <View style={dynamicStyles.testEmailRow}>
             <TextInput
-              style={[styles.input, styles.testEmailInput]}
+              style={[dynamicStyles.input, dynamicStyles.testEmailInput]}
               value={testEmail}
               onChangeText={setTestEmail}
               placeholder="Enter email address"
@@ -292,7 +298,7 @@ const EmailConfigurationScreen = ({ navigation }) => {
               keyboardType="email-address"
             />
             <TouchableOpacity
-              style={[styles.testButton, testing && styles.testButtonDisabled]}
+              style={[dynamicStyles.testButton, testing && dynamicStyles.testButtonDisabled]}
               onPress={handleTestEmail}
               disabled={testing}
             >
@@ -307,7 +313,7 @@ const EmailConfigurationScreen = ({ navigation }) => {
 
         {/* Save Button */}
         <TouchableOpacity
-          style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+          style={[dynamicStyles.saveButton, saving && dynamicStyles.saveButtonDisabled]}
           onPress={handleSave}
           disabled={saving}
         >
@@ -316,18 +322,18 @@ const EmailConfigurationScreen = ({ navigation }) => {
           ) : (
             <>
               <Ionicons name="mail" size={20} color={colors.white} />
-              <Text style={styles.saveButtonText}>Save Email Settings</Text>
+              <Text style={dynamicStyles.saveButtonText}>Save Email Settings</Text>
             </>
           )}
         </TouchableOpacity>
 
-        <View style={styles.bottomSpacing} />
+        <View style={dynamicStyles.bottomSpacing} />
       </ScrollView>
     </AdminLayout>
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (isMobile, isTablet) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -371,11 +377,15 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.md,
     padding: spacing.lg,
     borderRadius: borderRadius.lg,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+    } : {
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+    }),
   },
   sectionTitle: {
     ...typography.h3,
@@ -473,6 +483,8 @@ const styles = StyleSheet.create({
     height: spacing.xxl,
   },
 });
+
+const styles = StyleSheet.create({});
 
 export default EmailConfigurationScreen;
 

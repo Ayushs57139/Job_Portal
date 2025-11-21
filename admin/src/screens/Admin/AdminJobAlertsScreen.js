@@ -15,8 +15,13 @@ import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import AdminLayout from '../../components/Admin/AdminLayout';
 import api from '../../config/api';
+import { useResponsive } from '../../utils/responsive';
 
 const AdminJobAlertsScreen = ({ navigation }) => {
+  const responsive = useResponsive();
+  const isMobile = responsive.isMobile;
+  const isTablet = responsive.isTablet;
+  const dynamicStyles = getStyles(isMobile, isTablet);
   const [jobAlerts, setJobAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -247,36 +252,36 @@ const AdminJobAlertsScreen = ({ navigation }) => {
   };
 
   const renderStats = () => (
-    <View style={styles.statsContainer}>
-      <View style={styles.statCard}>
+    <View style={dynamicStyles.statsContainer}>
+      <View style={dynamicStyles.statCard}>
         <Ionicons name="notifications" size={24} color="#3B82F6" />
-        <Text style={styles.statValue}>{stats.total}</Text>
-        <Text style={styles.statLabel}>Total Alerts</Text>
+        <Text style={dynamicStyles.statValue}>{stats.total}</Text>
+        <Text style={dynamicStyles.statLabel}>Total Alerts</Text>
       </View>
-      <View style={styles.statCard}>
+      <View style={dynamicStyles.statCard}>
         <Ionicons name="checkmark-circle" size={24} color="#10B981" />
-        <Text style={styles.statValue}>{stats.active}</Text>
-        <Text style={styles.statLabel}>Active</Text>
+        <Text style={dynamicStyles.statValue}>{stats.active}</Text>
+        <Text style={dynamicStyles.statLabel}>Active</Text>
       </View>
-      <View style={styles.statCard}>
+      <View style={dynamicStyles.statCard}>
         <Ionicons name="close-circle" size={24} color="#EF4444" />
-        <Text style={styles.statValue}>{stats.inactive}</Text>
-        <Text style={styles.statLabel}>Inactive</Text>
+        <Text style={dynamicStyles.statValue}>{stats.inactive}</Text>
+        <Text style={dynamicStyles.statLabel}>Inactive</Text>
       </View>
-      <View style={styles.statCard}>
+      <View style={dynamicStyles.statCard}>
         <Ionicons name="time" size={24} color="#F59E0B" />
-        <Text style={styles.statValue}>{stats.recent}</Text>
-        <Text style={styles.statLabel}>Last 30 Days</Text>
+        <Text style={dynamicStyles.statValue}>{stats.recent}</Text>
+        <Text style={dynamicStyles.statLabel}>Last 30 Days</Text>
       </View>
     </View>
   );
 
   const renderFilters = () => (
-    <View style={styles.filtersContainer}>
-      <View style={styles.searchContainer}>
+    <View style={dynamicStyles.filtersContainer}>
+      <View style={dynamicStyles.searchContainer}>
         <Ionicons name="search" size={20} color="#666" />
         <TextInput
-          style={styles.searchInput}
+          style={dynamicStyles.searchInput}
           placeholder="Search by email..."
           value={filters.search}
           onChangeText={(text) => setFilters({ ...filters, search: text, page: 1 })}
@@ -284,20 +289,20 @@ const AdminJobAlertsScreen = ({ navigation }) => {
         />
       </View>
 
-      <View style={styles.filterButtons}>
+      <View style={dynamicStyles.filterButtons}>
         {['all', 'active', 'inactive'].map((status) => (
           <TouchableOpacity
             key={status}
             style={[
-              styles.filterButton,
-              filters.status === status && styles.filterButtonActive,
+              dynamicStyles.filterButton,
+              filters.status === status && dynamicStyles.filterButtonActive,
             ]}
             onPress={() => setFilters({ ...filters, status, page: 1 })}
           >
             <Text
               style={[
-                styles.filterButtonText,
-                filters.status === status && styles.filterButtonTextActive,
+                dynamicStyles.filterButtonText,
+                filters.status === status && dynamicStyles.filterButtonTextActive,
               ]}
             >
               {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -306,44 +311,44 @@ const AdminJobAlertsScreen = ({ navigation }) => {
         ))}
       </View>
 
-      <TouchableOpacity style={styles.exportButton} onPress={handleExport}>
+      <TouchableOpacity style={dynamicStyles.exportButton} onPress={handleExport}>
         <Ionicons name="download" size={20} color="#FFF" />
-        <Text style={styles.exportButtonText}>Export CSV</Text>
+        <Text style={dynamicStyles.exportButtonText}>Export CSV</Text>
       </TouchableOpacity>
       <TouchableOpacity 
-        style={styles.bulkImportButton} 
+        style={dynamicStyles.bulkImportButton} 
         onPress={() => setShowBulkImportModal(true)}
       >
         <Ionicons name="people" size={20} color="#FFF" />
-        <Text style={styles.bulkImportButtonText}>Bulk Import Candidates</Text>
+        <Text style={dynamicStyles.bulkImportButtonText}>Bulk Import Candidates</Text>
       </TouchableOpacity>
     </View>
   );
 
   const renderJobAlert = (alert) => (
-    <View key={alert._id} style={styles.alertCard}>
-      <View style={styles.alertHeader}>
-        <View style={styles.alertHeaderLeft}>
-          <Text style={styles.alertName}>{alert.alertName}</Text>
+    <View key={alert._id} style={dynamicStyles.alertCard}>
+      <View style={dynamicStyles.alertHeader}>
+        <View style={dynamicStyles.alertHeaderLeft}>
+          <Text style={dynamicStyles.alertName}>{alert.alertName}</Text>
           <View
             style={[
-              styles.statusBadge,
-              alert.isActive ? styles.statusBadgeActive : styles.statusBadgeInactive,
+              dynamicStyles.statusBadge,
+              alert.isActive ? dynamicStyles.statusBadgeActive : dynamicStyles.statusBadgeInactive,
             ]}
           >
             <Text
               style={[
-                styles.statusBadgeText,
-                alert.isActive ? styles.statusBadgeTextActive : styles.statusBadgeTextInactive,
+                dynamicStyles.statusBadgeText,
+                alert.isActive ? dynamicStyles.statusBadgeTextActive : dynamicStyles.statusBadgeTextInactive,
               ]}
             >
               {alert.isActive ? 'Active' : 'Inactive'}
             </Text>
           </View>
         </View>
-        <View style={styles.alertActions}>
+        <View style={dynamicStyles.alertActions}>
           <TouchableOpacity
-            style={styles.actionButton}
+            style={dynamicStyles.actionButton}
             onPress={() => handleToggleStatus(alert._id)}
           >
             <Ionicons
@@ -353,7 +358,7 @@ const AdminJobAlertsScreen = ({ navigation }) => {
             />
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.actionButton}
+            style={dynamicStyles.actionButton}
             onPress={() => handleDelete(alert._id)}
           >
             <Ionicons name="trash" size={24} color="#EF4444" />
@@ -361,125 +366,125 @@ const AdminJobAlertsScreen = ({ navigation }) => {
         </View>
       </View>
 
-      <View style={styles.alertContent}>
-        <View style={styles.alertRow}>
-          <View style={styles.alertField}>
-            <Text style={styles.alertFieldLabel}>Job Title:</Text>
-            <Text style={styles.alertFieldValue}>{alert.jobTitle}</Text>
+      <View style={dynamicStyles.alertContent}>
+        <View style={dynamicStyles.alertRow}>
+          <View style={dynamicStyles.alertField}>
+            <Text style={dynamicStyles.alertFieldLabel}>Job Title:</Text>
+            <Text style={dynamicStyles.alertFieldValue}>{alert.jobTitle}</Text>
           </View>
-          <View style={styles.alertField}>
-            <Text style={styles.alertFieldLabel}>Expected Salary:</Text>
-            <Text style={styles.alertFieldValue}>₹{alert.expectedSalary?.toLocaleString('en-IN')}</Text>
+          <View style={dynamicStyles.alertField}>
+            <Text style={dynamicStyles.alertFieldLabel}>Expected Salary:</Text>
+            <Text style={dynamicStyles.alertFieldValue}>₹{alert.expectedSalary?.toLocaleString('en-IN')}</Text>
           </View>
         </View>
 
-        <View style={styles.alertRow}>
-          <View style={styles.alertField}>
-            <Text style={styles.alertFieldLabel}>Experience:</Text>
-            <Text style={styles.alertFieldValue}>
+        <View style={dynamicStyles.alertRow}>
+          <View style={dynamicStyles.alertField}>
+            <Text style={dynamicStyles.alertFieldLabel}>Experience:</Text>
+            <Text style={dynamicStyles.alertFieldValue}>
               {alert.experienceLevel} - {alert.totalExperience}
             </Text>
           </View>
-          <View style={styles.alertField}>
-            <Text style={styles.alertFieldLabel}>Job Status:</Text>
-            <Text style={styles.alertFieldValue}>{alert.presentJobStatus}</Text>
+          <View style={dynamicStyles.alertField}>
+            <Text style={dynamicStyles.alertFieldLabel}>Job Status:</Text>
+            <Text style={dynamicStyles.alertFieldValue}>{alert.presentJobStatus}</Text>
           </View>
         </View>
 
-        <View style={styles.alertRow}>
-          <View style={styles.alertField}>
-            <Text style={styles.alertFieldLabel}>Location:</Text>
-            <Text style={styles.alertFieldValue}>{alert.workOfficeLocation}</Text>
+        <View style={dynamicStyles.alertRow}>
+          <View style={dynamicStyles.alertField}>
+            <Text style={dynamicStyles.alertFieldLabel}>Location:</Text>
+            <Text style={dynamicStyles.alertFieldValue}>{alert.workOfficeLocation}</Text>
           </View>
-          <View style={styles.alertField}>
-            <Text style={styles.alertFieldLabel}>Industry:</Text>
-            <Text style={styles.alertFieldValue}>{alert.industry}</Text>
-          </View>
-        </View>
-
-        <View style={styles.alertRow}>
-          <View style={styles.alertField}>
-            <Text style={styles.alertFieldLabel}>Department:</Text>
-            <Text style={styles.alertFieldValue}>{alert.department}</Text>
-          </View>
-          <View style={styles.alertField}>
-            <Text style={styles.alertFieldLabel}>Sub Industry:</Text>
-            <Text style={styles.alertFieldValue}>{alert.subIndustry}</Text>
+          <View style={dynamicStyles.alertField}>
+            <Text style={dynamicStyles.alertFieldLabel}>Industry:</Text>
+            <Text style={dynamicStyles.alertFieldValue}>{alert.industry}</Text>
           </View>
         </View>
 
-        <View style={styles.alertFullRow}>
-          <Text style={styles.alertFieldLabel}>Job Roles:</Text>
-          <View style={styles.tagsContainer}>
+        <View style={dynamicStyles.alertRow}>
+          <View style={dynamicStyles.alertField}>
+            <Text style={dynamicStyles.alertFieldLabel}>Department:</Text>
+            <Text style={dynamicStyles.alertFieldValue}>{alert.department}</Text>
+          </View>
+          <View style={dynamicStyles.alertField}>
+            <Text style={dynamicStyles.alertFieldLabel}>Sub Industry:</Text>
+            <Text style={dynamicStyles.alertFieldValue}>{alert.subIndustry}</Text>
+          </View>
+        </View>
+
+        <View style={dynamicStyles.alertFullRow}>
+          <Text style={dynamicStyles.alertFieldLabel}>Job Roles:</Text>
+          <View style={dynamicStyles.tagsContainer}>
             {alert.jobRoles?.map((role, index) => (
-              <View key={index} style={styles.tag}>
-                <Text style={styles.tagText}>{role}</Text>
+              <View key={index} style={dynamicStyles.tag}>
+                <Text style={dynamicStyles.tagText}>{role}</Text>
               </View>
             ))}
           </View>
         </View>
 
-        <View style={styles.alertFullRow}>
-          <Text style={styles.alertFieldLabel}>Key Skills:</Text>
-          <View style={styles.tagsContainer}>
+        <View style={dynamicStyles.alertFullRow}>
+          <Text style={dynamicStyles.alertFieldLabel}>Key Skills:</Text>
+          <View style={dynamicStyles.tagsContainer}>
             {alert.keySkills?.map((skill, index) => (
-              <View key={index} style={styles.tag}>
-                <Text style={styles.tagText}>{skill}</Text>
+              <View key={index} style={dynamicStyles.tag}>
+                <Text style={dynamicStyles.tagText}>{skill}</Text>
               </View>
             ))}
           </View>
         </View>
 
-        <View style={styles.alertRow}>
-          <View style={styles.alertField}>
-            <Text style={styles.alertFieldLabel}>Email:</Text>
-            <Text style={styles.alertFieldValue}>{alert.email}</Text>
+        <View style={dynamicStyles.alertRow}>
+          <View style={dynamicStyles.alertField}>
+            <Text style={dynamicStyles.alertFieldLabel}>Email:</Text>
+            <Text style={dynamicStyles.alertFieldValue}>{alert.email}</Text>
           </View>
-          <View style={styles.alertField}>
-            <Text style={styles.alertFieldLabel}>Mobile:</Text>
-            <Text style={styles.alertFieldValue}>{alert.mobile}</Text>
+          <View style={dynamicStyles.alertField}>
+            <Text style={dynamicStyles.alertFieldLabel}>Mobile:</Text>
+            <Text style={dynamicStyles.alertFieldValue}>{alert.mobile}</Text>
           </View>
         </View>
 
-        <View style={styles.alertRow}>
-          <View style={styles.alertField}>
-            <Text style={styles.alertFieldLabel}>Alert Frequency:</Text>
-            <View style={styles.frequencyBadge}>
+        <View style={dynamicStyles.alertRow}>
+          <View style={dynamicStyles.alertField}>
+            <Text style={dynamicStyles.alertFieldLabel}>Alert Frequency:</Text>
+            <View style={dynamicStyles.frequencyBadge}>
               <Ionicons 
                 name={alert.alertFrequency === 'daily' ? 'calendar' : alert.alertFrequency === 'weekly' ? 'calendar-outline' : 'calendar-number'} 
                 size={16} 
                 color="#6366F1" 
               />
-              <Text style={styles.frequencyText}>
+              <Text style={dynamicStyles.frequencyText}>
                 {alert.alertFrequency ? alert.alertFrequency.charAt(0).toUpperCase() + alert.alertFrequency.slice(1) : 'Daily'}
               </Text>
             </View>
           </View>
-          <View style={styles.alertField}>
-            <Text style={styles.alertFieldLabel}>Notifications Sent:</Text>
-            <Text style={styles.alertFieldValue}>{alert.notificationCount || 0}</Text>
+          <View style={dynamicStyles.alertField}>
+            <Text style={dynamicStyles.alertFieldLabel}>Notifications Sent:</Text>
+            <Text style={dynamicStyles.alertFieldValue}>{alert.notificationCount || 0}</Text>
           </View>
         </View>
 
-        <View style={styles.alertRow}>
-          <View style={styles.alertField}>
-            <Text style={styles.alertFieldLabel}>Created:</Text>
-            <Text style={styles.alertFieldValue}>
+        <View style={dynamicStyles.alertRow}>
+          <View style={dynamicStyles.alertField}>
+            <Text style={dynamicStyles.alertFieldLabel}>Created:</Text>
+            <Text style={dynamicStyles.alertFieldValue}>
               {new Date(alert.createdAt).toLocaleDateString()}
             </Text>
           </View>
-          <View style={styles.alertField}>
-            <Text style={styles.alertFieldLabel}>Last Notified:</Text>
-            <Text style={styles.alertFieldValue}>
+          <View style={dynamicStyles.alertField}>
+            <Text style={dynamicStyles.alertFieldLabel}>Last Notified:</Text>
+            <Text style={dynamicStyles.alertFieldValue}>
               {alert.lastNotified ? new Date(alert.lastNotified).toLocaleDateString() : 'Never'}
             </Text>
           </View>
         </View>
 
         {alert.userId && (
-          <View style={styles.userInfo}>
+          <View style={dynamicStyles.userInfo}>
             <Ionicons name="person" size={16} color="#666" />
-            <Text style={styles.userInfoText}>
+            <Text style={dynamicStyles.userInfoText}>
               User ID: {alert.userId._id} | {alert.userId.name || 'N/A'}
             </Text>
           </View>
@@ -489,34 +494,34 @@ const AdminJobAlertsScreen = ({ navigation }) => {
   );
 
   const renderPagination = () => (
-    <View style={styles.paginationContainer}>
+    <View style={dynamicStyles.paginationContainer}>
       <TouchableOpacity
-        style={[styles.paginationButton, filters.page === 1 && styles.paginationButtonDisabled]}
+        style={[dynamicStyles.paginationButton, filters.page === 1 && dynamicStyles.paginationButtonDisabled]}
         onPress={() => setFilters({ ...filters, page: filters.page - 1 })}
         disabled={filters.page === 1}
       >
         <Ionicons name="chevron-back" size={20} color={filters.page === 1 ? '#CCC' : '#3B82F6'} />
-        <Text style={[styles.paginationButtonText, filters.page === 1 && styles.paginationButtonTextDisabled]}>
+        <Text style={[dynamicStyles.paginationButtonText, filters.page === 1 && dynamicStyles.paginationButtonTextDisabled]}>
           Previous
         </Text>
       </TouchableOpacity>
 
-      <Text style={styles.paginationInfo}>
+      <Text style={dynamicStyles.paginationInfo}>
         Page {pagination.current} of {pagination.pages} ({pagination.total} total)
       </Text>
 
       <TouchableOpacity
         style={[
-          styles.paginationButton,
-          filters.page === pagination.pages && styles.paginationButtonDisabled,
+          dynamicStyles.paginationButton,
+          filters.page === pagination.pages && dynamicStyles.paginationButtonDisabled,
         ]}
         onPress={() => setFilters({ ...filters, page: filters.page + 1 })}
         disabled={filters.page === pagination.pages}
       >
         <Text
           style={[
-            styles.paginationButtonText,
-            filters.page === pagination.pages && styles.paginationButtonTextDisabled,
+            dynamicStyles.paginationButtonText,
+            filters.page === pagination.pages && dynamicStyles.paginationButtonTextDisabled,
           ]}
         >
           Next
@@ -537,11 +542,11 @@ const AdminJobAlertsScreen = ({ navigation }) => {
       onNavigate={handleNavigate}
       onLogout={handleLogout}
     >
-      <View style={styles.container}>
-        <View style={styles.header}>
+      <View style={dynamicStyles.container}>
+        <View style={dynamicStyles.header}>
           <View>
-            <Text style={styles.pageTitle}>Job Alerts Management</Text>
-            <Text style={styles.pageSubtitle}>
+            <Text style={dynamicStyles.pageTitle}>Job Alerts Management</Text>
+            <Text style={dynamicStyles.pageSubtitle}>
               Manage and monitor all job alert subscriptions
             </Text>
           </View>
@@ -551,24 +556,24 @@ const AdminJobAlertsScreen = ({ navigation }) => {
         {renderFilters()}
 
         {loading ? (
-          <View style={styles.loadingContainer}>
+          <View style={dynamicStyles.loadingContainer}>
             <ActivityIndicator size="large" color="#3B82F6" />
-            <Text style={styles.loadingText}>Loading job alerts...</Text>
+            <Text style={dynamicStyles.loadingText}>Loading job alerts...</Text>
           </View>
         ) : jobAlerts.length > 0 ? (
           <ScrollView
-            style={styles.alertsList}
-            contentContainerStyle={styles.alertsListContent}
+            style={dynamicStyles.alertsList}
+            contentContainerStyle={dynamicStyles.alertsListContent}
             showsVerticalScrollIndicator={Platform.OS === 'web'}
           >
             {jobAlerts.map(renderJobAlert)}
             {renderPagination()}
           </ScrollView>
         ) : (
-          <View style={styles.emptyContainer}>
+          <View style={dynamicStyles.emptyContainer}>
             <Ionicons name="notifications-off" size={64} color="#CCC" />
-            <Text style={styles.emptyText}>No job alerts found</Text>
-            <Text style={styles.emptySubtext}>
+            <Text style={dynamicStyles.emptyText}>No job alerts found</Text>
+            <Text style={dynamicStyles.emptySubtext}>
               {filters.search || filters.status !== 'all'
                 ? 'Try adjusting your filters'
                 : 'Job alerts will appear here once users create them'}
@@ -579,46 +584,57 @@ const AdminJobAlertsScreen = ({ navigation }) => {
         {/* Bulk Import Modal */}
         <Modal
           visible={showBulkImportModal}
-          animationType="slide"
+          animationType="fade"
           transparent={true}
           onRequestClose={closeBulkImportModal}
         >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Bulk Import Candidates</Text>
-                <TouchableOpacity onPress={closeBulkImportModal}>
-                  <Ionicons name="close" size={24} color="#666" />
+          <TouchableOpacity 
+            style={dynamicStyles.modalOverlay}
+            activeOpacity={1}
+            onPress={closeBulkImportModal}
+          >
+            <TouchableOpacity 
+              activeOpacity={1}
+              onPress={(e) => e.stopPropagation()}
+            >
+            <View style={dynamicStyles.modalContent}>
+              <View style={dynamicStyles.modalHeader}>
+                <Text style={dynamicStyles.modalTitle}>Bulk Import Candidates</Text>
+                <TouchableOpacity 
+                  onPress={closeBulkImportModal}
+                  style={dynamicStyles.modalCloseButton}
+                >
+                  <Ionicons name="close" size={24} color="#64748B" />
                 </TouchableOpacity>
               </View>
 
-              <ScrollView style={styles.modalBody}>
-                <Text style={styles.modalDescription}>
+              <ScrollView style={dynamicStyles.modalBody}>
+                <Text style={dynamicStyles.modalDescription}>
                   Import multiple candidates as job alerts from a CSV file. Download the sample CSV template to see the required format.
                 </Text>
 
                 <TouchableOpacity 
-                  style={styles.downloadSampleButton}
+                  style={dynamicStyles.downloadSampleButton}
                   onPress={handleDownloadSample}
                 >
                   <Ionicons name="download-outline" size={20} color="#3B82F6" />
-                  <Text style={styles.downloadSampleText}>Download Sample CSV</Text>
+                  <Text style={dynamicStyles.downloadSampleText}>Download Sample CSV</Text>
                 </TouchableOpacity>
 
-                <View style={styles.fileSelectorContainer}>
+                <View style={dynamicStyles.fileSelectorContainer}>
                   <TouchableOpacity 
-                    style={styles.fileSelectorButton}
+                    style={dynamicStyles.fileSelectorButton}
                     onPress={handleSelectFile}
                     disabled={importing}
                   >
                     <Ionicons name="document-attach" size={24} color="#3B82F6" />
-                    <Text style={styles.fileSelectorText}>
+                    <Text style={dynamicStyles.fileSelectorText}>
                       {selectedFile ? selectedFile.name : 'Select CSV File'}
                     </Text>
                   </TouchableOpacity>
                   {selectedFile && (
                     <TouchableOpacity 
-                      style={styles.removeFileButton}
+                      style={dynamicStyles.removeFileButton}
                       onPress={() => setSelectedFile(null)}
                     >
                       <Ionicons name="close-circle" size={20} color="#EF4444" />
@@ -627,38 +643,38 @@ const AdminJobAlertsScreen = ({ navigation }) => {
                 </View>
 
                 {importResults && (
-                  <View style={styles.importResultsContainer}>
-                    <Text style={styles.importResultsTitle}>Import Results</Text>
-                    <View style={styles.resultsStats}>
-                      <View style={styles.resultStatItem}>
-                        <Text style={styles.resultStatValue}>{importResults.success}</Text>
-                        <Text style={styles.resultStatLabel}>Success</Text>
+                  <View style={dynamicStyles.importResultsContainer}>
+                    <Text style={dynamicStyles.importResultsTitle}>Import Results</Text>
+                    <View style={dynamicStyles.resultsStats}>
+                      <View style={dynamicStyles.resultStatItem}>
+                        <Text style={dynamicStyles.resultStatValue}>{importResults.success}</Text>
+                        <Text style={dynamicStyles.resultStatLabel}>Success</Text>
                       </View>
-                      <View style={styles.resultStatItem}>
-                        <Text style={[styles.resultStatValue, { color: '#EF4444' }]}>
+                      <View style={dynamicStyles.resultStatItem}>
+                        <Text style={[dynamicStyles.resultStatValue, { color: '#EF4444' }]}>
                           {importResults.failed}
                         </Text>
-                        <Text style={styles.resultStatLabel}>Failed</Text>
+                        <Text style={dynamicStyles.resultStatLabel}>Failed</Text>
                       </View>
-                      <View style={styles.resultStatItem}>
-                        <Text style={[styles.resultStatValue, { color: '#F59E0B' }]}>
+                      <View style={dynamicStyles.resultStatItem}>
+                        <Text style={[dynamicStyles.resultStatValue, { color: '#F59E0B' }]}>
                           {importResults.skipped || 0}
                         </Text>
-                        <Text style={styles.resultStatLabel}>Skipped</Text>
+                        <Text style={dynamicStyles.resultStatLabel}>Skipped</Text>
                       </View>
                     </View>
 
                     {importResults.errors && importResults.errors.length > 0 && (
-                      <View style={styles.errorsContainer}>
-                        <Text style={styles.errorsTitle}>Errors ({importResults.errors.length})</Text>
-                        <ScrollView style={styles.errorsList} nestedScrollEnabled>
+                      <View style={dynamicStyles.errorsContainer}>
+                        <Text style={dynamicStyles.errorsTitle}>Errors ({importResults.errors.length})</Text>
+                        <ScrollView style={dynamicStyles.errorsList} nestedScrollEnabled>
                           {importResults.errors.slice(0, 10).map((error, index) => (
-                            <Text key={index} style={styles.errorText}>
+                            <Text key={index} style={dynamicStyles.errorText}>
                               {error}
                             </Text>
                           ))}
                           {importResults.errors.length > 10 && (
-                            <Text style={styles.moreErrorsText}>
+                            <Text style={dynamicStyles.moreErrorsText}>
                               ... and {importResults.errors.length - 10} more errors
                             </Text>
                           )}
@@ -670,8 +686,8 @@ const AdminJobAlertsScreen = ({ navigation }) => {
 
                 <TouchableOpacity
                   style={[
-                    styles.importButton,
-                    (!selectedFile || importing) && styles.importButtonDisabled
+                    dynamicStyles.importButton,
+                    (!selectedFile || importing) && dynamicStyles.importButtonDisabled
                   ]}
                   onPress={handleBulkImport}
                   disabled={!selectedFile || importing}
@@ -679,42 +695,44 @@ const AdminJobAlertsScreen = ({ navigation }) => {
                   {importing ? (
                     <>
                       <ActivityIndicator size="small" color="#FFF" />
-                      <Text style={styles.importButtonText}>Importing...</Text>
+                      <Text style={dynamicStyles.importButtonText}>Importing...</Text>
                     </>
                   ) : (
                     <>
                       <Ionicons name="cloud-upload" size={20} color="#FFF" />
-                      <Text style={styles.importButtonText}>Import Candidates</Text>
+                      <Text style={dynamicStyles.importButtonText}>Import Candidates</Text>
                     </>
                   )}
                 </TouchableOpacity>
               </ScrollView>
             </View>
-          </View>
+            </TouchableOpacity>
+          </TouchableOpacity>
         </Modal>
       </View>
     </AdminLayout>
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (isMobile, isTablet) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F9FAFB',
+    padding: isMobile ? 12 : isTablet ? 16 : 20,
   },
   header: {
     backgroundColor: '#FFF',
-    padding: 20,
+    padding: isMobile ? 14 : isTablet ? 17 : 20,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
   },
   pageTitle: {
-    fontSize: 28,
+    fontSize: isMobile ? 22 : isTablet ? 26 : 28,
     fontWeight: 'bold',
     color: '#111827',
   },
   pageSubtitle: {
-    fontSize: 14,
+    fontSize: isMobile ? 12 : isTablet ? 13 : 14,
     color: '#6B7280',
     marginTop: 4,
   },
@@ -731,11 +749,15 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
+    } : {
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 8,
+    }),
   },
   statValue: {
     fontSize: 28,
@@ -836,11 +858,15 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 20,
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
+    } : {
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 8,
+    }),
   },
   alertHeader: {
     flexDirection: 'row',
@@ -1027,38 +1053,72 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: 32,
   },
   modalContent: {
-    backgroundColor: '#FFF',
-    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 28,
+    padding: 0,
     width: '100%',
-    maxWidth: 600,
+    maxWidth: 680,
     maxHeight: '90%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    elevation: 25,
+    overflow: 'hidden',
+    ...(Platform.OS === 'web' && {
+      boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05)',
+    }),
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 44,
+    paddingTop: 44,
+    paddingBottom: 24,
+    borderBottomWidth: 2,
+    borderBottomColor: '#E2E8F0',
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#111827',
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#0F172A',
+    letterSpacing: -0.3,
+  },
+  modalCloseButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F8FAFC',
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
+    } : {
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.1,
+      shadowRadius: 2,
+    }),
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
   },
   modalBody: {
-    padding: 20,
+    padding: 44,
+    maxHeight: '60vh',
+    backgroundColor: '#FFFFFF',
+    overflow: 'hidden',
+    ...(Platform.OS === 'web' && {
+      maxHeight: 'calc(85vh - 200px)',
+    }),
   },
   modalDescription: {
     fontSize: 14,
@@ -1188,5 +1248,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 });
+
+const styles = StyleSheet.create({});
 
 export default AdminJobAlertsScreen;

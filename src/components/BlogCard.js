@@ -4,16 +4,18 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { colors, spacing, borderRadius, shadows, typography } from '../styles/theme';
+import { useResponsive } from '../utils/responsive';
 
-const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
-const isPhone = width <= 480;
-const isMobile = width <= 600;
-const isTablet = width > 600 && width <= 1024;
-const isDesktop = width > 1024;
 
 const BlogCard = ({ blog }) => {
   const navigation = useNavigation();
+  const responsive = useResponsive();
+  const isPhone = responsive.width <= 480;
+  const isMobile = responsive.isMobile;
+  const isTablet = responsive.isTablet;
+  const isDesktop = responsive.isDesktop;
+  const dynamicStyles = getStyles(isPhone, isMobile, isTablet, isDesktop, responsive.width);
 
   const getCategoryColor = (category) => {
     const categoryColors = {
@@ -28,7 +30,7 @@ const BlogCard = ({ blog }) => {
 
   return (
     <TouchableOpacity
-      style={styles.card}
+      style={dynamicStyles.card}
       onPress={() => navigation.navigate('BlogDetail', { slug: blog.slug })}
       activeOpacity={0.8}
     >
@@ -36,34 +38,34 @@ const BlogCard = ({ blog }) => {
         colors={['#667eea', '#764ba2']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={styles.imageContainer}
+        style={dynamicStyles.imageContainer}
       >
-        <Ionicons name="newspaper-outline" size={48} color={colors.textWhite} />
+        <Ionicons name="newspaper-outline" size={isPhone ? 40 : (isMobile ? 44 : 48)} color={colors.textWhite} />
       </LinearGradient>
 
-      <View style={styles.content}>
-        <View style={[styles.categoryBadge, { backgroundColor: getCategoryColor(blog.category) }]}>
-          <Text style={styles.categoryText}>{blog.category}</Text>
+      <View style={dynamicStyles.content}>
+        <View style={[dynamicStyles.categoryBadge, { backgroundColor: getCategoryColor(blog.category) }]}>
+          <Text style={dynamicStyles.categoryText}>{blog.category}</Text>
         </View>
 
-        <Text style={styles.title} numberOfLines={2}>
+        <Text style={dynamicStyles.title} numberOfLines={2}>
           {blog.title}
         </Text>
 
         {blog.excerpt && (
-          <Text style={styles.excerpt} numberOfLines={3}>
+          <Text style={dynamicStyles.excerpt} numberOfLines={3}>
             {blog.excerpt}
           </Text>
         )}
 
-        <View style={styles.footer}>
-          <View style={styles.meta}>
-            <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
-            <Text style={styles.metaText}>{blog.readTime || '5 min read'}</Text>
+        <View style={dynamicStyles.footer}>
+          <View style={dynamicStyles.meta}>
+            <Ionicons name="time-outline" size={isPhone ? 12 : 14} color={colors.textSecondary} />
+            <Text style={dynamicStyles.metaText}>{blog.readTime || '5 min read'}</Text>
           </View>
-          <TouchableOpacity style={styles.readMore}>
-            <Text style={styles.readMoreText}>Read More</Text>
-            <Ionicons name="arrow-forward" size={14} color={colors.primary} />
+          <TouchableOpacity style={dynamicStyles.readMore}>
+            <Text style={dynamicStyles.readMoreText}>Read More</Text>
+            <Ionicons name="arrow-forward" size={isPhone ? 12 : 14} color={colors.primary} />
           </TouchableOpacity>
         </View>
       </View>
@@ -71,7 +73,7 @@ const BlogCard = ({ blog }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (isPhone, isMobile, isTablet, isDesktop, width) => StyleSheet.create({
   card: {
     backgroundColor: colors.cardBackground,
     borderRadius: borderRadius.lg,

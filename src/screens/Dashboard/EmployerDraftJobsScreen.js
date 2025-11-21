@@ -2,12 +2,16 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, FlatList, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, borderRadius, typography } from '../../styles/theme';
+import { colors, spacing, borderRadius, typography, shadows } from '../../styles/theme';
 import EmployerSidebar from '../../components/EmployerSidebar';
+import { useResponsive } from '../../utils/responsive';
 
 const DRAFTS_INDEX_KEY = 'jobDrafts:index';
 
 const EmployerDraftJobsScreen = ({ navigation }) => {
+  const responsive = useResponsive();
+  const { isMobile } = responsive;
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [drafts, setDrafts] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -80,13 +84,32 @@ const EmployerDraftJobsScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.sidebarWrapper}>
-        <EmployerSidebar permanent navigation={navigation} role="company" activeKey="draftJobs" />
-      </View>
-      <View style={styles.contentWrapper}>
-        <View style={styles.headerBar}>
-          <Text style={styles.headerTitle}>Draft Jobs</Text>
-          <Text style={styles.headerSubtitle}>Resume your left-over job postings</Text>
+      {!isMobile && (
+        <View style={styles.sidebarWrapper}>
+          <EmployerSidebar permanent navigation={navigation} role="company" activeKey="draftJobs" />
+        </View>
+      )}
+      {isMobile && (
+        <EmployerSidebar 
+          visible={sidebarOpen} 
+          onClose={() => setSidebarOpen(false)} 
+          navigation={navigation} 
+          role="company" 
+          activeKey="draftJobs" 
+        />
+      )}
+      {isMobile && (
+        <TouchableOpacity 
+          style={styles.menuButton}
+          onPress={() => setSidebarOpen(true)}
+        >
+          <Ionicons name="menu" size={24} color={colors.text} />
+        </TouchableOpacity>
+      )}
+      <View style={[styles.contentWrapper, isMobile && styles.contentWrapperMobile]}>
+        <View style={[styles.headerBar, isMobile && styles.headerBarMobile]}>
+          <Text style={[styles.headerTitle, isMobile && styles.headerTitleMobile]}>Draft Jobs</Text>
+          <Text style={[styles.headerSubtitle, isMobile && styles.headerSubtitleMobile]}>Resume your left-over job postings</Text>
         </View>
         <FlatList
           data={drafts}
@@ -107,8 +130,22 @@ const EmployerDraftJobsScreen = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, flexDirection: 'row', backgroundColor: '#F5F6FA' },
-  sidebarWrapper: { width: 260 },
+  sidebarWrapper: { width: 280 },
+  menuButton: {
+    position: 'absolute',
+    top: spacing.md,
+    left: spacing.md,
+    zIndex: 1000,
+    backgroundColor: '#FFFFFF',
+    padding: spacing.sm,
+    borderRadius: borderRadius.md,
+    ...shadows.sm,
+  },
   contentWrapper: { flex: 1, padding: spacing.md },
+  contentWrapperMobile: {
+    padding: spacing.sm,
+    paddingTop: spacing.xl + 40,
+  },
   headerBar: {
     backgroundColor: '#FFF',
     padding: spacing.lg,
@@ -117,8 +154,13 @@ const styles = StyleSheet.create({
     borderColor: '#E0E0E0',
     marginBottom: spacing.lg,
   },
+  headerBarMobile: {
+    padding: spacing.md,
+  },
   headerTitle: { fontSize: 20, fontWeight: '700', color: '#333', marginBottom: 4 },
-  headerSubtitle: { color: '#666' },
+  headerTitleMobile: { fontSize: 18 },
+  headerSubtitle: { color: '#666', fontSize: 14 },
+  headerSubtitleMobile: { fontSize: 12 },
   listContent: { paddingBottom: spacing.xxl },
   draftCard: {
     backgroundColor: '#FFF',

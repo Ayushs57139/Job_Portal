@@ -1053,7 +1053,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F6FA',
   },
   sidebarWrapper: {
-    width: 260,
+    width: 280,
   },
   mainContentWrapper: {
     flex: 1,

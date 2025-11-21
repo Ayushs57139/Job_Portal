@@ -10,6 +10,12 @@ const AdminCoursesScreen = ({ navigation }) => {
       apiEndpoint="/admin/master-data/courses"
       screenName="AdminCourses"
       fieldName="name"
+      parentField={{
+        key: 'educationField',
+        label: 'Education Field',
+        fetchEndpoint: '/admin/master-data/education-fields',
+        required: false
+      }}
     />
   );
 };

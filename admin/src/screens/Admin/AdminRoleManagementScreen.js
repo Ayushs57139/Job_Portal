@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Modal, TextInput, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Modal, TextInput, Alert, ActivityIndicator, Platform } from 'react-native';
 import AdminLayout from '../../components/Admin/AdminLayout';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../../config/api';
+import { useResponsive } from '../../utils/responsive';
 
 const AdminRoleManagementScreen = ({ navigation }) => {
+  const responsive = useResponsive();
+  const isMobile = responsive.isMobile;
+  const isTablet = responsive.isTablet;
+  const dynamicStyles = getStyles(isMobile, isTablet);
   const [user, setUser] = useState(null);
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -138,9 +143,9 @@ const AdminRoleManagementScreen = ({ navigation }) => {
         user={user}
         onLogout={handleLogout}
       >
-        <View style={styles.loadingContainer}>
+        <View style={dynamicStyles.loadingContainer}>
           <ActivityIndicator size="large" color="#4A90E2" />
-          <Text style={styles.loadingText}>Loading roles...</Text>
+          <Text style={dynamicStyles.loadingText}>Loading roles...</Text>
         </View>
       </AdminLayout>
     );
@@ -154,44 +159,44 @@ const AdminRoleManagementScreen = ({ navigation }) => {
       user={user}
       onLogout={handleLogout}
     >
-      <View style={styles.container}>
-        <View style={styles.headerSection}>
+      <View style={dynamicStyles.container}>
+        <View style={dynamicStyles.headerSection}>
           <View>
-            <Text style={styles.pageTitle}>Role Management</Text>
-            <Text style={styles.pageSubtitle}>Manage user roles and permissions</Text>
+            <Text style={dynamicStyles.pageTitle}>Role Management</Text>
+            <Text style={dynamicStyles.pageSubtitle}>Manage user roles and permissions</Text>
           </View>
           <TouchableOpacity 
-            style={styles.addButton}
+            style={dynamicStyles.addButton}
             onPress={() => Alert.alert('Info', 'Roles are system-defined. You can view and edit permissions for existing roles.')}
           >
             <Ionicons name="information-circle-outline" size={20} color="#FFF" />
-            <Text style={styles.addButtonText}>Role Info</Text>
+            <Text style={dynamicStyles.addButtonText}>Role Info</Text>
           </TouchableOpacity>
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false}>
           {roles.map((role) => (
-            <View key={role.id} style={styles.roleCard}>
-              <View style={styles.roleHeader}>
-                <View style={styles.roleInfo}>
-                  <Text style={styles.roleName}>{role.name}</Text>
-                  <Text style={styles.roleUsers}>{role.users} users</Text>
+            <View key={role.id} style={dynamicStyles.roleCard}>
+              <View style={dynamicStyles.roleHeader}>
+                <View style={dynamicStyles.roleInfo}>
+                  <Text style={dynamicStyles.roleName}>{role.name}</Text>
+                  <Text style={dynamicStyles.roleUsers}>{role.users} users</Text>
                 </View>
-                <View style={styles.roleActions}>
+                <View style={dynamicStyles.roleActions}>
                   <TouchableOpacity 
-                    style={styles.viewButton}
+                    style={dynamicStyles.viewButton}
                     onPress={() => handleViewRole(role)}
                   >
                     <Ionicons name="eye-outline" size={20} color="#27AE60" />
                   </TouchableOpacity>
                   <TouchableOpacity 
-                    style={styles.editButton}
+                    style={dynamicStyles.editButton}
                     onPress={() => handleEditRole(role)}
                   >
                     <Ionicons name="create-outline" size={20} color="#4A90E2" />
                   </TouchableOpacity>
                   <TouchableOpacity 
-                    style={[styles.deleteButton, !role.canDelete && styles.disabledButton]}
+                    style={[dynamicStyles.deleteButton, !role.canDelete && dynamicStyles.disabledButton]}
                     onPress={() => handleDeleteRole(role)}
                     disabled={!role.canDelete}
                   >
@@ -203,19 +208,19 @@ const AdminRoleManagementScreen = ({ navigation }) => {
                   </TouchableOpacity>
                 </View>
               </View>
-              <View style={styles.permissionsContainer}>
-                <Text style={styles.permissionsLabel}>Permissions:</Text>
-                <View style={styles.permissionsList}>
+              <View style={dynamicStyles.permissionsContainer}>
+                <Text style={dynamicStyles.permissionsLabel}>Permissions:</Text>
+                <View style={dynamicStyles.permissionsList}>
                   {role.permissions.map((permission, index) => (
-                    <View key={index} style={styles.permissionBadge}>
-                      <Text style={styles.permissionText}>{permission}</Text>
+                    <View key={index} style={dynamicStyles.permissionBadge}>
+                      <Text style={dynamicStyles.permissionText}>{permission}</Text>
                     </View>
                   ))}
                 </View>
               </View>
               {role.description && (
-                <View style={styles.descriptionContainer}>
-                  <Text style={styles.descriptionText}>{role.description}</Text>
+                <View style={dynamicStyles.descriptionContainer}>
+                  <Text style={dynamicStyles.descriptionText}>{role.description}</Text>
                 </View>
               )}
             </View>
@@ -229,52 +234,52 @@ const AdminRoleManagementScreen = ({ navigation }) => {
           animationType="fade"
           onRequestClose={() => setViewModalVisible(false)}
         >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Role Details</Text>
+          <View style={dynamicStyles.modalOverlay}>
+            <View style={dynamicStyles.modalContent}>
+              <View style={dynamicStyles.modalHeader}>
+                <Text style={dynamicStyles.modalTitle}>Role Details</Text>
                 <TouchableOpacity
                   onPress={() => setViewModalVisible(false)}
-                  style={styles.closeButton}
+                  style={dynamicStyles.closeButton}
                 >
                   <Ionicons name="close" size={24} color="#666" />
                 </TouchableOpacity>
               </View>
               
               {selectedRole && (
-                <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Role Name:</Text>
-                    <Text style={styles.detailValue}>{selectedRole.name}</Text>
+                <ScrollView style={dynamicStyles.modalBody} showsVerticalScrollIndicator={false}>
+                  <View style={dynamicStyles.detailRow}>
+                    <Text style={dynamicStyles.detailLabel}>Role Name:</Text>
+                    <Text style={dynamicStyles.detailValue}>{selectedRole.name}</Text>
                   </View>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Total Users:</Text>
-                    <Text style={styles.detailValue}>{selectedRole.users}</Text>
+                  <View style={dynamicStyles.detailRow}>
+                    <Text style={dynamicStyles.detailLabel}>Total Users:</Text>
+                    <Text style={dynamicStyles.detailValue}>{selectedRole.users}</Text>
                   </View>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Role ID:</Text>
-                    <Text style={styles.detailValue}>{selectedRole.id}</Text>
+                  <View style={dynamicStyles.detailRow}>
+                    <Text style={dynamicStyles.detailLabel}>Role ID:</Text>
+                    <Text style={dynamicStyles.detailValue}>{selectedRole.id}</Text>
                   </View>
                   {selectedRole.description && (
-                    <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>Description:</Text>
-                      <Text style={styles.detailValue}>{selectedRole.description}</Text>
+                    <View style={dynamicStyles.detailRow}>
+                      <Text style={dynamicStyles.detailLabel}>Description:</Text>
+                      <Text style={dynamicStyles.detailValue}>{selectedRole.description}</Text>
                     </View>
                   )}
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Can Delete:</Text>
-                    <Text style={[styles.detailValue, selectedRole.canDelete ? styles.textSuccess : styles.textDanger]}>
+                  <View style={dynamicStyles.detailRow}>
+                    <Text style={dynamicStyles.detailLabel}>Can Delete:</Text>
+                    <Text style={[dynamicStyles.detailValue, selectedRole.canDelete ? dynamicStyles.textSuccess : dynamicStyles.textDanger]}>
                       {selectedRole.canDelete ? 'Yes' : 'No (System Role)'}
                     </Text>
                   </View>
                   
-                  <View style={styles.permissionsSection}>
-                    <Text style={styles.permissionsSectionLabel}>Permissions:</Text>
-                    <View style={styles.permissionsList}>
+                  <View style={dynamicStyles.permissionsSection}>
+                    <Text style={dynamicStyles.permissionsSectionLabel}>Permissions:</Text>
+                    <View style={dynamicStyles.permissionsList}>
                       {selectedRole.permissions.map((permission, index) => (
-                        <View key={index} style={styles.permissionBadgeLarge}>
+                        <View key={index} style={dynamicStyles.permissionBadgeLarge}>
                           <Ionicons name="checkmark-circle" size={16} color="#27AE60" />
-                          <Text style={styles.permissionTextLarge}>{permission}</Text>
+                          <Text style={dynamicStyles.permissionTextLarge}>{permission}</Text>
                         </View>
                       ))}
                     </View>
@@ -292,45 +297,45 @@ const AdminRoleManagementScreen = ({ navigation }) => {
           animationType="fade"
           onRequestClose={() => setEditModalVisible(false)}
         >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Edit Role</Text>
+          <View style={dynamicStyles.modalOverlay}>
+            <View style={dynamicStyles.modalContent}>
+              <View style={dynamicStyles.modalHeader}>
+                <Text style={dynamicStyles.modalTitle}>Edit Role</Text>
                 <TouchableOpacity
                   onPress={() => setEditModalVisible(false)}
-                  style={styles.closeButton}
+                  style={dynamicStyles.closeButton}
                 >
                   <Ionicons name="close" size={24} color="#666" />
                 </TouchableOpacity>
               </View>
               
               {selectedRole && (
-                <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-                  <View style={styles.infoBox}>
+                <ScrollView style={dynamicStyles.modalBody} showsVerticalScrollIndicator={false}>
+                  <View style={dynamicStyles.infoBox}>
                     <Ionicons name="information-circle" size={20} color="#4A90E2" />
-                    <Text style={styles.infoText}>
+                    <Text style={dynamicStyles.infoText}>
                       {selectedRole.id === 'superadmin' 
                         ? 'Super Admin role cannot be modified.' 
                         : 'You are viewing the role permissions. In this version, role permissions are system-defined.'}
                     </Text>
                   </View>
 
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Role Name:</Text>
-                    <Text style={styles.detailValue}>{selectedRole.name}</Text>
+                  <View style={dynamicStyles.detailRow}>
+                    <Text style={dynamicStyles.detailLabel}>Role Name:</Text>
+                    <Text style={dynamicStyles.detailValue}>{selectedRole.name}</Text>
                   </View>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Total Users:</Text>
-                    <Text style={styles.detailValue}>{selectedRole.users}</Text>
+                  <View style={dynamicStyles.detailRow}>
+                    <Text style={dynamicStyles.detailLabel}>Total Users:</Text>
+                    <Text style={dynamicStyles.detailValue}>{selectedRole.users}</Text>
                   </View>
                   
-                  <View style={styles.permissionsSection}>
-                    <Text style={styles.permissionsSectionLabel}>Current Permissions:</Text>
-                    <View style={styles.permissionsList}>
+                  <View style={dynamicStyles.permissionsSection}>
+                    <Text style={dynamicStyles.permissionsSectionLabel}>Current Permissions:</Text>
+                    <View style={dynamicStyles.permissionsList}>
                       {editedPermissions.map((permission, index) => (
-                        <View key={index} style={styles.permissionBadgeLarge}>
+                        <View key={index} style={dynamicStyles.permissionBadgeLarge}>
                           <Ionicons name="checkmark-circle" size={16} color="#27AE60" />
-                          <Text style={styles.permissionTextLarge}>{permission}</Text>
+                          <Text style={dynamicStyles.permissionTextLarge}>{permission}</Text>
                         </View>
                       ))}
                     </View>
@@ -338,11 +343,11 @@ const AdminRoleManagementScreen = ({ navigation }) => {
 
                   {selectedRole.id !== 'superadmin' && (
                     <TouchableOpacity
-                      style={styles.updateButton}
+                      style={dynamicStyles.updateButton}
                       onPress={handleUpdateRole}
                     >
                       <Ionicons name="save-outline" size={20} color="#FFF" />
-                      <Text style={styles.updateButtonText}>Save Changes</Text>
+                      <Text style={dynamicStyles.updateButtonText}>Save Changes</Text>
                     </TouchableOpacity>
                   )}
                 </ScrollView>
@@ -355,9 +360,10 @@ const AdminRoleManagementScreen = ({ navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (isMobile, isTablet) => StyleSheet.create({
   container: {
     flex: 1,
+    padding: isMobile ? 12 : isTablet ? 16 : 20,
   },
   loadingContainer: {
     flex: 1,
@@ -366,22 +372,23 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 10,
-    fontSize: 16,
+    fontSize: isMobile ? 14 : isTablet ? 15 : 16,
     color: '#666',
   },
   headerSection: {
-    flexDirection: 'row',
+    flexDirection: isMobile ? 'column' : 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
+    alignItems: isMobile ? 'flex-start' : 'center',
+    marginBottom: isMobile ? 16 : isTablet ? 18 : 20,
+    gap: isMobile ? 12 : 0,
   },
   pageTitle: {
-    fontSize: 28,
+    fontSize: isMobile ? 22 : isTablet ? 26 : 28,
     fontWeight: 'bold',
     color: '#333',
   },
   pageSubtitle: {
-    fontSize: 14,
+    fontSize: isMobile ? 12 : isTablet ? 13 : 14,
     color: '#666',
     marginTop: 4,
   },
@@ -389,64 +396,105 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#27AE60',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
+    paddingVertical: isMobile ? 8 : isTablet ? 9 : 10,
+    paddingHorizontal: isMobile ? 16 : isTablet ? 18 : 20,
     borderRadius: 8,
+    alignSelf: isMobile ? 'stretch' : 'auto',
+    ...(Platform.OS === 'web' && {
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+      ':hover': {
+        backgroundColor: '#229954',
+        transform: 'translateY(-1px)',
+      },
+    }),
   },
   addButtonText: {
     color: '#FFF',
-    fontSize: 14,
+    fontSize: isMobile ? 13 : isTablet ? 13.5 : 14,
     fontWeight: '600',
     marginLeft: 6,
   },
   roleCard: {
     backgroundColor: '#FFF',
     borderRadius: 12,
-    padding: 20,
-    marginBottom: 15,
+    padding: isMobile ? 14 : isTablet ? 17 : 20,
+    marginBottom: isMobile ? 12 : isTablet ? 14 : 15,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+    ...(Platform.OS === 'web' && {
+      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+      transition: 'transform 0.2s, box-shadow 0.2s',
+      ':hover': {
+        transform: 'translateY(-2px)',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+      },
+    }),
   },
   roleHeader: {
-    flexDirection: 'row',
+    flexDirection: isMobile ? 'column' : 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 15,
+    alignItems: isMobile ? 'flex-start' : 'center',
+    marginBottom: isMobile ? 12 : isTablet ? 14 : 15,
+    gap: isMobile ? 12 : 0,
   },
   roleInfo: {
     flex: 1,
+    width: isMobile ? '100%' : 'auto',
   },
   roleName: {
-    fontSize: 20,
+    fontSize: isMobile ? 18 : isTablet ? 19 : 20,
     fontWeight: 'bold',
     color: '#333',
   },
   roleUsers: {
-    fontSize: 14,
+    fontSize: isMobile ? 12 : isTablet ? 13 : 14,
     color: '#666',
     marginTop: 4,
   },
   roleActions: {
     flexDirection: 'row',
-    gap: 10,
+    gap: isMobile ? 8 : 10,
+    flexWrap: isMobile ? 'wrap' : 'nowrap',
   },
   viewButton: {
-    padding: 8,
+    padding: isMobile ? 6 : 8,
     backgroundColor: '#F5F6FA',
     borderRadius: 6,
+    ...(Platform.OS === 'web' && {
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+      ':hover': {
+        backgroundColor: '#E8ECF1',
+      },
+    }),
   },
   editButton: {
-    padding: 8,
+    padding: isMobile ? 6 : 8,
     backgroundColor: '#F5F6FA',
     borderRadius: 6,
+    ...(Platform.OS === 'web' && {
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+      ':hover': {
+        backgroundColor: '#E8ECF1',
+      },
+    }),
   },
   deleteButton: {
-    padding: 8,
+    padding: isMobile ? 6 : 8,
     backgroundColor: '#F5F6FA',
     borderRadius: 6,
+    ...(Platform.OS === 'web' && {
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+      ':hover': {
+        backgroundColor: '#E8ECF1',
+      },
+    }),
   },
   disabledButton: {
     opacity: 0.5,
@@ -454,27 +502,28 @@ const styles = StyleSheet.create({
   permissionsContainer: {
     borderTopWidth: 1,
     borderTopColor: '#F0F0F0',
-    paddingTop: 15,
+    paddingTop: isMobile ? 12 : isTablet ? 14 : 15,
+    marginTop: isMobile ? 12 : isTablet ? 14 : 15,
   },
   permissionsLabel: {
-    fontSize: 14,
+    fontSize: isMobile ? 12 : isTablet ? 13 : 14,
     fontWeight: '600',
     color: '#666',
-    marginBottom: 10,
+    marginBottom: isMobile ? 8 : 10,
   },
   permissionsList: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: isMobile ? 6 : 8,
   },
   permissionBadge: {
     backgroundColor: '#E8F4FD',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: isMobile ? 8 : isTablet ? 10 : 12,
+    paddingVertical: isMobile ? 5 : 6,
     borderRadius: 6,
   },
   permissionText: {
-    fontSize: 12,
+    fontSize: isMobile ? 11 : isTablet ? 11.5 : 12,
     color: '#4A90E2',
     fontWeight: '500',
   },
@@ -494,53 +543,68 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: isMobile ? 16 : 20,
+    ...(Platform.OS === 'web' && {
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      zIndex: 9999,
+    }),
   },
   modalContent: {
     backgroundColor: '#FFF',
     borderRadius: 12,
-    width: '100%',
+    width: isMobile ? '100%' : '90%',
     maxWidth: 600,
-    maxHeight: '80%',
+    maxHeight: isMobile ? '90%' : '80%',
+    ...(Platform.OS === 'web' && {
+      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+    }),
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    padding: isMobile ? 16 : isTablet ? 18 : 20,
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: isMobile ? 18 : isTablet ? 19 : 20,
     fontWeight: 'bold',
     color: '#333',
   },
   closeButton: {
     padding: 4,
+    ...(Platform.OS === 'web' && {
+      cursor: 'pointer',
+    }),
   },
   modalBody: {
-    padding: 20,
+    padding: isMobile ? 16 : isTablet ? 18 : 20,
   },
   detailRow: {
-    flexDirection: 'row',
+    flexDirection: isMobile ? 'column' : 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
+    alignItems: isMobile ? 'flex-start' : 'center',
+    paddingVertical: isMobile ? 10 : 12,
     borderBottomWidth: 1,
     borderBottomColor: '#F5F5F5',
+    gap: isMobile ? 4 : 0,
   },
   detailLabel: {
-    fontSize: 14,
+    fontSize: isMobile ? 12 : isTablet ? 13 : 14,
     fontWeight: '600',
     color: '#666',
     flex: 1,
   },
   detailValue: {
-    fontSize: 14,
+    fontSize: isMobile ? 13 : isTablet ? 13.5 : 14,
     color: '#333',
-    flex: 2,
-    textAlign: 'right',
+    flex: isMobile ? 1 : 2,
+    textAlign: isMobile ? 'left' : 'right',
   },
   textSuccess: {
     color: '#27AE60',
@@ -551,62 +615,72 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   permissionsSection: {
-    marginTop: 20,
-    paddingTop: 20,
+    marginTop: isMobile ? 16 : isTablet ? 18 : 20,
+    paddingTop: isMobile ? 16 : isTablet ? 18 : 20,
     borderTopWidth: 1,
     borderTopColor: '#F0F0F0',
   },
   permissionsSectionLabel: {
-    fontSize: 16,
+    fontSize: isMobile ? 14 : isTablet ? 15 : 16,
     fontWeight: '600',
     color: '#333',
-    marginBottom: 15,
+    marginBottom: isMobile ? 12 : isTablet ? 14 : 15,
   },
   permissionBadgeLarge: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#E8F4FD',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: isMobile ? 10 : 12,
+    paddingVertical: isMobile ? 6 : 8,
     borderRadius: 6,
     gap: 6,
   },
   permissionTextLarge: {
-    fontSize: 13,
+    fontSize: isMobile ? 12 : isTablet ? 12.5 : 13,
     color: '#4A90E2',
     fontWeight: '500',
   },
   infoBox: {
     flexDirection: 'row',
     backgroundColor: '#E8F4FD',
-    padding: 12,
+    padding: isMobile ? 10 : 12,
     borderRadius: 8,
-    marginBottom: 15,
-    gap: 10,
+    marginBottom: isMobile ? 12 : isTablet ? 14 : 15,
+    gap: isMobile ? 8 : 10,
   },
   infoText: {
     flex: 1,
-    fontSize: 13,
+    fontSize: isMobile ? 12 : isTablet ? 12.5 : 13,
     color: '#4A90E2',
-    lineHeight: 18,
+    lineHeight: isMobile ? 16 : 18,
   },
   updateButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#4A90E2',
-    paddingVertical: 14,
-    paddingHorizontal: 20,
+    paddingVertical: isMobile ? 10 : isTablet ? 11 : 12,
+    paddingHorizontal: isMobile ? 16 : isTablet ? 18 : 20,
     borderRadius: 8,
-    marginTop: 20,
+    marginTop: isMobile ? 16 : isTablet ? 18 : 20,
     gap: 8,
+    ...(Platform.OS === 'web' && {
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+      ':hover': {
+        backgroundColor: '#357ABD',
+        transform: 'translateY(-1px)',
+      },
+    }),
   },
   updateButtonText: {
     color: '#FFF',
-    fontSize: 16,
+    fontSize: isMobile ? 14 : isTablet ? 15 : 16,
     fontWeight: '600',
   },
 });
+
+const styles = StyleSheet.create({});
 
 export default AdminRoleManagementScreen;
 

@@ -9,14 +9,20 @@ import {
   ActivityIndicator,
   Alert,
   Switch,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import AdminLayout from '../../../components/Admin/AdminLayout';
 import api from '../../../config/api';
 import { colors, spacing, typography, borderRadius } from '../../../styles/theme';
+import { useResponsive } from '../../../utils/responsive';
 
 const PaymentSettingsScreen = ({ navigation }) => {
+  const responsive = useResponsive();
+  const isMobile = responsive.isMobile;
+  const isTablet = responsive.isTablet;
+  const dynamicStyles = getStyles(isMobile, isTablet);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState({
@@ -72,9 +78,9 @@ const PaymentSettingsScreen = ({ navigation }) => {
   if (loading) {
     return (
       <AdminLayout title="Payment Settings" activeScreen="AdminSettings" onNavigate={handleNavigate} onLogout={handleLogout}>
-        <View style={styles.loadingContainer}>
+        <View style={dynamicStyles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading settings...</Text>
+          <Text style={dynamicStyles.loadingText}>Loading settings...</Text>
         </View>
       </AdminLayout>
     );
@@ -82,23 +88,23 @@ const PaymentSettingsScreen = ({ navigation }) => {
 
   return (
     <AdminLayout title="Payment Settings" activeScreen="AdminSettings" onNavigate={handleNavigate} onLogout={handleLogout}>
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+      <ScrollView style={dynamicStyles.container} showsVerticalScrollIndicator={false}>
+        <View style={dynamicStyles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={dynamicStyles.backButton}>
             <Ionicons name="arrow-back" size={24} color={colors.primary} />
           </TouchableOpacity>
-          <View style={styles.headerTextContainer}>
-            <Text style={styles.pageTitle}>Payment Settings</Text>
-            <Text style={styles.pageSubtitle}>Configure payment gateways and policies</Text>
+          <View style={dynamicStyles.headerTextContainer}>
+            <Text style={dynamicStyles.pageTitle}>Payment Settings</Text>
+            <Text style={dynamicStyles.pageSubtitle}>Configure payment gateways and policies</Text>
           </View>
         </View>
 
         {/* General Payment Settings */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>General Settings</Text>
+        <View style={dynamicStyles.section}>
+          <Text style={dynamicStyles.sectionTitle}>General Settings</Text>
           
-          <View style={styles.switchRow}>
-            <Text style={styles.switchLabel}>Enable Payments</Text>
+          <View style={dynamicStyles.switchRow}>
+            <Text style={dynamicStyles.switchLabel}>Enable Payments</Text>
             <Switch
               value={settings.enablePayments}
               onValueChange={(value) => setSettings({ ...settings, enablePayments: value })}
@@ -107,13 +113,13 @@ const PaymentSettingsScreen = ({ navigation }) => {
             />
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Default Currency</Text>
-            <View style={styles.pickerContainer}>
+          <View style={dynamicStyles.inputGroup}>
+            <Text style={dynamicStyles.label}>Default Currency</Text>
+            <View style={dynamicStyles.pickerContainer}>
               <Picker
                 selectedValue={settings.defaultCurrency}
                 onValueChange={(value) => setSettings({ ...settings, defaultCurrency: value })}
-                style={styles.picker}
+                style={dynamicStyles.picker}
               >
                 <Picker.Item label="Indian Rupee (INR)" value="INR" />
                 <Picker.Item label="US Dollar (USD)" value="USD" />
@@ -122,8 +128,8 @@ const PaymentSettingsScreen = ({ navigation }) => {
             </View>
           </View>
 
-          <View style={styles.switchRow}>
-            <Text style={styles.switchLabel}>Enable GST</Text>
+          <View style={dynamicStyles.switchRow}>
+            <Text style={dynamicStyles.switchLabel}>Enable GST</Text>
             <Switch
               value={settings.gstEnabled}
               onValueChange={(value) => setSettings({ ...settings, gstEnabled: value })}
@@ -133,10 +139,10 @@ const PaymentSettingsScreen = ({ navigation }) => {
           </View>
 
           {settings.gstEnabled && (
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>GST Percentage (%)</Text>
+            <View style={dynamicStyles.inputGroup}>
+              <Text style={dynamicStyles.label}>GST Percentage (%)</Text>
               <TextInput
-                style={styles.input}
+                style={dynamicStyles.input}
                 value={String(settings.gstPercentage)}
                 onChangeText={(text) => setSettings({ ...settings, gstPercentage: parseFloat(text) || 18 })}
                 keyboardType="decimal-pad"
@@ -148,9 +154,9 @@ const PaymentSettingsScreen = ({ navigation }) => {
         </View>
 
         {/* Razorpay */}
-        <View style={styles.section}>
-          <View style={styles.gatewayHeader}>
-            <Text style={styles.sectionTitle}>Razorpay</Text>
+        <View style={dynamicStyles.section}>
+          <View style={dynamicStyles.gatewayHeader}>
+            <Text style={dynamicStyles.sectionTitle}>Razorpay</Text>
             <Switch
               value={settings.paymentGateways.razorpay.enabled}
               onValueChange={(value) => setSettings({
@@ -167,10 +173,10 @@ const PaymentSettingsScreen = ({ navigation }) => {
 
           {settings.paymentGateways.razorpay.enabled && (
             <>
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Key ID</Text>
+              <View style={dynamicStyles.inputGroup}>
+                <Text style={dynamicStyles.label}>Key ID</Text>
                 <TextInput
-                  style={styles.input}
+                  style={dynamicStyles.input}
                   value={settings.paymentGateways.razorpay.keyId}
                   onChangeText={(text) => setSettings({
                     ...settings,
@@ -185,10 +191,10 @@ const PaymentSettingsScreen = ({ navigation }) => {
                 />
               </View>
 
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Key Secret</Text>
+              <View style={dynamicStyles.inputGroup}>
+                <Text style={dynamicStyles.label}>Key Secret</Text>
                 <TextInput
-                  style={styles.input}
+                  style={dynamicStyles.input}
                   value={settings.paymentGateways.razorpay.keySecret}
                   onChangeText={(text) => setSettings({
                     ...settings,
@@ -203,10 +209,10 @@ const PaymentSettingsScreen = ({ navigation }) => {
                 />
               </View>
 
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Webhook Secret</Text>
+              <View style={dynamicStyles.inputGroup}>
+                <Text style={dynamicStyles.label}>Webhook Secret</Text>
                 <TextInput
-                  style={styles.input}
+                  style={dynamicStyles.input}
                   value={settings.paymentGateways.razorpay.webhookSecret}
                   onChangeText={(text) => setSettings({
                     ...settings,
@@ -225,9 +231,9 @@ const PaymentSettingsScreen = ({ navigation }) => {
         </View>
 
         {/* Stripe */}
-        <View style={styles.section}>
-          <View style={styles.gatewayHeader}>
-            <Text style={styles.sectionTitle}>Stripe</Text>
+        <View style={dynamicStyles.section}>
+          <View style={dynamicStyles.gatewayHeader}>
+            <Text style={dynamicStyles.sectionTitle}>Stripe</Text>
             <Switch
               value={settings.paymentGateways.stripe.enabled}
               onValueChange={(value) => setSettings({
@@ -244,10 +250,10 @@ const PaymentSettingsScreen = ({ navigation }) => {
 
           {settings.paymentGateways.stripe.enabled && (
             <>
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Publishable Key</Text>
+              <View style={dynamicStyles.inputGroup}>
+                <Text style={dynamicStyles.label}>Publishable Key</Text>
                 <TextInput
-                  style={styles.input}
+                  style={dynamicStyles.input}
                   value={settings.paymentGateways.stripe.publishableKey}
                   onChangeText={(text) => setSettings({
                     ...settings,
@@ -262,10 +268,10 @@ const PaymentSettingsScreen = ({ navigation }) => {
                 />
               </View>
 
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Secret Key</Text>
+              <View style={dynamicStyles.inputGroup}>
+                <Text style={dynamicStyles.label}>Secret Key</Text>
                 <TextInput
-                  style={styles.input}
+                  style={dynamicStyles.input}
                   value={settings.paymentGateways.stripe.secretKey}
                   onChangeText={(text) => setSettings({
                     ...settings,
@@ -284,9 +290,9 @@ const PaymentSettingsScreen = ({ navigation }) => {
         </View>
 
         {/* PayPal */}
-        <View style={styles.section}>
-          <View style={styles.gatewayHeader}>
-            <Text style={styles.sectionTitle}>PayPal</Text>
+        <View style={dynamicStyles.section}>
+          <View style={dynamicStyles.gatewayHeader}>
+            <Text style={dynamicStyles.sectionTitle}>PayPal</Text>
             <Switch
               value={settings.paymentGateways.paypal.enabled}
               onValueChange={(value) => setSettings({
@@ -303,10 +309,10 @@ const PaymentSettingsScreen = ({ navigation }) => {
 
           {settings.paymentGateways.paypal.enabled && (
             <>
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Client ID</Text>
+              <View style={dynamicStyles.inputGroup}>
+                <Text style={dynamicStyles.label}>Client ID</Text>
                 <TextInput
-                  style={styles.input}
+                  style={dynamicStyles.input}
                   value={settings.paymentGateways.paypal.clientId}
                   onChangeText={(text) => setSettings({
                     ...settings,
@@ -321,10 +327,10 @@ const PaymentSettingsScreen = ({ navigation }) => {
                 />
               </View>
 
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Client Secret</Text>
+              <View style={dynamicStyles.inputGroup}>
+                <Text style={dynamicStyles.label}>Client Secret</Text>
                 <TextInput
-                  style={styles.input}
+                  style={dynamicStyles.input}
                   value={settings.paymentGateways.paypal.clientSecret}
                   onChangeText={(text) => setSettings({
                     ...settings,
@@ -339,9 +345,9 @@ const PaymentSettingsScreen = ({ navigation }) => {
                 />
               </View>
 
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Mode</Text>
-                <View style={styles.pickerContainer}>
+              <View style={dynamicStyles.inputGroup}>
+                <Text style={dynamicStyles.label}>Mode</Text>
+                <View style={dynamicStyles.pickerContainer}>
                   <Picker
                     selectedValue={settings.paymentGateways.paypal.mode}
                     onValueChange={(value) => setSettings({
@@ -351,7 +357,7 @@ const PaymentSettingsScreen = ({ navigation }) => {
                         paypal: { ...settings.paymentGateways.paypal, mode: value }
                       }
                     })}
-                    style={styles.picker}
+                    style={dynamicStyles.picker}
                   >
                     <Picker.Item label="Sandbox (Test)" value="sandbox" />
                     <Picker.Item label="Live (Production)" value="live" />
@@ -363,13 +369,13 @@ const PaymentSettingsScreen = ({ navigation }) => {
         </View>
 
         {/* Policies */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Policies</Text>
+        <View style={dynamicStyles.section}>
+          <Text style={dynamicStyles.sectionTitle}>Policies</Text>
           
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Refund Policy</Text>
+          <View style={dynamicStyles.inputGroup}>
+            <Text style={dynamicStyles.label}>Refund Policy</Text>
             <TextInput
-              style={[styles.input, styles.textArea]}
+              style={[dynamicStyles.input, dynamicStyles.textArea]}
               value={settings.refundPolicy}
               onChangeText={(text) => setSettings({ ...settings, refundPolicy: text })}
               placeholder="Enter refund policy..."
@@ -379,10 +385,10 @@ const PaymentSettingsScreen = ({ navigation }) => {
             />
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Terms and Conditions</Text>
+          <View style={dynamicStyles.inputGroup}>
+            <Text style={dynamicStyles.label}>Terms and Conditions</Text>
             <TextInput
-              style={[styles.input, styles.textArea]}
+              style={[dynamicStyles.input, dynamicStyles.textArea]}
               value={settings.termsAndConditions}
               onChangeText={(text) => setSettings({ ...settings, termsAndConditions: text })}
               placeholder="Enter terms and conditions..."
@@ -395,7 +401,7 @@ const PaymentSettingsScreen = ({ navigation }) => {
 
         {/* Save Button */}
         <TouchableOpacity
-          style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+          style={[dynamicStyles.saveButton, saving && dynamicStyles.saveButtonDisabled]}
           onPress={handleSave}
           disabled={saving}
         >
@@ -404,18 +410,18 @@ const PaymentSettingsScreen = ({ navigation }) => {
           ) : (
             <>
               <Ionicons name="card" size={20} color={colors.white} />
-              <Text style={styles.saveButtonText}>Save Payment Settings</Text>
+              <Text style={dynamicStyles.saveButtonText}>Save Payment Settings</Text>
             </>
           )}
         </TouchableOpacity>
 
-        <View style={styles.bottomSpacing} />
+        <View style={dynamicStyles.bottomSpacing} />
       </ScrollView>
     </AdminLayout>
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (isMobile, isTablet) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -459,11 +465,15 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.md,
     padding: spacing.lg,
     borderRadius: borderRadius.lg,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+    } : {
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+    }),
   },
   gatewayHeader: {
     flexDirection: 'row',
@@ -538,6 +548,8 @@ const styles = StyleSheet.create({
     height: spacing.xxl,
   },
 });
+
+const styles = StyleSheet.create({});
 
 export default PaymentSettingsScreen;
 

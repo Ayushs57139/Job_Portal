@@ -4,17 +4,20 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { colors, spacing, borderRadius, shadows, typography } from '../styles/theme';
 import api from '../config/api';
+import { useResponsive } from '../utils/responsive';
 
-const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
-const isPhone = width <= 480;
-const isMobile = width <= 600;
-const isTablet = width > 600 && width <= 1024;
-const isDesktop = width > 1024;
 
 const JobCard = ({ job }) => {
   const navigation = useNavigation();
+  const responsive = useResponsive();
   const [isSaved, setIsSaved] = useState(false);
+  
+  const isPhone = responsive.width <= 480;
+  const isMobile = responsive.isMobile;
+  const isTablet = responsive.isTablet;
+  const isDesktop = responsive.isDesktop;
+  const dynamicStyles = getStyles(isPhone, isMobile, isTablet, isDesktop);
 
   const formatSalary = (min, max) => {
     if (!min && !max) return 'Not disclosed';
@@ -75,55 +78,55 @@ const JobCard = ({ job }) => {
 
   return (
     <TouchableOpacity
-      style={styles.card}
+      style={dynamicStyles.card}
       onPress={handleJobClick}
       activeOpacity={0.9}
     >
       {/* Top Bar with Company Logo and Save Button */}
-      <View style={styles.topBar}>
-        <View style={styles.companyLogoContainer}>
-          <View style={styles.companyLogo}>
-            <Ionicons name="business" size={24} color={colors.primary} />
+      <View style={dynamicStyles.topBar}>
+        <View style={dynamicStyles.companyLogoContainer}>
+          <View style={dynamicStyles.companyLogo}>
+            <Ionicons name="business" size={isPhone ? 20 : (isMobile ? 22 : 24)} color={colors.primary} />
           </View>
-          <View style={styles.companyInfo}>
+          <View style={dynamicStyles.companyInfo}>
             {companyName && (
-              <Text style={styles.company} numberOfLines={1}>
+              <Text style={dynamicStyles.company} numberOfLines={1}>
                 {companyName}
               </Text>
             )}
-            <Text style={styles.postedDate}>
+            <Text style={dynamicStyles.postedDate}>
               Posted {api.formatIndianDate(job.createdAt)}
             </Text>
           </View>
         </View>
         <TouchableOpacity
-          style={styles.saveButton}
+          style={dynamicStyles.saveButton}
           onPress={handleSave}
           activeOpacity={0.7}
         >
           <Ionicons
             name={isSaved ? "bookmark" : "bookmark-outline"}
-            size={24}
+            size={isPhone ? 20 : (isMobile ? 22 : 24)}
             color={isSaved ? colors.primary : colors.textSecondary}
           />
         </TouchableOpacity>
       </View>
 
       {/* Job Title */}
-      <Text style={styles.title} numberOfLines={2}>
+      <Text style={dynamicStyles.title} numberOfLines={2}>
         {jobTitle}
       </Text>
 
       {/* Details Grid */}
-      <View style={styles.detailsGrid}>
+      <View style={dynamicStyles.detailsGrid}>
         {job.location && (
-          <View style={styles.detailItem}>
-            <View style={styles.detailIcon}>
-              <Ionicons name="location" size={16} color={colors.primary} />
+          <View style={dynamicStyles.detailItem}>
+            <View style={dynamicStyles.detailIcon}>
+              <Ionicons name="location" size={isPhone ? 14 : 16} color={colors.primary} />
             </View>
-            <View style={styles.detailContent}>
-              <Text style={styles.detailLabel}>Location</Text>
-              <Text style={styles.detailValue} numberOfLines={1}>
+            <View style={dynamicStyles.detailContent}>
+              <Text style={dynamicStyles.detailLabel}>Location</Text>
+              <Text style={dynamicStyles.detailValue} numberOfLines={1}>
                 {formatLocation(job.location)}
               </Text>
             </View>
@@ -131,13 +134,13 @@ const JobCard = ({ job }) => {
         )}
         
         {experienceRequired && (
-          <View style={styles.detailItem}>
-            <View style={styles.detailIcon}>
-              <Ionicons name="briefcase" size={16} color={colors.primary} />
+          <View style={dynamicStyles.detailItem}>
+            <View style={dynamicStyles.detailIcon}>
+              <Ionicons name="briefcase" size={isPhone ? 14 : 16} color={colors.primary} />
             </View>
-            <View style={styles.detailContent}>
-              <Text style={styles.detailLabel}>Experience</Text>
-              <Text style={styles.detailValue} numberOfLines={1}>
+            <View style={dynamicStyles.detailContent}>
+              <Text style={dynamicStyles.detailLabel}>Experience</Text>
+              <Text style={dynamicStyles.detailValue} numberOfLines={1}>
                 {experienceRequired}
               </Text>
             </View>
@@ -146,53 +149,55 @@ const JobCard = ({ job }) => {
       </View>
 
       {/* Salary Badge */}
-      <View style={styles.salaryBadge}>
-        <Ionicons name="cash" size={18} color={colors.success || '#10B981'} />
-        <Text style={styles.salaryText}>
+      <View style={dynamicStyles.salaryBadge}>
+        <Ionicons name="cash" size={isPhone ? 16 : 18} color={colors.success || '#10B981'} />
+        <Text style={dynamicStyles.salaryText}>
           {formatSalary(salaryMin, salaryMax)}
         </Text>
       </View>
 
       {/* Skills */}
       {jobSkills && jobSkills.length > 0 && (
-        <View style={styles.skills}>
-          {jobSkills.slice(0, 4).map((skill, index) => (
-            <View key={index} style={styles.skill}>
-              <Text style={styles.skillText}>{skill}</Text>
+        <View style={dynamicStyles.skills}>
+          {jobSkills.slice(0, isPhone ? 3 : 4).map((skill, index) => (
+            <View key={index} style={dynamicStyles.skill}>
+              <Text style={dynamicStyles.skillText}>{skill}</Text>
             </View>
           ))}
-          {jobSkills.length > 4 && (
-            <View style={styles.skill}>
-              <Text style={styles.skillText}>+{jobSkills.length - 4}</Text>
+          {jobSkills.length > (isPhone ? 3 : 4) && (
+            <View style={dynamicStyles.skill}>
+              <Text style={dynamicStyles.skillText}>+{jobSkills.length - (isPhone ? 3 : 4)}</Text>
             </View>
           )}
         </View>
       )}
 
       {/* Footer with Apply Button */}
-      <View style={styles.footer}>
+      <View style={dynamicStyles.footer}>
         <TouchableOpacity
-          style={styles.applyButton}
+          style={dynamicStyles.applyButton}
           onPress={(e) => {
             e.stopPropagation();
             navigation.navigate('JobApplication', { jobId: job._id });
           }}
           activeOpacity={0.8}
         >
-          <Text style={styles.applyButtonText}>Apply Now</Text>
-          <Ionicons name="arrow-forward" size={18} color={colors.textWhite} />
+          <Text style={dynamicStyles.applyButtonText}>Apply Now</Text>
+          <Ionicons name="arrow-forward" size={isPhone ? 16 : 18} color={colors.textWhite} />
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (isPhone, isMobile, isTablet, isDesktop) => StyleSheet.create({
   card: {
     backgroundColor: colors.cardBackground,
     borderRadius: borderRadius.xl,
     padding: isPhone ? spacing.md : (isMobile ? spacing.md : isTablet ? spacing.lg : spacing.lg),
     width: '100%',
+    height: isPhone ? 380 : (isMobile ? 400 : (isTablet ? 420 : 440)),
+    flexDirection: 'column',
     ...shadows.md,
     borderWidth: 1,
     borderColor: colors.borderLight,
@@ -330,11 +335,12 @@ const styles = StyleSheet.create({
   },
   footer: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
     alignItems: 'center',
     paddingTop: spacing.md,
     borderTopWidth: 1,
     borderTopColor: colors.borderLight,
+    marginTop: 'auto',
   },
   applyButton: {
     flexDirection: 'row',
@@ -346,7 +352,7 @@ const styles = StyleSheet.create({
     paddingVertical: isPhone ? spacing.sm : spacing.md,
     borderRadius: borderRadius.md,
     ...shadows.sm,
-    minWidth: isPhone ? 100 : (isMobile ? 120 : (isTablet ? 130 : 140)),
+    width: isPhone ? 120 : (isMobile ? 140 : (isTablet ? 150 : 160)),
   },
   applyButtonText: {
     ...typography.button,

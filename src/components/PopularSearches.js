@@ -11,15 +11,18 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, typography, shadows } from '../styles/theme';
 import api from '../config/api';
+import { useResponsive } from '../utils/responsive';
 
-const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
-const isPhone = width <= 480;
-const isMobile = width <= 600;
-const isTablet = width > 600 && width <= 1024;
-const isDesktop = width > 1024;
 
 const PopularSearches = ({ navigation }) => {
+  const responsive = useResponsive();
+  const isPhone = responsive.width <= 480;
+  const isMobile = responsive.isMobile;
+  const isTablet = responsive.isTablet;
+  const isDesktop = responsive.isDesktop;
+  const dynamicStyles = getStyles(isPhone, isMobile, isTablet, isDesktop);
+  
   const [popularSearches, setPopularSearches] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -89,44 +92,44 @@ const PopularSearches = ({ navigation }) => {
   const searchesToDisplay = popularSearches;
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Popular Searches on JobWala</Text>
+    <View style={dynamicStyles.container}>
+      <View style={dynamicStyles.header}>
+        <Text style={dynamicStyles.title}>Popular Searches on JobWala</Text>
       </View>
 
-      <View style={styles.cardsContainer}>
+      <View style={dynamicStyles.cardsContainer}>
         {searchesToDisplay.map((search, index) => (
           <TouchableOpacity
             key={search._id || index}
-            style={styles.card}
+            style={dynamicStyles.card}
             onPress={() => handleSearchClick(search)}
             activeOpacity={0.7}
           >
-            <View style={styles.cardContent}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.trendingBadge}>
+            <View style={dynamicStyles.cardContent}>
+              <View style={dynamicStyles.cardHeader}>
+                <Text style={dynamicStyles.trendingBadge}>
                   TRENDING AT #{search.trendingRank || index + 1}
                 </Text>
               </View>
               
-              <View style={styles.cardBody}>
-                <Text style={styles.cardTitle}>{search.title}</Text>
-                <View style={styles.cardFooter}>
+              <View style={dynamicStyles.cardBody}>
+                <Text style={dynamicStyles.cardTitle}>{search.title}</Text>
+                <View style={dynamicStyles.cardFooter}>
                   <TouchableOpacity
                     onPress={() => handleSearchClick(search)}
-                    style={styles.viewAllButton}
+                    style={dynamicStyles.viewAllButton}
                   >
-                    <Text style={styles.viewAllText}>View all</Text>
-                    <Ionicons name="chevron-forward" size={16} color={colors.text} />
+                    <Text style={dynamicStyles.viewAllText}>View all</Text>
+                    <Ionicons name="chevron-forward" size={isPhone ? 14 : 16} color={colors.text} />
                   </TouchableOpacity>
                 </View>
               </View>
             </View>
             
-            <View style={[styles.cardIconContainer, { backgroundColor: search.color || colors.primary + '20' }]}>
+            <View style={[dynamicStyles.cardIconContainer, { backgroundColor: search.color || colors.primary + '20' }]}>
               <Ionicons 
                 name={search.icon || 'briefcase-outline'} 
-                size={40} 
+                size={isPhone ? 32 : (isMobile ? 36 : 40)} 
                 color={search.color || colors.primary} 
               />
             </View>
@@ -137,7 +140,9 @@ const PopularSearches = ({ navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (isPhone, isMobile, isTablet, isDesktop) => {
+  const width = typeof window !== 'undefined' ? window.innerWidth : Dimensions.get('window').width;
+  return StyleSheet.create({
   container: {
     paddingVertical: isPhone ? spacing.lg : (isMobile ? spacing.xl : isTablet ? spacing.xl : spacing.xxl),
     paddingHorizontal: isPhone ? spacing.sm : (isMobile ? spacing.md : isTablet ? spacing.lg : spacing.xl),
@@ -235,7 +240,8 @@ const styles = StyleSheet.create({
     opacity: 0.15,
     zIndex: 1,
   },
-});
+  });
+};
 
 export default PopularSearches;
 

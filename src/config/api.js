@@ -1817,6 +1817,43 @@ class JobWalaAPI {
   async getPopularJobRoles(limit = 12) {
     return await this.request(`/job-roles/popular?limit=${limit}`);
   }
+
+  // Add new job title
+  async addJobTitle(name, category = 'Other') {
+    return await this.request('/job-titles', {
+      method: 'POST',
+      body: JSON.stringify({ name, category }),
+    });
+  }
+
+  // Add new key skill
+  async addKeySkill(name, category = 'Other', skillType = 'Technical') {
+    return await this.request('/key-skills', {
+      method: 'POST',
+      body: JSON.stringify({ name, category, skillType }),
+    });
+  }
+
+  // Add new job role
+  async addJobRole(name, category = 'Other') {
+    return await this.request('/job-roles', {
+      method: 'POST',
+      body: JSON.stringify({ name, category }),
+    });
+  }
+
+  // Search companies
+  async searchCompanies(query) {
+    return await this.request(`/companies/search?q=${encodeURIComponent(query)}`);
+  }
+
+  // Add new company
+  async addCompany(name) {
+    return await this.request('/companies', {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    });
+  }
 }
 
 // Create API instance safely

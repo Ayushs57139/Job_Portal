@@ -4,19 +4,21 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { colors, spacing, typography, shadows, borderRadius } from '../styles/theme';
 import api from '../config/api';
+import { useResponsive } from '../utils/responsive';
 
-const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
-const isPhone = width <= 480; // Phones
-const isMobile = width <= 600; // Small phones and small tablets
-const isTablet = width > 600 && width <= 1024; // Tablets
-const isDesktop = width > 1024; // Desktop and large screens
 
 const Header = ({ showBack = false, title }) => {
   const navigation = useNavigation();
+  const responsive = useResponsive();
   const [user, setUser] = useState(null);
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  
+  const isPhone = responsive.width <= 480;
+  const isMobile = responsive.isMobile;
+  const isTablet = responsive.isTablet;
+  const isDesktop = responsive.isDesktop;
 
   useEffect(() => {
     loadUser();
@@ -174,17 +176,18 @@ const Header = ({ showBack = false, title }) => {
   // Render navigation menu item
   const renderMenuItem = (item, index) => {
     const isActive = activeDropdown === item.label;
+    const dynamicStyles = getStyles(isPhone, isMobile, isTablet, isDesktop);
     
     return (
       <View 
         key={index} 
         style={[
-          styles.menuItemWrapper,
-          isActive && styles.menuItemWrapperActive
+          dynamicStyles.menuItemWrapper,
+          isActive && dynamicStyles.menuItemWrapperActive
         ]}
       >
         <TouchableOpacity
-          style={styles.menuItem}
+          style={dynamicStyles.menuItem}
           onPress={() => {
             if (item.hasDropdown) {
               toggleDropdown(item.label);
@@ -194,32 +197,32 @@ const Header = ({ showBack = false, title }) => {
           }}
           activeOpacity={0.7}
         >
-          <Text style={styles.menuItemText}>{item.label}</Text>
+          <Text style={dynamicStyles.menuItemText}>{item.label}</Text>
           {item.hasDropdown && (
             <Ionicons
               name={isActive ? 'chevron-up' : 'chevron-down'}
-              size={16}
+              size={isPhone ? 14 : 16}
               color={colors.text}
-              style={styles.menuItemIcon}
+              style={dynamicStyles.menuItemIcon}
             />
           )}
         </TouchableOpacity>
 
         {/* Dropdown Menu */}
         {item.hasDropdown && isActive && (
-          <View style={styles.dropdown}>
+          <View style={dynamicStyles.dropdown}>
             {item.items.map((dropdownItem, dropdownIndex) => (
               <TouchableOpacity
                 key={dropdownIndex}
                 style={[
-                  styles.dropdownItem,
-                  dropdownIndex === item.items.length - 1 && styles.dropdownItemLast
+                  dynamicStyles.dropdownItem,
+                  dropdownIndex === item.items.length - 1 && dynamicStyles.dropdownItemLast
                 ]}
                 onPress={() => navigateTo(dropdownItem.screen, dropdownItem.params)}
                 activeOpacity={0.7}
               >
-                <Ionicons name={dropdownItem.icon} size={18} color={colors.primary} />
-                <Text style={styles.dropdownItemText}>{dropdownItem.label}</Text>
+                <Ionicons name={dropdownItem.icon} size={isPhone ? 16 : 18} color={colors.primary} />
+                <Text style={dynamicStyles.dropdownItemText}>{dropdownItem.label}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -228,61 +231,63 @@ const Header = ({ showBack = false, title }) => {
     );
   };
 
+  const dynamicStyles = getStyles(isPhone, isMobile, isTablet, isDesktop);
+
   return (
     <>
       {/* Backdrop for closing dropdown */}
       {activeDropdown && (
         <TouchableOpacity
-          style={styles.backdrop}
+          style={dynamicStyles.backdrop}
           activeOpacity={1}
           onPress={() => setActiveDropdown(null)}
         />
       )}
       
-      <View style={styles.headerWrapper}>
-        <View style={styles.header}>
-          <View style={styles.headerContent}>
+      <View style={dynamicStyles.headerWrapper}>
+        <View style={dynamicStyles.header}>
+          <View style={dynamicStyles.headerContent}>
             {/* Left Section - Logo or Back Button */}
-            <View style={styles.leftSectionContainer}>
+            <View style={dynamicStyles.leftSectionContainer}>
               {showBack ? (
-                <View style={styles.leftSection}>
+                <View style={dynamicStyles.leftSection}>
                   <TouchableOpacity
                     onPress={() => navigation.goBack()}
-                    style={styles.backButton}
+                    style={dynamicStyles.backButton}
                     activeOpacity={0.7}
                   >
-                    <Ionicons name="arrow-back" size={24} color={colors.primary} />
+                    <Ionicons name="arrow-back" size={isPhone ? 20 : 24} color={colors.primary} />
                   </TouchableOpacity>
-                  {title && <Text style={styles.titleText}>{title}</Text>}
+                  {title && <Text style={dynamicStyles.titleText}>{title}</Text>}
                 </View>
               ) : (
                 <TouchableOpacity
                   onPress={() => navigateTo('Home')}
-                  style={styles.logo}
+                  style={dynamicStyles.logo}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.logoText}>
-                    <Text style={styles.logoFree}>Free</Text>
-                    <Text style={styles.logoJob}>job</Text>
-                    <Text style={styles.logoWala}>wala</Text>
+                  <Text style={dynamicStyles.logoText}>
+                    <Text style={dynamicStyles.logoFree}>Free</Text>
+                    <Text style={dynamicStyles.logoJob}>job</Text>
+                    <Text style={dynamicStyles.logoWala}>wala</Text>
                   </Text>
                 </TouchableOpacity>
               )}
 
               {/* Navigation Menu - Desktop/Tablet (only show if not showing back button) */}
-              {!showBack && !isMobile && (
-                <View style={styles.navMenu}>
+              {!showBack && !responsive.isMobile && (
+                <View style={dynamicStyles.navMenu}>
                   {menuItems.map((item, index) => renderMenuItem(item, index))}
                 </View>
               )}
             </View>
 
           {/* Right Section */}
-          <View style={styles.headerActions}>
+          <View style={dynamicStyles.headerActions}>
             {user ? (
-              <View style={styles.userMenu}>
+              <View style={dynamicStyles.userMenu}>
                 <TouchableOpacity 
-                  style={styles.userAvatarContainer}
+                  style={dynamicStyles.userAvatarContainer}
                   onPress={() => {
                     // Navigate based on user type
                     if (user.userType === 'employer') {
@@ -299,8 +304,8 @@ const Header = ({ showBack = false, title }) => {
                   }}
                   activeOpacity={0.7}
                 >
-                  <View style={styles.userAvatar}>
-                    <Text style={styles.userInitial}>
+                  <View style={dynamicStyles.userAvatar}>
+                    <Text style={dynamicStyles.userInitial}>
                       {(user.firstName || user.name || 'U')[0].toUpperCase()}
                     </Text>
                   </View>
@@ -322,52 +327,52 @@ const Header = ({ showBack = false, title }) => {
                   }}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.userName} numberOfLines={1}>
+                  <Text style={dynamicStyles.userName} numberOfLines={1}>
                     {user.firstName || user.name}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={handleLogout}
-                  style={styles.logoutButton}
+                  style={dynamicStyles.logoutButton}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name="log-out-outline" size={20} color={colors.primary} />
+                  <Ionicons name="log-out-outline" size={isPhone ? 18 : 20} color={colors.primary} />
                 </TouchableOpacity>
               </View>
             ) : (
-              <View style={styles.authButtons}>
+              <View style={dynamicStyles.authButtons}>
                 <TouchableOpacity
-                  style={styles.loginButton}
+                  style={dynamicStyles.loginButton}
                   onPress={() => navigateTo('Login')}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.loginButtonText}>Candidate Login</Text>
+                  <Text style={dynamicStyles.loginButtonText}>Candidate Login</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={styles.postJobButton}
+                  style={dynamicStyles.postJobButton}
                   onPress={() => navigateTo('PostJob')}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.postJobButtonText}>Post Job</Text>
+                  <Text style={dynamicStyles.postJobButtonText}>Post Job</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={styles.employersButton}
+                  style={dynamicStyles.employersButton}
                   onPress={() => navigateTo('EmployerOptions')}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.employersButtonText}>Employers Login</Text>
+                  <Text style={dynamicStyles.employersButtonText}>Employers Login</Text>
                 </TouchableOpacity>
               </View>
             )}
 
             {/* Mobile Menu Button */}
-            {isMobile && (
+            {responsive.isMobile && (
               <TouchableOpacity
-                style={styles.mobileMenuButton}
+                style={dynamicStyles.mobileMenuButton}
                 onPress={() => setMobileMenuOpen(true)}
                 activeOpacity={0.7}
               >
-                <Ionicons name="menu" size={28} color={colors.text} />
+                <Ionicons name="menu" size={isPhone ? 24 : 28} color={colors.text} />
               </TouchableOpacity>
             )}
           </View>
@@ -381,22 +386,22 @@ const Header = ({ showBack = false, title }) => {
         transparent={true}
         onRequestClose={() => setMobileMenuOpen(false)}
       >
-        <View style={styles.mobileMenuOverlay}>
-          <View style={styles.mobileMenuContent}>
-            <View style={styles.mobileMenuHeader}>
-              <Text style={styles.mobileMenuTitle}>Menu</Text>
+        <View style={dynamicStyles.mobileMenuOverlay}>
+          <View style={dynamicStyles.mobileMenuContent}>
+            <View style={dynamicStyles.mobileMenuHeader}>
+              <Text style={dynamicStyles.mobileMenuTitle}>Menu</Text>
               <TouchableOpacity
                 onPress={() => setMobileMenuOpen(false)}
-                style={styles.mobileMenuClose}
+                style={dynamicStyles.mobileMenuClose}
               >
-                <Ionicons name="close" size={28} color={colors.text} />
+                <Ionicons name="close" size={isPhone ? 24 : 28} color={colors.text} />
               </TouchableOpacity>
             </View>
 
             {menuItems.map((item, index) => (
-              <View key={index} style={styles.mobileMenuItem}>
+              <View key={index} style={dynamicStyles.mobileMenuItem}>
                 <TouchableOpacity
-                  style={styles.mobileMenuItemButton}
+                  style={dynamicStyles.mobileMenuItemButton}
                   onPress={() => {
                     if (!item.hasDropdown) {
                       navigateTo(item.screen);
@@ -405,26 +410,26 @@ const Header = ({ showBack = false, title }) => {
                     }
                   }}
                 >
-                  <Text style={styles.mobileMenuItemText}>{item.label}</Text>
+                  <Text style={dynamicStyles.mobileMenuItemText}>{item.label}</Text>
                   {item.hasDropdown && (
                     <Ionicons
                       name={activeDropdown === item.label ? 'chevron-up' : 'chevron-down'}
-                      size={20}
+                      size={isPhone ? 18 : 20}
                       color={colors.text}
                     />
                   )}
                 </TouchableOpacity>
 
                 {item.hasDropdown && activeDropdown === item.label && (
-                  <View style={styles.mobileDropdown}>
+                  <View style={dynamicStyles.mobileDropdown}>
                     {item.items.map((dropdownItem, dropdownIndex) => (
                       <TouchableOpacity
                         key={dropdownIndex}
-                        style={styles.mobileDropdownItem}
+                        style={dynamicStyles.mobileDropdownItem}
                         onPress={() => navigateTo(dropdownItem.screen, dropdownItem.params)}
                       >
-                        <Ionicons name={dropdownItem.icon} size={18} color={colors.primary} />
-                        <Text style={styles.mobileDropdownItemText}>{dropdownItem.label}</Text>
+                        <Ionicons name={dropdownItem.icon} size={isPhone ? 16 : 18} color={colors.primary} />
+                        <Text style={dynamicStyles.mobileDropdownItemText}>{dropdownItem.label}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -433,18 +438,18 @@ const Header = ({ showBack = false, title }) => {
             ))}
 
             {!user && (
-              <View style={styles.mobileAuthButtons}>
+              <View style={dynamicStyles.mobileAuthButtons}>
                 <TouchableOpacity
-                  style={styles.mobileLoginButton}
+                  style={dynamicStyles.mobileLoginButton}
                   onPress={() => navigateTo('Login')}
                 >
-                  <Text style={styles.mobileLoginButtonText}>Candidate Login</Text>
+                  <Text style={dynamicStyles.mobileLoginButtonText}>Candidate Login</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={styles.mobilePostJobButton}
+                  style={dynamicStyles.mobilePostJobButton}
                   onPress={() => navigateTo('PostJob')}
                 >
-                  <Text style={styles.mobilePostJobButtonText}>Post Job</Text>
+                  <Text style={dynamicStyles.mobilePostJobButtonText}>Post Job</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -456,7 +461,9 @@ const Header = ({ showBack = false, title }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (isPhone, isMobile, isTablet, isDesktop) => {
+  const width = typeof window !== 'undefined' ? window.innerWidth : Dimensions.get('window').width;
+  return StyleSheet.create({
   backdrop: {
     position: 'absolute',
     top: 0,
@@ -590,13 +597,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     zIndex: 9999,
-    elevation: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    ...(isWeb && {
+    ...(isWeb ? {
       boxShadow: '0 10px 25px rgba(0,0,0,0.15)',
+    } : {
+      elevation: 10,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.15,
+      shadowRadius: 12,
     }),
   },
   dropdownItem: {
@@ -827,6 +835,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
 });
+};
 
 export default Header;
 

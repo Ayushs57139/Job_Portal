@@ -22,16 +22,18 @@ import TrendingJobRoles from '../../components/TrendingJobRoles';
 import api from '../../config/api';
 import { keySkillsOptions } from '../../data/jobPostFormConfig';
 import { DEPARTMENTS_DATA } from '../../data/departmentsData';
+import { useResponsive } from '../../utils/responsive';
 
-const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
-const isPhone = width <= 480; // Phones
-const isMobile = width <= 600; // Small phones and small tablets
-const isTablet = width > 600 && width <= 1024; // Tablets
-const isDesktop = width > 1024; // Desktop and large screens
-const isLargeDesktop = width > 1400; // Large desktop screens
 
 const HomeScreen = ({ navigation }) => {
+  const responsive = useResponsive();
+  const isPhone = responsive.width <= 480;
+  const isMobile = responsive.isMobile;
+  const isTablet = responsive.isTablet;
+  const isDesktop = responsive.isDesktop;
+  const isLargeDesktop = responsive.width > 1400;
+  
   const [latestJobs, setLatestJobs] = useState([]);
   const [topCompanies, setTopCompanies] = useState([]);
   const [careerBlogs, setCareerBlogs] = useState([]);
@@ -166,12 +168,51 @@ const HomeScreen = ({ navigation }) => {
       setCareerBlogs([]);
       
       // Load latest jobs - fully dynamic from API
-      const jobsResponse = await api.getJobs({ limit: 6, sort: '-createdAt' });
+      const jobsResponse = await api.getJobs({ limit: 8, sort: '-createdAt' });
+      let jobs = [];
       if (jobsResponse && jobsResponse.jobs) {
-        setLatestJobs(jobsResponse.jobs);
-      } else {
-        setLatestJobs([]);
+        jobs = jobsResponse.jobs;
       }
+      
+      // Add dummy jobs if needed to make it 8 total
+      if (jobs.length < 8) {
+        const dummyJobs = [
+          {
+            _id: 'dummy-job-1',
+            title: 'Product Manager',
+            company: { name: 'Tech Solutions Inc' },
+            location: {
+              city: 'Bangalore',
+              state: 'Karnataka',
+              locality: ''
+            },
+            salary: { min: 1500000, max: 2500000 },
+            totalExperience: { min: '3 Years', max: '5 Years' },
+            keySkills: ['Product Management', 'Agile', 'Scrum', 'Analytics'],
+            createdAt: new Date().toISOString(),
+          },
+          {
+            _id: 'dummy-job-2',
+            title: 'UI/UX Designer',
+            company: { name: 'Creative Studio' },
+            location: {
+              city: 'Pune',
+              state: 'Maharashtra',
+              locality: ''
+            },
+            salary: { min: 800000, max: 1500000 },
+            totalExperience: { min: '2 Years', max: '4 Years' },
+            keySkills: ['Figma', 'Adobe XD', 'Prototyping', 'User Research'],
+            createdAt: new Date().toISOString(),
+          },
+        ];
+        
+        // Add only the number of dummy jobs needed to reach 8
+        const neededDummyJobs = 8 - jobs.length;
+        jobs = [...jobs, ...dummyJobs.slice(0, neededDummyJobs)];
+      }
+      
+      setLatestJobs(jobs);
 
       // Load top companies - fully dynamic from API
       const companiesResponse = await api.getCompanies({ limit: 6 });
@@ -210,18 +251,20 @@ const HomeScreen = ({ navigation }) => {
     });
   };
 
+  const dynamicStyles = getStyles(isPhone, isMobile, isTablet, isDesktop, isLargeDesktop, responsive.width);
+
   const renderHeroSection = () => (
-    <View style={styles.hero}>
-      <Text style={styles.heroTitle}>Find your dream job now</Text>
-      <Text style={styles.heroSubtitle}>5 lakh+ jobs for you to explore</Text>
+    <View style={dynamicStyles.hero}>
+      <Text style={dynamicStyles.heroTitle}>Find your dream job now</Text>
+      <Text style={dynamicStyles.heroSubtitle}>5 lakh+ jobs for you to explore</Text>
 
       {/* Search Container */}
-      <View style={styles.searchContainer}>
-        <View style={styles.searchRow}>
+      <View style={dynamicStyles.searchContainer}>
+        <View style={dynamicStyles.searchRow}>
           {/* Skills/Designations Input */}
-          <View style={styles.experienceContainer}>
+          <View style={dynamicStyles.experienceContainer}>
             <TouchableOpacity
-              style={styles.experienceDropdown}
+              style={dynamicStyles.experienceDropdown}
               onPress={() => {
                 setShowSearchMenu(!showSearchMenu);
                 setShowExperienceMenu(false);
@@ -230,8 +273,8 @@ const HomeScreen = ({ navigation }) => {
             >
               <Text
                 style={[
-                  styles.experienceText,
-                  selectedSkills.length === 0 && styles.placeholderText,
+                  dynamicStyles.experienceText,
+                  selectedSkills.length === 0 && dynamicStyles.placeholderText,
                 ]}
                 numberOfLines={1}
                 ellipsizeMode="tail"
@@ -245,11 +288,11 @@ const HomeScreen = ({ navigation }) => {
 
             {showSearchMenu && (
               <>
-                <View style={styles.experienceMenu}>
-                  <View style={styles.searchFilterInput}>
+                <View style={dynamicStyles.experienceMenu}>
+                  <View style={dynamicStyles.searchFilterInput}>
                     <Ionicons name="search-outline" size={18} color={colors.textSecondary} />
                     <TextInput
-                      style={styles.searchFilterText}
+                      style={dynamicStyles.searchFilterText}
                       placeholder="Search skills or departments"
                       placeholderTextColor={colors.textLight}
                       value={searchFilter}
@@ -258,7 +301,7 @@ const HomeScreen = ({ navigation }) => {
                     />
                   </View>
                   <ScrollView
-                    style={styles.experienceMenuScroll}
+                    style={dynamicStyles.experienceMenuScroll}
                     nestedScrollEnabled={true}
                     showsVerticalScrollIndicator={false}
                   >
@@ -267,9 +310,9 @@ const HomeScreen = ({ navigation }) => {
                         <TouchableOpacity
                           key={`${option}-${index}`}
                           style={[
-                            styles.experienceOption,
-                            index === filteredSearchOptions.length - 1 && styles.experienceOptionLast,
-                            selectedSkills.includes(option) && styles.experienceOptionActive,
+                            dynamicStyles.experienceOption,
+                            index === filteredSearchOptions.length - 1 && dynamicStyles.experienceOptionLast,
+                            selectedSkills.includes(option) && dynamicStyles.experienceOptionActive,
                           ]}
                           onPress={() => {
                             setSelectedSkills((prev) => {
@@ -290,8 +333,8 @@ const HomeScreen = ({ navigation }) => {
                         >
                           <Text
                             style={[
-                              styles.experienceOptionText,
-                              selectedSkills.includes(option) && styles.experienceOptionTextActive,
+                              dynamicStyles.experienceOptionText,
+                              selectedSkills.includes(option) && dynamicStyles.experienceOptionTextActive,
                             ]}
                           >
                             {option}
@@ -299,14 +342,14 @@ const HomeScreen = ({ navigation }) => {
                         </TouchableOpacity>
                       ))
                     ) : (
-                      <View style={styles.noResultsContainer}>
-                        <Text style={styles.noResultsText}>No results found</Text>
+                      <View style={dynamicStyles.noResultsContainer}>
+                        <Text style={dynamicStyles.noResultsText}>No results found</Text>
                       </View>
                     )}
                   </ScrollView>
                 </View>
                 <TouchableOpacity
-                  style={styles.dropdownBackdrop}
+                  style={dynamicStyles.dropdownBackdrop}
                   activeOpacity={1}
                   onPress={() => {
                     setShowSearchMenu(false);
@@ -318,9 +361,9 @@ const HomeScreen = ({ navigation }) => {
           </View>
 
           {/* Experience Dropdown */}
-          <View style={styles.experienceContainer}>
+          <View style={dynamicStyles.experienceContainer}>
             <TouchableOpacity
-              style={styles.experienceDropdown}
+              style={dynamicStyles.experienceDropdown}
               onPress={() => {
                 setShowExperienceMenu(!showExperienceMenu);
                 setShowLocationMenu(false);
@@ -328,8 +371,8 @@ const HomeScreen = ({ navigation }) => {
             >
               <Text
                 style={[
-                  styles.experienceText,
-                  experience === 'Select experience' && styles.placeholderText,
+                  dynamicStyles.experienceText,
+                  experience === 'Select experience' && dynamicStyles.placeholderText,
                 ]}
                 numberOfLines={1}
                 ellipsizeMode="tail"
@@ -341,9 +384,9 @@ const HomeScreen = ({ navigation }) => {
             
             {showExperienceMenu && (
               <>
-                <View style={styles.experienceMenu}>
+                <View style={dynamicStyles.experienceMenu}>
                   <ScrollView
-                    style={styles.experienceMenuScroll}
+                    style={dynamicStyles.experienceMenuScroll}
                     nestedScrollEnabled={true}
                     showsVerticalScrollIndicator={false}
                   >
@@ -351,9 +394,9 @@ const HomeScreen = ({ navigation }) => {
                       <TouchableOpacity
                         key={index}
                         style={[
-                          styles.experienceOption,
-                          index === experienceOptions.length - 1 && styles.experienceOptionLast,
-                          experience === option && styles.experienceOptionActive,
+                          dynamicStyles.experienceOption,
+                          index === experienceOptions.length - 1 && dynamicStyles.experienceOptionLast,
+                          experience === option && dynamicStyles.experienceOptionActive,
                         ]}
                         onPress={() => {
                           setExperience(option);
@@ -362,8 +405,8 @@ const HomeScreen = ({ navigation }) => {
                         activeOpacity={0.7}
                       >
                         <Text style={[
-                          styles.experienceOptionText,
-                          experience === option && styles.experienceOptionTextActive,
+                          dynamicStyles.experienceOptionText,
+                          experience === option && dynamicStyles.experienceOptionTextActive,
                         ]}>
                           {option}
                         </Text>
@@ -372,7 +415,7 @@ const HomeScreen = ({ navigation }) => {
                   </ScrollView>
                 </View>
                 <TouchableOpacity
-                  style={styles.dropdownBackdrop}
+                  style={dynamicStyles.dropdownBackdrop}
                   activeOpacity={1}
                   onPress={() => setShowExperienceMenu(false)}
                 />
@@ -381,9 +424,9 @@ const HomeScreen = ({ navigation }) => {
           </View>
 
           {/* Location Input */}
-          <View style={styles.experienceContainer}>
+          <View style={dynamicStyles.experienceContainer}>
             <TouchableOpacity
-              style={styles.experienceDropdown}
+              style={dynamicStyles.experienceDropdown}
               onPress={() => {
                 setShowLocationMenu(!showLocationMenu);
                 setShowExperienceMenu(false);
@@ -391,8 +434,8 @@ const HomeScreen = ({ navigation }) => {
             >
               <Text
                 style={[
-                  styles.experienceText,
-                  !locationQuery && styles.placeholderText,
+                  dynamicStyles.experienceText,
+                  !locationQuery && dynamicStyles.placeholderText,
                 ]}
                 numberOfLines={1}
                 ellipsizeMode="tail"
@@ -404,9 +447,9 @@ const HomeScreen = ({ navigation }) => {
 
             {showLocationMenu && (
               <>
-                <View style={styles.experienceMenu}>
+                <View style={dynamicStyles.experienceMenu}>
                   <ScrollView
-                    style={styles.experienceMenuScroll}
+                    style={dynamicStyles.experienceMenuScroll}
                     nestedScrollEnabled={true}
                     showsVerticalScrollIndicator={false}
                   >
@@ -414,9 +457,9 @@ const HomeScreen = ({ navigation }) => {
                       <TouchableOpacity
                         key={option}
                         style={[
-                          styles.experienceOption,
-                          index === locationOptions.length - 1 && styles.experienceOptionLast,
-                          locationQuery === option && styles.experienceOptionActive,
+                          dynamicStyles.experienceOption,
+                          index === locationOptions.length - 1 && dynamicStyles.experienceOptionLast,
+                          locationQuery === option && dynamicStyles.experienceOptionActive,
                         ]}
                         onPress={() => {
                           setLocationQuery(option);
@@ -426,8 +469,8 @@ const HomeScreen = ({ navigation }) => {
                       >
                         <Text
                           style={[
-                            styles.experienceOptionText,
-                            locationQuery === option && styles.experienceOptionTextActive,
+                          dynamicStyles.experienceOptionText,
+                          locationQuery === option && dynamicStyles.experienceOptionTextActive,
                           ]}
                         >
                           {option}
@@ -437,7 +480,7 @@ const HomeScreen = ({ navigation }) => {
                   </ScrollView>
                 </View>
                 <TouchableOpacity
-                  style={styles.dropdownBackdrop}
+                  style={dynamicStyles.dropdownBackdrop}
                   activeOpacity={1}
                   onPress={() => setShowLocationMenu(false)}
                 />
@@ -446,52 +489,52 @@ const HomeScreen = ({ navigation }) => {
           </View>
 
           {/* Search Button */}
-          <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
-            <Text style={styles.searchButtonText}>Search</Text>
+          <TouchableOpacity style={dynamicStyles.searchButton} onPress={handleSearch}>
+            <Text style={dynamicStyles.searchButtonText}>Search</Text>
           </TouchableOpacity>
         </View>
 
         {/* Popular Searches */}
-        <View style={styles.popularSearches}>
+        <View style={dynamicStyles.popularSearches}>
           <TouchableOpacity
-            style={styles.popularTag}
+            style={dynamicStyles.popularTag}
             onPress={() => {
               setSelectedSkills([]);
               setSearchQuery('business development, delhi');
             }}
           >
-            <Text style={styles.popularTagText} numberOfLines={isPhone ? 1 : undefined} ellipsizeMode="tail">business development, delhi</Text>
+            <Text style={dynamicStyles.popularTagText} numberOfLines={isPhone ? 1 : undefined} ellipsizeMode="tail">business development, delhi</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.popularTag}
+            style={dynamicStyles.popularTag}
             onPress={() => {
               setSelectedSkills([]);
               setSearchQuery('software developer, noida');
             }}
           >
-            <Text style={styles.popularTagText} numberOfLines={isPhone ? 1 : undefined} ellipsizeMode="tail">software developer, noida</Text>
+            <Text style={dynamicStyles.popularTagText} numberOfLines={isPhone ? 1 : undefined} ellipsizeMode="tail">software developer, noida</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.popularTag}
+            style={dynamicStyles.popularTag}
             onPress={() => {
               setSelectedSkills([]);
               setSearchQuery('web development, delhi');
             }}
           >
-            <Text style={styles.popularTagText} numberOfLines={isPhone ? 1 : undefined} ellipsizeMode="tail">web development, delhi</Text>
+            <Text style={dynamicStyles.popularTagText} numberOfLines={isPhone ? 1 : undefined} ellipsizeMode="tail">web development, delhi</Text>
           </TouchableOpacity>
         </View>
 
         {/* Job Alert Button */}
-        <View style={styles.jobAlertContainer}>
+        <View style={dynamicStyles.jobAlertContainer}>
           <TouchableOpacity
-            style={styles.jobAlertButton}
+            style={dynamicStyles.jobAlertButton}
             onPress={() => navigation.navigate('JobAlertForm')}
           >
             <Ionicons name="notifications" size={isPhone ? 18 : 20} color={colors.textWhite} />
-            <Text style={styles.jobAlertButtonText}>Job Alert</Text>
+            <Text style={dynamicStyles.jobAlertButtonText}>Job Alert</Text>
           </TouchableOpacity>
-          <Text style={styles.jobAlertSubtext}>
+          <Text style={dynamicStyles.jobAlertSubtext}>
             Get notified about new job opportunities matching your preferences
           </Text>
         </View>
@@ -500,28 +543,28 @@ const HomeScreen = ({ navigation }) => {
   );
 
   const renderLatestJobs = () => (
-    <View style={styles.section}>
-      <View style={styles.sectionHeader}>
+    <View style={dynamicStyles.section}>
+      <View style={dynamicStyles.sectionHeader}>
         <View>
-          <Text style={styles.sectionTitle}>Latest Jobs to Apply</Text>
-          <Text style={styles.sectionSubtitle}>
+          <Text style={dynamicStyles.sectionTitle}>Latest Jobs to Apply</Text>
+          <Text style={dynamicStyles.sectionSubtitle}>
             Discover the newest opportunities from top companies
           </Text>
         </View>
       </View>
 
       {loading ? (
-        <Text style={styles.loadingText}>Loading jobs...</Text>
+        <Text style={dynamicStyles.loadingText}>Loading jobs...</Text>
       ) : latestJobs.length > 0 ? (
-        <View style={styles.jobsGrid}>
+        <View style={dynamicStyles.jobsGrid}>
           {latestJobs.map((job) => (
-            <View key={job._id} style={styles.jobCardWrapper}>
+            <View key={job._id} style={dynamicStyles.jobCardWrapper}>
               <JobCard job={job} />
             </View>
           ))}
         </View>
       ) : (
-        <Text style={styles.emptyText}>No jobs available at the moment</Text>
+        <Text style={dynamicStyles.emptyText}>No jobs available at the moment</Text>
       )}
     </View>
   );
@@ -543,48 +586,48 @@ const HomeScreen = ({ navigation }) => {
     const filteredCompanies = getFilteredCompanies();
 
     return (
-    <View style={[styles.section, styles.companySection]}>
-      <View style={styles.sectionHeader}>
+    <View style={[dynamicStyles.section, dynamicStyles.companySection]}>
+      <View style={dynamicStyles.sectionHeader}>
         <View>
-          <Text style={styles.sectionTitle}>Top Companies Hiring Right Now</Text>
-          <Text style={styles.sectionSubtitle}>
+          <Text style={dynamicStyles.sectionTitle}>Top Companies Hiring Right Now</Text>
+          <Text style={dynamicStyles.sectionSubtitle}>
             Join thousands of professionals at leading companies
           </Text>
         </View>
       </View>
 
-      <View style={styles.companyStatsRow}>
-        <View style={styles.companyStatCard}>
-          <Text style={styles.companyStatValue}>{topCompanies.length || 0}</Text>
-          <Text style={styles.companyStatLabel}>Featured partners</Text>
+      <View style={dynamicStyles.companyStatsRow}>
+        <View style={dynamicStyles.companyStatCard}>
+          <Text style={dynamicStyles.companyStatValue}>{topCompanies.length || 0}</Text>
+          <Text style={dynamicStyles.companyStatLabel}>Featured partners</Text>
         </View>
-        <View style={styles.companyStatCard}>
-          <Text style={styles.companyStatValue}>500+</Text>
-          <Text style={styles.companyStatLabel}>Live openings</Text>
+        <View style={dynamicStyles.companyStatCard}>
+          <Text style={dynamicStyles.companyStatValue}>500+</Text>
+          <Text style={dynamicStyles.companyStatLabel}>Live openings</Text>
         </View>
-        <View style={styles.companyStatCard}>
-          <Text style={styles.companyStatValue}>4.7/5</Text>
-          <Text style={styles.companyStatLabel}>Avg. rating</Text>
+        <View style={dynamicStyles.companyStatCard}>
+          <Text style={dynamicStyles.companyStatValue}>4.7/5</Text>
+          <Text style={dynamicStyles.companyStatLabel}>Avg. rating</Text>
         </View>
       </View>
 
-      <View style={styles.companyFilterRow}>
+      <View style={dynamicStyles.companyFilterRow}>
         {['All industries', 'Top rated', 'Actively hiring'].map((filter) => {
           const isActive = companyFilter === filter;
           return (
             <TouchableOpacity
               key={filter}
               style={[
-                styles.companyFilterChip,
-                isActive && styles.companyFilterChipActive,
+                dynamicStyles.companyFilterChip,
+                isActive && dynamicStyles.companyFilterChipActive,
               ]}
               onPress={() => setCompanyFilter(filter)}
               activeOpacity={0.8}
             >
               <Text
                 style={[
-                  styles.companyFilterText,
-                  isActive && styles.companyFilterTextActive,
+                  dynamicStyles.companyFilterText,
+                  isActive && dynamicStyles.companyFilterTextActive,
                 ]}
               >
                 {filter}
@@ -595,78 +638,78 @@ const HomeScreen = ({ navigation }) => {
       </View>
 
       {loading ? (
-        <Text style={styles.loadingText}>Loading companies...</Text>
+        <Text style={dynamicStyles.loadingText}>Loading companies...</Text>
       ) : filteredCompanies.length > 0 ? (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.companyCarousel}
+          contentContainerStyle={dynamicStyles.companyCarousel}
         >
           {filteredCompanies.map((company) => (
             <CompanyCard key={company._id} company={company} />
           ))}
         </ScrollView>
       ) : (
-        <Text style={styles.emptyText}>No companies available</Text>
+        <Text style={dynamicStyles.emptyText}>No companies available</Text>
       )}
     </View>
   );
   };
 
   const renderCareerInsights = () => (
-    <View style={styles.section}>
-      <View style={styles.sectionHeader}>
+    <View style={dynamicStyles.section}>
+      <View style={dynamicStyles.sectionHeader}>
         <View>
-          <Text style={styles.sectionTitle}>Career Insights & Tips</Text>
-          <Text style={styles.sectionSubtitle}>
+          <Text style={dynamicStyles.sectionTitle}>Career Insights & Tips</Text>
+          <Text style={dynamicStyles.sectionSubtitle}>
             Stay updated with the latest career advice and industry trends
           </Text>
         </View>
       </View>
 
       {loading ? (
-        <Text style={styles.loadingText}>Loading blogs...</Text>
+        <Text style={dynamicStyles.loadingText}>Loading blogs...</Text>
       ) : careerBlogs.length > 0 ? (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.horizontalScroll}
+          contentContainerStyle={dynamicStyles.horizontalScroll}
         >
           {careerBlogs.map((blog) => (
             <BlogCard key={blog._id} blog={blog} />
           ))}
         </ScrollView>
       ) : (
-        <Text style={styles.emptyText}>No blogs available</Text>
+        <Text style={dynamicStyles.emptyText}>No blogs available</Text>
       )}
     </View>
   );
 
   const renderResumeCTA = () => (
-    <View style={styles.resumeSection}>
-      <View style={styles.resumeCTA}>
-        <Text style={styles.resumeTitle}>Need help with your resume?</Text>
-        <Text style={styles.resumeSubtitle}>
+    <View style={dynamicStyles.resumeSection}>
+      <View style={dynamicStyles.resumeCTA}>
+        <Text style={dynamicStyles.resumeTitle}>Need help with your resume?</Text>
+        <Text style={dynamicStyles.resumeSubtitle}>
           Get professional assistance to create a standout resume
         </Text>
         <TouchableOpacity
-          style={styles.resumeButton}
+          style={dynamicStyles.resumeButton}
           onPress={() => navigation.navigate('ResumeBuilder')}
         >
           <Ionicons name="document-text" size={20} color={colors.textWhite} />
-          <Text style={styles.resumeButtonText}>Build Resume</Text>
+          <Text style={dynamicStyles.resumeButtonText}>Build Resume</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 
   return (
-    <View style={styles.container}>
+    <View style={dynamicStyles.container}>
       <Header />
       
       <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        style={dynamicStyles.scrollView}
+        contentContainerStyle={dynamicStyles.scrollContent}
         showsVerticalScrollIndicator={isWeb ? true : false}
         bounces={!isWeb}
         nestedScrollEnabled={true}
@@ -683,7 +726,7 @@ const HomeScreen = ({ navigation }) => {
         <AdvertisementWidget 
           position="content-top" 
           page="home"
-          containerStyle={styles.adContainer}
+          containerStyle={dynamicStyles.adContainer}
         />
         
         {renderLatestJobs()}
@@ -692,7 +735,7 @@ const HomeScreen = ({ navigation }) => {
         <AdvertisementWidget 
           position="content-middle" 
           page="home"
-          containerStyle={styles.adContainer}
+          containerStyle={dynamicStyles.adContainer}
         />
         
         {renderTopCompanies()}
@@ -701,7 +744,7 @@ const HomeScreen = ({ navigation }) => {
         <AdvertisementWidget 
           position="content-middle" 
           page="home"
-          containerStyle={styles.adContainer}
+          containerStyle={dynamicStyles.adContainer}
         />
         
         {/* Trending Job Roles Section */}
@@ -713,7 +756,7 @@ const HomeScreen = ({ navigation }) => {
         <AdvertisementWidget 
           position="content-bottom" 
           page="home"
-          containerStyle={styles.adContainer}
+          containerStyle={dynamicStyles.adContainer}
         />
         
         {renderResumeCTA()}
@@ -723,7 +766,7 @@ const HomeScreen = ({ navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (isPhone, isMobile, isTablet, isDesktop, isLargeDesktop, width) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -1049,9 +1092,12 @@ const styles = StyleSheet.create({
     width: isPhone ? '100%' : 
            isMobile ? '100%' : 
            isTablet ? (width > 900 ? '48%' : '100%') : 
-           isDesktop ? (width > 1400 ? '32%' : width > 1200 ? '31%' : '48%') : 
+           isDesktop ? '23.5%' : 
            '100%',
-    maxWidth: isDesktop ? 400 : '100%',
+    flexBasis: isDesktop ? '23.5%' : undefined,
+    flexGrow: 0,
+    flexShrink: 0,
+    maxWidth: isDesktop ? 'none' : undefined,
   },
   horizontalScroll: {
     paddingRight: spacing.lg,

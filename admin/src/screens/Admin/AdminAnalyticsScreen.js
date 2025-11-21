@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, RefreshControl, Platform } from 'react-native';
 import AdminLayout from '../../components/Admin/AdminLayout';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../../config/api';
+import { useResponsive } from '../../utils/responsive';
 
 const AdminAnalyticsScreen = ({ navigation }) => {
+  const responsive = useResponsive();
+  const isMobile = responsive.isMobile;
+  const isTablet = responsive.isTablet;
+  const dynamicStyles = getStyles(isMobile, isTablet);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [analytics, setAnalytics] = useState(null);
@@ -89,9 +94,9 @@ const AdminAnalyticsScreen = ({ navigation }) => {
   if (loading) {
     return (
       <AdminLayout title="Analytics" activeScreen="AdminAnalytics" onNavigate={handleNavigate} onLogout={handleLogout}>
-        <View style={styles.loadingContainer}>
+        <View style={dynamicStyles.loadingContainer}>
           <ActivityIndicator size="large" color="#4A90E2" />
-          <Text style={styles.loadingText}>Loading analytics...</Text>
+          <Text style={dynamicStyles.loadingText}>Loading analytics...</Text>
         </View>
       </AdminLayout>
     );
@@ -100,12 +105,12 @@ const AdminAnalyticsScreen = ({ navigation }) => {
   if (!analytics) {
     return (
       <AdminLayout title="Analytics" activeScreen="AdminAnalytics" onNavigate={handleNavigate} onLogout={handleLogout}>
-        <View style={styles.loadingContainer}>
+        <View style={dynamicStyles.loadingContainer}>
           <Ionicons name="alert-circle" size={64} color="#E74C3C" />
-          <Text style={styles.errorText}>Failed to load analytics</Text>
-          {error && <Text style={styles.errorSubtext}>{error}</Text>}
-          <TouchableOpacity style={styles.retryButton} onPress={fetchAnalytics}>
-            <Text style={styles.retryButtonText}>Retry</Text>
+          <Text style={dynamicStyles.errorText}>Failed to load analytics</Text>
+          {error && <Text style={dynamicStyles.errorSubtext}>{error}</Text>}
+          <TouchableOpacity style={dynamicStyles.retryButton} onPress={fetchAnalytics}>
+            <Text style={dynamicStyles.retryButtonText}>Retry</Text>
           </TouchableOpacity>
         </View>
       </AdminLayout>
@@ -115,49 +120,49 @@ const AdminAnalyticsScreen = ({ navigation }) => {
   return (
     <AdminLayout title="Analytics" activeScreen="AdminAnalytics" onNavigate={handleNavigate} onLogout={handleLogout}>
       <ScrollView 
-        style={styles.scrollContainer} 
+        style={dynamicStyles.scrollContainer} 
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#4A90E2']} />
         }
       >
-        <View style={styles.container}>
+        <View style={dynamicStyles.container}>
           {/* Header */}
-          <View style={styles.header}>
+          <View style={dynamicStyles.header}>
             <View>
-              <Text style={styles.pageTitle}>Analytics Dashboard</Text>
-              <Text style={styles.pageSubtitle}>Real-time platform statistics and insights</Text>
+              <Text style={dynamicStyles.pageTitle}>Analytics Dashboard</Text>
+              <Text style={dynamicStyles.pageSubtitle}>Real-time platform statistics and insights</Text>
             </View>
-            <TouchableOpacity style={styles.refreshButton} onPress={onRefresh}>
+            <TouchableOpacity style={dynamicStyles.refreshButton} onPress={onRefresh}>
               <Ionicons name="refresh" size={20} color="#4A90E2" />
             </TouchableOpacity>
           </View>
 
           {/* Tabs */}
-          <View style={styles.tabs}>
+          <View style={dynamicStyles.tabs}>
             <TouchableOpacity
-              style={[styles.tab, activeTab === 'overview' && styles.activeTab]}
+              style={[dynamicStyles.tab, activeTab === 'overview' && dynamicStyles.activeTab]}
               onPress={() => setActiveTab('overview')}
             >
-              <Text style={[styles.tabText, activeTab === 'overview' && styles.activeTabText]}>Overview</Text>
+              <Text style={[dynamicStyles.tabText, activeTab === 'overview' && dynamicStyles.activeTabText]}>Overview</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.tab, activeTab === 'users' && styles.activeTab]}
+              style={[dynamicStyles.tab, activeTab === 'users' && dynamicStyles.activeTab]}
               onPress={() => setActiveTab('users')}
             >
-              <Text style={[styles.tabText, activeTab === 'users' && styles.activeTabText]}>Users</Text>
+              <Text style={[dynamicStyles.tabText, activeTab === 'users' && dynamicStyles.activeTabText]}>Users</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.tab, activeTab === 'jobs' && styles.activeTab]}
+              style={[dynamicStyles.tab, activeTab === 'jobs' && dynamicStyles.activeTab]}
               onPress={() => setActiveTab('jobs')}
             >
-              <Text style={[styles.tabText, activeTab === 'jobs' && styles.activeTabText]}>Jobs</Text>
+              <Text style={[dynamicStyles.tabText, activeTab === 'jobs' && dynamicStyles.activeTabText]}>Jobs</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.tab, activeTab === 'applications' && styles.activeTab]}
+              style={[dynamicStyles.tab, activeTab === 'applications' && dynamicStyles.activeTab]}
               onPress={() => setActiveTab('applications')}
             >
-              <Text style={[styles.tabText, activeTab === 'applications' && styles.activeTabText]}>Applications</Text>
+              <Text style={[dynamicStyles.tabText, activeTab === 'applications' && dynamicStyles.activeTabText]}>Applications</Text>
             </TouchableOpacity>
           </View>
 
@@ -165,40 +170,40 @@ const AdminAnalyticsScreen = ({ navigation }) => {
           {activeTab === 'overview' && (
             <View>
               {/* Key Metrics */}
-              <View style={styles.metricsGrid}>
-                <View style={[styles.metricCard, { backgroundColor: 'rgba(74, 144, 226, 0.1)' }]}>
+              <View style={dynamicStyles.metricsGrid}>
+                <View style={[dynamicStyles.metricCard, { backgroundColor: 'rgba(74, 144, 226, 0.1)' }]}>
                   <Ionicons name="people" size={32} color="#4A90E2" />
-                  <Text style={styles.metricNumber}>{formatNumber(analytics?.users?.total || 0)}</Text>
-                  <Text style={styles.metricLabel}>Total Users</Text>
-                  <View style={styles.metricBadge}>
-                    <Text style={styles.metricBadgeText}>+{analytics?.users?.newToday || 0} today</Text>
+                  <Text style={dynamicStyles.metricNumber}>{formatNumber(analytics?.users?.total || 0)}</Text>
+                  <Text style={dynamicStyles.metricLabel}>Total Users</Text>
+                  <View style={dynamicStyles.metricBadge}>
+                    <Text style={dynamicStyles.metricBadgeText}>+{analytics?.users?.newToday || 0} today</Text>
                   </View>
                 </View>
 
-                <View style={[styles.metricCard, { backgroundColor: 'rgba(39, 174, 96, 0.1)' }]}>
+                <View style={[dynamicStyles.metricCard, { backgroundColor: 'rgba(39, 174, 96, 0.1)' }]}>
                   <Ionicons name="briefcase" size={32} color="#27AE60" />
-                  <Text style={styles.metricNumber}>{formatNumber(analytics?.jobs?.total || 0)}</Text>
-                  <Text style={styles.metricLabel}>Total Jobs</Text>
-                  <View style={styles.metricBadge}>
-                    <Text style={styles.metricBadgeText}>+{analytics?.jobs?.newToday || 0} today</Text>
+                  <Text style={dynamicStyles.metricNumber}>{formatNumber(analytics?.jobs?.total || 0)}</Text>
+                  <Text style={dynamicStyles.metricLabel}>Total Jobs</Text>
+                  <View style={dynamicStyles.metricBadge}>
+                    <Text style={dynamicStyles.metricBadgeText}>+{analytics?.jobs?.newToday || 0} today</Text>
                   </View>
                 </View>
 
-                <View style={[styles.metricCard, { backgroundColor: 'rgba(243, 156, 18, 0.1)' }]}>
+                <View style={[dynamicStyles.metricCard, { backgroundColor: 'rgba(243, 156, 18, 0.1)' }]}>
                   <Ionicons name="document-text" size={32} color="#F39C12" />
-                  <Text style={styles.metricNumber}>{formatNumber(analytics?.applications?.total || 0)}</Text>
-                  <Text style={styles.metricLabel}>Total Applications</Text>
-                  <View style={styles.metricBadge}>
-                    <Text style={styles.metricBadgeText}>+{analytics?.applications?.newToday || 0} today</Text>
+                  <Text style={dynamicStyles.metricNumber}>{formatNumber(analytics?.applications?.total || 0)}</Text>
+                  <Text style={dynamicStyles.metricLabel}>Total Applications</Text>
+                  <View style={dynamicStyles.metricBadge}>
+                    <Text style={dynamicStyles.metricBadgeText}>+{analytics?.applications?.newToday || 0} today</Text>
                   </View>
                 </View>
 
-                <View style={[styles.metricCard, { backgroundColor: 'rgba(155, 89, 182, 0.1)' }]}>
+                <View style={[dynamicStyles.metricCard, { backgroundColor: 'rgba(155, 89, 182, 0.1)' }]}>
                   <Ionicons name="checkmark-circle" size={32} color="#9B59B6" />
-                  <Text style={styles.metricNumber}>{analytics?.jobs?.active || 0}</Text>
-                  <Text style={styles.metricLabel}>Active Jobs</Text>
-                  <View style={styles.metricBadge}>
-                    <Text style={styles.metricBadgeText}>
+                  <Text style={dynamicStyles.metricNumber}>{analytics?.jobs?.active || 0}</Text>
+                  <Text style={dynamicStyles.metricLabel}>Active Jobs</Text>
+                  <View style={dynamicStyles.metricBadge}>
+                    <Text style={dynamicStyles.metricBadgeText}>
                       {analytics?.jobs?.total > 0 ? ((analytics.jobs.active / analytics.jobs.total) * 100).toFixed(1) : 0}%
                     </Text>
                   </View>
@@ -206,70 +211,70 @@ const AdminAnalyticsScreen = ({ navigation }) => {
               </View>
 
               {/* Growth Indicators */}
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Growth Trends</Text>
-                <View style={styles.growthGrid}>
-                  <View style={styles.growthCard}>
-                    <View style={styles.growthHeader}>
+              <View style={dynamicStyles.section}>
+                <Text style={dynamicStyles.sectionTitle}>Growth Trends</Text>
+                <View style={dynamicStyles.growthGrid}>
+                  <View style={dynamicStyles.growthCard}>
+                    <View style={dynamicStyles.growthHeader}>
                       <Ionicons name="trending-up" size={24} color="#27AE60" />
-                      <Text style={[styles.growthRate, { color: (analytics?.users?.growthRate || 0) >= 0 ? '#27AE60' : '#E74C3C' }]}>
+                      <Text style={[dynamicStyles.growthRate, { color: (analytics?.users?.growthRate || 0) >= 0 ? '#27AE60' : '#E74C3C' }]}>
                         {(analytics?.users?.growthRate || 0) >= 0 ? '+' : ''}{analytics?.users?.growthRate || 0}%
                       </Text>
                     </View>
-                    <Text style={styles.growthLabel}>User Growth</Text>
-                    <Text style={styles.growthSubtext}>vs last month</Text>
+                    <Text style={dynamicStyles.growthLabel}>User Growth</Text>
+                    <Text style={dynamicStyles.growthSubtext}>vs last month</Text>
                   </View>
 
-                  <View style={styles.growthCard}>
-                    <View style={styles.growthHeader}>
+                  <View style={dynamicStyles.growthCard}>
+                    <View style={dynamicStyles.growthHeader}>
                       <Ionicons name="trending-up" size={24} color="#27AE60" />
-                      <Text style={[styles.growthRate, { color: (analytics?.jobs?.growthRate || 0) >= 0 ? '#27AE60' : '#E74C3C' }]}>
+                      <Text style={[dynamicStyles.growthRate, { color: (analytics?.jobs?.growthRate || 0) >= 0 ? '#27AE60' : '#E74C3C' }]}>
                         {(analytics?.jobs?.growthRate || 0) >= 0 ? '+' : ''}{analytics?.jobs?.growthRate || 0}%
                       </Text>
                     </View>
-                    <Text style={styles.growthLabel}>Job Growth</Text>
-                    <Text style={styles.growthSubtext}>vs last month</Text>
+                    <Text style={dynamicStyles.growthLabel}>Job Growth</Text>
+                    <Text style={dynamicStyles.growthSubtext}>vs last month</Text>
                   </View>
                 </View>
               </View>
 
               {/* Top Locations */}
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Top Job Locations</Text>
+              <View style={dynamicStyles.section}>
+                <Text style={dynamicStyles.sectionTitle}>Top Job Locations</Text>
                 {analytics.topLocations && analytics.topLocations.length > 0 ? (
                   analytics.topLocations.map((loc, index) => (
-                    <View key={index} style={styles.listItem}>
-                      <View style={styles.listItemLeft}>
+                    <View key={index} style={dynamicStyles.listItem}>
+                      <View style={dynamicStyles.listItemLeft}>
                         <Ionicons name="location" size={20} color="#4A90E2" />
-                        <Text style={styles.listItemText}>{loc._id || 'Unknown'}</Text>
+                        <Text style={dynamicStyles.listItemText}>{loc._id || 'Unknown'}</Text>
                       </View>
-                      <View style={styles.listItemBadge}>
-                        <Text style={styles.listItemCount}>{loc.count}</Text>
+                      <View style={dynamicStyles.listItemBadge}>
+                        <Text style={dynamicStyles.listItemCount}>{loc.count}</Text>
                       </View>
                     </View>
                   ))
                 ) : (
-                  <Text style={styles.noDataText}>No location data available</Text>
+                  <Text style={dynamicStyles.noDataText}>No location data available</Text>
                 )}
               </View>
 
               {/* Top Industries */}
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Top Industries</Text>
+              <View style={dynamicStyles.section}>
+                <Text style={dynamicStyles.sectionTitle}>Top Industries</Text>
                 {analytics.topIndustries && analytics.topIndustries.length > 0 ? (
                   analytics.topIndustries.map((ind, index) => (
-                    <View key={index} style={styles.listItem}>
-                      <View style={styles.listItemLeft}>
+                    <View key={index} style={dynamicStyles.listItem}>
+                      <View style={dynamicStyles.listItemLeft}>
                         <Ionicons name="business" size={20} color="#9B59B6" />
-                        <Text style={styles.listItemText}>{ind._id || 'Unknown'}</Text>
+                        <Text style={dynamicStyles.listItemText}>{ind._id || 'Unknown'}</Text>
                       </View>
-                      <View style={styles.listItemBadge}>
-                        <Text style={styles.listItemCount}>{ind.count}</Text>
+                      <View style={dynamicStyles.listItemBadge}>
+                        <Text style={dynamicStyles.listItemCount}>{ind.count}</Text>
                       </View>
                     </View>
                   ))
                 ) : (
-                  <Text style={styles.noDataText}>No industry data available</Text>
+                  <Text style={dynamicStyles.noDataText}>No industry data available</Text>
                 )}
               </View>
             </View>
@@ -278,74 +283,74 @@ const AdminAnalyticsScreen = ({ navigation }) => {
           {/* Users Tab */}
           {activeTab === 'users' && (
             <View>
-              <View style={styles.statsGrid}>
-                <View style={styles.statCard}>
+              <View style={dynamicStyles.statsGrid}>
+                <View style={dynamicStyles.statCard}>
                   <Ionicons name="people" size={40} color="#4A90E2" />
-                  <Text style={styles.statNumber}>{formatNumber(analytics.users.total)}</Text>
-                  <Text style={styles.statLabel}>Total Users</Text>
+                  <Text style={dynamicStyles.statNumber}>{formatNumber(analytics.users.total)}</Text>
+                  <Text style={dynamicStyles.statLabel}>Total Users</Text>
                 </View>
-                <View style={styles.statCard}>
+                <View style={dynamicStyles.statCard}>
                   <Ionicons name="checkmark-done" size={40} color="#27AE60" />
-                  <Text style={styles.statNumber}>{formatNumber(analytics.users.verified)}</Text>
-                  <Text style={styles.statLabel}>Verified Users</Text>
+                  <Text style={dynamicStyles.statNumber}>{formatNumber(analytics.users.verified)}</Text>
+                  <Text style={dynamicStyles.statLabel}>Verified Users</Text>
                 </View>
               </View>
 
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>User Distribution</Text>
-                <View style={styles.distributionCard}>
-                  <View style={styles.distributionItem}>
-                    <View style={styles.distributionLeft}>
-                      <View style={[styles.distributionDot, { backgroundColor: '#4A90E2' }]} />
-                      <Text style={styles.distributionLabel}>Job Seekers</Text>
+              <View style={dynamicStyles.section}>
+                <Text style={dynamicStyles.sectionTitle}>User Distribution</Text>
+                <View style={dynamicStyles.distributionCard}>
+                  <View style={dynamicStyles.distributionItem}>
+                    <View style={dynamicStyles.distributionLeft}>
+                      <View style={[dynamicStyles.distributionDot, { backgroundColor: '#4A90E2' }]} />
+                      <Text style={dynamicStyles.distributionLabel}>Job Seekers</Text>
                     </View>
-                    <Text style={styles.distributionValue}>{formatNumber(analytics.users.jobseekers)}</Text>
+                    <Text style={dynamicStyles.distributionValue}>{formatNumber(analytics.users.jobseekers)}</Text>
                   </View>
-                  <View style={styles.distributionItem}>
-                    <View style={styles.distributionLeft}>
-                      <View style={[styles.distributionDot, { backgroundColor: '#27AE60' }]} />
-                      <Text style={styles.distributionLabel}>Companies</Text>
+                  <View style={dynamicStyles.distributionItem}>
+                    <View style={dynamicStyles.distributionLeft}>
+                      <View style={[dynamicStyles.distributionDot, { backgroundColor: '#27AE60' }]} />
+                      <Text style={dynamicStyles.distributionLabel}>Companies</Text>
                     </View>
-                    <Text style={styles.distributionValue}>{formatNumber(analytics.users.companies)}</Text>
+                    <Text style={dynamicStyles.distributionValue}>{formatNumber(analytics.users.companies)}</Text>
                   </View>
-                  <View style={styles.distributionItem}>
-                    <View style={styles.distributionLeft}>
-                      <View style={[styles.distributionDot, { backgroundColor: '#9B59B6' }]} />
-                      <Text style={styles.distributionLabel}>Consultancies</Text>
+                  <View style={dynamicStyles.distributionItem}>
+                    <View style={dynamicStyles.distributionLeft}>
+                      <View style={[dynamicStyles.distributionDot, { backgroundColor: '#9B59B6' }]} />
+                      <Text style={dynamicStyles.distributionLabel}>Consultancies</Text>
                     </View>
-                    <Text style={styles.distributionValue}>{formatNumber(analytics.users.consultancies)}</Text>
-                  </View>
-                </View>
-              </View>
-
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Recent Activity</Text>
-                <View style={styles.activityCard}>
-                  <View style={styles.activityRow}>
-                    <Text style={styles.activityLabel}>New Today</Text>
-                    <Text style={styles.activityValue}>{analytics.users.newToday}</Text>
-                  </View>
-                  <View style={styles.activityRow}>
-                    <Text style={styles.activityLabel}>This Week</Text>
-                    <Text style={styles.activityValue}>{analytics.users.newThisWeek}</Text>
-                  </View>
-                  <View style={styles.activityRow}>
-                    <Text style={styles.activityLabel}>This Month</Text>
-                    <Text style={styles.activityValue}>{analytics.users.newThisMonth}</Text>
+                    <Text style={dynamicStyles.distributionValue}>{formatNumber(analytics.users.consultancies)}</Text>
                   </View>
                 </View>
               </View>
 
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Key Metrics</Text>
-                <View style={styles.metricsCard}>
-                  <View style={styles.metricRow}>
-                    <Text style={styles.metricRowLabel}>Verification Rate</Text>
-                    <Text style={styles.metricRowValue}>{analytics.metrics.verificationRate}%</Text>
+              <View style={dynamicStyles.section}>
+                <Text style={dynamicStyles.sectionTitle}>Recent Activity</Text>
+                <View style={dynamicStyles.activityCard}>
+                  <View style={dynamicStyles.activityRow}>
+                    <Text style={dynamicStyles.activityLabel}>New Today</Text>
+                    <Text style={dynamicStyles.activityValue}>{analytics.users.newToday}</Text>
                   </View>
-                  <View style={styles.metricRow}>
-                    <Text style={styles.metricRowLabel}>Growth Rate</Text>
-                    <Text style={[styles.metricRowValue, { color: analytics.users.growthRate >= 0 ? '#27AE60' : '#E74C3C' }]}>
+                  <View style={dynamicStyles.activityRow}>
+                    <Text style={dynamicStyles.activityLabel}>This Week</Text>
+                    <Text style={dynamicStyles.activityValue}>{analytics.users.newThisWeek}</Text>
+                  </View>
+                  <View style={dynamicStyles.activityRow}>
+                    <Text style={dynamicStyles.activityLabel}>This Month</Text>
+                    <Text style={dynamicStyles.activityValue}>{analytics.users.newThisMonth}</Text>
+                  </View>
+                </View>
+              </View>
+
+              <View style={dynamicStyles.section}>
+                <Text style={dynamicStyles.sectionTitle}>Key Metrics</Text>
+                <View style={dynamicStyles.metricsCard}>
+                  <View style={dynamicStyles.metricRow}>
+                    <Text style={dynamicStyles.metricRowLabel}>Verification Rate</Text>
+                    <Text style={dynamicStyles.metricRowValue}>{analytics.metrics.verificationRate}%</Text>
+                  </View>
+                  <View style={dynamicStyles.metricRow}>
+                    <Text style={dynamicStyles.metricRowLabel}>Growth Rate</Text>
+                    <Text style={[dynamicStyles.metricRowValue, { color: analytics.users.growthRate >= 0 ? '#27AE60' : '#E74C3C' }]}>
                       {analytics.users.growthRate >= 0 ? '+' : ''}{analytics.users.growthRate}%
                     </Text>
                   </View>
@@ -357,78 +362,78 @@ const AdminAnalyticsScreen = ({ navigation }) => {
           {/* Jobs Tab */}
           {activeTab === 'jobs' && (
             <View>
-              <View style={styles.statsGrid}>
-                <View style={styles.statCard}>
+              <View style={dynamicStyles.statsGrid}>
+                <View style={dynamicStyles.statCard}>
                   <Ionicons name="briefcase" size={40} color="#4A90E2" />
-                  <Text style={styles.statNumber}>{formatNumber(analytics.jobs.total)}</Text>
-                  <Text style={styles.statLabel}>Total Jobs</Text>
+                  <Text style={dynamicStyles.statNumber}>{formatNumber(analytics.jobs.total)}</Text>
+                  <Text style={dynamicStyles.statLabel}>Total Jobs</Text>
                 </View>
-                <View style={styles.statCard}>
+                <View style={dynamicStyles.statCard}>
                   <Ionicons name="checkmark-circle" size={40} color="#27AE60" />
-                  <Text style={styles.statNumber}>{analytics.jobs.active}</Text>
-                  <Text style={styles.statLabel}>Active Jobs</Text>
+                  <Text style={dynamicStyles.statNumber}>{analytics.jobs.active}</Text>
+                  <Text style={dynamicStyles.statLabel}>Active Jobs</Text>
                 </View>
               </View>
 
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Job Status Distribution</Text>
-                <View style={styles.distributionCard}>
-                  <View style={styles.distributionItem}>
-                    <View style={styles.distributionLeft}>
-                      <View style={[styles.distributionDot, { backgroundColor: '#27AE60' }]} />
-                      <Text style={styles.distributionLabel}>Active</Text>
+              <View style={dynamicStyles.section}>
+                <Text style={dynamicStyles.sectionTitle}>Job Status Distribution</Text>
+                <View style={dynamicStyles.distributionCard}>
+                  <View style={dynamicStyles.distributionItem}>
+                    <View style={dynamicStyles.distributionLeft}>
+                      <View style={[dynamicStyles.distributionDot, { backgroundColor: '#27AE60' }]} />
+                      <Text style={dynamicStyles.distributionLabel}>Active</Text>
                     </View>
-                    <Text style={styles.distributionValue}>{analytics.jobs.active}</Text>
+                    <Text style={dynamicStyles.distributionValue}>{analytics.jobs.active}</Text>
                   </View>
-                  <View style={styles.distributionItem}>
-                    <View style={styles.distributionLeft}>
-                      <View style={[styles.distributionDot, { backgroundColor: '#F39C12' }]} />
-                      <Text style={styles.distributionLabel}>Inactive</Text>
+                  <View style={dynamicStyles.distributionItem}>
+                    <View style={dynamicStyles.distributionLeft}>
+                      <View style={[dynamicStyles.distributionDot, { backgroundColor: '#F39C12' }]} />
+                      <Text style={dynamicStyles.distributionLabel}>Inactive</Text>
                     </View>
-                    <Text style={styles.distributionValue}>{analytics.jobs.inactive}</Text>
+                    <Text style={dynamicStyles.distributionValue}>{analytics.jobs.inactive}</Text>
                   </View>
-                  <View style={styles.distributionItem}>
-                    <View style={styles.distributionLeft}>
-                      <View style={[styles.distributionDot, { backgroundColor: '#95A5A6' }]} />
-                      <Text style={styles.distributionLabel}>Closed</Text>
+                  <View style={dynamicStyles.distributionItem}>
+                    <View style={dynamicStyles.distributionLeft}>
+                      <View style={[dynamicStyles.distributionDot, { backgroundColor: '#95A5A6' }]} />
+                      <Text style={dynamicStyles.distributionLabel}>Closed</Text>
                     </View>
-                    <Text style={styles.distributionValue}>{analytics.jobs.closed}</Text>
-                  </View>
-                </View>
-              </View>
-
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Recent Activity</Text>
-                <View style={styles.activityCard}>
-                  <View style={styles.activityRow}>
-                    <Text style={styles.activityLabel}>Posted Today</Text>
-                    <Text style={styles.activityValue}>{analytics.jobs.newToday}</Text>
-                  </View>
-                  <View style={styles.activityRow}>
-                    <Text style={styles.activityLabel}>This Week</Text>
-                    <Text style={styles.activityValue}>{analytics.jobs.newThisWeek}</Text>
-                  </View>
-                  <View style={styles.activityRow}>
-                    <Text style={styles.activityLabel}>This Month</Text>
-                    <Text style={styles.activityValue}>{analytics.jobs.newThisMonth}</Text>
+                    <Text style={dynamicStyles.distributionValue}>{analytics.jobs.closed}</Text>
                   </View>
                 </View>
               </View>
 
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Key Metrics</Text>
-                <View style={styles.metricsCard}>
-                  <View style={styles.metricRow}>
-                    <Text style={styles.metricRowLabel}>Avg Jobs per Company</Text>
-                    <Text style={styles.metricRowValue}>{analytics.jobs.avgPerCompany}</Text>
+              <View style={dynamicStyles.section}>
+                <Text style={dynamicStyles.sectionTitle}>Recent Activity</Text>
+                <View style={dynamicStyles.activityCard}>
+                  <View style={dynamicStyles.activityRow}>
+                    <Text style={dynamicStyles.activityLabel}>Posted Today</Text>
+                    <Text style={dynamicStyles.activityValue}>{analytics.jobs.newToday}</Text>
                   </View>
-                  <View style={styles.metricRow}>
-                    <Text style={styles.metricRowLabel}>Job Fill Rate</Text>
-                    <Text style={styles.metricRowValue}>{analytics.metrics.jobFillRate}%</Text>
+                  <View style={dynamicStyles.activityRow}>
+                    <Text style={dynamicStyles.activityLabel}>This Week</Text>
+                    <Text style={dynamicStyles.activityValue}>{analytics.jobs.newThisWeek}</Text>
                   </View>
-                  <View style={styles.metricRow}>
-                    <Text style={styles.metricRowLabel}>Growth Rate</Text>
-                    <Text style={[styles.metricRowValue, { color: analytics.jobs.growthRate >= 0 ? '#27AE60' : '#E74C3C' }]}>
+                  <View style={dynamicStyles.activityRow}>
+                    <Text style={dynamicStyles.activityLabel}>This Month</Text>
+                    <Text style={dynamicStyles.activityValue}>{analytics.jobs.newThisMonth}</Text>
+                  </View>
+                </View>
+              </View>
+
+              <View style={dynamicStyles.section}>
+                <Text style={dynamicStyles.sectionTitle}>Key Metrics</Text>
+                <View style={dynamicStyles.metricsCard}>
+                  <View style={dynamicStyles.metricRow}>
+                    <Text style={dynamicStyles.metricRowLabel}>Avg Jobs per Company</Text>
+                    <Text style={dynamicStyles.metricRowValue}>{analytics.jobs.avgPerCompany}</Text>
+                  </View>
+                  <View style={dynamicStyles.metricRow}>
+                    <Text style={dynamicStyles.metricRowLabel}>Job Fill Rate</Text>
+                    <Text style={dynamicStyles.metricRowValue}>{analytics.metrics.jobFillRate}%</Text>
+                  </View>
+                  <View style={dynamicStyles.metricRow}>
+                    <Text style={dynamicStyles.metricRowLabel}>Growth Rate</Text>
+                    <Text style={[dynamicStyles.metricRowValue, { color: analytics.jobs.growthRate >= 0 ? '#27AE60' : '#E74C3C' }]}>
                       {analytics.jobs.growthRate >= 0 ? '+' : ''}{analytics.jobs.growthRate}%
                     </Text>
                   </View>
@@ -440,85 +445,85 @@ const AdminAnalyticsScreen = ({ navigation }) => {
           {/* Applications Tab */}
           {activeTab === 'applications' && (
             <View>
-              <View style={styles.statsGrid}>
-                <View style={styles.statCard}>
+              <View style={dynamicStyles.statsGrid}>
+                <View style={dynamicStyles.statCard}>
                   <Ionicons name="document-text" size={40} color="#4A90E2" />
-                  <Text style={styles.statNumber}>{formatNumber(analytics.applications.total)}</Text>
-                  <Text style={styles.statLabel}>Total Applications</Text>
+                  <Text style={dynamicStyles.statNumber}>{formatNumber(analytics.applications.total)}</Text>
+                  <Text style={dynamicStyles.statLabel}>Total Applications</Text>
                 </View>
-                <View style={styles.statCard}>
+                <View style={dynamicStyles.statCard}>
                   <Ionicons name="hourglass" size={40} color="#F39C12" />
-                  <Text style={styles.statNumber}>{analytics.applications.pending}</Text>
-                  <Text style={styles.statLabel}>Pending</Text>
+                  <Text style={dynamicStyles.statNumber}>{analytics.applications.pending}</Text>
+                  <Text style={dynamicStyles.statLabel}>Pending</Text>
                 </View>
               </View>
 
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Application Status</Text>
-                <View style={styles.distributionCard}>
-                  <View style={styles.distributionItem}>
-                    <View style={styles.distributionLeft}>
-                      <View style={[styles.distributionDot, { backgroundColor: '#F39C12' }]} />
-                      <Text style={styles.distributionLabel}>Pending</Text>
+              <View style={dynamicStyles.section}>
+                <Text style={dynamicStyles.sectionTitle}>Application Status</Text>
+                <View style={dynamicStyles.distributionCard}>
+                  <View style={dynamicStyles.distributionItem}>
+                    <View style={dynamicStyles.distributionLeft}>
+                      <View style={[dynamicStyles.distributionDot, { backgroundColor: '#F39C12' }]} />
+                      <Text style={dynamicStyles.distributionLabel}>Pending</Text>
                     </View>
-                    <Text style={styles.distributionValue}>{formatNumber(analytics.applications.pending)}</Text>
+                    <Text style={dynamicStyles.distributionValue}>{formatNumber(analytics.applications.pending)}</Text>
                   </View>
-                  <View style={styles.distributionItem}>
-                    <View style={styles.distributionLeft}>
-                      <View style={[styles.distributionDot, { backgroundColor: '#3498DB' }]} />
-                      <Text style={styles.distributionLabel}>Shortlisted</Text>
+                  <View style={dynamicStyles.distributionItem}>
+                    <View style={dynamicStyles.distributionLeft}>
+                      <View style={[dynamicStyles.distributionDot, { backgroundColor: '#3498DB' }]} />
+                      <Text style={dynamicStyles.distributionLabel}>Shortlisted</Text>
                     </View>
-                    <Text style={styles.distributionValue}>{formatNumber(analytics.applications.shortlisted)}</Text>
+                    <Text style={dynamicStyles.distributionValue}>{formatNumber(analytics.applications.shortlisted)}</Text>
                   </View>
-                  <View style={styles.distributionItem}>
-                    <View style={styles.distributionLeft}>
-                      <View style={[styles.distributionDot, { backgroundColor: '#27AE60' }]} />
-                      <Text style={styles.distributionLabel}>Accepted</Text>
+                  <View style={dynamicStyles.distributionItem}>
+                    <View style={dynamicStyles.distributionLeft}>
+                      <View style={[dynamicStyles.distributionDot, { backgroundColor: '#27AE60' }]} />
+                      <Text style={dynamicStyles.distributionLabel}>Accepted</Text>
                     </View>
-                    <Text style={styles.distributionValue}>{formatNumber(analytics.applications.accepted)}</Text>
+                    <Text style={dynamicStyles.distributionValue}>{formatNumber(analytics.applications.accepted)}</Text>
                   </View>
-                  <View style={styles.distributionItem}>
-                    <View style={styles.distributionLeft}>
-                      <View style={[styles.distributionDot, { backgroundColor: '#E74C3C' }]} />
-                      <Text style={styles.distributionLabel}>Rejected</Text>
+                  <View style={dynamicStyles.distributionItem}>
+                    <View style={dynamicStyles.distributionLeft}>
+                      <View style={[dynamicStyles.distributionDot, { backgroundColor: '#E74C3C' }]} />
+                      <Text style={dynamicStyles.distributionLabel}>Rejected</Text>
                     </View>
-                    <Text style={styles.distributionValue}>{formatNumber(analytics.applications.rejected)}</Text>
-                  </View>
-                </View>
-              </View>
-
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Recent Activity</Text>
-                <View style={styles.activityCard}>
-                  <View style={styles.activityRow}>
-                    <Text style={styles.activityLabel}>Received Today</Text>
-                    <Text style={styles.activityValue}>{analytics.applications.newToday}</Text>
-                  </View>
-                  <View style={styles.activityRow}>
-                    <Text style={styles.activityLabel}>This Week</Text>
-                    <Text style={styles.activityValue}>{analytics.applications.newThisWeek}</Text>
-                  </View>
-                  <View style={styles.activityRow}>
-                    <Text style={styles.activityLabel}>This Month</Text>
-                    <Text style={styles.activityValue}>{analytics.applications.newThisMonth}</Text>
+                    <Text style={dynamicStyles.distributionValue}>{formatNumber(analytics.applications.rejected)}</Text>
                   </View>
                 </View>
               </View>
 
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Key Metrics</Text>
-                <View style={styles.metricsCard}>
-                  <View style={styles.metricRow}>
-                    <Text style={styles.metricRowLabel}>Avg Applications per Job</Text>
-                    <Text style={styles.metricRowValue}>{analytics.applications.avgPerJob}</Text>
+              <View style={dynamicStyles.section}>
+                <Text style={dynamicStyles.sectionTitle}>Recent Activity</Text>
+                <View style={dynamicStyles.activityCard}>
+                  <View style={dynamicStyles.activityRow}>
+                    <Text style={dynamicStyles.activityLabel}>Received Today</Text>
+                    <Text style={dynamicStyles.activityValue}>{analytics.applications.newToday}</Text>
                   </View>
-                  <View style={styles.metricRow}>
-                    <Text style={styles.metricRowLabel}>Conversion Rate</Text>
-                    <Text style={styles.metricRowValue}>{analytics.applications.conversionRate}%</Text>
+                  <View style={dynamicStyles.activityRow}>
+                    <Text style={dynamicStyles.activityLabel}>This Week</Text>
+                    <Text style={dynamicStyles.activityValue}>{analytics.applications.newThisWeek}</Text>
                   </View>
-                  <View style={styles.metricRow}>
-                    <Text style={styles.metricRowLabel}>Success Rate</Text>
-                    <Text style={styles.metricRowValue}>
+                  <View style={dynamicStyles.activityRow}>
+                    <Text style={dynamicStyles.activityLabel}>This Month</Text>
+                    <Text style={dynamicStyles.activityValue}>{analytics.applications.newThisMonth}</Text>
+                  </View>
+                </View>
+              </View>
+
+              <View style={dynamicStyles.section}>
+                <Text style={dynamicStyles.sectionTitle}>Key Metrics</Text>
+                <View style={dynamicStyles.metricsCard}>
+                  <View style={dynamicStyles.metricRow}>
+                    <Text style={dynamicStyles.metricRowLabel}>Avg Applications per Job</Text>
+                    <Text style={dynamicStyles.metricRowValue}>{analytics.applications.avgPerJob}</Text>
+                  </View>
+                  <View style={dynamicStyles.metricRow}>
+                    <Text style={dynamicStyles.metricRowLabel}>Conversion Rate</Text>
+                    <Text style={dynamicStyles.metricRowValue}>{analytics.applications.conversionRate}%</Text>
+                  </View>
+                  <View style={dynamicStyles.metricRow}>
+                    <Text style={dynamicStyles.metricRowLabel}>Success Rate</Text>
+                    <Text style={dynamicStyles.metricRowValue}>
                       {((analytics.applications.accepted / analytics.applications.total) * 100).toFixed(1)}%
                     </Text>
                   </View>
@@ -532,7 +537,7 @@ const AdminAnalyticsScreen = ({ navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (isMobile, isTablet) => StyleSheet.create({
   scrollContainer: {
     flex: 1,
     backgroundColor: '#F5F6FA',
@@ -598,11 +603,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF',
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+    } : {
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+    }),
   },
   tabs: {
     flexDirection: 'row',
@@ -642,11 +651,15 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 20,
     alignItems: 'center',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+    } : {
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+    }),
   },
   metricNumber: {
     fontSize: 32,
@@ -762,11 +775,15 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 20,
     alignItems: 'center',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+    } : {
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+    }),
   },
   statNumber: {
     fontSize: 28,
@@ -851,5 +868,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
 });
+
+const styles = StyleSheet.create({});
 
 export default AdminAnalyticsScreen;

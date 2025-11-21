@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -70,6 +70,9 @@ const RegisterScreen = ({ navigation }) => {
   const [showGenderModal, setShowGenderModal] = useState(false);
   const [showReferralModal, setShowReferralModal] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [dateInputFocused, setDateInputFocused] = useState(false);
+  const dateInputRef = useRef(null);
+  const dateButtonRef = useRef(null);
 
   const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -364,43 +367,58 @@ const RegisterScreen = ({ navigation }) => {
       <Header />
       
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-        <LinearGradient
-          colors={[colors.gradientStart, colors.gradientEnd]}
-          style={styles.header}
-        >
+        <View style={styles.header}>
+          <View style={styles.headerIconContainer}>
+            <Ionicons name="person-add" size={40} color={colors.primary} />
+          </View>
           <Text style={styles.headerTitle}>Candidate Registration Form</Text>
           <Text style={styles.headerSubtitle}>Let's Get Started, Tell us about Yourself.</Text>
-        </LinearGradient>
+        </View>
 
         <View style={styles.formCard}>
           <View style={styles.formContainer}>
           {/* Upload Resume Section */}
           <View style={styles.uploadContainer}>
-            <Text style={styles.label}>Upload Resume</Text>
+            <View style={styles.uploadLabelContainer}>
+              <Ionicons name="cloud-upload-outline" size={20} color={colors.primary} />
+              <Text style={styles.label}>Upload Resume (Optional)</Text>
+            </View>
             <TouchableOpacity 
-              style={styles.uploadButton} 
+              style={[styles.uploadButton, formData.resume && styles.uploadButtonSelected]} 
               onPress={handleResumePick}
               disabled={parsingResume}
+              activeOpacity={0.8}
             >
               {parsingResume ? (
                 <ActivityIndicator size="large" color={colors.primary} />
               ) : (
-                <Ionicons name="document-text-outline" size={32} color={colors.primary} />
+                <>
+                  <View style={styles.uploadIconContainer}>
+                    {formData.resume ? (
+                      <Ionicons name="checkmark-circle" size={48} color="#10B981" />
+                    ) : (
+                      <Ionicons name="document-text-outline" size={48} color={colors.primary} />
+                    )}
+                  </View>
+                  <Text style={styles.uploadButtonText}>
+                    {formData.resume 
+                      ? formData.resume.name 
+                      : 'Choose Resume File'}
+                  </Text>
+                  {formData.resume && (
+                    <Text style={styles.uploadSuccessText}>Resume uploaded successfully!</Text>
+                  )}
+                </>
               )}
-              <Text style={styles.uploadButtonText}>
-                {parsingResume 
-                  ? 'Parsing Resume...' 
-                  : formData.resume 
-                    ? formData.resume.name 
-                    : 'Choose Resume File'}
-              </Text>
             </TouchableOpacity>
           </View>
 
           {/* Or Separator */}
           <View style={styles.separatorContainer}>
             <View style={styles.separatorLine} />
-            <Text style={styles.separatorText}>Or</Text>
+            <View style={styles.separatorTextContainer}>
+              <Text style={styles.separatorText}>Or</Text>
+            </View>
             <View style={styles.separatorLine} />
           </View>
 
@@ -433,15 +451,19 @@ const RegisterScreen = ({ navigation }) => {
           />
 
           <TouchableOpacity
-            style={styles.checkboxContainer}
+            style={[styles.checkboxContainer, formData.whatsappAvailable && styles.checkboxContainerSelected]}
             onPress={() => updateFormData('whatsappAvailable', !formData.whatsappAvailable)}
+            activeOpacity={0.7}
           >
-            <Ionicons
-              name={formData.whatsappAvailable ? 'checkbox' : 'square-outline'}
-              size={20}
-              color={formData.whatsappAvailable ? colors.primary : colors.textSecondary}
-            />
-            <Text style={styles.checkboxLabel}>Tick if Number is Available on WhatsApp</Text>
+            <View style={[styles.checkboxIconContainer, formData.whatsappAvailable && styles.checkboxIconContainerSelected]}>
+              {formData.whatsappAvailable && (
+                <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+              )}
+            </View>
+            <Ionicons name="logo-whatsapp" size={20} color={formData.whatsappAvailable ? '#25D366' : colors.textSecondary} />
+            <Text style={[styles.checkboxLabel, formData.whatsappAvailable && styles.checkboxLabelSelected]}>
+              Tick if Number is Available on WhatsApp
+            </Text>
           </TouchableOpacity>
 
           <Input
@@ -469,14 +491,25 @@ const RegisterScreen = ({ navigation }) => {
             <Text style={styles.label}>DOB *</Text>
             {Platform.OS === 'web' ? (
               <View style={styles.webDatePickerContainer}>
-                <View style={styles.pickerButton} pointerEvents="none">
-                  <Ionicons name="calendar-outline" size={20} color={colors.primary} style={{ marginRight: spacing.sm }} />
+                <View 
+                  ref={dateButtonRef}
+                  className="pickerButton" 
+                  style={[
+                    styles.pickerButton,
+                    dateInputFocused && styles.pickerButtonFocused
+                  ]} 
+                  pointerEvents="box-none"
+                >
+                  <Ionicons name="calendar-outline" size={22} color={colors.primary} style={{ marginRight: spacing.sm }} />
                   <Text style={styles.pickerText}>
                     {formatDate(formData.dateOfBirth)}
                   </Text>
                   <Ionicons name="chevron-down" size={20} color={colors.textSecondary} style={{ marginLeft: spacing.sm }} />
                 </View>
                 <input
+                  ref={(ref) => {
+                    dateInputRef.current = ref;
+                  }}
                   type="date"
                   value={formData.dateOfBirth.toISOString().split('T')[0]}
                   onChange={(e) => {
@@ -485,17 +518,48 @@ const RegisterScreen = ({ navigation }) => {
                       updateFormData('dateOfBirth', newDate);
                     }
                   }}
+                  onClick={async (e) => {
+                    // Try showPicker() method (modern browsers)
+                    if (dateInputRef.current && typeof dateInputRef.current.showPicker === 'function') {
+                      try {
+                        await dateInputRef.current.showPicker();
+                      } catch (error) {
+                        // Fallback to focus and click
+                        dateInputRef.current.focus();
+                        setTimeout(() => {
+                          dateInputRef.current?.click();
+                        }, 100);
+                      }
+                    } else {
+                      // Focus first, then click after a short delay
+                      if (dateInputRef.current) {
+                        dateInputRef.current.focus();
+                        setTimeout(() => {
+                          if (dateInputRef.current) {
+                            dateInputRef.current.click();
+                          }
+                        }, 100);
+                      }
+                    }
+                  }}
+                  onFocus={(e) => {
+                    setDateInputFocused(true);
+                  }}
+                  onBlur={(e) => {
+                    setDateInputFocused(false);
+                  }}
                   max={new Date().toISOString().split('T')[0]}
                   style={{
                     position: 'absolute',
                     top: 0,
                     left: 0,
-                    right: 0,
-                    bottom: 0,
-                    opacity: 0,
-                    cursor: 'pointer',
                     width: '100%',
                     height: '100%',
+                    opacity: 0,
+                    cursor: 'pointer',
+                    zIndex: 10,
+                    pointerEvents: 'auto',
+                    fontSize: '16px',
                   }}
                 />
               </View>
@@ -568,22 +632,25 @@ const RegisterScreen = ({ navigation }) => {
           </View>
 
           <TouchableOpacity
-            style={styles.checkboxContainer}
+            style={[styles.checkboxContainer, formData.privacyPolicy && styles.checkboxContainerSelected, errors.privacyPolicy && styles.checkboxContainerError]}
             onPress={() => updateFormData('privacyPolicy', !formData.privacyPolicy)}
+            activeOpacity={0.7}
           >
-            <Ionicons
-              name={formData.privacyPolicy ? 'checkbox' : 'square-outline'}
-              size={20}
-              color={formData.privacyPolicy ? colors.primary : colors.textSecondary}
-            />
-            <Text style={styles.checkboxLabel}>Tick Agree With Privacy Policy</Text>
+            <View style={[styles.checkboxIconContainer, formData.privacyPolicy && styles.checkboxIconContainerSelected]}>
+              {formData.privacyPolicy && (
+                <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+              )}
+            </View>
+            <Text style={[styles.checkboxLabel, formData.privacyPolicy && styles.checkboxLabelSelected]}>
+              I agree with the <Text style={styles.privacyLink}>Privacy Policy</Text>
+            </Text>
           </TouchableOpacity>
           {errors.privacyPolicy && (
             <Text style={styles.errorText}>{errors.privacyPolicy}</Text>
           )}
 
           <LinearGradient
-            colors={[colors.gradientStart, colors.gradientEnd]}
+            colors={['#6366F1', '#8B5CF6']}
             style={styles.gradientButton}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
@@ -592,10 +659,16 @@ const RegisterScreen = ({ navigation }) => {
               style={styles.registerButton}
               onPress={handleRegister}
               disabled={loading}
+              activeOpacity={0.9}
             >
-              <Text style={styles.registerButtonText}>
-                {loading ? 'Registering...' : 'Register'}
-              </Text>
+              {loading ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <>
+                  <Ionicons name="checkmark-circle-outline" size={22} color="#FFFFFF" style={{ marginRight: spacing.xs }} />
+                  <Text style={styles.registerButtonText}>Create Account</Text>
+                </>
+              )}
             </TouchableOpacity>
           </LinearGradient>
 
@@ -709,25 +782,39 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xl,
   },
   header: {
-    padding: spacing.xl + 8,
+    padding: spacing.xl + 12,
     alignItems: 'center',
-    paddingBottom: spacing.xl,
+    paddingBottom: spacing.xl + 8,
+    paddingTop: spacing.xl + 16,
+    backgroundColor: '#FFFFFF',
+  },
+  headerIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#EEF2FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.lg,
+    borderWidth: 2,
+    borderColor: '#E0E7FF',
   },
   headerTitle: {
     ...typography.h2,
-    color: colors.textWhite,
+    color: '#1F2937',
     textAlign: 'center',
     marginBottom: spacing.sm,
-    fontWeight: '700',
+    fontWeight: '800',
     letterSpacing: 0.5,
+    fontSize: 28,
   },
   headerSubtitle: {
     ...typography.body1,
-    color: colors.textWhite,
-    opacity: 0.95,
+    color: '#6B7280',
     textAlign: 'center',
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '400',
+    letterSpacing: 0.3,
   },
   formContainer: {
     padding: spacing.lg,
@@ -736,65 +823,131 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   formCard: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.xl,
-    padding: spacing.xl,
+    backgroundColor: '#FFFFFF',
+    borderRadius: borderRadius.xl + 4,
+    padding: spacing.xl + 4,
     marginHorizontal: spacing.md,
-    ...shadows.md,
+    ...shadows.lg,
+    marginTop: -spacing.xl,
     marginBottom: spacing.xl,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.05)',
   },
   uploadContainer: {
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xl,
+  },
+  uploadLabelContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginBottom: spacing.md,
   },
   uploadButton: {
-    borderWidth: 2,
-    borderColor: colors.border,
+    borderWidth: 2.5,
+    borderColor: '#E0E7FF',
     borderStyle: 'dashed',
-    borderRadius: borderRadius.lg,
-    padding: spacing.xl,
+    borderRadius: borderRadius.xl,
+    padding: spacing.xl + 8,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.primaryLight,
-    marginTop: spacing.xs,
-    minHeight: 120,
+    backgroundColor: '#F5F7FF',
+    minHeight: 140,
     transition: 'all 0.3s ease',
   },
+  uploadButtonSelected: {
+    borderColor: '#10B981',
+    backgroundColor: '#F0FDF4',
+    borderStyle: 'solid',
+  },
+  uploadIconContainer: {
+    marginBottom: spacing.md,
+  },
   uploadButtonText: {
-    ...typography.body2,
+    ...typography.body1,
     color: colors.primary,
     marginTop: spacing.sm,
+    fontWeight: '700',
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  uploadSuccessText: {
+    ...typography.caption,
+    color: '#10B981',
+    marginTop: spacing.xs,
     fontWeight: '600',
+    fontSize: 12,
   },
   separatorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: spacing.md,
+    marginVertical: spacing.lg,
+    position: 'relative',
   },
   separatorLine: {
     flex: 1,
-    height: 1,
-    backgroundColor: colors.border,
+    height: 1.5,
+    backgroundColor: '#E5E7EB',
+  },
+  separatorTextContainer: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: spacing.md,
   },
   separatorText: {
     ...typography.body2,
     color: colors.textSecondary,
-    marginHorizontal: spacing.md,
-    fontWeight: '500',
-    fontSize: 13,
+    fontWeight: '600',
+    fontSize: 14,
+    letterSpacing: 0.5,
   },
   checkboxContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     marginBottom: spacing.md,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.sm,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.background,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.lg,
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    transition: 'all 0.2s ease',
+  },
+  checkboxContainerSelected: {
+    backgroundColor: '#EEF2FF',
+    borderColor: colors.primary,
+  },
+  checkboxContainerError: {
+    borderColor: colors.error,
+  },
+  checkboxIconContainer: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#D1D5DB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  checkboxIconContainerSelected: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   checkboxLabel: {
     ...typography.body2,
     color: colors.text,
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  checkboxLabelSelected: {
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  privacyLink: {
+    color: colors.primary,
+    fontWeight: '700',
+    textDecorationLine: 'underline',
   },
   dobContainer: {
     marginBottom: spacing.lg,
@@ -802,6 +955,8 @@ const styles = StyleSheet.create({
   webDatePickerContainer: {
     position: 'relative',
     width: '100%',
+    cursor: 'pointer',
+    zIndex: 1,
   },
   genderContainer: {
     marginBottom: spacing.lg,
@@ -811,8 +966,8 @@ const styles = StyleSheet.create({
   },
   label: {
     ...typography.body2,
-    fontWeight: '600',
-    color: colors.text,
+    fontWeight: '700',
+    color: '#1F2937',
     marginBottom: spacing.sm,
     fontSize: 15,
     letterSpacing: 0.2,
@@ -820,14 +975,26 @@ const styles = StyleSheet.create({
   pickerButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.cardBackground,
-    borderWidth: 1.5,
-    borderColor: colors.border,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
     borderRadius: borderRadius.lg,
-    padding: spacing.md,
+    padding: spacing.md + 4,
     gap: spacing.sm,
-    minHeight: 52,
-    ...shadows.xs,
+    minHeight: 56,
+    ...shadows.sm,
+    transition: 'all 0.2s ease',
+    ...(Platform.OS === 'web' && {
+      cursor: 'pointer',
+    }),
+  },
+  pickerButtonFocused: {
+    borderColor: colors.primary,
+    backgroundColor: '#F9FAFB',
+    ...shadows.md,
+    ...(Platform.OS === 'web' && {
+      boxShadow: `0 0 0 3px rgba(99, 102, 241, 0.1), 0 4px 8px rgba(0, 0, 0, 0.15)`,
+    }),
   },
   pickerText: {
     flex: 1,
@@ -843,36 +1010,46 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   gradientButton: {
-    borderRadius: borderRadius.lg,
-    marginTop: spacing.lg,
-    ...shadows.md,
+    borderRadius: borderRadius.xl,
+    marginTop: spacing.xl,
+    ...shadows.lg,
     overflow: 'hidden',
   },
   registerButton: {
-    paddingVertical: spacing.md + 4,
+    paddingVertical: spacing.lg,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 56,
+    minHeight: 58,
+    flexDirection: 'row',
   },
   registerButtonText: {
     ...typography.button,
-    color: colors.textWhite,
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 17,
+    letterSpacing: 0.5,
   },
   loginContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: spacing.lg,
+    marginTop: spacing.xl,
     gap: spacing.xs,
+    paddingTop: spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
   },
   loginText: {
     ...typography.body2,
     color: colors.textSecondary,
+    fontSize: 15,
   },
   loginLink: {
     ...typography.body2,
     color: colors.primary,
-    fontWeight: '600',
+    fontWeight: '700',
+    fontSize: 15,
+    textDecorationLine: 'underline',
   },
   modalOverlay: {
     flex: 1,
@@ -880,18 +1057,20 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: colors.cardBackground,
-    borderTopLeftRadius: borderRadius.lg,
-    borderTopRightRadius: borderRadius.lg,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: borderRadius.xl,
+    borderTopRightRadius: borderRadius.xl,
     maxHeight: '70%',
+    ...shadows.lg,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    padding: spacing.lg + 4,
+    borderBottomWidth: 1.5,
+    borderBottomColor: '#E5E7EB',
+    backgroundColor: '#F9FAFB',
   },
   modalTitle: {
     ...typography.h4,
@@ -901,17 +1080,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: spacing.md,
+    padding: spacing.md + 4,
     borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
+    borderBottomColor: '#F3F4F6',
+    backgroundColor: '#FFFFFF',
   },
   modalOptionText: {
     ...typography.body2,
-    color: colors.text,
+    color: '#374151',
+    fontSize: 15,
   },
   modalOptionTextSelected: {
     color: colors.primary,
-    fontWeight: '600',
+    fontWeight: '700',
   },
 });
 

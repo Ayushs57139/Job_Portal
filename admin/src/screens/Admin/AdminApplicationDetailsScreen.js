@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, Alert, Platform } from 'react-native';
 import AdminLayout from '../../components/Admin/AdminLayout';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../../config/api';
+import { useResponsive } from '../../utils/responsive';
 
 const AdminApplicationDetailsScreen = ({ route, navigation }) => {
+  const responsive = useResponsive();
+  const isMobile = responsive.isMobile;
+  const isTablet = responsive.isTablet;
+  const dynamicStyles = getStyles(isMobile, isTablet);
   const { applicationId } = route.params;
   const [loading, setLoading] = useState(true);
   const [application, setApplication] = useState(null);
@@ -126,9 +131,9 @@ const AdminApplicationDetailsScreen = ({ route, navigation }) => {
         user={user}
         onLogout={handleLogout}
       >
-        <View style={styles.loadingContainer}>
+        <View style={dynamicStyles.loadingContainer}>
           <ActivityIndicator size="large" color="#4A90E2" />
-          <Text style={styles.loadingText}>Loading application details...</Text>
+          <Text style={dynamicStyles.loadingText}>Loading application details...</Text>
         </View>
       </AdminLayout>
     );
@@ -143,11 +148,11 @@ const AdminApplicationDetailsScreen = ({ route, navigation }) => {
         user={user}
         onLogout={handleLogout}
       >
-        <View style={styles.errorContainer}>
+        <View style={dynamicStyles.errorContainer}>
           <Ionicons name="alert-circle-outline" size={64} color="#E74C3C" />
-          <Text style={styles.errorText}>Application not found</Text>
-          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-            <Text style={styles.backButtonText}>Go Back</Text>
+          <Text style={dynamicStyles.errorText}>Application not found</Text>
+          <TouchableOpacity style={dynamicStyles.backButton} onPress={handleBack}>
+            <Text style={dynamicStyles.backButtonText}>Go Back</Text>
           </TouchableOpacity>
         </View>
       </AdminLayout>
@@ -164,29 +169,29 @@ const AdminApplicationDetailsScreen = ({ route, navigation }) => {
       user={user}
       onLogout={handleLogout}
     >
-      <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-        <View style={styles.container}>
+      <ScrollView style={dynamicStyles.scrollContainer} showsVerticalScrollIndicator={false}>
+        <View style={dynamicStyles.container}>
           {/* Header with Back Button */}
-          <View style={styles.header}>
-            <TouchableOpacity style={styles.backBtn} onPress={handleBack}>
+          <View style={dynamicStyles.header}>
+            <TouchableOpacity style={dynamicStyles.backBtn} onPress={handleBack}>
               <Ionicons name="arrow-back" size={24} color="#4A90E2" />
-              <Text style={styles.backBtnText}>Back to Applications</Text>
+              <Text style={dynamicStyles.backBtnText}>Back to Applications</Text>
             </TouchableOpacity>
           </View>
 
           {/* Candidate Info Section */}
-          <View style={styles.section}>
-            <View style={styles.candidateHeader}>
+          <View style={dynamicStyles.section}>
+            <View style={dynamicStyles.candidateHeader}>
               <View>
-                <Text style={styles.candidateName}>
+                <Text style={dynamicStyles.candidateName}>
                   {application.fullName || application.candidateName || application.candidate?.name || 'N/A'}
                 </Text>
-                <Text style={styles.candidateEmail}>
+                <Text style={dynamicStyles.candidateEmail}>
                   {application.email || application.candidate?.email || 'N/A'}
                 </Text>
               </View>
-              <View style={[styles.statusBadge, { backgroundColor: statusColors.bg }]}>
-                <Text style={[styles.statusText, { color: statusColors.text }]}>
+              <View style={[dynamicStyles.statusBadge, { backgroundColor: statusColors.bg }]}>
+                <Text style={[dynamicStyles.statusText, { color: statusColors.text }]}>
                   {application.status?.toLowerCase() || 'pending'}
                 </Text>
               </View>
@@ -194,21 +199,21 @@ const AdminApplicationDetailsScreen = ({ route, navigation }) => {
           </View>
 
           {/* Status Update Actions */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Update Application Status</Text>
-            <View style={styles.statusActions}>
+          <View style={dynamicStyles.section}>
+            <Text style={dynamicStyles.sectionTitle}>Update Application Status</Text>
+            <View style={dynamicStyles.statusActions}>
               {['pending', 'reviewed', 'shortlisted', 'accepted', 'rejected'].map(status => (
                 <TouchableOpacity
                   key={status}
                   style={[
-                    styles.statusActionButton,
-                    application.status?.toLowerCase() === status && styles.statusActionButtonActive
+                    dynamicStyles.statusActionButton,
+                    application.status?.toLowerCase() === status && dynamicStyles.statusActionButtonActive
                   ]}
                   onPress={() => updateStatus(status)}
                 >
                   <Text style={[
-                    styles.statusActionText,
-                    application.status?.toLowerCase() === status && styles.statusActionTextActive
+                    dynamicStyles.statusActionText,
+                    application.status?.toLowerCase() === status && dynamicStyles.statusActionTextActive
                   ]}>
                     {status.charAt(0).toUpperCase() + status.slice(1)}
                   </Text>
@@ -218,137 +223,137 @@ const AdminApplicationDetailsScreen = ({ route, navigation }) => {
           </View>
 
           {/* Job Information */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Job Information</Text>
-            <View style={styles.infoRow}>
+          <View style={dynamicStyles.section}>
+            <Text style={dynamicStyles.sectionTitle}>Job Information</Text>
+            <View style={dynamicStyles.infoRow}>
               <Ionicons name="briefcase-outline" size={20} color="#4A90E2" />
-              <Text style={styles.infoLabel}>Job Title:</Text>
-              <Text style={styles.infoValue}>
+              <Text style={dynamicStyles.infoLabel}>Job Title:</Text>
+              <Text style={dynamicStyles.infoValue}>
                 {application.jobTitle || application.job?.title || 'N/A'}
               </Text>
             </View>
             {application.job?.company?.name && (
-              <View style={styles.infoRow}>
+              <View style={dynamicStyles.infoRow}>
                 <Ionicons name="business-outline" size={20} color="#4A90E2" />
-                <Text style={styles.infoLabel}>Company:</Text>
-                <Text style={styles.infoValue}>{application.job.company.name}</Text>
+                <Text style={dynamicStyles.infoLabel}>Company:</Text>
+                <Text style={dynamicStyles.infoValue}>{application.job.company.name}</Text>
               </View>
             )}
           </View>
 
           {/* Contact Information */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Contact Information</Text>
+          <View style={dynamicStyles.section}>
+            <Text style={dynamicStyles.sectionTitle}>Contact Information</Text>
             {application.mobileNumber && (
-              <View style={styles.infoRow}>
+              <View style={dynamicStyles.infoRow}>
                 <Ionicons name="call-outline" size={20} color="#4A90E2" />
-                <Text style={styles.infoLabel}>Mobile:</Text>
-                <Text style={styles.infoValue}>{application.mobileNumber}</Text>
+                <Text style={dynamicStyles.infoLabel}>Mobile:</Text>
+                <Text style={dynamicStyles.infoValue}>{application.mobileNumber}</Text>
               </View>
             )}
             {application.whatsappNumber && (
-              <View style={styles.infoRow}>
+              <View style={dynamicStyles.infoRow}>
                 <Ionicons name="logo-whatsapp" size={20} color="#25D366" />
-                <Text style={styles.infoLabel}>WhatsApp:</Text>
-                <Text style={styles.infoValue}>{application.whatsappNumber}</Text>
+                <Text style={dynamicStyles.infoLabel}>WhatsApp:</Text>
+                <Text style={dynamicStyles.infoValue}>{application.whatsappNumber}</Text>
               </View>
             )}
             {application.email && (
-              <View style={styles.infoRow}>
+              <View style={dynamicStyles.infoRow}>
                 <Ionicons name="mail-outline" size={20} color="#4A90E2" />
-                <Text style={styles.infoLabel}>Email:</Text>
-                <Text style={styles.infoValue}>{application.email}</Text>
+                <Text style={dynamicStyles.infoLabel}>Email:</Text>
+                <Text style={dynamicStyles.infoValue}>{application.email}</Text>
               </View>
             )}
           </View>
 
           {/* Personal Information */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Personal Information</Text>
+          <View style={dynamicStyles.section}>
+            <Text style={dynamicStyles.sectionTitle}>Personal Information</Text>
             {application.gender && (
-              <View style={styles.infoRow}>
+              <View style={dynamicStyles.infoRow}>
                 <Ionicons name="person-outline" size={20} color="#4A90E2" />
-                <Text style={styles.infoLabel}>Gender:</Text>
-                <Text style={styles.infoValue}>{application.gender}</Text>
+                <Text style={dynamicStyles.infoLabel}>Gender:</Text>
+                <Text style={dynamicStyles.infoValue}>{application.gender}</Text>
               </View>
             )}
             {application.dateOfBirth && (
-              <View style={styles.infoRow}>
+              <View style={dynamicStyles.infoRow}>
                 <Ionicons name="calendar-outline" size={20} color="#4A90E2" />
-                <Text style={styles.infoLabel}>Date of Birth:</Text>
-                <Text style={styles.infoValue}>{formatDate(application.dateOfBirth)}</Text>
+                <Text style={dynamicStyles.infoLabel}>Date of Birth:</Text>
+                <Text style={dynamicStyles.infoValue}>{formatDate(application.dateOfBirth)}</Text>
               </View>
             )}
             {application.maritalStatus && (
-              <View style={styles.infoRow}>
+              <View style={dynamicStyles.infoRow}>
                 <Ionicons name="people-outline" size={20} color="#4A90E2" />
-                <Text style={styles.infoLabel}>Marital Status:</Text>
-                <Text style={styles.infoValue}>{application.maritalStatus}</Text>
+                <Text style={dynamicStyles.infoLabel}>Marital Status:</Text>
+                <Text style={dynamicStyles.infoValue}>{application.maritalStatus}</Text>
               </View>
             )}
           </View>
 
           {/* Professional Information */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Professional Information</Text>
+          <View style={dynamicStyles.section}>
+            <Text style={dynamicStyles.sectionTitle}>Professional Information</Text>
             {application.totalExperience && (
-              <View style={styles.infoRow}>
+              <View style={dynamicStyles.infoRow}>
                 <Ionicons name="briefcase-outline" size={20} color="#4A90E2" />
-                <Text style={styles.infoLabel}>Total Experience:</Text>
-                <Text style={styles.infoValue}>{application.totalExperience}</Text>
+                <Text style={dynamicStyles.infoLabel}>Total Experience:</Text>
+                <Text style={dynamicStyles.infoValue}>{application.totalExperience}</Text>
               </View>
             )}
             {application.currentJobTitle && (
-              <View style={styles.infoRow}>
+              <View style={dynamicStyles.infoRow}>
                 <Ionicons name="business-outline" size={20} color="#4A90E2" />
-                <Text style={styles.infoLabel}>Current Job Title:</Text>
-                <Text style={styles.infoValue}>{application.currentJobTitle}</Text>
+                <Text style={dynamicStyles.infoLabel}>Current Job Title:</Text>
+                <Text style={dynamicStyles.infoValue}>{application.currentJobTitle}</Text>
               </View>
             )}
             {application.currentCompanyName && (
-              <View style={styles.infoRow}>
+              <View style={dynamicStyles.infoRow}>
                 <Ionicons name="business-outline" size={20} color="#4A90E2" />
-                <Text style={styles.infoLabel}>Current Company:</Text>
-                <Text style={styles.infoValue}>{application.currentCompanyName}</Text>
+                <Text style={dynamicStyles.infoLabel}>Current Company:</Text>
+                <Text style={dynamicStyles.infoValue}>{application.currentCompanyName}</Text>
               </View>
             )}
             {application.currentSalary && (
-              <View style={styles.infoRow}>
+              <View style={dynamicStyles.infoRow}>
                 <Ionicons name="cash-outline" size={20} color="#4A90E2" />
-                <Text style={styles.infoLabel}>Current Salary:</Text>
-                <Text style={styles.infoValue}>₹{application.currentSalary.toLocaleString('en-IN')}</Text>
+                <Text style={dynamicStyles.infoLabel}>Current Salary:</Text>
+                <Text style={dynamicStyles.infoValue}>₹{application.currentSalary.toLocaleString('en-IN')}</Text>
               </View>
             )}
             {application.expectedSalary && (
-              <View style={styles.infoRow}>
+              <View style={dynamicStyles.infoRow}>
                 <Ionicons name="cash-outline" size={20} color="#10B981" />
-                <Text style={styles.infoLabel}>Expected Salary:</Text>
-                <Text style={styles.infoValue}>₹{application.expectedSalary.toLocaleString('en-IN')}</Text>
+                <Text style={dynamicStyles.infoLabel}>Expected Salary:</Text>
+                <Text style={dynamicStyles.infoValue}>₹{application.expectedSalary.toLocaleString('en-IN')}</Text>
               </View>
             )}
             {application.noticePeriod && (
-              <View style={styles.infoRow}>
+              <View style={dynamicStyles.infoRow}>
                 <Ionicons name="time-outline" size={20} color="#4A90E2" />
-                <Text style={styles.infoLabel}>Notice Period:</Text>
-                <Text style={styles.infoValue}>{application.noticePeriod}</Text>
+                <Text style={dynamicStyles.infoLabel}>Notice Period:</Text>
+                <Text style={dynamicStyles.infoValue}>{application.noticePeriod}</Text>
               </View>
             )}
           </View>
 
           {/* Education */}
           {application.education && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Education</Text>
-              <View style={styles.infoRow}>
+            <View style={dynamicStyles.section}>
+              <Text style={dynamicStyles.sectionTitle}>Education</Text>
+              <View style={dynamicStyles.infoRow}>
                 <Ionicons name="school-outline" size={20} color="#4A90E2" />
-                <Text style={styles.infoLabel}>Education:</Text>
-                <Text style={styles.infoValue}>{application.education}</Text>
+                <Text style={dynamicStyles.infoLabel}>Education:</Text>
+                <Text style={dynamicStyles.infoValue}>{application.education}</Text>
               </View>
               {application.course && (
-                <View style={styles.infoRow}>
+                <View style={dynamicStyles.infoRow}>
                   <Ionicons name="book-outline" size={20} color="#4A90E2" />
-                  <Text style={styles.infoLabel}>Course:</Text>
-                  <Text style={styles.infoValue}>{application.course}</Text>
+                  <Text style={dynamicStyles.infoLabel}>Course:</Text>
+                  <Text style={dynamicStyles.infoValue}>{application.course}</Text>
                 </View>
               )}
             </View>
@@ -356,12 +361,12 @@ const AdminApplicationDetailsScreen = ({ route, navigation }) => {
 
           {/* Skills */}
           {application.skills && application.skills.length > 0 && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Skills</Text>
-              <View style={styles.skillsContainer}>
+            <View style={dynamicStyles.section}>
+              <Text style={dynamicStyles.sectionTitle}>Skills</Text>
+              <View style={dynamicStyles.skillsContainer}>
                 {(typeof application.skills === 'string' ? application.skills.split(',') : application.skills).map((skill, index) => (
-                  <View key={index} style={styles.skillBadge}>
-                    <Text style={styles.skillText}>{skill.trim()}</Text>
+                  <View key={index} style={dynamicStyles.skillBadge}>
+                    <Text style={dynamicStyles.skillText}>{skill.trim()}</Text>
                   </View>
                 ))}
               </View>
@@ -370,20 +375,20 @@ const AdminApplicationDetailsScreen = ({ route, navigation }) => {
 
           {/* Location */}
           {(application.currentCity || application.currentState) && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Location</Text>
+            <View style={dynamicStyles.section}>
+              <Text style={dynamicStyles.sectionTitle}>Location</Text>
               {application.currentCity && (
-                <View style={styles.infoRow}>
+                <View style={dynamicStyles.infoRow}>
                   <Ionicons name="location-outline" size={20} color="#4A90E2" />
-                  <Text style={styles.infoLabel}>City:</Text>
-                  <Text style={styles.infoValue}>{application.currentCity}</Text>
+                  <Text style={dynamicStyles.infoLabel}>City:</Text>
+                  <Text style={dynamicStyles.infoValue}>{application.currentCity}</Text>
                 </View>
               )}
               {application.currentState && (
-                <View style={styles.infoRow}>
+                <View style={dynamicStyles.infoRow}>
                   <Ionicons name="map-outline" size={20} color="#4A90E2" />
-                  <Text style={styles.infoLabel}>State:</Text>
-                  <Text style={styles.infoValue}>{application.currentState}</Text>
+                  <Text style={dynamicStyles.infoLabel}>State:</Text>
+                  <Text style={dynamicStyles.infoValue}>{application.currentState}</Text>
                 </View>
               )}
             </View>
@@ -391,39 +396,39 @@ const AdminApplicationDetailsScreen = ({ route, navigation }) => {
 
           {/* Cover Letter */}
           {application.coverLetter && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Cover Letter</Text>
-              <Text style={styles.coverLetter}>{application.coverLetter}</Text>
+            <View style={dynamicStyles.section}>
+              <Text style={dynamicStyles.sectionTitle}>Cover Letter</Text>
+              <Text style={dynamicStyles.coverLetter}>{application.coverLetter}</Text>
             </View>
           )}
 
           {/* Resume */}
           {application.resumeUrl && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Resume</Text>
+            <View style={dynamicStyles.section}>
+              <Text style={dynamicStyles.sectionTitle}>Resume</Text>
               <TouchableOpacity
-                style={styles.resumeButton}
+                style={dynamicStyles.resumeButton}
                 onPress={() => Alert.alert('Resume', 'Resume download functionality would open here')}
               >
                 <Ionicons name="document-text-outline" size={20} color="#4A90E2" />
-                <Text style={styles.resumeButtonText}>View Resume</Text>
+                <Text style={dynamicStyles.resumeButtonText}>View Resume</Text>
               </TouchableOpacity>
             </View>
           )}
 
           {/* Application Metadata */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Application Metadata</Text>
-            <View style={styles.infoRow}>
+          <View style={dynamicStyles.section}>
+            <Text style={dynamicStyles.sectionTitle}>Application Metadata</Text>
+            <View style={dynamicStyles.infoRow}>
               <Ionicons name="calendar-outline" size={20} color="#4A90E2" />
-              <Text style={styles.infoLabel}>Applied On:</Text>
-              <Text style={styles.infoValue}>{formatDate(application.createdAt || application.appliedAt)}</Text>
+              <Text style={dynamicStyles.infoLabel}>Applied On:</Text>
+              <Text style={dynamicStyles.infoValue}>{formatDate(application.createdAt || application.appliedAt)}</Text>
             </View>
             {application.updatedAt && (
-              <View style={styles.infoRow}>
+              <View style={dynamicStyles.infoRow}>
                 <Ionicons name="refresh-outline" size={20} color="#4A90E2" />
-                <Text style={styles.infoLabel}>Last Updated:</Text>
-                <Text style={styles.infoValue}>{formatDate(application.updatedAt)}</Text>
+                <Text style={dynamicStyles.infoLabel}>Last Updated:</Text>
+                <Text style={dynamicStyles.infoValue}>{formatDate(application.updatedAt)}</Text>
               </View>
             )}
           </View>
@@ -433,12 +438,12 @@ const AdminApplicationDetailsScreen = ({ route, navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (isMobile, isTablet) => StyleSheet.create({
   scrollContainer: {
     flex: 1,
   },
   container: {
-    padding: 20,
+    padding: isMobile ? 12 : isTablet ? 16 : 20,
   },
   loadingContainer: {
     flex: 1,
@@ -447,106 +452,126 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 10,
-    fontSize: 16,
+    fontSize: isMobile ? 14 : isTablet ? 15 : 16,
     color: '#666',
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: isMobile ? 16 : isTablet ? 18 : 20,
   },
   errorText: {
-    fontSize: 18,
+    fontSize: isMobile ? 16 : isTablet ? 17 : 18,
     color: '#E74C3C',
     marginTop: 15,
     marginBottom: 20,
   },
   backButton: {
     backgroundColor: '#4A90E2',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingHorizontal: isMobile ? 16 : isTablet ? 18 : 20,
+    paddingVertical: isMobile ? 8 : isTablet ? 9 : 10,
     borderRadius: 8,
+    ...(Platform.OS === 'web' && {
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+      ':hover': {
+        backgroundColor: '#357ABD',
+        transform: 'translateY(-1px)',
+      },
+    }),
   },
   backButtonText: {
     color: '#FFF',
-    fontSize: 16,
+    fontSize: isMobile ? 14 : isTablet ? 15 : 16,
     fontWeight: '600',
   },
   header: {
-    marginBottom: 20,
+    marginBottom: isMobile ? 16 : isTablet ? 18 : 20,
   },
   backBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: isMobile ? 6 : 8,
   },
   backBtnText: {
-    fontSize: 16,
+    fontSize: isMobile ? 14 : isTablet ? 15 : 16,
     color: '#4A90E2',
     fontWeight: '600',
   },
   section: {
     backgroundColor: '#FFF',
     borderRadius: 12,
-    padding: 20,
-    marginBottom: 15,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    padding: isMobile ? 14 : isTablet ? 17 : 20,
+    marginBottom: isMobile ? 12 : isTablet ? 14 : 15,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+    } : {
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+    }),
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: isMobile ? 16 : isTablet ? 17 : 18,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 15,
+    marginBottom: isMobile ? 12 : isTablet ? 14 : 15,
   },
   candidateHeader: {
-    flexDirection: 'row',
+    flexDirection: isMobile ? 'column' : 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: isMobile ? 'flex-start' : 'flex-start',
+    gap: isMobile ? 12 : 0,
   },
   candidateName: {
-    fontSize: 24,
+    fontSize: isMobile ? 20 : isTablet ? 22 : 24,
     fontWeight: 'bold',
     color: '#333',
     marginBottom: 4,
   },
   candidateEmail: {
-    fontSize: 14,
+    fontSize: isMobile ? 12 : isTablet ? 13 : 14,
     color: '#666',
   },
   statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: isMobile ? 10 : 12,
+    paddingVertical: isMobile ? 5 : 6,
     borderRadius: 6,
   },
   statusText: {
-    fontSize: 12,
+    fontSize: isMobile ? 11 : isTablet ? 11.5 : 12,
     fontWeight: '600',
     textTransform: 'capitalize',
   },
   statusActions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: isMobile ? 8 : 10,
   },
   statusActionButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: isMobile ? 12 : isTablet ? 14 : 16,
+    paddingVertical: isMobile ? 8 : isTablet ? 9 : 10,
     borderRadius: 8,
     backgroundColor: '#F5F6FA',
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    ...(Platform.OS === 'web' && {
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+      ':hover': {
+        backgroundColor: '#E8ECF1',
+      },
+    }),
   },
   statusActionButtonActive: {
     backgroundColor: '#4A90E2',
     borderColor: '#4A90E2',
   },
   statusActionText: {
-    fontSize: 14,
+    fontSize: isMobile ? 13 : isTablet ? 13.5 : 14,
     fontWeight: '600',
     color: '#374151',
   },
@@ -554,63 +579,73 @@ const styles = StyleSheet.create({
     color: '#FFF',
   },
   infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-    gap: 10,
+    flexDirection: isMobile ? 'column' : 'row',
+    alignItems: isMobile ? 'flex-start' : 'center',
+    marginBottom: isMobile ? 10 : 12,
+    gap: isMobile ? 4 : 10,
   },
   infoLabel: {
-    fontSize: 14,
+    fontSize: isMobile ? 12 : isTablet ? 13 : 14,
     color: '#666',
     fontWeight: '600',
-    minWidth: 140,
+    minWidth: isMobile ? '100%' : 140,
   },
   infoValue: {
-    fontSize: 14,
+    fontSize: isMobile ? 13 : isTablet ? 13.5 : 14,
     color: '#333',
     flex: 1,
   },
   skillsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: isMobile ? 8 : 10,
   },
   skillBadge: {
     backgroundColor: '#EBF5FF',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: isMobile ? 10 : 12,
+    paddingVertical: isMobile ? 5 : 6,
     borderRadius: 6,
     borderWidth: 1,
     borderColor: '#4A90E2',
   },
   skillText: {
-    fontSize: 13,
+    fontSize: isMobile ? 12 : isTablet ? 12.5 : 13,
     color: '#4A90E2',
     fontWeight: '600',
   },
   coverLetter: {
-    fontSize: 14,
+    fontSize: isMobile ? 13 : isTablet ? 13.5 : 14,
     color: '#555',
-    lineHeight: 22,
+    lineHeight: isMobile ? 20 : 22,
   },
   resumeButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
+    gap: isMobile ? 6 : 8,
+    paddingVertical: isMobile ? 10 : isTablet ? 11 : 12,
+    paddingHorizontal: isMobile ? 16 : isTablet ? 18 : 20,
     backgroundColor: '#EBF5FF',
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#4A90E2',
+    ...(Platform.OS === 'web' && {
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+      ':hover': {
+        backgroundColor: '#DBEAFE',
+        transform: 'translateY(-1px)',
+      },
+    }),
   },
   resumeButtonText: {
-    fontSize: 14,
+    fontSize: isMobile ? 13 : isTablet ? 13.5 : 14,
     color: '#4A90E2',
     fontWeight: '600',
   },
 });
+
+const styles = StyleSheet.create({});
 
 export default AdminApplicationDetailsScreen;
 

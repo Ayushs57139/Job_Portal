@@ -18,6 +18,11 @@ import {
   DOCTORATE_SPECIALIZATION_OPTIONS,
 } from './educationData';
 
+export const employerTypeOptions = [
+  { value: 'company', label: 'Company/Business' },
+  { value: 'consultancy', label: 'Consultancy' },
+];
+
 export const companyTypeOptions = [
   { value: 'indian_mnc', label: 'Indian MNC' },
   { value: 'foreign_mnc', label: 'Foreign MNC' },
@@ -410,6 +415,15 @@ export const formSteps = [
     title: 'Company & Job Details',
     fields: [
       {
+        name: 'employerType',
+        label: "You're posting this job as a:",
+        type: 'dropdown',
+        placeholder: 'Select employer type',
+        icon: 'business-outline',
+        required: true,
+        options: employerTypeOptions,
+      },
+      {
         name: 'companyName',
         label: 'Company Name / Consultancy Name',
         type: 'autocomplete',
@@ -440,11 +454,12 @@ export const formSteps = [
       {
         name: 'jobTitle',
         label: 'Job Title / Designation',
-        type: 'dropdown',
+        type: 'autocomplete',
         placeholder: 'Type or Select Existing Suggestion',
         icon: 'briefcase-outline',
         required: true,
-        options: jobTitleOptions,
+        allowAddNew: true,
+        suggestions: jobTitleOptions,
       },
       {
         name: 'keySkills',
@@ -454,6 +469,7 @@ export const formSteps = [
         icon: 'star-outline',
         required: true,
         maxSelections: 12,
+        allowAddNew: true,
         options: keySkillsOptions,
       },
     ],
@@ -1037,6 +1053,7 @@ export const formSteps = [
 
 export default {
   formSteps,
+  employerTypeOptions,
   companyTypeOptions,
   employeeCountOptions,
   employmentTypeOptions,

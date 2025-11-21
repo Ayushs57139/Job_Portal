@@ -18,11 +18,17 @@ import Header from '../../components/Header';
 import CompanyCard from '../../components/CompanyCard';
 import AdvertisementWidget from '../../components/AdvertisementWidget';
 import api from '../../config/api';
+import { useResponsive } from '../../utils/responsive';
 
-const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
 
 const CompaniesScreen = () => {
+  const responsive = useResponsive();
+  const isPhone = responsive.width <= 480;
+  const isMobile = responsive.isMobile;
+  const isTablet = responsive.isTablet;
+  const isDesktop = responsive.isDesktop;
+  const dynamicStyles = getStyles(isPhone, isMobile, isTablet, isDesktop, responsive.width);
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -124,12 +130,12 @@ const CompaniesScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={dynamicStyles.container}>
       <Header />
       
       <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        style={dynamicStyles.scrollView}
+        contentContainerStyle={dynamicStyles.scrollContent}
         showsVerticalScrollIndicator={isWeb ? true : false}
         refreshControl={
           <RefreshControl
@@ -145,34 +151,34 @@ const CompaniesScreen = () => {
           colors={['#FFFFFF', '#FFFFFF']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={styles.heroSection}
+          style={dynamicStyles.heroSection}
         >
-          <Text style={styles.heroTitle}>Top Companies</Text>
-          <Text style={styles.heroSubtitle}>
+          <Text style={dynamicStyles.heroTitle}>Top Companies</Text>
+          <Text style={dynamicStyles.heroSubtitle}>
             Discover opportunities from leading companies and organizations
           </Text>
-          <View style={styles.heroStatsRow}>
-            <View style={styles.heroStatCard}>
-              <Text style={styles.heroStatValue}>{companies.length}</Text>
-              <Text style={styles.heroStatLabel}>Active partners</Text>
+          <View style={dynamicStyles.heroStatsRow}>
+            <View style={dynamicStyles.heroStatCard}>
+              <Text style={dynamicStyles.heroStatValue}>{companies.length}</Text>
+              <Text style={dynamicStyles.heroStatLabel}>Active partners</Text>
             </View>
-            <View style={styles.heroStatCard}>
-              <Text style={styles.heroStatValue}>{totalOpenPositions}</Text>
-              <Text style={styles.heroStatLabel}>Open roles</Text>
+            <View style={dynamicStyles.heroStatCard}>
+              <Text style={dynamicStyles.heroStatValue}>{totalOpenPositions}</Text>
+              <Text style={dynamicStyles.heroStatLabel}>Open roles</Text>
             </View>
-            <View style={styles.heroStatCard}>
-              <Text style={styles.heroStatValue}>{averageRating}/5</Text>
-              <Text style={styles.heroStatLabel}>Avg. rating</Text>
+            <View style={dynamicStyles.heroStatCard}>
+              <Text style={dynamicStyles.heroStatValue}>{averageRating}/5</Text>
+              <Text style={dynamicStyles.heroStatLabel}>Avg. rating</Text>
             </View>
           </View>
         </LinearGradient>
 
         {/* Search Section */}
-        <View style={styles.searchSection}>
-          <View style={styles.searchRow}>
-            <View style={styles.searchInputWrapper}>
+        <View style={dynamicStyles.searchSection}>
+          <View style={dynamicStyles.searchRow}>
+            <View style={dynamicStyles.searchInputWrapper}>
               <TextInput
-                style={styles.searchInput}
+                style={dynamicStyles.searchInput}
                 placeholder="Search companies by name..."
                 value={searchQuery}
                 onChangeText={setSearchQuery}
@@ -181,29 +187,29 @@ const CompaniesScreen = () => {
               />
             </View>
 
-            <View style={styles.dropdownWrapper}>
+            <View style={dynamicStyles.dropdownWrapper}>
               <TouchableOpacity 
-                style={styles.dropdown}
+                style={dynamicStyles.dropdown}
                 onPress={() => setShowIndustryDropdown(!showIndustryDropdown)}
               >
-                <Text style={styles.dropdownText}>
+                <Text style={dynamicStyles.dropdownText}>
                   {industries.find(ind => ind.id === selectedIndustry)?.label || 'All Industries'}
                 </Text>
                 <Ionicons 
                   name={showIndustryDropdown ? "chevron-up" : "chevron-down"} 
-                  size={20} 
+                  size={isPhone ? 18 : 20} 
                   color={colors.text} 
                 />
               </TouchableOpacity>
             </View>
 
-            <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
-              <Ionicons name="search" size={20} color={colors.textWhite} />
-              <Text style={styles.searchButtonText}>Search</Text>
+            <TouchableOpacity style={dynamicStyles.searchButton} onPress={handleSearch}>
+              <Ionicons name="search" size={isPhone ? 18 : 20} color={colors.textWhite} />
+              <Text style={dynamicStyles.searchButtonText}>Search</Text>
             </TouchableOpacity>
           </View>
 
-          <View style={styles.quickFilters}>
+          <View style={dynamicStyles.quickFilters}>
             {[
               { id: 'all', label: 'All companies' },
               { id: 'topRated', label: 'Top rated' },
@@ -214,8 +220,8 @@ const CompaniesScreen = () => {
                 <TouchableOpacity
                   key={filter.id}
                   style={[
-                    styles.quickFilterChip,
-                    isActive && styles.quickFilterChipActive,
+                    dynamicStyles.quickFilterChip,
+                    isActive && dynamicStyles.quickFilterChipActive,
                   ]}
                   onPress={() => setCompanyFilter(filter.id)}
                 >
@@ -227,13 +233,13 @@ const CompaniesScreen = () => {
                         ? 'flash'
                         : 'grid'
                     }
-                    size={14}
+                    size={isPhone ? 12 : 14}
                     color={isActive ? '#4338CA' : colors.textSecondary}
                   />
                   <Text
                     style={[
-                      styles.quickFilterText,
-                      isActive && styles.quickFilterTextActive,
+                      dynamicStyles.quickFilterText,
+                      isActive && dynamicStyles.quickFilterTextActive,
                     ]}
                   >
                     {filter.label}
@@ -243,41 +249,41 @@ const CompaniesScreen = () => {
             })}
           </View>
 
-          <View style={styles.trendingTags}>
+          <View style={dynamicStyles.trendingTags}>
             {['FinTech', 'Healthcare', 'Remote friendly', 'Design leaders'].map((tag) => (
               <TouchableOpacity
                 key={tag}
-                style={styles.trendingTag}
+                style={dynamicStyles.trendingTag}
                 onPress={() => {
                   setSearchQuery(tag);
                   handleSearch();
                 }}
               >
-                <Ionicons name="sparkles" size={14} color="#6366F1" />
-                <Text style={styles.trendingTagText}>{tag}</Text>
+                <Ionicons name="sparkles" size={isPhone ? 12 : 14} color="#6366F1" />
+                <Text style={dynamicStyles.trendingTagText}>{tag}</Text>
               </TouchableOpacity>
             ))}
           </View>
 
           {/* Loading or Results Message */}
           {loading && (
-            <View style={styles.loadingMessage}>
-              <Text style={styles.loadingMessageText}>Loading companies...</Text>
+            <View style={dynamicStyles.loadingMessage}>
+              <Text style={dynamicStyles.loadingMessageText}>Loading companies...</Text>
             </View>
           )}
         </View>
 
         {/* Dropdown Menu - Positioned Outside */}
         {showIndustryDropdown && (
-          <View style={styles.dropdownMenuContainer}>
+          <View style={dynamicStyles.dropdownMenuContainer}>
             <TouchableOpacity 
-              style={styles.dropdownOverlay}
+              style={dynamicStyles.dropdownOverlay}
               activeOpacity={1}
               onPress={() => setShowIndustryDropdown(false)}
             />
-            <View style={styles.dropdownMenuAbsolute}>
+            <View style={dynamicStyles.dropdownMenuAbsolute}>
               <ScrollView 
-                style={styles.dropdownScroll}
+                style={dynamicStyles.dropdownScroll}
                 showsVerticalScrollIndicator={true}
                 bounces={false}
               >
@@ -285,8 +291,8 @@ const CompaniesScreen = () => {
                   <TouchableOpacity
                     key={industry.id}
                     style={[
-                      styles.dropdownItem,
-                      selectedIndustry === industry.id && styles.dropdownItemSelected
+                      dynamicStyles.dropdownItem,
+                      selectedIndustry === industry.id && dynamicStyles.dropdownItemSelected
                     ]}
                     onPress={() => {
                       setSelectedIndustry(industry.id);
@@ -299,13 +305,13 @@ const CompaniesScreen = () => {
                   >
                     <Ionicons 
                       name={industry.icon} 
-                      size={18} 
+                      size={isPhone ? 16 : 18} 
                       color={selectedIndustry === industry.id ? '#6366F1' : colors.text} 
                     />
                     <Text 
                       style={[
-                        styles.dropdownItemText,
-                        selectedIndustry === industry.id && styles.dropdownItemTextSelected
+                        dynamicStyles.dropdownItemText,
+                        selectedIndustry === industry.id && dynamicStyles.dropdownItemTextSelected
                       ]}
                     >
                       {industry.label}
@@ -321,25 +327,25 @@ const CompaniesScreen = () => {
         <AdvertisementWidget 
           position="content-top" 
           page="companies"
-          containerStyle={styles.adContainer}
+          containerStyle={dynamicStyles.adContainer}
         />
 
         {/* Companies Grid */}
         {!loading && filteredCompanies.length > 0 ? (
-          <View style={styles.companiesSection}>
-            <View style={styles.companiesGrid}>
+          <View style={dynamicStyles.companiesSection}>
+            <View style={dynamicStyles.companiesGrid}>
               {filteredCompanies.map((company, index) => (
                 <React.Fragment key={company._id}>
-                  <View style={styles.companyCardWrapper}>
+                  <View style={dynamicStyles.companyCardWrapper}>
                     <CompanyCard company={company} />
                   </View>
                   {/* Show ad after every 6 companies */}
                   {(index + 1) % 6 === 0 && index < filteredCompanies.length - 1 && (
-                    <View style={[styles.companyCardWrapper, { width: '100%' }]}>
+                    <View style={[dynamicStyles.companyCardWrapper, { width: '100%' }]}>
                       <AdvertisementWidget 
                         position="content-middle" 
                         page="companies"
-                        containerStyle={styles.adContainer}
+                        containerStyle={dynamicStyles.adContainer}
                       />
                     </View>
                   )}
@@ -352,30 +358,30 @@ const CompaniesScreen = () => {
               <AdvertisementWidget 
                 position="content-bottom" 
                 page="companies"
-                containerStyle={styles.adContainer}
+                containerStyle={dynamicStyles.adContainer}
               />
             )}
           </View>
         ) : !loading ? (
-          <View style={styles.emptyContainer}>
-            <View style={styles.emptyIconContainer}>
-              <Ionicons name="business-outline" size={80} color={colors.primary} />
+          <View style={dynamicStyles.emptyContainer}>
+            <View style={dynamicStyles.emptyIconContainer}>
+              <Ionicons name="business-outline" size={isPhone ? 64 : (isMobile ? 72 : 80)} color={colors.primary} />
             </View>
-            <Text style={styles.emptyText}>No Companies Found</Text>
-            <Text style={styles.emptySubtext}>
+            <Text style={dynamicStyles.emptyText}>No Companies Found</Text>
+            <Text style={dynamicStyles.emptySubtext}>
               We couldn't find any companies matching your search.
             </Text>
-            <Text style={styles.emptySubtext}>Try adjusting your filters</Text>
+            <Text style={dynamicStyles.emptySubtext}>Try adjusting your filters</Text>
             <TouchableOpacity 
-              style={styles.clearButton}
+              style={dynamicStyles.clearButton}
               onPress={() => {
                 setSearchQuery('');
                 setSelectedIndustry('all');
                 handleSearch();
               }}
             >
-              <Ionicons name="refresh-outline" size={20} color={colors.textWhite} />
-              <Text style={styles.clearButtonText}>Clear Filters</Text>
+              <Ionicons name="refresh-outline" size={isPhone ? 18 : 20} color={colors.textWhite} />
+              <Text style={dynamicStyles.clearButtonText}>Clear Filters</Text>
             </TouchableOpacity>
           </View>
         ) : null}
@@ -384,7 +390,9 @@ const CompaniesScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (isPhone, isMobile, isTablet, isDesktop, width) => {
+  const isWeb = Platform.OS === 'web';
+  return StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -396,8 +404,8 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   heroSection: {
-    paddingVertical: spacing.xxl * 1.5,
-    paddingHorizontal: spacing.lg,
+    paddingVertical: isPhone ? spacing.xl : (isMobile ? spacing.xxl : spacing.xxl * 1.5),
+    paddingHorizontal: isPhone ? spacing.md : (isMobile ? spacing.lg : spacing.lg),
     alignItems: 'center',
     borderBottomLeftRadius: borderRadius.xl,
     borderBottomRightRadius: borderRadius.xl,
@@ -407,7 +415,7 @@ const styles = StyleSheet.create({
     }),
   },
   heroTitle: {
-    fontSize: isWeb ? 40 : 32,
+    fontSize: isPhone ? 24 : (isMobile ? 28 : (isTablet ? 32 : (isWeb ? 40 : 32))),
     fontWeight: '700',
     color: colors.text,
     textAlign: 'center',
@@ -684,7 +692,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: '100%',
   },
-});
+  });
+};
 
 export default CompaniesScreen;
 

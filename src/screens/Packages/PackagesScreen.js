@@ -18,17 +18,21 @@ import api from '../../config/api';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
+const isPhone = width <= 480;
+const isMobile = width <= 600;
+const isTablet = width > 600 && width <= 1024;
+const isDesktop = width > 1024;
 
 // Predefined gradient colors for packages (no blue)
 const gradientColors = [
-  ['#9D50BB', '#6E48AA'], // Purple
-  ['#f093fb', '#f5576c'], // Pink to Red
-  ['#fa709a', '#fee140'], // Pink to Yellow
-  ['#a8edea', '#fed6e3'], // Teal to Pink
-  ['#ff9a9e', '#fecfef'], // Pink gradient
-  ['#ffecd2', '#fcb69f'], // Orange gradient
-  ['#ff6e7f', '#ffa500'], // Red to Orange
-  ['#11998e', '#38ef7d'], // Teal to Green
+  ['#667eea', '#764ba2'], // Modern Purple to Deep Purple
+  ['#f093fb', '#f5576c'], // Vibrant Pink to Coral
+  ['#ff6b6b', '#ee5a6f'], // Coral Red to Deep Pink
+  ['#43e97b', '#38f9d7'], // Fresh Green to Turquoise
+  ['#fa709a', '#fee140'], // Pink to Golden Yellow
+  ['#ff9a56', '#ff6a88'], // Warm Orange to Pink
+  ['#a8edea', '#fed6e3'], // Soft Teal to Pink
+  ['#ffecd2', '#fcb69f'], // Cream to Peach
 ];
 
 const PackagesScreen = () => {
@@ -149,7 +153,7 @@ const PackagesScreen = () => {
   );
 
   const renderPackageCard = (pkg, isCandidate = false) => (
-    <View key={pkg.id} style={styles.packageCard}>
+    <View style={styles.packageCard}>
       <LinearGradient
         colors={pkg.gradientColors}
         start={{ x: 0, y: 0 }}
@@ -286,7 +290,13 @@ const PackagesScreen = () => {
                 Choose the perfect plan to find and hire top talent
               </Text>
               {employerPackages.length > 0 ? (
-                employerPackages.map((pkg) => renderPackageCard(pkg, false))
+                <View style={styles.packagesGrid}>
+                  {employerPackages.map((pkg) => (
+                    <View key={pkg.id} style={styles.packageCardWrapper}>
+                      {renderPackageCard(pkg, false)}
+                    </View>
+                  ))}
+                </View>
               ) : (
                 <View style={styles.emptyContainer}>
                   <Ionicons name="cube-outline" size={64} color="#ccc" />
@@ -304,7 +314,13 @@ const PackagesScreen = () => {
                 Boost your profile visibility and get noticed by recruiters
               </Text>
               {candidatePackages.length > 0 ? (
-                candidatePackages.map((pkg) => renderPackageCard(pkg, true))
+                <View style={styles.packagesGrid}>
+                  {candidatePackages.map((pkg) => (
+                    <View key={pkg.id} style={styles.packageCardWrapper}>
+                      {renderPackageCard(pkg, true)}
+                    </View>
+                  ))}
+                </View>
               ) : (
                 <View style={styles.emptyContainer}>
                   <Ionicons name="cube-outline" size={64} color="#ccc" />
@@ -454,9 +470,26 @@ const styles = StyleSheet.create({
   },
   packagesSection: {
     paddingHorizontal: spacing.lg,
-    maxWidth: isWeb ? 1200 : '100%',
+    maxWidth: isWeb ? 1400 : '100%',
     alignSelf: 'center',
     width: '100%',
+  },
+  packagesGrid: {
+    flexDirection: isMobile ? 'column' : 'row',
+    flexWrap: 'wrap',
+    gap: spacing.lg,
+    justifyContent: isDesktop ? 'center' : 'center',
+  },
+  packageCardWrapper: {
+    width: isPhone ? '100%' : 
+           isMobile ? '100%' : 
+           isTablet ? (width > 900 ? '48%' : '100%') : 
+           isDesktop ? '31%' : 
+           '100%',
+    flexBasis: isDesktop ? '31%' : undefined,
+    flexGrow: 0,
+    flexShrink: 0,
+    maxWidth: isDesktop ? 400 : undefined,
   },
   sectionTitle: {
     ...typography.h3,
@@ -478,14 +511,16 @@ const styles = StyleSheet.create({
   packageCard: {
     backgroundColor: colors.cardBackground,
     borderRadius: borderRadius.xl,
-    marginBottom: spacing.xl,
+    marginBottom: 0,
     overflow: 'hidden',
     ...shadows.lg,
     borderWidth: 1,
     borderColor: colors.borderLight,
+    height: '100%',
+    flexDirection: 'column',
   },
   packageHeader: {
-    padding: spacing.xl,
+    padding: isPhone ? spacing.md : (isMobile ? spacing.md : spacing.lg),
     position: 'relative',
   },
   popularBadge: {
@@ -509,19 +544,22 @@ const styles = StyleSheet.create({
     ...typography.h3,
     color: '#fff',
     marginBottom: spacing.xs,
+    fontSize: isPhone ? 20 : (isMobile ? 22 : (isTablet ? 24 : 26)),
   },
   packageSubtitle: {
     ...typography.body2,
     color: 'rgba(255, 255, 255, 0.9)',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
+    fontSize: isPhone ? 12 : (isMobile ? 13 : 14),
   },
   priceContainer: {
-    marginTop: spacing.sm,
+    marginTop: spacing.xs,
   },
   packagePrice: {
     ...typography.h1,
     color: '#fff',
     fontWeight: '800',
+    fontSize: isPhone ? 28 : (isMobile ? 32 : (isTablet ? 36 : 40)),
   },
   gstText: {
     ...typography.caption,
@@ -529,15 +567,16 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   featuresContainer: {
-    padding: spacing.xl,
+    padding: isPhone ? spacing.md : (isMobile ? spacing.md : spacing.lg),
     backgroundColor: colors.background,
+    flex: 1,
   },
   featureItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.sm,
+    paddingVertical: isPhone ? spacing.sm : spacing.md,
+    paddingHorizontal: spacing.xs,
     borderBottomWidth: 1,
     borderBottomColor: colors.borderLight,
   },
@@ -588,7 +627,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   selectButton: {
-    margin: spacing.lg,
+    margin: isPhone ? spacing.md : (isMobile ? spacing.md : spacing.lg),
     marginTop: 0,
     borderRadius: borderRadius.xl,
     overflow: 'hidden',
@@ -663,9 +702,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   supportContainer: {
-    margin: spacing.lg,
+    margin: isPhone ? spacing.md : (isMobile ? spacing.md : spacing.lg),
     marginTop: 0,
-    padding: spacing.lg,
+    padding: isPhone ? spacing.md : spacing.lg,
     backgroundColor: colors.background,
     borderRadius: borderRadius.lg,
     borderWidth: 1,

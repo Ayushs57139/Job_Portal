@@ -18,9 +18,14 @@ import { Picker } from '@react-native-picker/picker';
 import * as ImagePicker from 'expo-image-picker';
 import AdminLayout from '../../components/Admin/AdminLayout';
 import api from '../../config/api';
-import { colors, spacing, typography, borderRadius } from '../../styles/theme';
+import { colors, spacing, typography, borderRadius, shadows } from '../../styles/theme';
+import { useResponsive } from '../../utils/responsive';
 
 const AdminSocialUpdatesScreen = ({ navigation }) => {
+  const responsive = useResponsive();
+  const isMobile = responsive.isMobile;
+  const isTablet = responsive.isTablet;
+  const dynamicStyles = getStyles(isMobile, isTablet);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [posts, setPosts] = useState([]);
@@ -367,13 +372,13 @@ const AdminSocialUpdatesScreen = ({ navigation }) => {
   };
 
   const renderStatCard = (title, value, icon, color) => (
-    <View style={[styles.statCard, { borderLeftColor: color }]}>
-      <View style={[styles.statIconContainer, { backgroundColor: `${color}15` }]}>
+    <View style={[dynamicStyles.statCard, { borderLeftColor: color }]}>
+      <View style={[dynamicStyles.statIconContainer, { backgroundColor: `${color}15` }]}>
         <Ionicons name={icon} size={24} color={color} />
       </View>
-      <View style={styles.statContent}>
-        <Text style={styles.statValue}>{value}</Text>
-        <Text style={styles.statTitle}>{title}</Text>
+      <View style={dynamicStyles.statContent}>
+        <Text style={dynamicStyles.statValue}>{value}</Text>
+        <Text style={dynamicStyles.statTitle}>{title}</Text>
       </View>
     </View>
   );
@@ -381,38 +386,38 @@ const AdminSocialUpdatesScreen = ({ navigation }) => {
   const renderPostCard = (post) => (
     <TouchableOpacity
       key={post._id}
-      style={styles.postCard}
+      style={dynamicStyles.postCard}
       onPress={() => handleViewDetails(post)}
       activeOpacity={0.7}
     >
-      <View style={styles.postHeader}>
-        <View style={styles.postTitleContainer}>
-          <Text style={styles.postTitle} numberOfLines={2}>
+      <View style={dynamicStyles.postHeader}>
+        <View style={dynamicStyles.postTitleContainer}>
+          <Text style={dynamicStyles.postTitle} numberOfLines={2}>
             {post.title}
           </Text>
-          <View style={styles.postBadges}>
-            <View style={[styles.badge, styles.typeBadge]}>
-              <Text style={styles.badgeText}>{getPostTypeLabel(post.postType)}</Text>
+          <View style={dynamicStyles.postBadges}>
+            <View style={[dynamicStyles.badge, dynamicStyles.typeBadge]}>
+              <Text style={dynamicStyles.badgeText}>{getPostTypeLabel(post.postType)}</Text>
             </View>
             {post.isPinned && (
-              <View style={[styles.badge, styles.pinnedBadge]}>
+              <View style={[dynamicStyles.badge, dynamicStyles.pinnedBadge]}>
                 <Ionicons name="pin" size={12} color="#FFF" />
-                <Text style={styles.badgeText}>Pinned</Text>
+                <Text style={dynamicStyles.badgeText}>Pinned</Text>
               </View>
             )}
             {post.isFeatured && (
-              <View style={[styles.badge, styles.featuredBadge]}>
+              <View style={[dynamicStyles.badge, dynamicStyles.featuredBadge]}>
                 <Ionicons name="star" size={12} color="#FFF" />
-                <Text style={styles.badgeText}>Featured</Text>
+                <Text style={dynamicStyles.badgeText}>Featured</Text>
               </View>
             )}
             <View
               style={[
-                styles.badge,
-                post.status === 'published' ? styles.publishedBadge : styles.draftBadge,
+                dynamicStyles.badge,
+                post.status === 'published' ? dynamicStyles.publishedBadge : dynamicStyles.draftBadge,
               ]}
             >
-              <Text style={styles.badgeText}>
+              <Text style={dynamicStyles.badgeText}>
                 {post.status === 'published' ? 'Published' : 'Draft'}
               </Text>
             </View>
@@ -420,72 +425,72 @@ const AdminSocialUpdatesScreen = ({ navigation }) => {
         </View>
       </View>
 
-      <View style={styles.postBody}>
-        <View style={styles.postMeta}>
-          <View style={styles.metaItem}>
+      <View style={dynamicStyles.postBody}>
+        <View style={dynamicStyles.postMeta}>
+          <View style={dynamicStyles.metaItem}>
             <Ionicons name="person-outline" size={14} color={colors.textSecondary} />
-            <Text style={styles.metaText}>{post.authorName}</Text>
+            <Text style={dynamicStyles.metaText}>{post.authorName}</Text>
           </View>
-          <View style={styles.metaItem}>
+          <View style={dynamicStyles.metaItem}>
             <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
-            <Text style={styles.metaText}>{formatDate(post.createdAt)}</Text>
+            <Text style={dynamicStyles.metaText}>{formatDate(post.createdAt)}</Text>
           </View>
         </View>
 
-        <Text style={styles.postContent} numberOfLines={3}>
+        <Text style={dynamicStyles.postContent} numberOfLines={3}>
           {post.content}
         </Text>
 
-        <View style={styles.engagementStats}>
-          <View style={styles.engagementItem}>
+        <View style={dynamicStyles.engagementStats}>
+          <View style={dynamicStyles.engagementItem}>
             <Ionicons name="heart" size={16} color={colors.error} />
-            <Text style={styles.engagementText}>{post.engagement?.likes || 0}</Text>
+            <Text style={dynamicStyles.engagementText}>{post.engagement?.likes || 0}</Text>
           </View>
-          <View style={styles.engagementItem}>
+          <View style={dynamicStyles.engagementItem}>
             <Ionicons name="chatbubble" size={16} color={colors.primary} />
-            <Text style={styles.engagementText}>{post.engagement?.comments || 0}</Text>
+            <Text style={dynamicStyles.engagementText}>{post.engagement?.comments || 0}</Text>
           </View>
-          <View style={styles.engagementItem}>
+          <View style={dynamicStyles.engagementItem}>
             <Ionicons name="share-social" size={16} color={colors.success} />
-            <Text style={styles.engagementText}>{post.engagement?.shares || 0}</Text>
+            <Text style={dynamicStyles.engagementText}>{post.engagement?.shares || 0}</Text>
           </View>
-          <View style={styles.engagementItem}>
+          <View style={dynamicStyles.engagementItem}>
             <Ionicons name="eye" size={16} color={colors.info} />
-            <Text style={styles.engagementText}>{post.engagement?.views || 0}</Text>
+            <Text style={dynamicStyles.engagementText}>{post.engagement?.views || 0}</Text>
           </View>
         </View>
       </View>
 
-      <View style={styles.postActions}>
+      <View style={dynamicStyles.postActions}>
         <TouchableOpacity
-          style={styles.actionButton}
+          style={dynamicStyles.actionButton}
           onPress={(e) => {
             e.stopPropagation();
             handleViewDetails(post);
           }}
         >
           <Ionicons name="eye-outline" size={18} color={colors.primary} />
-          <Text style={styles.actionButtonText}>View Details</Text>
+          <Text style={dynamicStyles.actionButtonText}>View Details</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={styles.actionButton}
+          style={dynamicStyles.actionButton}
           onPress={(e) => {
             e.stopPropagation();
             openEditModal(post);
           }}
         >
           <Ionicons name="create-outline" size={18} color={colors.success} />
-          <Text style={styles.actionButtonText}>Edit</Text>
+          <Text style={dynamicStyles.actionButtonText}>Edit</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={styles.actionButton}
+          style={dynamicStyles.actionButton}
           onPress={(e) => {
             e.stopPropagation();
             handleDelete(post);
           }}
         >
           <Ionicons name="trash-outline" size={18} color={colors.error} />
-          <Text style={styles.actionButtonText}>Delete</Text>
+          <Text style={dynamicStyles.actionButtonText}>Delete</Text>
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
@@ -499,9 +504,9 @@ const AdminSocialUpdatesScreen = ({ navigation }) => {
         onNavigate={handleNavigate}
         onLogout={handleLogout}
       >
-        <View style={styles.loadingContainer}>
+        <View style={dynamicStyles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading social updates...</Text>
+          <Text style={dynamicStyles.loadingText}>Loading social updates...</Text>
         </View>
       </AdminLayout>
     );
@@ -515,44 +520,44 @@ const AdminSocialUpdatesScreen = ({ navigation }) => {
       onLogout={handleLogout}
     >
       <ScrollView
-        style={styles.container}
+        style={dynamicStyles.container}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
         {/* Header */}
-        <View style={styles.header}>
+        <View style={dynamicStyles.header}>
           <View>
-            <Text style={styles.pageTitle}>Social Updates</Text>
-            <Text style={styles.pageSubtitle}>
+            <Text style={dynamicStyles.pageTitle}>Social Updates</Text>
+            <Text style={dynamicStyles.pageSubtitle}>
               Manage social media posts and interactions
             </Text>
           </View>
-          <TouchableOpacity style={styles.primaryButton} onPress={openCreateModal}>
+          <TouchableOpacity style={dynamicStyles.primaryButton} onPress={openCreateModal}>
             <Ionicons name="add-circle-outline" size={20} color="#FFF" />
-            <Text style={styles.primaryButtonText}>Create Post</Text>
+            <Text style={dynamicStyles.primaryButtonText}>Create Post</Text>
           </TouchableOpacity>
         </View>
 
         {/* Statistics */}
-        <View style={styles.statsContainer}>
-          <View style={styles.statsRow}>
+        <View style={dynamicStyles.statsContainer}>
+          <View style={dynamicStyles.statsRow}>
             {renderStatCard('Total Posts', stats.total || 0, 'newspaper-outline', colors.primary)}
             {renderStatCard('Published', stats.published || 0, 'checkmark-circle-outline', colors.success)}
           </View>
-          <View style={styles.statsRow}>
+          <View style={dynamicStyles.statsRow}>
             {renderStatCard('Total Likes', stats.totalLikes || 0, 'heart-outline', colors.error)}
             {renderStatCard('Total Comments', stats.totalComments || 0, 'chatbubble-outline', '#6366F1')}
           </View>
         </View>
 
         {/* Filters */}
-        <View style={styles.filtersContainer}>
-          <Text style={styles.filtersTitle}>Filters</Text>
+        <View style={dynamicStyles.filtersContainer}>
+          <Text style={dynamicStyles.filtersTitle}>Filters</Text>
           
-          <View style={styles.filterRow}>
+          <View style={dynamicStyles.filterRow}>
             <TextInput
-              style={styles.searchInput}
+              style={dynamicStyles.searchInput}
               value={filters.search}
               onChangeText={(text) => setFilters({ ...filters, search: text })}
               placeholder="Search posts..."
@@ -561,16 +566,16 @@ const AdminSocialUpdatesScreen = ({ navigation }) => {
             />
           </View>
 
-          <View style={styles.filterRow}>
-            <View style={styles.filterItem}>
-              <Text style={styles.filterLabel}>Status</Text>
-              <View style={styles.picker}>
+          <View style={dynamicStyles.filterRow}>
+            <View style={dynamicStyles.filterItem}>
+              <Text style={dynamicStyles.filterLabel}>Status</Text>
+              <View style={dynamicStyles.picker}>
                 <Picker
                   selectedValue={filters.status}
                   onValueChange={(value) =>
                     setFilters({ ...filters, status: value, page: 1 })
                   }
-                  style={styles.pickerInput}
+                  style={dynamicStyles.pickerInput}
                 >
                   <Picker.Item label="All Statuses" value="" />
                   <Picker.Item label="Published" value="published" />
@@ -580,15 +585,15 @@ const AdminSocialUpdatesScreen = ({ navigation }) => {
               </View>
             </View>
 
-            <View style={styles.filterItem}>
-              <Text style={styles.filterLabel}>Post Type</Text>
-              <View style={styles.picker}>
+            <View style={dynamicStyles.filterItem}>
+              <Text style={dynamicStyles.filterLabel}>Post Type</Text>
+              <View style={dynamicStyles.picker}>
                 <Picker
                   selectedValue={filters.postType}
                   onValueChange={(value) =>
                     setFilters({ ...filters, postType: value, page: 1 })
                   }
-                  style={styles.pickerInput}
+                  style={dynamicStyles.pickerInput}
                 >
                   <Picker.Item label="All Types" value="" />
                   <Picker.Item label="Job Announcement" value="job_announcement" />
@@ -604,19 +609,19 @@ const AdminSocialUpdatesScreen = ({ navigation }) => {
         </View>
 
         {/* Posts List */}
-        <View style={styles.postsContainer}>
-          <Text style={styles.postsTitle}>
+        <View style={dynamicStyles.postsContainer}>
+          <Text style={dynamicStyles.postsTitle}>
             Posts ({pagination.totalItems} total)
           </Text>
           {posts.length === 0 ? (
-            <View style={styles.emptyState}>
+            <View style={dynamicStyles.emptyState}>
               <Ionicons name="newspaper-outline" size={64} color={colors.border} />
-              <Text style={styles.emptyStateTitle}>No posts found</Text>
-              <Text style={styles.emptyStateText}>
+              <Text style={dynamicStyles.emptyStateTitle}>No posts found</Text>
+              <Text style={dynamicStyles.emptyStateText}>
                 Create your first social update to get started
               </Text>
-              <TouchableOpacity style={styles.emptyStateButton} onPress={openCreateModal}>
-                <Text style={styles.emptyStateButtonText}>Create Post</Text>
+              <TouchableOpacity style={dynamicStyles.emptyStateButton} onPress={openCreateModal}>
+                <Text style={dynamicStyles.emptyStateButtonText}>Create Post</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -626,11 +631,11 @@ const AdminSocialUpdatesScreen = ({ navigation }) => {
 
         {/* Pagination */}
         {pagination.totalPages > 1 && (
-          <View style={styles.paginationContainer}>
+          <View style={dynamicStyles.paginationContainer}>
             <TouchableOpacity
               style={[
-                styles.paginationButton,
-                filters.page === 1 && styles.paginationButtonDisabled,
+                dynamicStyles.paginationButton,
+                filters.page === 1 && dynamicStyles.paginationButtonDisabled,
               ]}
               onPress={() => setFilters({ ...filters, page: filters.page - 1 })}
               disabled={filters.page === 1}
@@ -641,13 +646,13 @@ const AdminSocialUpdatesScreen = ({ navigation }) => {
                 color={filters.page === 1 ? colors.border : colors.primary}
               />
             </TouchableOpacity>
-            <Text style={styles.paginationText}>
+            <Text style={dynamicStyles.paginationText}>
               Page {pagination.currentPage} of {pagination.totalPages}
             </Text>
             <TouchableOpacity
               style={[
-                styles.paginationButton,
-                filters.page === pagination.totalPages && styles.paginationButtonDisabled,
+                dynamicStyles.paginationButton,
+                filters.page === pagination.totalPages && dynamicStyles.paginationButtonDisabled,
               ]}
               onPress={() => setFilters({ ...filters, page: filters.page + 1 })}
               disabled={filters.page === pagination.totalPages}
@@ -667,23 +672,35 @@ const AdminSocialUpdatesScreen = ({ navigation }) => {
       {/* Create Post Modal */}
       <Modal
         visible={createModalVisible}
-        animationType="slide"
-        transparent={false}
+        animationType="fade"
+        transparent={true}
         onRequestClose={() => setCreateModalVisible(false)}
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Create Social Update</Text>
-            <TouchableOpacity onPress={() => setCreateModalVisible(false)}>
-              <Ionicons name="close" size={28} color={colors.text} />
-            </TouchableOpacity>
-          </View>
+        <TouchableOpacity 
+          style={dynamicStyles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setCreateModalVisible(false)}
+        >
+          <TouchableOpacity 
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
+          >
+          <View style={dynamicStyles.modalContainer}>
+            <View style={dynamicStyles.modalHeader}>
+              <Text style={dynamicStyles.modalTitle}>Create Social Update</Text>
+              <TouchableOpacity 
+                onPress={() => setCreateModalVisible(false)}
+                style={dynamicStyles.modalCloseButton}
+              >
+                <Ionicons name="close" size={24} color="#64748B" />
+              </TouchableOpacity>
+            </View>
 
-          <ScrollView style={styles.modalContent}>
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Title *</Text>
+          <ScrollView style={dynamicStyles.modalContent}>
+            <View style={dynamicStyles.inputGroup}>
+              <Text style={dynamicStyles.label}>Title *</Text>
               <TextInput
-                style={styles.input}
+                style={dynamicStyles.input}
                 value={formData.title}
                 onChangeText={(text) => setFormData({ ...formData, title: text })}
                 placeholder="Enter post title..."
@@ -691,10 +708,10 @@ const AdminSocialUpdatesScreen = ({ navigation }) => {
               />
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Content *</Text>
+            <View style={dynamicStyles.inputGroup}>
+              <Text style={dynamicStyles.label}>Content *</Text>
               <TextInput
-                style={[styles.input, styles.textArea]}
+                style={[dynamicStyles.input, dynamicStyles.textArea]}
                 value={formData.content}
                 onChangeText={(text) => setFormData({ ...formData, content: text })}
                 placeholder="Write your post content..."
@@ -705,13 +722,13 @@ const AdminSocialUpdatesScreen = ({ navigation }) => {
               />
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Post Type</Text>
-              <View style={styles.picker}>
+            <View style={dynamicStyles.inputGroup}>
+              <Text style={dynamicStyles.label}>Post Type</Text>
+              <View style={dynamicStyles.picker}>
                 <Picker
                   selectedValue={formData.postType}
                   onValueChange={(value) => setFormData({ ...formData, postType: value })}
-                  style={styles.pickerInput}
+                  style={dynamicStyles.pickerInput}
                 >
                   <Picker.Item label="General" value="general" />
                   <Picker.Item label="Job Announcement" value="job_announcement" />
@@ -723,10 +740,10 @@ const AdminSocialUpdatesScreen = ({ navigation }) => {
               </View>
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Category (Optional)</Text>
+            <View style={dynamicStyles.inputGroup}>
+              <Text style={dynamicStyles.label}>Category (Optional)</Text>
               <TextInput
-                style={styles.input}
+                style={dynamicStyles.input}
                 value={formData.category}
                 onChangeText={(text) => setFormData({ ...formData, category: text })}
                 placeholder="e.g., Technology, Healthcare"
@@ -734,10 +751,10 @@ const AdminSocialUpdatesScreen = ({ navigation }) => {
               />
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Tags (Optional)</Text>
+            <View style={dynamicStyles.inputGroup}>
+              <Text style={dynamicStyles.label}>Tags (Optional)</Text>
               <TextInput
-                style={styles.input}
+                style={dynamicStyles.input}
                 value={formData.tags}
                 onChangeText={(text) => setFormData({ ...formData, tags: text })}
                 placeholder="e.g., hiring, remote, tech (comma separated)"
@@ -745,13 +762,13 @@ const AdminSocialUpdatesScreen = ({ navigation }) => {
               />
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Visibility</Text>
-              <View style={styles.picker}>
+            <View style={dynamicStyles.inputGroup}>
+              <Text style={dynamicStyles.label}>Visibility</Text>
+              <View style={dynamicStyles.picker}>
                 <Picker
                   selectedValue={formData.visibility}
                   onValueChange={(value) => setFormData({ ...formData, visibility: value })}
-                  style={styles.pickerInput}
+                  style={dynamicStyles.pickerInput}
                 >
                   <Picker.Item label="Public" value="public" />
                   <Picker.Item label="Followers Only" value="followers_only" />
@@ -760,18 +777,18 @@ const AdminSocialUpdatesScreen = ({ navigation }) => {
               </View>
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Images (Optional)</Text>
-              <Text style={styles.hint}>Add up to 5 images to your post</Text>
+            <View style={dynamicStyles.inputGroup}>
+              <Text style={dynamicStyles.label}>Images (Optional)</Text>
+              <Text style={dynamicStyles.hint}>Add up to 5 images to your post</Text>
               
               {/* Image Preview */}
               {selectedImages.length > 0 && (
-                <View style={styles.imagesPreviewContainer}>
+                <View style={dynamicStyles.imagesPreviewContainer}>
                   {selectedImages.map((image, index) => (
-                    <View key={index} style={styles.imagePreviewWrapper}>
-                      <Image source={{ uri: image.uri }} style={styles.imagePreview} />
+                    <View key={index} style={dynamicStyles.imagePreviewWrapper}>
+                      <Image source={{ uri: image.uri }} style={dynamicStyles.imagePreview} />
                       <TouchableOpacity
-                        style={styles.removeImageButton}
+                        style={dynamicStyles.removeImageButton}
                         onPress={() => handleRemoveImage(index)}
                       >
                         <Ionicons name="close-circle" size={24} color={colors.error} />
@@ -784,14 +801,14 @@ const AdminSocialUpdatesScreen = ({ navigation }) => {
               {/* Add Image Button */}
               {selectedImages.length < 5 && (
                 <TouchableOpacity
-                  style={styles.addImageButton}
+                  style={dynamicStyles.addImageButton}
                   onPress={handlePickImage}
                 >
                   <Ionicons name="image-outline" size={24} color={colors.primary} />
-                  <Text style={styles.addImageButtonText}>
+                  <Text style={dynamicStyles.addImageButtonText}>
                     {selectedImages.length > 0 ? 'Add More Images' : 'Add Images'}
                   </Text>
-                  <Text style={styles.addImageButtonSubtext}>
+                  <Text style={dynamicStyles.addImageButtonSubtext}>
                     {selectedImages.length}/5 images
                   </Text>
                 </TouchableOpacity>
@@ -799,48 +816,62 @@ const AdminSocialUpdatesScreen = ({ navigation }) => {
             </View>
           </ScrollView>
 
-          <View style={styles.modalFooter}>
+          <View style={dynamicStyles.modalFooter}>
             <TouchableOpacity
-              style={styles.cancelButton}
+              style={dynamicStyles.cancelButton}
               onPress={() => setCreateModalVisible(false)}
             >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
+              <Text style={dynamicStyles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.saveButton}
+              style={dynamicStyles.saveButton}
               onPress={handleCreatePost}
               disabled={saving}
             >
               {saving ? (
                 <ActivityIndicator size="small" color="#FFF" />
               ) : (
-                <Text style={styles.saveButtonText}>Publish Post</Text>
+                <Text style={dynamicStyles.saveButtonText}>Publish Post</Text>
               )}
             </TouchableOpacity>
           </View>
-        </View>
+          </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
 
       {/* Edit Post Modal */}
       <Modal
         visible={editModalVisible}
-        animationType="slide"
-        transparent={false}
+        animationType="fade"
+        transparent={true}
         onRequestClose={() => setEditModalVisible(false)}
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Edit Social Update</Text>
-            <TouchableOpacity onPress={() => setEditModalVisible(false)}>
-              <Ionicons name="close" size={28} color={colors.text} />
-            </TouchableOpacity>
-          </View>
+        <TouchableOpacity 
+          style={dynamicStyles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setEditModalVisible(false)}
+        >
+          <TouchableOpacity 
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
+          >
+          <View style={dynamicStyles.modalContainer}>
+            <View style={dynamicStyles.modalHeader}>
+              <Text style={dynamicStyles.modalTitle}>Edit Social Update</Text>
+              <TouchableOpacity 
+                onPress={() => setEditModalVisible(false)}
+                style={dynamicStyles.modalCloseButton}
+              >
+                <Ionicons name="close" size={24} color="#64748B" />
+              </TouchableOpacity>
+            </View>
 
-          <ScrollView style={styles.modalContent}>
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Title *</Text>
+          <ScrollView style={dynamicStyles.modalContent}>
+            <View style={dynamicStyles.inputGroup}>
+              <Text style={dynamicStyles.label}>Title *</Text>
               <TextInput
-                style={styles.input}
+                style={dynamicStyles.input}
                 value={formData.title}
                 onChangeText={(text) => setFormData({ ...formData, title: text })}
                 placeholder="Enter post title..."
@@ -848,10 +879,10 @@ const AdminSocialUpdatesScreen = ({ navigation }) => {
               />
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Content *</Text>
+            <View style={dynamicStyles.inputGroup}>
+              <Text style={dynamicStyles.label}>Content *</Text>
               <TextInput
-                style={[styles.input, styles.textArea]}
+                style={[dynamicStyles.input, dynamicStyles.textArea]}
                 value={formData.content}
                 onChangeText={(text) => setFormData({ ...formData, content: text })}
                 placeholder="Write your post content..."
@@ -862,13 +893,13 @@ const AdminSocialUpdatesScreen = ({ navigation }) => {
               />
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Post Type</Text>
-              <View style={styles.picker}>
+            <View style={dynamicStyles.inputGroup}>
+              <Text style={dynamicStyles.label}>Post Type</Text>
+              <View style={dynamicStyles.picker}>
                 <Picker
                   selectedValue={formData.postType}
                   onValueChange={(value) => setFormData({ ...formData, postType: value })}
-                  style={styles.pickerInput}
+                  style={dynamicStyles.pickerInput}
                 >
                   <Picker.Item label="General" value="general" />
                   <Picker.Item label="Job Announcement" value="job_announcement" />
@@ -880,10 +911,10 @@ const AdminSocialUpdatesScreen = ({ navigation }) => {
               </View>
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Category (Optional)</Text>
+            <View style={dynamicStyles.inputGroup}>
+              <Text style={dynamicStyles.label}>Category (Optional)</Text>
               <TextInput
-                style={styles.input}
+                style={dynamicStyles.input}
                 value={formData.category}
                 onChangeText={(text) => setFormData({ ...formData, category: text })}
                 placeholder="e.g., Technology, Healthcare"
@@ -891,10 +922,10 @@ const AdminSocialUpdatesScreen = ({ navigation }) => {
               />
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Tags (Optional)</Text>
+            <View style={dynamicStyles.inputGroup}>
+              <Text style={dynamicStyles.label}>Tags (Optional)</Text>
               <TextInput
-                style={styles.input}
+                style={dynamicStyles.input}
                 value={formData.tags}
                 onChangeText={(text) => setFormData({ ...formData, tags: text })}
                 placeholder="e.g., hiring, remote, tech (comma separated)"
@@ -902,13 +933,13 @@ const AdminSocialUpdatesScreen = ({ navigation }) => {
               />
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Visibility</Text>
-              <View style={styles.picker}>
+            <View style={dynamicStyles.inputGroup}>
+              <Text style={dynamicStyles.label}>Visibility</Text>
+              <View style={dynamicStyles.picker}>
                 <Picker
                   selectedValue={formData.visibility}
                   onValueChange={(value) => setFormData({ ...formData, visibility: value })}
-                  style={styles.pickerInput}
+                  style={dynamicStyles.pickerInput}
                 >
                   <Picker.Item label="Public" value="public" />
                   <Picker.Item label="Followers Only" value="followers_only" />
@@ -917,18 +948,18 @@ const AdminSocialUpdatesScreen = ({ navigation }) => {
               </View>
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Images (Optional)</Text>
-              <Text style={styles.hint}>Add up to 5 images to your post</Text>
+            <View style={dynamicStyles.inputGroup}>
+              <Text style={dynamicStyles.label}>Images (Optional)</Text>
+              <Text style={dynamicStyles.hint}>Add up to 5 images to your post</Text>
               
               {/* Image Preview */}
               {selectedImages.length > 0 && (
-                <View style={styles.imagesPreviewContainer}>
+                <View style={dynamicStyles.imagesPreviewContainer}>
                   {selectedImages.map((image, index) => (
-                    <View key={index} style={styles.imagePreviewWrapper}>
-                      <Image source={{ uri: image.uri }} style={styles.imagePreview} />
+                    <View key={index} style={dynamicStyles.imagePreviewWrapper}>
+                      <Image source={{ uri: image.uri }} style={dynamicStyles.imagePreview} />
                       <TouchableOpacity
-                        style={styles.removeImageButton}
+                        style={dynamicStyles.removeImageButton}
                         onPress={() => handleRemoveImage(index)}
                       >
                         <Ionicons name="close-circle" size={24} color={colors.error} />
@@ -941,14 +972,14 @@ const AdminSocialUpdatesScreen = ({ navigation }) => {
               {/* Add Image Button */}
               {selectedImages.length < 5 && (
                 <TouchableOpacity
-                  style={styles.addImageButton}
+                  style={dynamicStyles.addImageButton}
                   onPress={handlePickImage}
                 >
                   <Ionicons name="image-outline" size={24} color={colors.primary} />
-                  <Text style={styles.addImageButtonText}>
+                  <Text style={dynamicStyles.addImageButtonText}>
                     {selectedImages.length > 0 ? 'Add More Images' : 'Add Images'}
                   </Text>
-                  <Text style={styles.addImageButtonSubtext}>
+                  <Text style={dynamicStyles.addImageButtonSubtext}>
                     {selectedImages.length}/5 images
                   </Text>
                 </TouchableOpacity>
@@ -956,132 +987,146 @@ const AdminSocialUpdatesScreen = ({ navigation }) => {
             </View>
           </ScrollView>
 
-          <View style={styles.modalFooter}>
+          <View style={dynamicStyles.modalFooter}>
             <TouchableOpacity
-              style={styles.cancelButton}
+              style={dynamicStyles.cancelButton}
               onPress={() => setEditModalVisible(false)}
             >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
+              <Text style={dynamicStyles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.saveButton}
+              style={dynamicStyles.saveButton}
               onPress={handleUpdatePost}
               disabled={saving}
             >
               {saving ? (
                 <ActivityIndicator size="small" color="#FFF" />
               ) : (
-                <Text style={styles.saveButtonText}>Update Post</Text>
+                <Text style={dynamicStyles.saveButtonText}>Update Post</Text>
               )}
             </TouchableOpacity>
           </View>
         </View>
+        </TouchableOpacity>
+      </TouchableOpacity>
       </Modal>
 
       {/* Detail Modal */}
       <Modal
         visible={detailModalVisible}
-        animationType="slide"
-        transparent={false}
+        animationType="fade"
+        transparent={true}
         onRequestClose={() => setDetailModalVisible(false)}
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Post Details</Text>
-            <TouchableOpacity onPress={() => setDetailModalVisible(false)}>
-              <Ionicons name="close" size={28} color={colors.text} />
-            </TouchableOpacity>
-          </View>
+        <TouchableOpacity 
+          style={dynamicStyles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setDetailModalVisible(false)}
+        >
+          <TouchableOpacity 
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
+          >
+          <View style={dynamicStyles.modalContainer}>
+            <View style={dynamicStyles.modalHeader}>
+              <Text style={dynamicStyles.modalTitle}>Post Details</Text>
+              <TouchableOpacity 
+                onPress={() => setDetailModalVisible(false)}
+                style={dynamicStyles.modalCloseButton}
+              >
+                <Ionicons name="close" size={24} color="#64748B" />
+              </TouchableOpacity>
+            </View>
 
           {selectedPost && (
-            <ScrollView style={styles.modalContent}>
+            <ScrollView style={dynamicStyles.modalContent}>
               {/* Post Info */}
-              <View style={styles.detailSection}>
-                <Text style={styles.detailSectionTitle}>Post Information</Text>
+              <View style={dynamicStyles.detailSection}>
+                <Text style={dynamicStyles.detailSectionTitle}>Post Information</Text>
                 
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Title:</Text>
-                  <Text style={styles.detailValue}>{selectedPost.title}</Text>
+                <View style={dynamicStyles.detailRow}>
+                  <Text style={dynamicStyles.detailLabel}>Title:</Text>
+                  <Text style={dynamicStyles.detailValue}>{selectedPost.title}</Text>
                 </View>
 
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Author:</Text>
-                  <Text style={styles.detailValue}>{selectedPost.authorName}</Text>
+                <View style={dynamicStyles.detailRow}>
+                  <Text style={dynamicStyles.detailLabel}>Author:</Text>
+                  <Text style={dynamicStyles.detailValue}>{selectedPost.authorName}</Text>
                 </View>
 
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Type:</Text>
-                  <Text style={styles.detailValue}>
+                <View style={dynamicStyles.detailRow}>
+                  <Text style={dynamicStyles.detailLabel}>Type:</Text>
+                  <Text style={dynamicStyles.detailValue}>
                     {getPostTypeLabel(selectedPost.postType)}
                   </Text>
                 </View>
 
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Status:</Text>
-                  <Text style={styles.detailValue}>{selectedPost.status}</Text>
+                <View style={dynamicStyles.detailRow}>
+                  <Text style={dynamicStyles.detailLabel}>Status:</Text>
+                  <Text style={dynamicStyles.detailValue}>{selectedPost.status}</Text>
                 </View>
 
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Created:</Text>
-                  <Text style={styles.detailValue}>{formatDate(selectedPost.createdAt)}</Text>
+                <View style={dynamicStyles.detailRow}>
+                  <Text style={dynamicStyles.detailLabel}>Created:</Text>
+                  <Text style={dynamicStyles.detailValue}>{formatDate(selectedPost.createdAt)}</Text>
                 </View>
               </View>
 
               {/* Content */}
-              <View style={styles.detailSection}>
-                <Text style={styles.detailSectionTitle}>Content</Text>
-                <Text style={styles.detailContentText}>{selectedPost.content}</Text>
+              <View style={dynamicStyles.detailSection}>
+                <Text style={dynamicStyles.detailSectionTitle}>Content</Text>
+                <Text style={dynamicStyles.detailContentText}>{selectedPost.content}</Text>
               </View>
 
               {/* Engagement Stats */}
-              <View style={styles.detailSection}>
-                <Text style={styles.detailSectionTitle}>Engagement</Text>
+              <View style={dynamicStyles.detailSection}>
+                <Text style={dynamicStyles.detailSectionTitle}>Engagement</Text>
                 
-                <View style={styles.statsGrid}>
-                  <View style={styles.statItem}>
+                <View style={dynamicStyles.statsGrid}>
+                  <View style={dynamicStyles.statItem}>
                     <Ionicons name="heart" size={24} color={colors.error} />
-                    <Text style={styles.statItemValue}>{selectedPost.engagement?.likes || 0}</Text>
-                    <Text style={styles.statItemLabel}>Likes</Text>
+                    <Text style={dynamicStyles.statItemValue}>{selectedPost.engagement?.likes || 0}</Text>
+                    <Text style={dynamicStyles.statItemLabel}>Likes</Text>
                   </View>
-                  <View style={styles.statItem}>
+                  <View style={dynamicStyles.statItem}>
                     <Ionicons name="chatbubble" size={24} color={colors.primary} />
-                    <Text style={styles.statItemValue}>{selectedPost.engagement?.comments || 0}</Text>
-                    <Text style={styles.statItemLabel}>Comments</Text>
+                    <Text style={dynamicStyles.statItemValue}>{selectedPost.engagement?.comments || 0}</Text>
+                    <Text style={dynamicStyles.statItemLabel}>Comments</Text>
                   </View>
-                  <View style={styles.statItem}>
+                  <View style={dynamicStyles.statItem}>
                     <Ionicons name="share-social" size={24} color={colors.success} />
-                    <Text style={styles.statItemValue}>{selectedPost.engagement?.shares || 0}</Text>
-                    <Text style={styles.statItemLabel}>Shares</Text>
+                    <Text style={dynamicStyles.statItemValue}>{selectedPost.engagement?.shares || 0}</Text>
+                    <Text style={dynamicStyles.statItemLabel}>Shares</Text>
                   </View>
-                  <View style={styles.statItem}>
+                  <View style={dynamicStyles.statItem}>
                     <Ionicons name="eye" size={24} color={colors.info} />
-                    <Text style={styles.statItemValue}>{selectedPost.engagement?.views || 0}</Text>
-                    <Text style={styles.statItemLabel}>Views</Text>
+                    <Text style={dynamicStyles.statItemValue}>{selectedPost.engagement?.views || 0}</Text>
+                    <Text style={dynamicStyles.statItemLabel}>Views</Text>
                   </View>
                 </View>
               </View>
 
               {/* Comments */}
               {selectedPost.comments && selectedPost.comments.length > 0 && (
-                <View style={styles.detailSection}>
-                  <Text style={styles.detailSectionTitle}>
+                <View style={dynamicStyles.detailSection}>
+                  <Text style={dynamicStyles.detailSectionTitle}>
                     Comments ({selectedPost.comments.length})
                   </Text>
                   {selectedPost.comments.map((comment, index) => (
-                    <View key={index} style={styles.commentCard}>
-                      <View style={styles.commentHeader}>
-                        <Text style={styles.commentAuthor}>
+                    <View key={index} style={dynamicStyles.commentCard}>
+                      <View style={dynamicStyles.commentHeader}>
+                        <Text style={dynamicStyles.commentAuthor}>
                           {comment.user?.firstName} {comment.user?.lastName}
                         </Text>
-                        <Text style={styles.commentDate}>
+                        <Text style={dynamicStyles.commentDate}>
                           {formatDate(comment.createdAt)}
                         </Text>
                       </View>
-                      <Text style={styles.commentContent}>{comment.content}</Text>
+                      <Text style={dynamicStyles.commentContent}>{comment.content}</Text>
                       {comment.likes > 0 && (
-                        <View style={styles.commentLikes}>
+                        <View style={dynamicStyles.commentLikes}>
                           <Ionicons name="heart" size={14} color={colors.error} />
-                          <Text style={styles.commentLikesText}>{comment.likes} likes</Text>
+                          <Text style={dynamicStyles.commentLikesText}>{comment.likes} likes</Text>
                         </View>
                       )}
                     </View>
@@ -1090,11 +1135,11 @@ const AdminSocialUpdatesScreen = ({ navigation }) => {
               )}
 
               {/* Moderation Actions */}
-              <View style={styles.detailSection}>
-                <Text style={styles.detailSectionTitle}>Moderation Actions</Text>
-                <View style={styles.moderationActions}>
+              <View style={dynamicStyles.detailSection}>
+                <Text style={dynamicStyles.detailSectionTitle}>Moderation Actions</Text>
+                <View style={dynamicStyles.moderationActions}>
                   <TouchableOpacity
-                    style={[styles.moderationButton, styles.pinButton]}
+                    style={[dynamicStyles.moderationButton, dynamicStyles.pinButton]}
                     onPress={() => handleModerate('pin')}
                   >
                     <Ionicons
@@ -1102,13 +1147,13 @@ const AdminSocialUpdatesScreen = ({ navigation }) => {
                       size={20}
                       color="#FFF"
                     />
-                    <Text style={styles.moderationButtonText}>
+                    <Text style={dynamicStyles.moderationButtonText}>
                       {selectedPost.isPinned ? 'Unpin' : 'Pin'}
                     </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    style={[styles.moderationButton, styles.featureButton]}
+                    style={[dynamicStyles.moderationButton, dynamicStyles.featureButton]}
                     onPress={() => handleModerate('feature')}
                   >
                     <Ionicons
@@ -1116,39 +1161,41 @@ const AdminSocialUpdatesScreen = ({ navigation }) => {
                       size={20}
                       color="#FFF"
                     />
-                    <Text style={styles.moderationButtonText}>
+                    <Text style={dynamicStyles.moderationButtonText}>
                       {selectedPost.isFeatured ? 'Unfeature' : 'Feature'}
                     </Text>
                   </TouchableOpacity>
 
                   {selectedPost.status !== 'published' && (
                     <TouchableOpacity
-                      style={[styles.moderationButton, styles.approveButton]}
+                      style={[dynamicStyles.moderationButton, dynamicStyles.approveButton]}
                       onPress={() => handleModerate('approve')}
                     >
                       <Ionicons name="checkmark-circle-outline" size={20} color="#FFF" />
-                      <Text style={styles.moderationButtonText}>Approve</Text>
+                      <Text style={dynamicStyles.moderationButtonText}>Approve</Text>
                     </TouchableOpacity>
                   )}
 
                   <TouchableOpacity
-                    style={[styles.moderationButton, styles.deleteButton]}
+                    style={[dynamicStyles.moderationButton, dynamicStyles.deleteButton]}
                     onPress={() => handleDelete(selectedPost)}
                   >
                     <Ionicons name="trash-outline" size={20} color="#FFF" />
-                    <Text style={styles.moderationButtonText}>Delete</Text>
+                    <Text style={dynamicStyles.moderationButtonText}>Delete</Text>
                   </TouchableOpacity>
                 </View>
               </View>
             </ScrollView>
           )}
-        </View>
+          </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
     </AdminLayout>
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (isMobile, isTablet) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F5F7FA',
@@ -1157,30 +1204,31 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: spacing.xl,
+    padding: isMobile ? spacing.md : isTablet ? spacing.lg : spacing.xl,
   },
   loadingText: {
     marginTop: spacing.md,
-    fontSize: 16,
+    fontSize: isMobile ? 14 : isTablet ? 15 : 16,
     color: colors.textSecondary,
   },
   header: {
-    flexDirection: 'row',
+    flexDirection: isMobile ? 'column' : 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    padding: spacing.lg,
+    alignItems: isMobile ? 'flex-start' : 'flex-start',
+    padding: isMobile ? spacing.md : isTablet ? spacing.lg - 4 : spacing.lg,
     backgroundColor: '#FFF',
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    gap: isMobile ? spacing.md : 0,
   },
   pageTitle: {
-    fontSize: 28,
+    fontSize: isMobile ? 22 : isTablet ? 26 : 28,
     fontWeight: 'bold',
     color: colors.text,
     marginBottom: 4,
   },
   pageSubtitle: {
-    fontSize: 14,
+    fontSize: isMobile ? 12 : isTablet ? 13 : 14,
     color: colors.textSecondary,
   },
   primaryButton: {
@@ -1212,11 +1260,15 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
     padding: spacing.md,
     borderLeftWidth: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
+    } : {
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 4,
+    }),
   },
   statIconContainer: {
     width: 48,
@@ -1246,11 +1298,15 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
     borderRadius: borderRadius.lg,
     padding: spacing.lg,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
+    } : {
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 4,
+    }),
   },
   filtersTitle: {
     fontSize: 18,
@@ -1304,11 +1360,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF',
     borderRadius: borderRadius.lg,
     marginBottom: spacing.md,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
+    } : {
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 4,
+    }),
     overflow: 'hidden',
   },
   postHeader: {
@@ -1462,26 +1522,70 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   // Modal Styles
-  modalContainer: {
+  modalOverlay: {
     flex: 1,
-    backgroundColor: '#FFF',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.lg + 8,
+  },
+  modalContainer: {
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.xl + 16,
+    padding: 0,
+    width: '100%',
+    maxWidth: 680,
+    maxHeight: '90%',
+    ...shadows.lg,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    elevation: 25,
+    overflow: 'hidden',
+    ...(Platform.OS === 'web' && {
+      boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05)',
+    }),
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: borderRadius.xl + 16,
+    borderTopRightRadius: borderRadius.xl + 16,
+    paddingHorizontal: spacing.xl + 20,
+    paddingTop: spacing.xl + 20,
+    paddingBottom: spacing.lg + 8,
+    borderBottomWidth: 2,
+    borderBottomColor: '#E2E8F0',
   },
   modalTitle: {
+    ...typography.h4,
+    color: '#0F172A',
+    marginBottom: 0,
+    fontWeight: '700',
     fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.text,
+    letterSpacing: -0.3,
+  },
+  modalCloseButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F8FAFC',
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...shadows.sm,
+    elevation: 2,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
   },
   modalContent: {
-    flex: 1,
-    padding: spacing.lg,
+    padding: spacing.xl + 20,
+    maxHeight: '60vh',
+    backgroundColor: '#FFFFFF',
+    overflow: 'hidden',
+    ...(Platform.OS === 'web' && {
+      maxHeight: 'calc(85vh - 200px)',
+    }),
   },
   inputGroup: {
     marginBottom: spacing.lg,
@@ -1685,11 +1789,15 @@ const styles = StyleSheet.create({
     right: -8,
     backgroundColor: '#FFF',
     borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 3,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 2px 3px rgba(0, 0, 0, 0.2)',
+    } : {
+      elevation: 3,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 3,
+    }),
   },
   addImageButton: {
     borderWidth: 2,
@@ -1712,5 +1820,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 });
+
+const styles = StyleSheet.create({});
 
 export default AdminSocialUpdatesScreen;

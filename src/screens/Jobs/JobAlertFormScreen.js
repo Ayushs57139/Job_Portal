@@ -445,32 +445,44 @@ const JobAlertFormScreen = ({ navigation }) => {
     }
   };
 
-  const renderDropdown = (field, options, placeholder) => (
-    <>
-      {showDropdown[field] && (
-        <TouchableOpacity
-          style={styles.dropdownBackdrop}
-          activeOpacity={1}
-          onPress={() => setShowDropdown({ ...showDropdown, [field]: false })}
-        />
-      )}
-      <View style={[styles.fieldContainer, showDropdown[field] && styles.fieldContainerActive]}>
-        <Text style={styles.label}>
-          {placeholder} <Text style={styles.required}>*</Text>
-        </Text>
-        <TouchableOpacity
-          style={styles.dropdown}
-          onPress={() => setShowDropdown({ ...showDropdown, [field]: !showDropdown[field] })}
-        >
-          <Text style={[styles.dropdownText, !formData[field] && styles.placeholderText]}>
-            {formData[field] || `Select ${placeholder}`}
-          </Text>
-          <Ionicons
-            name={showDropdown[field] ? 'chevron-up' : 'chevron-down'}
-            size={20}
-            color={colors.textSecondary}
+  const renderDropdown = (field, options, placeholder) => {
+    const getIcon = () => {
+      if (placeholder.toLowerCase().includes('status')) return 'briefcase-outline';
+      if (placeholder.toLowerCase().includes('experience')) return 'time-outline';
+      if (placeholder.toLowerCase().includes('frequency') || placeholder.toLowerCase().includes('receive')) return 'notifications-outline';
+      return 'list-outline';
+    };
+
+    return (
+      <>
+        {showDropdown[field] && (
+          <TouchableOpacity
+            style={styles.dropdownBackdrop}
+            activeOpacity={1}
+            onPress={() => setShowDropdown({ ...showDropdown, [field]: false })}
           />
-        </TouchableOpacity>
+        )}
+        <View style={[styles.fieldContainer, showDropdown[field] && styles.fieldContainerActive]}>
+          <View style={styles.labelContainer}>
+            <Ionicons name={getIcon()} size={16} color={colors.primary} style={styles.labelIcon} />
+            <Text style={styles.label}>
+              {placeholder} <Text style={styles.required}>*</Text>
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={[styles.dropdown, showDropdown[field] && styles.dropdownActive]}
+            onPress={() => setShowDropdown({ ...showDropdown, [field]: !showDropdown[field] })}
+          >
+            <Ionicons name={getIcon()} size={22} color={colors.primary} style={styles.dropdownIcon} />
+            <Text style={[styles.dropdownText, !formData[field] && styles.placeholderText]}>
+              {formData[field] || `Select ${placeholder}`}
+            </Text>
+            <Ionicons
+              name={showDropdown[field] ? 'chevron-up' : 'chevron-down'}
+              size={20}
+              color={colors.primary}
+            />
+          </TouchableOpacity>
         {showDropdown[field] && (
           <View style={styles.dropdownMenu}>
             <ScrollView style={styles.dropdownScroll} nestedScrollEnabled>
@@ -489,40 +501,71 @@ const JobAlertFormScreen = ({ navigation }) => {
             </ScrollView>
           </View>
         )}
+        </View>
+      </>
+    );
+  };
+
+  const renderTextInput = (field, placeholder, keyboardType = 'default') => {
+    const getIcon = () => {
+      if (placeholder.toLowerCase().includes('email')) return 'mail-outline';
+      if (placeholder.toLowerCase().includes('mobile') || placeholder.toLowerCase().includes('phone')) return 'call-outline';
+      if (placeholder.toLowerCase().includes('salary')) return 'cash-outline';
+      if (placeholder.toLowerCase().includes('location') || placeholder.toLowerCase().includes('city')) return 'location-outline';
+      if (placeholder.toLowerCase().includes('name')) return 'text-outline';
+      return 'create-outline';
+    };
+
+    return (
+      <View style={styles.fieldContainer}>
+        <View style={styles.labelContainer}>
+          <Ionicons name={getIcon()} size={16} color={colors.primary} style={styles.labelIcon} />
+          <Text style={styles.label}>
+            {placeholder} <Text style={styles.required}>*</Text>
+          </Text>
+        </View>
+        <View style={styles.inputWrapper}>
+          <Ionicons name={getIcon()} size={22} color={colors.primary} style={styles.inputIcon} />
+          <TextInput
+            style={styles.textInput}
+            placeholder={`Enter ${placeholder}`}
+            value={formData[field]}
+            onChangeText={(value) => handleInputChange(field, value)}
+            keyboardType={keyboardType}
+            placeholderTextColor={colors.textLight}
+          />
+        </View>
       </View>
-    </>
-  );
+    );
+  };
 
-  const renderTextInput = (field, placeholder, keyboardType = 'default') => (
-    <View style={styles.fieldContainer}>
-      <Text style={styles.label}>
-        {placeholder} <Text style={styles.required}>*</Text>
-      </Text>
-      <TextInput
-        style={styles.textInput}
-        placeholder={`Enter ${placeholder}`}
-        value={formData[field]}
-        onChangeText={(value) => handleInputChange(field, value)}
-        keyboardType={keyboardType}
-        placeholderTextColor={colors.textLight}
-      />
-    </View>
-  );
+  const renderAutoCompleteDropdown = (field, placeholder, options, maxLength = 1, required = true) => {
+    const getIcon = () => {
+      if (placeholder.toLowerCase().includes('job title') || placeholder.toLowerCase().includes('designation')) return 'briefcase-outline';
+      if (placeholder.toLowerCase().includes('industry')) return 'business-outline';
+      if (placeholder.toLowerCase().includes('department')) return 'folder-outline';
+      if (placeholder.toLowerCase().includes('role')) return 'person-outline';
+      if (placeholder.toLowerCase().includes('skill')) return 'star-outline';
+      return 'search-outline';
+    };
 
-  const renderAutoCompleteDropdown = (field, placeholder, options, maxLength = 1, required = true) => (
-    <>
-      {showDropdown[field] && (
-        <TouchableOpacity
-          style={styles.dropdownBackdrop}
-          activeOpacity={1}
-          onPress={() => setShowDropdown({ ...showDropdown, [field]: false })}
-        />
-      )}
-      <View style={[styles.fieldContainer, showDropdown[field] && styles.fieldContainerActive]}>
-        <Text style={styles.label}>
-          {placeholder} {required && <Text style={styles.required}>*</Text>}
-          {maxLength > 1 && <Text style={styles.maxItems}> (Max {maxLength})</Text>}
-        </Text>
+    return (
+      <>
+        {showDropdown[field] && (
+          <TouchableOpacity
+            style={styles.dropdownBackdrop}
+            activeOpacity={1}
+            onPress={() => setShowDropdown({ ...showDropdown, [field]: false })}
+          />
+        )}
+        <View style={[styles.fieldContainer, showDropdown[field] && styles.fieldContainerActive]}>
+          <View style={styles.labelContainer}>
+            <Ionicons name={getIcon()} size={16} color={colors.primary} style={styles.labelIcon} />
+            <Text style={styles.label}>
+              {placeholder} {required && <Text style={styles.required}>*</Text>}
+              {maxLength > 1 && <Text style={styles.maxItems}> (Max {maxLength})</Text>}
+            </Text>
+          </View>
         
         {/* Selected Items */}
         {maxLength > 1 && formData[field] && formData[field].length > 0 && (
@@ -543,9 +586,10 @@ const JobAlertFormScreen = ({ navigation }) => {
 
         {/* Dropdown */}
         <TouchableOpacity
-          style={styles.dropdown}
+          style={[styles.dropdown, showDropdown[field] && styles.dropdownActive]}
           onPress={() => setShowDropdown({ ...showDropdown, [field]: !showDropdown[field] })}
         >
+          <Ionicons name={getIcon()} size={22} color={colors.primary} style={styles.dropdownIcon} />
           <Text style={[styles.dropdownText, (!formData[field] || (Array.isArray(formData[field]) && formData[field].length === 0)) && styles.placeholderText]}>
             {maxLength === 1 
               ? (formData[field] ? (options.find(opt => opt.value === formData[field])?.label || formData[field]) : `Type or Select ${placeholder}`)
@@ -555,7 +599,7 @@ const JobAlertFormScreen = ({ navigation }) => {
           <Ionicons
             name={showDropdown[field] ? 'chevron-up' : 'chevron-down'}
             size={20}
-            color={colors.textSecondary}
+            color={colors.primary}
           />
         </TouchableOpacity>
         
@@ -593,9 +637,10 @@ const JobAlertFormScreen = ({ navigation }) => {
             </ScrollView>
           </View>
         )}
-      </View>
-    </>
-  );
+        </View>
+      </>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -613,15 +658,26 @@ const JobAlertFormScreen = ({ navigation }) => {
           >
             <Ionicons name="arrow-back" size={24} color={colors.primary} />
           </TouchableOpacity>
-          <Text style={styles.title}>Create Job Alert</Text>
-          <Text style={styles.subtitle}>
-            Set up your job preferences and get notified when matching jobs are posted
-          </Text>
+          <View style={styles.titleContainer}>
+            <View style={styles.iconContainer}>
+              <Ionicons name="notifications-circle" size={32} color={colors.primary} />
+            </View>
+            <Text style={styles.title}>Create Job Alert</Text>
+            <Text style={styles.subtitle}>
+              Set up your job preferences and get notified when matching jobs are posted
+            </Text>
+          </View>
         </View>
 
         <View style={styles.formContainer}>
           {/* Job Preferences Section */}
-          <Text style={styles.sectionTitle}>Job Preferences</Text>
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionIconContainer}>
+              <Ionicons name="briefcase" size={20} color={colors.primary} />
+            </View>
+            <Text style={styles.sectionTitle}>Job Preferences</Text>
+          </View>
+          <View style={styles.sectionCard}>
 
           {renderAutoCompleteDropdown('jobTitle', 'Job Title / Designation', jobTitleOptions, 1, true)}
           {renderTextInput('expectedSalary', 'Expected Annual Salary', 'numeric')}
@@ -629,9 +685,16 @@ const JobAlertFormScreen = ({ navigation }) => {
           {renderDropdown('experienceLevel', experienceLevelOptions, 'Experience Level')}
           {renderDropdown('totalExperience', totalExperienceOptions, 'Total Experience')}
           {renderTextInput('workOfficeLocation', 'Work Office / City Location', 'default')}
+          </View>
 
           {/* Industry & Department Section */}
-          <Text style={styles.sectionTitle}>Industry & Department</Text>
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionIconContainer}>
+              <Ionicons name="business" size={20} color={colors.primary} />
+            </View>
+            <Text style={styles.sectionTitle}>Industry & Department</Text>
+          </View>
+          <View style={styles.sectionCard}>
 
           {renderAutoCompleteDropdown('industries', 'Industry / Sectors', industriesOptions, 10, true)}
           {renderAutoCompleteDropdown('subIndustries', 'Sub Industry / Sectors', subIndustriesOptions, 10, false)}
@@ -639,9 +702,16 @@ const JobAlertFormScreen = ({ navigation }) => {
           {renderAutoCompleteDropdown('subDepartments', 'Sub-Departments', subDepartmentsOptions, 10, false)}
           {renderAutoCompleteDropdown('jobRoles', 'Job Roles', jobRolesOptions, 10, true)}
           {renderAutoCompleteDropdown('keySkills', 'Key Skills (Show 10-12 Suggestions)', keySkillsOptions, 10, true)}
+          </View>
 
           {/* Contact Information Section */}
-          <Text style={styles.sectionTitle}>Contact Information</Text>
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionIconContainer}>
+              <Ionicons name="mail" size={20} color={colors.primary} />
+            </View>
+            <Text style={styles.sectionTitle}>Contact Information</Text>
+          </View>
+          <View style={styles.sectionCard}>
 
           {renderTextInput('email', 'Email ID', 'email-address')}
           {renderTextInput('mobile', 'Mobile Number', 'phone-pad')}
@@ -649,21 +719,35 @@ const JobAlertFormScreen = ({ navigation }) => {
 
           {/* Resume Upload */}
           <View style={styles.fieldContainer}>
-            <Text style={styles.label}>Upload Resume (Optional)</Text>
+            <View style={styles.labelContainer}>
+              <Ionicons name="document-attach-outline" size={16} color={colors.primary} style={styles.labelIcon} />
+              <Text style={styles.label}>Upload Resume (Optional)</Text>
+            </View>
             <TouchableOpacity style={styles.uploadButton} onPress={pickDocument}>
-              <Ionicons name="cloud-upload-outline" size={24} color={colors.primary} />
-              <Text style={styles.uploadButtonText}>
-                {resumeFile ? resumeFile.name : 'Choose File'}
-              </Text>
+              <Ionicons name="cloud-upload-outline" size={28} color={colors.primary} />
+              <View style={styles.uploadButtonTextContainer}>
+                <Text style={styles.uploadButtonText}>
+                  {resumeFile ? resumeFile.name : 'Choose File'}
+                </Text>
+                {resumeFile && (
+                  <Text style={styles.fileSizeText}>
+                    ({Math.round(resumeFile.size / 1024)} KB)
+                  </Text>
+                )}
+              </View>
             </TouchableOpacity>
             {resumeFile && (
-              <Text style={styles.fileInfo}>
-                {resumeFile.name} ({Math.round(resumeFile.size / 1024)} KB)
-              </Text>
+              <View style={styles.fileInfoContainer}>
+                <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+                <Text style={styles.fileInfo}>
+                  {resumeFile.name}
+                </Text>
+              </View>
             )}
           </View>
 
           {renderTextInput('alertName', 'Job Alert Name', 'default')}
+          </View>
 
           {/* Submit Button */}
           <TouchableOpacity
@@ -699,38 +783,81 @@ const styles = StyleSheet.create({
   },
   headerSection: {
     backgroundColor: colors.cardBackground,
-    padding: spacing.lg,
+    padding: spacing.xl,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.borderLight,
+    ...shadows.sm,
   },
   backButton: {
+    marginBottom: spacing.md,
+    width: 40,
+    height: 40,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...shadows.sm,
+  },
+  titleContainer: {
+    alignItems: 'center',
+  },
+  iconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.primary + '15',
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: spacing.md,
   },
   title: {
     ...typography.h3,
-    fontWeight: '700',
+    fontWeight: '800',
     color: colors.text,
     marginBottom: spacing.xs,
+    textAlign: 'center',
   },
   subtitle: {
     ...typography.body1,
     color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 24,
   },
   formContainer: {
     padding: spacing.lg,
-    maxWidth: 800,
+    maxWidth: 900,
     width: '100%',
     alignSelf: 'center',
   },
-  sectionTitle: {
-    ...typography.h5,
-    fontWeight: '600',
-    color: colors.text,
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginTop: spacing.xl,
     marginBottom: spacing.md,
-    paddingBottom: spacing.sm,
-    borderBottomWidth: 2,
-    borderBottomColor: colors.primary,
+    gap: spacing.sm,
+  },
+  sectionIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.primary + '15',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sectionTitle: {
+    ...typography.h5,
+    fontWeight: '700',
+    color: colors.text,
+    fontSize: 20,
+  },
+  sectionCard: {
+    backgroundColor: colors.cardBackground,
+    borderRadius: borderRadius.xl,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
+    ...shadows.md,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
   },
   fieldContainer: {
     marginBottom: spacing.lg,
@@ -748,11 +875,20 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     zIndex: 999,
   },
+  labelContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+    gap: spacing.xs,
+  },
+  labelIcon: {
+    marginRight: spacing.xs / 2,
+  },
   label: {
     ...typography.body1,
-    fontWeight: '500',
+    fontWeight: '600',
     color: colors.text,
-    marginBottom: spacing.sm,
+    flex: 1,
   },
   required: {
     color: colors.error,
@@ -762,41 +898,54 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontWeight: '400',
   },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.cardBackground,
+    borderWidth: 2,
+    borderColor: colors.primary,
+    borderRadius: borderRadius.md,
+    ...shadows.sm,
+  },
+  inputIcon: {
+    marginLeft: spacing.md,
+  },
   textInput: {
     ...typography.body1,
-    backgroundColor: colors.cardBackground,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.md,
+    flex: 1,
     padding: spacing.md,
     color: colors.text,
     outlineStyle: 'none',
+    fontSize: 16,
   },
   dropdown: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.cardBackground,
     borderWidth: 2,
-    borderColor: '#3B82F6',
-    borderRadius: 8,
-    padding: 16,
+    borderColor: colors.primary,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
     minHeight: 52,
-    shadowColor: '#3B82F6',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    ...shadows.sm,
+  },
+  dropdownActive: {
+    borderColor: colors.primary,
+    ...shadows.md,
+  },
+  dropdownIcon: {
+    marginRight: spacing.sm,
   },
   dropdownText: {
     ...typography.body1,
-    color: '#111827',
+    color: colors.text,
     flex: 1,
     fontSize: 16,
     fontWeight: '500',
   },
   placeholderText: {
-    color: '#6B7280',
+    color: colors.textLight,
     fontWeight: '400',
   },
   dropdownMenu: {
@@ -804,18 +953,14 @@ const styles = StyleSheet.create({
     top: '100%',
     left: 0,
     right: 0,
-    backgroundColor: '#F9FAFB',
-    borderRadius: 12,
-    marginTop: 8,
+    backgroundColor: colors.cardBackground,
+    borderRadius: borderRadius.md,
+    marginTop: spacing.xs,
     zIndex: 1000,
-    borderWidth: 3,
-    borderColor: '#2563EB',
+    borderWidth: 2,
+    borderColor: colors.primary,
     maxHeight: 350,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 15,
+    ...shadows.lg,
     overflow: 'hidden',
   },
   dropdownScroll: {
@@ -825,29 +970,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingVertical: 18,
-    borderBottomWidth: 2,
-    borderBottomColor: '#D1D5DB',
-    backgroundColor: '#FFFFFF',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderLight,
+    backgroundColor: colors.cardBackground,
     minHeight: 56,
   },
   dropdownOptionSelected: {
-    backgroundColor: '#3B82F6',
-    borderLeftWidth: 6,
-    borderLeftColor: '#1E40AF',
-    borderBottomColor: '#2563EB',
+    backgroundColor: colors.primary,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.primary,
+    borderBottomColor: colors.primary,
   },
   dropdownOptionText: {
     ...typography.body1,
-    color: '#111827',
+    color: colors.text,
     flex: 1,
     fontSize: 16,
     lineHeight: 24,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   dropdownOptionTextSelected: {
-    color: '#FFFFFF',
+    color: colors.textWhite,
     fontWeight: '700',
   },
   selectedItemsContainer: {
@@ -873,21 +1018,45 @@ const styles = StyleSheet.create({
   uploadButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    justifyContent: 'center',
+    gap: spacing.md,
     backgroundColor: colors.cardBackground,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderWidth: 2,
+    borderColor: colors.primary,
+    borderStyle: 'dashed',
     borderRadius: borderRadius.md,
-    padding: spacing.md,
+    padding: spacing.xl,
+    ...shadows.sm,
+    minHeight: 80,
+  },
+  uploadButtonTextContainer: {
+    alignItems: 'center',
+    gap: spacing.xs / 2,
   },
   uploadButtonText: {
     ...typography.body1,
+    color: colors.text,
+    fontWeight: '600',
+  },
+  fileSizeText: {
+    ...typography.body2,
     color: colors.textSecondary,
+    fontSize: 12,
+  },
+  fileInfoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginTop: spacing.sm,
+    padding: spacing.sm,
+    backgroundColor: colors.success + '15',
+    borderRadius: borderRadius.sm,
   },
   fileInfo: {
     ...typography.body2,
-    color: colors.textSecondary,
-    marginTop: spacing.sm,
+    color: colors.text,
+    fontWeight: '500',
+    flex: 1,
   },
   submitButton: {
     flexDirection: 'row',
@@ -895,10 +1064,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: spacing.sm,
     backgroundColor: colors.primary,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
+    borderRadius: borderRadius.xl,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.xl,
     marginTop: spacing.xl,
-    ...shadows.md,
+    marginBottom: spacing.xl,
+    ...shadows.lg,
   },
   submitButtonDisabled: {
     backgroundColor: colors.textLight,
@@ -906,6 +1077,8 @@ const styles = StyleSheet.create({
   submitButtonText: {
     ...typography.button,
     color: colors.textWhite,
+    fontSize: 18,
+    fontWeight: '700',
   },
 });
 

@@ -168,6 +168,11 @@ router.post('/login', async (req, res) => {
         }
         
         if (!jobSeeker) {
+            const logger = require('../utils/logger');
+            logger.warn('Jobseeker login failed: User not found', {
+                loginField: loginField.substring(0, 10) + '***',
+                ip: req.ip
+            });
             return res.status(400).json({ message: 'No account found with this login ID. Please check your credentials or create a new account' });
         }
 
@@ -187,6 +192,12 @@ router.post('/login', async (req, res) => {
         
         // Check if account is active
         if (!jobSeeker.isActive) {
+            const logger = require('../utils/logger');
+            logger.warn('Jobseeker login failed: Account deactivated', {
+                userId: jobSeeker._id,
+                email: jobSeeker.email,
+                ip: req.ip
+            });
             return res.status(400).json({ message: 'Account is deactivated. Please contact support' });
         }
         
@@ -198,6 +209,12 @@ router.post('/login', async (req, res) => {
         // Check password (only after user type validation passes)
         const isMatch = await jobSeeker.comparePassword(password);
         if (!isMatch) {
+            const logger = require('../utils/logger');
+            logger.warn('Jobseeker login failed: Incorrect password', {
+                userId: jobSeeker._id,
+                email: jobSeeker.email,
+                ip: req.ip
+            });
             return res.status(400).json({ message: 'Incorrect password. Please try again' });
         }
 

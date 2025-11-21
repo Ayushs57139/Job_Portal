@@ -3,27 +3,40 @@
  * Handles all errors in the application with proper logging and response formatting
  */
 
+const logger = require('../utils/logger');
+
 const errorHandler = (err, req, res, next) => {
   let error = { ...err };
   error.message = err.message;
   error.stack = err.stack;
 
-  // Log error with context
-  console.error('='.repeat(80));
-  console.error('ERROR OCCURRED:', new Date().toISOString());
-  console.error('URL:', req.originalUrl);
-  console.error('Method:', req.method);
-  console.error('Error Message:', err.message);
-  console.error('Stack Trace:', err.stack);
-  
-  // Log additional context if available
-  if (req.user) {
-    console.error('User:', req.user._id, req.user.email);
-  }
-  if (req.body && Object.keys(req.body).length > 0) {
-    console.error('Request Body:', JSON.stringify(req.body).substring(0, 500));
-  }
-  console.error('='.repeat(80));
+  // Build error context for logging
+  const errorContext = {
+    url: req.originalUrl || req.url,
+    method: req.method,
+    ip: req.ip || req.connection.remoteAddress,
+    userAgent: req.get('user-agent'),
+    ...(req.user && { 
+      userId: req.user._id?.toString(), 
+      userEmail: req.user.email 
+    }),
+    ...(req.body && Object.keys(req.body).length > 0 && { 
+      requestBody: JSON.stringify(req.body).substring(0, 500) 
+    }),
+    ...(req.query && Object.keys(req.query).length > 0 && { 
+      queryParams: req.query 
+    }),
+    ...(req.params && Object.keys(req.params).length > 0 && { 
+      routeParams: req.params 
+    })
+  };
+
+  // Log error with structured logging
+  logger.error(
+    `Error in ${req.method} ${req.originalUrl || req.url}`,
+    err,
+    errorContext
+  );
 
   // Mongoose bad ObjectId
   if (err.name === 'CastError') {
@@ -37,7 +50,7 @@ const errorHandler = (err, req, res, next) => {
 
   // Mongoose duplicate key
   if (err.code === 11000) {
-    const field = Object.keys(err.keyValue)[0];
+    const field = Object.keys(err.keyValue || {})[0] || 'field';
     const message = `${field.charAt(0).toUpperCase() + field.slice(1)} already exists`;
     error = {
       message,
@@ -48,12 +61,23 @@ const errorHandler = (err, req, res, next) => {
 
   // Mongoose validation error
   if (err.name === 'ValidationError') {
-    const message = Object.values(err.errors).map(val => val.message).join(', ');
+    const message = Object.values(err.errors || {}).map(val => val.message).join(', ') || 'Validation failed';
     error = {
       message,
       statusCode: 400,
       name: 'ValidationError'
     };
+  }
+
+  // Mongoose connection errors
+  if (err.name === 'MongoServerError' || err.name === 'MongoNetworkError') {
+    const message = 'Database connection error. Please try again later.';
+    error = {
+      message,
+      statusCode: 503,
+      name: err.name
+    };
+    logger.error('Database connection error', err, errorContext);
   }
 
   // JWT errors
@@ -92,18 +116,44 @@ const errorHandler = (err, req, res, next) => {
     };
   }
 
+  // Syntax errors (malformed JSON)
+  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+    error = {
+      message: 'Invalid JSON in request body',
+      statusCode: 400,
+      name: 'SyntaxError'
+    };
+  }
+
+  // Network/timeout errors
+  if (err.code === 'ECONNREFUSED' || err.code === 'ETIMEDOUT') {
+    error = {
+      message: 'Service temporarily unavailable',
+      statusCode: 503,
+      name: 'NetworkError'
+    };
+  }
+
   // Send error response
-  const statusCode = error.statusCode || 500;
+  const statusCode = error.statusCode || err.statusCode || 500;
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  
   const response = {
     success: false,
-    message: error.message || 'Server Error',
-    ...(process.env.NODE_ENV === 'development' && { 
-      stack: error.stack,
-      originalError: err.message 
+    message: error.message || err.message || 'Server Error',
+    ...(isDevelopment && { 
+      stack: error.stack || err.stack,
+      originalError: err.message,
+      errorType: err.name || 'UnknownError'
     })
   };
 
-  res.status(statusCode).json(response);
+  // Don't send response if headers already sent
+  if (!res.headersSent) {
+    res.status(statusCode).json(response);
+  } else {
+    logger.error('Headers already sent, cannot send error response', err, errorContext);
+  }
 };
 
 module.exports = errorHandler;

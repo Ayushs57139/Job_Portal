@@ -1,0 +1,20 @@
+/**
+ * Async Handler Utility
+ * Wraps async route handlers to automatically catch errors
+ * This prevents unhandled promise rejections in route handlers
+ */
+
+/**
+ * Wraps an async function to catch errors and pass them to error handler
+ * @param {Function} fn - Async function to wrap
+ * @returns {Function} - Wrapped function
+ */
+const asyncHandler = (fn) => {
+  return (req, res, next) => {
+    // If the function returns a promise, catch any errors
+    Promise.resolve(fn(req, res, next)).catch(next);
+  };
+};
+
+module.exports = asyncHandler;
+

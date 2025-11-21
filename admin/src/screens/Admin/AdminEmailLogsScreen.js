@@ -10,14 +10,20 @@ import {
   Alert,
   Modal,
   RefreshControl,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import AdminLayout from '../../components/Admin/AdminLayout';
 import api from '../../config/api';
-import { colors, spacing, typography, borderRadius } from '../../styles/theme';
+import { colors, spacing, typography, borderRadius, shadows } from '../../styles/theme';
+import { useResponsive } from '../../utils/responsive';
 
 const AdminEmailLogsScreen = ({ navigation }) => {
+  const responsive = useResponsive();
+  const isMobile = responsive.isMobile;
+  const isTablet = responsive.isTablet;
+  const dynamicStyles = getStyles(isMobile, isTablet);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [logs, setLogs] = useState([]);
@@ -241,114 +247,114 @@ const AdminEmailLogsScreen = ({ navigation }) => {
   };
 
   const renderStatCard = (title, value, icon, color, subtitle = null) => (
-    <View style={[styles.statCard, { borderLeftColor: color }]}>
-      <View style={styles.statIconContainer}>
+    <View style={[dynamicStyles.statCard, { borderLeftColor: color }]}>
+      <View style={dynamicStyles.statIconContainer}>
         <Ionicons name={icon} size={24} color={color} />
       </View>
-      <View style={styles.statContent}>
-        <Text style={styles.statValue}>{value}</Text>
-        <Text style={styles.statTitle}>{title}</Text>
-        {subtitle && <Text style={styles.statSubtitle}>{subtitle}</Text>}
+      <View style={dynamicStyles.statContent}>
+        <Text style={dynamicStyles.statValue}>{value}</Text>
+        <Text style={dynamicStyles.statTitle}>{title}</Text>
+        {subtitle && <Text style={dynamicStyles.statSubtitle}>{subtitle}</Text>}
       </View>
     </View>
   );
 
   const renderLogCard = (log) => (
-    <View key={log._id} style={styles.logCard}>
-      <View style={styles.logHeader}>
-        <View style={styles.logStatusContainer}>
+    <View key={log._id} style={dynamicStyles.logCard}>
+      <View style={dynamicStyles.logHeader}>
+        <View style={dynamicStyles.logStatusContainer}>
           <Ionicons
             name={getStatusIcon(log.status)}
             size={20}
             color={getStatusColor(log.status)}
           />
-          <Text style={[styles.logStatus, { color: getStatusColor(log.status) }]}>
+          <Text style={[dynamicStyles.logStatus, { color: getStatusColor(log.status) }]}>
             {log.status.toUpperCase()}
           </Text>
         </View>
-        <Text style={styles.logDate}>{formatDate(log.createdAt)}</Text>
+        <Text style={dynamicStyles.logDate}>{formatDate(log.createdAt)}</Text>
       </View>
 
-      <View style={styles.logBody}>
-        <View style={styles.logRow}>
+      <View style={dynamicStyles.logBody}>
+        <View style={dynamicStyles.logRow}>
           <Ionicons name="mail-outline" size={16} color={colors.textSecondary} />
-          <Text style={styles.logRowLabel}>To:</Text>
-          <Text style={styles.logRowValue} numberOfLines={1}>
+          <Text style={dynamicStyles.logRowLabel}>To:</Text>
+          <Text style={dynamicStyles.logRowValue} numberOfLines={1}>
             {log.to}
           </Text>
         </View>
 
-        <View style={styles.logRow}>
+        <View style={dynamicStyles.logRow}>
           <Ionicons name="text-outline" size={16} color={colors.textSecondary} />
-          <Text style={styles.logRowLabel}>Subject:</Text>
-          <Text style={styles.logRowValue} numberOfLines={1}>
+          <Text style={dynamicStyles.logRowLabel}>Subject:</Text>
+          <Text style={dynamicStyles.logRowValue} numberOfLines={1}>
             {log.subject}
           </Text>
         </View>
 
         {log.templateName && (
-          <View style={styles.logRow}>
+          <View style={dynamicStyles.logRow}>
             <Ionicons name="document-text-outline" size={16} color={colors.textSecondary} />
-            <Text style={styles.logRowLabel}>Template:</Text>
-            <Text style={styles.logRowValue} numberOfLines={1}>
+            <Text style={dynamicStyles.logRowLabel}>Template:</Text>
+            <Text style={dynamicStyles.logRowValue} numberOfLines={1}>
               {log.templateName}
             </Text>
           </View>
         )}
 
-        <View style={styles.logRow}>
+        <View style={dynamicStyles.logRow}>
           <Ionicons name="pricetag-outline" size={16} color={colors.textSecondary} />
-          <Text style={styles.logRowLabel}>Type:</Text>
-          <View style={styles.typeBadge}>
-            <Text style={styles.typeBadgeText}>
+          <Text style={dynamicStyles.logRowLabel}>Type:</Text>
+          <View style={dynamicStyles.typeBadge}>
+            <Text style={dynamicStyles.typeBadgeText}>
               {getTemplateTypeLabel(log.templateType)}
             </Text>
           </View>
         </View>
 
         {log.error && log.error.message && (
-          <View style={styles.errorContainer}>
+          <View style={dynamicStyles.errorContainer}>
             <Ionicons name="warning-outline" size={16} color={colors.error} />
-            <Text style={styles.errorText} numberOfLines={2}>
+            <Text style={dynamicStyles.errorText} numberOfLines={2}>
               {log.error.message}
             </Text>
           </View>
         )}
 
         {log.opens > 0 || log.clicks > 0 ? (
-          <View style={styles.statsRow}>
+          <View style={dynamicStyles.statsRow}>
             {log.opens > 0 && (
-              <View style={styles.statBadge}>
+              <View style={dynamicStyles.statBadge}>
                 <Ionicons name="eye-outline" size={14} color={colors.primary} />
-                <Text style={styles.statBadgeText}>{log.opens} opens</Text>
+                <Text style={dynamicStyles.statBadgeText}>{log.opens} opens</Text>
               </View>
             )}
             {log.clicks > 0 && (
-              <View style={styles.statBadge}>
+              <View style={dynamicStyles.statBadge}>
                 <Ionicons name="hand-left-outline" size={14} color={colors.primary} />
-                <Text style={styles.statBadgeText}>{log.clicks} clicks</Text>
+                <Text style={dynamicStyles.statBadgeText}>{log.clicks} clicks</Text>
               </View>
             )}
           </View>
         ) : null}
       </View>
 
-      <View style={styles.logActions}>
+      <View style={dynamicStyles.logActions}>
         <TouchableOpacity
-          style={styles.actionButton}
+          style={dynamicStyles.actionButton}
           onPress={() => handleViewDetails(log)}
         >
           <Ionicons name="eye-outline" size={18} color={colors.primary} />
-          <Text style={styles.actionButtonText}>View Details</Text>
+          <Text style={dynamicStyles.actionButtonText}>View Details</Text>
         </TouchableOpacity>
 
         {log.status === 'failed' && (
           <TouchableOpacity
-            style={styles.actionButton}
+            style={dynamicStyles.actionButton}
             onPress={() => handleRetry(log)}
           >
             <Ionicons name="refresh-outline" size={18} color={colors.success} />
-            <Text style={styles.actionButtonText}>Retry</Text>
+            <Text style={dynamicStyles.actionButtonText}>Retry</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -363,9 +369,9 @@ const AdminEmailLogsScreen = ({ navigation }) => {
         onNavigate={handleNavigate}
         onLogout={handleLogout}
       >
-        <View style={styles.loadingContainer}>
+        <View style={dynamicStyles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading email logs...</Text>
+          <Text style={dynamicStyles.loadingText}>Loading email logs...</Text>
         </View>
       </AdminLayout>
     );
@@ -379,33 +385,33 @@ const AdminEmailLogsScreen = ({ navigation }) => {
       onLogout={handleLogout}
     >
       <ScrollView
-        style={styles.container}
+        style={dynamicStyles.container}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
         {/* Header */}
-        <View style={styles.header}>
+        <View style={dynamicStyles.header}>
           <View>
-            <Text style={styles.pageTitle}>Email Logs</Text>
-            <Text style={styles.pageSubtitle}>
+            <Text style={dynamicStyles.pageTitle}>Email Logs</Text>
+            <Text style={dynamicStyles.pageSubtitle}>
               View email sending history and performance metrics
             </Text>
           </View>
           <TouchableOpacity
-            style={styles.cleanupButton}
+            style={dynamicStyles.cleanupButton}
             onPress={handleCleanupOldLogs}
           >
             <Ionicons name="trash-outline" size={20} color={colors.error} />
-            <Text style={[styles.secondaryButtonText, { color: colors.error }]}>
+            <Text style={[dynamicStyles.secondaryButtonText, { color: colors.error }]}>
               Cleanup Old Logs
             </Text>
           </TouchableOpacity>
         </View>
 
         {/* Statistics */}
-        <View style={styles.statsGrid}>
-          <View style={styles.statsRow}>
+        <View style={dynamicStyles.statsGrid}>
+          <View style={dynamicStyles.statsRow}>
             {renderStatCard(
               'Total Emails',
               stats.overall.total || 0,
@@ -419,7 +425,7 @@ const AdminEmailLogsScreen = ({ navigation }) => {
               colors.success
             )}
           </View>
-          <View style={styles.statsRow}>
+          <View style={dynamicStyles.statsRow}>
             {renderStatCard(
               'Failed',
               stats.overall.failed || 0,
@@ -436,49 +442,49 @@ const AdminEmailLogsScreen = ({ navigation }) => {
         </View>
 
         {/* Performance Metrics */}
-        <View style={styles.metricsContainer}>
-          <Text style={styles.metricsTitle}>Performance Metrics</Text>
-          <View style={styles.metricsGrid}>
-            <View style={styles.metricCard}>
-              <Text style={styles.metricValue}>{stats.deliveryRate}%</Text>
-              <Text style={styles.metricLabel}>Delivery Rate</Text>
+        <View style={dynamicStyles.metricsContainer}>
+          <Text style={dynamicStyles.metricsTitle}>Performance Metrics</Text>
+          <View style={dynamicStyles.metricsGrid}>
+            <View style={dynamicStyles.metricCard}>
+              <Text style={dynamicStyles.metricValue}>{stats.deliveryRate}%</Text>
+              <Text style={dynamicStyles.metricLabel}>Delivery Rate</Text>
             </View>
-            <View style={styles.metricCard}>
-              <Text style={styles.metricValue}>{stats.openRate}%</Text>
-              <Text style={styles.metricLabel}>Open Rate</Text>
+            <View style={dynamicStyles.metricCard}>
+              <Text style={dynamicStyles.metricValue}>{stats.openRate}%</Text>
+              <Text style={dynamicStyles.metricLabel}>Open Rate</Text>
             </View>
-            <View style={styles.metricCard}>
-              <Text style={styles.metricValue}>{stats.clickRate}%</Text>
-              <Text style={styles.metricLabel}>Click Rate</Text>
+            <View style={dynamicStyles.metricCard}>
+              <Text style={dynamicStyles.metricValue}>{stats.clickRate}%</Text>
+              <Text style={dynamicStyles.metricLabel}>Click Rate</Text>
             </View>
           </View>
         </View>
 
         {/* Period Stats */}
-        <View style={styles.periodStatsContainer}>
-          <View style={styles.periodStat}>
-            <Text style={styles.periodValue}>{stats.today.total || 0}</Text>
-            <Text style={styles.periodLabel}>Today</Text>
+        <View style={dynamicStyles.periodStatsContainer}>
+          <View style={dynamicStyles.periodStat}>
+            <Text style={dynamicStyles.periodValue}>{stats.today.total || 0}</Text>
+            <Text style={dynamicStyles.periodLabel}>Today</Text>
           </View>
-          <View style={styles.periodStat}>
-            <Text style={styles.periodValue}>{stats.week.total || 0}</Text>
-            <Text style={styles.periodLabel}>This Week</Text>
+          <View style={dynamicStyles.periodStat}>
+            <Text style={dynamicStyles.periodValue}>{stats.week.total || 0}</Text>
+            <Text style={dynamicStyles.periodLabel}>This Week</Text>
           </View>
-          <View style={styles.periodStat}>
-            <Text style={styles.periodValue}>{stats.month.total || 0}</Text>
-            <Text style={styles.periodLabel}>This Month</Text>
+          <View style={dynamicStyles.periodStat}>
+            <Text style={dynamicStyles.periodValue}>{stats.month.total || 0}</Text>
+            <Text style={dynamicStyles.periodLabel}>This Month</Text>
           </View>
         </View>
 
         {/* Filters */}
-        <View style={styles.filtersContainer}>
-          <Text style={styles.filtersTitle}>Filters</Text>
+        <View style={dynamicStyles.filtersContainer}>
+          <Text style={dynamicStyles.filtersTitle}>Filters</Text>
           
-          <View style={styles.filterRow}>
-            <View style={styles.filterItem}>
-              <Text style={styles.filterLabel}>Search</Text>
+          <View style={dynamicStyles.filterRow}>
+            <View style={dynamicStyles.filterItem}>
+              <Text style={dynamicStyles.filterLabel}>Search</Text>
               <TextInput
-                style={styles.searchInput}
+                style={dynamicStyles.searchInput}
                 value={filters.search}
                 onChangeText={(text) => setFilters({ ...filters, search: text })}
                 placeholder="Search by email or subject..."
@@ -488,16 +494,16 @@ const AdminEmailLogsScreen = ({ navigation }) => {
             </View>
           </View>
 
-          <View style={styles.filterRow}>
-            <View style={styles.filterItem}>
-              <Text style={styles.filterLabel}>Status</Text>
-              <View style={styles.picker}>
+          <View style={dynamicStyles.filterRow}>
+            <View style={dynamicStyles.filterItem}>
+              <Text style={dynamicStyles.filterLabel}>Status</Text>
+              <View style={dynamicStyles.picker}>
                 <Picker
                   selectedValue={filters.status}
                   onValueChange={(value) =>
                     setFilters({ ...filters, status: value, page: 1 })
                   }
-                  style={styles.pickerInput}
+                  style={dynamicStyles.pickerInput}
                 >
                   <Picker.Item label="All Statuses" value="" />
                   <Picker.Item label="Sent" value="sent" />
@@ -509,15 +515,15 @@ const AdminEmailLogsScreen = ({ navigation }) => {
               </View>
             </View>
 
-            <View style={styles.filterItem}>
-              <Text style={styles.filterLabel}>Template Type</Text>
-              <View style={styles.picker}>
+            <View style={dynamicStyles.filterItem}>
+              <Text style={dynamicStyles.filterLabel}>Template Type</Text>
+              <View style={dynamicStyles.picker}>
                 <Picker
                   selectedValue={filters.templateType}
                   onValueChange={(value) =>
                     setFilters({ ...filters, templateType: value, page: 1 })
                   }
-                  style={styles.pickerInput}
+                  style={dynamicStyles.pickerInput}
                 >
                   <Picker.Item label="All Types" value="" />
                   <Picker.Item label="Jobseeker Welcome" value="jobseeker_welcome" />
@@ -533,26 +539,26 @@ const AdminEmailLogsScreen = ({ navigation }) => {
             </View>
           </View>
 
-          <View style={styles.filterActions}>
-            <TouchableOpacity style={styles.clearButton} onPress={handleClearFilters}>
-              <Text style={styles.clearButtonText}>Clear Filters</Text>
+          <View style={dynamicStyles.filterActions}>
+            <TouchableOpacity style={dynamicStyles.clearButton} onPress={handleClearFilters}>
+              <Text style={dynamicStyles.clearButtonText}>Clear Filters</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.applyButton} onPress={handleSearch}>
-              <Text style={styles.applyButtonText}>Apply Filters</Text>
+            <TouchableOpacity style={dynamicStyles.applyButton} onPress={handleSearch}>
+              <Text style={dynamicStyles.applyButtonText}>Apply Filters</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Logs List */}
-        <View style={styles.logsContainer}>
-          <Text style={styles.logsTitle}>
+        <View style={dynamicStyles.logsContainer}>
+          <Text style={dynamicStyles.logsTitle}>
             Email Logs ({pagination.total} total)
           </Text>
           {logs.length === 0 ? (
-            <View style={styles.emptyState}>
+            <View style={dynamicStyles.emptyState}>
               <Ionicons name="mail-unread-outline" size={64} color={colors.border} />
-              <Text style={styles.emptyStateTitle}>No email logs found</Text>
-              <Text style={styles.emptyStateText}>
+              <Text style={dynamicStyles.emptyStateTitle}>No email logs found</Text>
+              <Text style={dynamicStyles.emptyStateText}>
                 Email logs will appear here once emails are sent
               </Text>
             </View>
@@ -563,11 +569,11 @@ const AdminEmailLogsScreen = ({ navigation }) => {
 
         {/* Pagination */}
         {pagination.pages > 1 && (
-          <View style={styles.paginationContainer}>
+          <View style={dynamicStyles.paginationContainer}>
             <TouchableOpacity
               style={[
-                styles.paginationButton,
-                filters.page === 1 && styles.paginationButtonDisabled,
+                dynamicStyles.paginationButton,
+                filters.page === 1 && dynamicStyles.paginationButtonDisabled,
               ]}
               onPress={() => setFilters({ ...filters, page: filters.page - 1 })}
               disabled={filters.page === 1}
@@ -578,13 +584,13 @@ const AdminEmailLogsScreen = ({ navigation }) => {
                 color={filters.page === 1 ? colors.border : colors.primary}
               />
             </TouchableOpacity>
-            <Text style={styles.paginationText}>
+            <Text style={dynamicStyles.paginationText}>
               Page {pagination.current} of {pagination.pages}
             </Text>
             <TouchableOpacity
               style={[
-                styles.paginationButton,
-                filters.page === pagination.pages && styles.paginationButtonDisabled,
+                dynamicStyles.paginationButton,
+                filters.page === pagination.pages && dynamicStyles.paginationButtonDisabled,
               ]}
               onPress={() => setFilters({ ...filters, page: filters.page + 1 })}
               disabled={filters.page === pagination.pages}
@@ -604,26 +610,38 @@ const AdminEmailLogsScreen = ({ navigation }) => {
       {/* Detail Modal */}
       <Modal
         visible={detailModalVisible}
-        animationType="slide"
-        transparent={false}
+        animationType="fade"
+        transparent={true}
         onRequestClose={() => setDetailModalVisible(false)}
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Email Details</Text>
-            <TouchableOpacity onPress={() => setDetailModalVisible(false)}>
-              <Ionicons name="close" size={28} color={colors.text} />
-            </TouchableOpacity>
-          </View>
+        <TouchableOpacity 
+          style={dynamicStyles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setDetailModalVisible(false)}
+        >
+          <TouchableOpacity 
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
+          >
+          <View style={dynamicStyles.modalContainer}>
+            <View style={dynamicStyles.modalHeader}>
+              <Text style={dynamicStyles.modalTitle}>Email Details</Text>
+              <TouchableOpacity 
+                onPress={() => setDetailModalVisible(false)}
+                style={dynamicStyles.modalCloseButton}
+              >
+                <Ionicons name="close" size={24} color="#64748B" />
+              </TouchableOpacity>
+            </View>
 
           {selectedLog && (
-            <ScrollView style={styles.modalContent}>
-              <View style={styles.detailSection}>
-                <Text style={styles.detailSectionTitle}>Email Information</Text>
+            <ScrollView style={dynamicStyles.modalContent}>
+              <View style={dynamicStyles.detailSection}>
+                <Text style={dynamicStyles.detailSectionTitle}>Email Information</Text>
                 
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Status:</Text>
-                  <View style={styles.detailStatusBadge}>
+                <View style={dynamicStyles.detailRow}>
+                  <Text style={dynamicStyles.detailLabel}>Status:</Text>
+                  <View style={dynamicStyles.detailStatusBadge}>
                     <Ionicons
                       name={getStatusIcon(selectedLog.status)}
                       size={16}
@@ -631,7 +649,7 @@ const AdminEmailLogsScreen = ({ navigation }) => {
                     />
                     <Text
                       style={[
-                        styles.detailStatusText,
+                        dynamicStyles.detailStatusText,
                         { color: getStatusColor(selectedLog.status) },
                       ]}
                     >
@@ -640,110 +658,110 @@ const AdminEmailLogsScreen = ({ navigation }) => {
                   </View>
                 </View>
 
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>To:</Text>
-                  <Text style={styles.detailValue}>{selectedLog.to}</Text>
+                <View style={dynamicStyles.detailRow}>
+                  <Text style={dynamicStyles.detailLabel}>To:</Text>
+                  <Text style={dynamicStyles.detailValue}>{selectedLog.to}</Text>
                 </View>
 
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>From:</Text>
-                  <Text style={styles.detailValue}>{selectedLog.from}</Text>
+                <View style={dynamicStyles.detailRow}>
+                  <Text style={dynamicStyles.detailLabel}>From:</Text>
+                  <Text style={dynamicStyles.detailValue}>{selectedLog.from}</Text>
                 </View>
 
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Subject:</Text>
-                  <Text style={styles.detailValue}>{selectedLog.subject}</Text>
+                <View style={dynamicStyles.detailRow}>
+                  <Text style={dynamicStyles.detailLabel}>Subject:</Text>
+                  <Text style={dynamicStyles.detailValue}>{selectedLog.subject}</Text>
                 </View>
 
                 {selectedLog.templateName && (
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Template:</Text>
-                    <Text style={styles.detailValue}>{selectedLog.templateName}</Text>
+                  <View style={dynamicStyles.detailRow}>
+                    <Text style={dynamicStyles.detailLabel}>Template:</Text>
+                    <Text style={dynamicStyles.detailValue}>{selectedLog.templateName}</Text>
                   </View>
                 )}
 
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Type:</Text>
-                  <Text style={styles.detailValue}>
+                <View style={dynamicStyles.detailRow}>
+                  <Text style={dynamicStyles.detailLabel}>Type:</Text>
+                  <Text style={dynamicStyles.detailValue}>
                     {getTemplateTypeLabel(selectedLog.templateType)}
                   </Text>
                 </View>
               </View>
 
-              <View style={styles.detailSection}>
-                <Text style={styles.detailSectionTitle}>Delivery Information</Text>
+              <View style={dynamicStyles.detailSection}>
+                <Text style={dynamicStyles.detailSectionTitle}>Delivery Information</Text>
                 
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Created:</Text>
-                  <Text style={styles.detailValue}>
+                <View style={dynamicStyles.detailRow}>
+                  <Text style={dynamicStyles.detailLabel}>Created:</Text>
+                  <Text style={dynamicStyles.detailValue}>
                     {formatDate(selectedLog.createdAt)}
                   </Text>
                 </View>
 
                 {selectedLog.sentAt && (
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Sent:</Text>
-                    <Text style={styles.detailValue}>
+                  <View style={dynamicStyles.detailRow}>
+                    <Text style={dynamicStyles.detailLabel}>Sent:</Text>
+                    <Text style={dynamicStyles.detailValue}>
                       {formatDate(selectedLog.sentAt)}
                     </Text>
                   </View>
                 )}
 
                 {selectedLog.deliveredAt && (
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Delivered:</Text>
-                    <Text style={styles.detailValue}>
+                  <View style={dynamicStyles.detailRow}>
+                    <Text style={dynamicStyles.detailLabel}>Delivered:</Text>
+                    <Text style={dynamicStyles.detailValue}>
                       {formatDate(selectedLog.deliveredAt)}
                     </Text>
                   </View>
                 )}
 
                 {selectedLog.openedAt && (
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>First Opened:</Text>
-                    <Text style={styles.detailValue}>
+                  <View style={dynamicStyles.detailRow}>
+                    <Text style={dynamicStyles.detailLabel}>First Opened:</Text>
+                    <Text style={dynamicStyles.detailValue}>
                       {formatDate(selectedLog.openedAt)}
                     </Text>
                   </View>
                 )}
               </View>
 
-              <View style={styles.detailSection}>
-                <Text style={styles.detailSectionTitle}>Engagement Stats</Text>
+              <View style={dynamicStyles.detailSection}>
+                <Text style={dynamicStyles.detailSectionTitle}>Engagement Stats</Text>
                 
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Opens:</Text>
-                  <Text style={styles.detailValue}>{selectedLog.opens || 0}</Text>
+                <View style={dynamicStyles.detailRow}>
+                  <Text style={dynamicStyles.detailLabel}>Opens:</Text>
+                  <Text style={dynamicStyles.detailValue}>{selectedLog.opens || 0}</Text>
                 </View>
 
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Clicks:</Text>
-                  <Text style={styles.detailValue}>{selectedLog.clicks || 0}</Text>
+                <View style={dynamicStyles.detailRow}>
+                  <Text style={dynamicStyles.detailLabel}>Clicks:</Text>
+                  <Text style={dynamicStyles.detailValue}>{selectedLog.clicks || 0}</Text>
                 </View>
               </View>
 
               {selectedLog.error && selectedLog.error.message && (
-                <View style={styles.detailSection}>
-                  <Text style={[styles.detailSectionTitle, { color: colors.error }]}>
+                <View style={dynamicStyles.detailSection}>
+                  <Text style={[dynamicStyles.detailSectionTitle, { color: colors.error }]}>
                     Error Information
                   </Text>
                   
-                  <View style={styles.errorDetailBox}>
-                    <Text style={styles.errorDetailText}>
+                  <View style={dynamicStyles.errorDetailBox}>
+                    <Text style={dynamicStyles.errorDetailText}>
                       {selectedLog.error.message}
                     </Text>
                     {selectedLog.error.code && (
-                      <Text style={styles.errorCode}>Code: {selectedLog.error.code}</Text>
+                      <Text style={dynamicStyles.errorCode}>Code: {selectedLog.error.code}</Text>
                     )}
                   </View>
                 </View>
               )}
 
               {selectedLog.htmlContent && (
-                <View style={styles.detailSection}>
-                  <Text style={styles.detailSectionTitle}>Email Content (Preview)</Text>
-                  <View style={styles.contentPreview}>
-                    <Text style={styles.contentPreviewText} numberOfLines={10}>
+                <View style={dynamicStyles.detailSection}>
+                  <Text style={dynamicStyles.detailSectionTitle}>Email Content (Preview)</Text>
+                  <View style={dynamicStyles.contentPreview}>
+                    <Text style={dynamicStyles.contentPreviewText} numberOfLines={10}>
                       {selectedLog.htmlContent.replace(/<[^>]*>/g, '')}
                     </Text>
                   </View>
@@ -751,13 +769,15 @@ const AdminEmailLogsScreen = ({ navigation }) => {
               )}
             </ScrollView>
           )}
-        </View>
+          </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
     </AdminLayout>
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (isMobile, isTablet) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F5F7FA',
@@ -822,11 +842,15 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
     padding: spacing.md,
     borderLeftWidth: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
+    } : {
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 4,
+    }),
   },
   statIconContainer: {
     width: 48,
@@ -862,11 +886,15 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
     borderRadius: borderRadius.lg,
     padding: spacing.lg,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
+    } : {
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 4,
+    }),
   },
   metricsTitle: {
     fontSize: 18,
@@ -902,11 +930,15 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
     borderRadius: borderRadius.lg,
     padding: spacing.md,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
+    } : {
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 4,
+    }),
   },
   periodStat: {
     flex: 1,
@@ -929,11 +961,15 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
     borderRadius: borderRadius.lg,
     padding: spacing.lg,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
+    } : {
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 4,
+    }),
   },
   filtersTitle: {
     fontSize: 18,
@@ -1016,11 +1052,15 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
     padding: spacing.lg,
     marginBottom: spacing.md,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
+    } : {
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 4,
+    }),
   },
   logHeader: {
     flexDirection: 'row',
@@ -1161,26 +1201,70 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   // Modal Styles
-  modalContainer: {
+  modalOverlay: {
     flex: 1,
-    backgroundColor: '#FFF',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.lg + 8,
+  },
+  modalContainer: {
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.xl + 16,
+    padding: 0,
+    width: '100%',
+    maxWidth: 680,
+    maxHeight: '90%',
+    ...shadows.lg,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    elevation: 25,
+    overflow: 'hidden',
+    ...(Platform.OS === 'web' && {
+      boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05)',
+    }),
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: borderRadius.xl + 16,
+    borderTopRightRadius: borderRadius.xl + 16,
+    paddingHorizontal: spacing.xl + 20,
+    paddingTop: spacing.xl + 20,
+    paddingBottom: spacing.lg + 8,
+    borderBottomWidth: 2,
+    borderBottomColor: '#E2E8F0',
   },
   modalTitle: {
+    ...typography.h4,
+    color: '#0F172A',
+    marginBottom: 0,
+    fontWeight: '700',
     fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.text,
+    letterSpacing: -0.3,
+  },
+  modalCloseButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F8FAFC',
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...shadows.sm,
+    elevation: 2,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
   },
   modalContent: {
-    flex: 1,
-    padding: spacing.lg,
+    padding: spacing.xl + 20,
+    maxHeight: '60vh',
+    backgroundColor: '#FFFFFF',
+    overflow: 'hidden',
+    ...(Platform.OS === 'web' && {
+      maxHeight: 'calc(85vh - 200px)',
+    }),
   },
   detailSection: {
     marginBottom: spacing.xl,

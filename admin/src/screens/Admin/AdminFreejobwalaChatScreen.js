@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, Alert, TextInput, Modal } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, Alert, TextInput, Modal, Platform } from 'react-native';
 import AdminLayout from '../../components/Admin/AdminLayout';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../../config/api';
+import { useResponsive } from '../../utils/responsive';
 
 const AdminFreejobwalaChatScreen = ({ navigation }) => {
+  const responsive = useResponsive();
+  const isMobile = responsive.isMobile;
+  const isTablet = responsive.isTablet;
+  const dynamicStyles = getStyles(isMobile, isTablet);
   const [loading, setLoading] = useState(true);
   const [conversations, setConversations] = useState([]);
   const [filteredConversations, setFilteredConversations] = useState([]);
@@ -230,45 +235,45 @@ const AdminFreejobwalaChatScreen = ({ navigation }) => {
       user={user}
       onLogout={handleLogout}
     >
-      <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-        <View style={styles.container}>
-          <View style={styles.headerSection}>
-            <Text style={styles.pageTitle}>Freejobwala Chat</Text>
-            <Text style={styles.pageSubtitle}>Manage chatbot conversations</Text>
+      <ScrollView style={dynamicStyles.scrollContainer} showsVerticalScrollIndicator={false}>
+        <View style={dynamicStyles.container}>
+          <View style={dynamicStyles.headerSection}>
+            <Text style={dynamicStyles.pageTitle}>Freejobwala Chat</Text>
+            <Text style={dynamicStyles.pageSubtitle}>Manage chatbot conversations</Text>
           </View>
 
           {/* Statistics Cards */}
           {stats && (
-            <View style={styles.statsGrid}>
-              <View style={styles.statCard}>
+            <View style={dynamicStyles.statsGrid}>
+              <View style={dynamicStyles.statCard}>
                 <Ionicons name="chatbubbles" size={24} color="#4A90E2" />
-                <Text style={styles.statNumber}>{stats.total}</Text>
-                <Text style={styles.statLabel}>Total</Text>
+                <Text style={dynamicStyles.statNumber}>{stats.total}</Text>
+                <Text style={dynamicStyles.statLabel}>Total</Text>
               </View>
-              <View style={styles.statCard}>
+              <View style={dynamicStyles.statCard}>
                 <Ionicons name="time" size={24} color="#27AE60" />
-                <Text style={styles.statNumber}>{stats.active}</Text>
-                <Text style={styles.statLabel}>Active</Text>
+                <Text style={dynamicStyles.statNumber}>{stats.active}</Text>
+                <Text style={dynamicStyles.statLabel}>Active</Text>
               </View>
-              <View style={styles.statCard}>
+              <View style={dynamicStyles.statCard}>
                 <Ionicons name="checkmark-done" size={24} color="#95A5A6" />
-                <Text style={styles.statNumber}>{stats.closed}</Text>
-                <Text style={styles.statLabel}>Closed</Text>
+                <Text style={dynamicStyles.statNumber}>{stats.closed}</Text>
+                <Text style={dynamicStyles.statLabel}>Closed</Text>
               </View>
-              <View style={styles.statCard}>
+              <View style={dynamicStyles.statCard}>
                 <Ionicons name="chatbox-ellipses" size={24} color="#9B59B6" />
-                <Text style={styles.statNumber}>{stats.totalMessages}</Text>
-                <Text style={styles.statLabel}>Messages</Text>
+                <Text style={dynamicStyles.statNumber}>{stats.totalMessages}</Text>
+                <Text style={dynamicStyles.statLabel}>Messages</Text>
               </View>
             </View>
           )}
 
           {/* Search Bar */}
-          <View style={styles.searchSection}>
-            <View style={styles.searchBar}>
+          <View style={dynamicStyles.searchSection}>
+            <View style={dynamicStyles.searchBar}>
               <Ionicons name="search" size={20} color="#999" />
               <TextInput
-                style={styles.searchInput}
+                style={dynamicStyles.searchInput}
                 placeholder="Search by name, email, phone, or session ID..."
                 value={searchQuery}
                 onChangeText={setSearchQuery}
@@ -283,16 +288,16 @@ const AdminFreejobwalaChatScreen = ({ navigation }) => {
           </View>
 
           {/* Status Filter */}
-          <View style={styles.filtersSection}>
-            <Text style={styles.filtersLabel}>Status:</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filtersScroll}>
+          <View style={dynamicStyles.filtersSection}>
+            <Text style={dynamicStyles.filtersLabel}>Status:</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={dynamicStyles.filtersScroll}>
               {['all', 'active', 'closed', 'archived'].map(status => (
                 <TouchableOpacity
                   key={status}
-                  style={[styles.filterChip, selectedStatus === status && styles.filterChipActive]}
+                  style={[dynamicStyles.filterChip, selectedStatus === status && dynamicStyles.filterChipActive]}
                   onPress={() => setSelectedStatus(status)}
                 >
-                  <Text style={[styles.filterChipText, selectedStatus === status && styles.filterChipTextActive]}>
+                  <Text style={[dynamicStyles.filterChipText, selectedStatus === status && dynamicStyles.filterChipTextActive]}>
                     {status.charAt(0).toUpperCase() + status.slice(1)}
                   </Text>
                 </TouchableOpacity>
@@ -301,81 +306,81 @@ const AdminFreejobwalaChatScreen = ({ navigation }) => {
           </View>
 
           {/* Results */}
-          <View style={styles.resultsSection}>
-            <Text style={styles.resultsText}>
+          <View style={dynamicStyles.resultsSection}>
+            <Text style={dynamicStyles.resultsText}>
               Showing {filteredConversations.length} {filteredConversations.length === 1 ? 'conversation' : 'conversations'}
             </Text>
           </View>
 
           {/* Conversations List */}
           {loading ? (
-            <View style={styles.loadingContainer}>
+            <View style={dynamicStyles.loadingContainer}>
               <ActivityIndicator size="large" color="#4A90E2" />
-              <Text style={styles.loadingText}>Loading conversations...</Text>
+              <Text style={dynamicStyles.loadingText}>Loading conversations...</Text>
             </View>
           ) : filteredConversations.length > 0 ? (
             filteredConversations.map((conv, index) => (
-              <View key={conv._id || index} style={styles.convCard}>
-                <View style={styles.convHeader}>
-                  <View style={styles.userInfo}>
-                    <View style={styles.nameRow}>
-                      <Text style={styles.userName}>{conv.guestName || 'Guest'}</Text>
+              <View key={conv._id || index} style={dynamicStyles.convCard}>
+                <View style={dynamicStyles.convHeader}>
+                  <View style={dynamicStyles.userInfo}>
+                    <View style={dynamicStyles.nameRow}>
+                      <Text style={dynamicStyles.userName}>{conv.guestName || 'Guest'}</Text>
                       {conv.unreadCount > 0 && (
-                        <View style={styles.unreadBadge}>
-                          <Text style={styles.unreadText}>{conv.unreadCount}</Text>
+                        <View style={dynamicStyles.unreadBadge}>
+                          <Text style={dynamicStyles.unreadText}>{conv.unreadCount}</Text>
                         </View>
                       )}
                     </View>
                     {conv.guestEmail && (
-                      <Text style={styles.userEmail}>{conv.guestEmail}</Text>
+                      <Text style={dynamicStyles.userEmail}>{conv.guestEmail}</Text>
                     )}
                     {conv.guestPhone && (
-                      <Text style={styles.userPhone}>📞 {conv.guestPhone}</Text>
+                      <Text style={dynamicStyles.userPhone}>📞 {conv.guestPhone}</Text>
                     )}
                   </View>
-                  <View style={styles.badges}>
-                    <View style={[styles.statusBadge, styles[`${conv.status}Badge`]]}>
-                      <Text style={styles.statusBadgeText}>{conv.status}</Text>
+                  <View style={dynamicStyles.badges}>
+                    <View style={[dynamicStyles.statusBadge, styles[`${conv.status}Badge`]]}>
+                      <Text style={dynamicStyles.statusBadgeText}>{conv.status}</Text>
                     </View>
                   </View>
                 </View>
 
-                <View style={styles.convMeta}>
-                  <View style={styles.metaItem}>
+                <View style={dynamicStyles.convMeta}>
+                  <View style={dynamicStyles.metaItem}>
                     <Ionicons name="chatbox-ellipses" size={16} color="#999" />
-                    <Text style={styles.metaText}>{conv.messageCount} messages</Text>
+                    <Text style={dynamicStyles.metaText}>{conv.messageCount} messages</Text>
                   </View>
-                  <View style={styles.metaItem}>
+                  <View style={dynamicStyles.metaItem}>
                     <Ionicons name="time" size={16} color="#999" />
-                    <Text style={styles.metaText}>
+                    <Text style={dynamicStyles.metaText}>
                       {formatTimestamp(conv.lastActivity)}
                     </Text>
                   </View>
                 </View>
 
                 {conv.messages && conv.messages.length > 0 && (
-                  <View style={styles.lastMessage}>
-                    <Text style={styles.lastMessageLabel}>Last message:</Text>
-                    <Text style={styles.lastMessageText} numberOfLines={2}>
+                  <View style={dynamicStyles.lastMessage}>
+                    <Text style={dynamicStyles.lastMessageLabel}>Last message:</Text>
+                    <Text style={dynamicStyles.lastMessageText} numberOfLines={2}>
                       {conv.messages[conv.messages.length - 1]?.message}
                     </Text>
                   </View>
                 )}
 
                 <TouchableOpacity
-                  style={styles.viewButton}
+                  style={dynamicStyles.viewButton}
                   onPress={() => handleViewConversation(conv)}
                 >
                   <Ionicons name="eye" size={20} color="#FFF" />
-                  <Text style={styles.viewButtonText}>View Conversation</Text>
+                  <Text style={dynamicStyles.viewButtonText}>View Conversation</Text>
                 </TouchableOpacity>
               </View>
             ))
           ) : (
-            <View style={styles.emptyState}>
+            <View style={dynamicStyles.emptyState}>
               <Ionicons name="chatbubbles-outline" size={64} color="#CCC" />
-              <Text style={styles.emptyStateText}>No conversations found</Text>
-              <Text style={styles.emptyStateSubtext}>
+              <Text style={dynamicStyles.emptyStateText}>No conversations found</Text>
+              <Text style={dynamicStyles.emptyStateSubtext}>
                 {searchQuery ? 'Try adjusting your search' : 'Conversations will appear here when users chat'}
               </Text>
             </View>
@@ -390,49 +395,49 @@ const AdminFreejobwalaChatScreen = ({ navigation }) => {
         animationType="slide"
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Conversation Details</Text>
+        <View style={dynamicStyles.modalOverlay}>
+          <View style={dynamicStyles.modalContent}>
+            <View style={dynamicStyles.modalHeader}>
+              <Text style={dynamicStyles.modalTitle}>Conversation Details</Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
                 <Ionicons name="close" size={28} color="#333" />
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+            <ScrollView style={dynamicStyles.modalBody} showsVerticalScrollIndicator={false}>
               {selectedConversation && (
                 <>
                   {/* User Info */}
-                  <View style={styles.modalSection}>
-                    <Text style={styles.sectionTitle}>User Information</Text>
-                    <Text style={styles.sectionText}>Name: {selectedConversation.guestName || 'Guest'}</Text>
+                  <View style={dynamicStyles.modalSection}>
+                    <Text style={dynamicStyles.sectionTitle}>User Information</Text>
+                    <Text style={dynamicStyles.sectionText}>Name: {selectedConversation.guestName || 'Guest'}</Text>
                     {selectedConversation.guestEmail && (
-                      <Text style={styles.sectionText}>Email: {selectedConversation.guestEmail}</Text>
+                      <Text style={dynamicStyles.sectionText}>Email: {selectedConversation.guestEmail}</Text>
                     )}
                     {selectedConversation.guestPhone && (
-                      <Text style={styles.sectionText}>Phone: {selectedConversation.guestPhone}</Text>
+                      <Text style={dynamicStyles.sectionText}>Phone: {selectedConversation.guestPhone}</Text>
                     )}
-                    <Text style={styles.sectionText}>Session ID: {selectedConversation.sessionId}</Text>
-                    <Text style={styles.sectionText}>Status: {selectedConversation.status}</Text>
+                    <Text style={dynamicStyles.sectionText}>Session ID: {selectedConversation.sessionId}</Text>
+                    <Text style={dynamicStyles.sectionText}>Status: {selectedConversation.status}</Text>
                   </View>
 
                   {/* Messages */}
-                  <View style={styles.modalSection}>
-                    <Text style={styles.sectionTitle}>Conversation</Text>
-                    <View style={styles.messagesContainer}>
+                  <View style={dynamicStyles.modalSection}>
+                    <Text style={dynamicStyles.sectionTitle}>Conversation</Text>
+                    <View style={dynamicStyles.messagesContainer}>
                       {selectedConversation.messages && selectedConversation.messages.map((msg, idx) => (
                         <View
                           key={idx}
                           style={[
-                            styles.messageBubble,
-                            msg.sender === 'user' ? styles.userMessage : styles.botMessage
+                            dynamicStyles.messageBubble,
+                            msg.sender === 'user' ? dynamicStyles.userMessage : dynamicStyles.botMessage
                           ]}
                         >
-                          <Text style={styles.messageSender}>
+                          <Text style={dynamicStyles.messageSender}>
                             {msg.sender === 'user' ? '👤 User' : '🤖 Bot'}
                           </Text>
-                          <Text style={styles.messageText}>{msg.message}</Text>
-                          <Text style={styles.messageTime}>
+                          <Text style={dynamicStyles.messageText}>{msg.message}</Text>
+                          <Text style={dynamicStyles.messageTime}>
                             {formatTimestamp(msg.timestamp)}
                           </Text>
                         </View>
@@ -441,10 +446,10 @@ const AdminFreejobwalaChatScreen = ({ navigation }) => {
                   </View>
 
                   {/* Admin Notes */}
-                  <View style={styles.modalSection}>
-                    <Text style={styles.sectionTitle}>Admin Notes</Text>
+                  <View style={dynamicStyles.modalSection}>
+                    <Text style={dynamicStyles.sectionTitle}>Admin Notes</Text>
                     <TextInput
-                      style={styles.textArea}
+                      style={dynamicStyles.textArea}
                       value={adminNotes}
                       onChangeText={setAdminNotes}
                       placeholder="Add notes about this conversation..."
@@ -454,31 +459,31 @@ const AdminFreejobwalaChatScreen = ({ navigation }) => {
                   </View>
 
                   {/* Actions */}
-                  <View style={styles.actionButtons}>
+                  <View style={dynamicStyles.actionButtons}>
                     {selectedConversation.status === 'active' && (
                       <TouchableOpacity
-                        style={[styles.actionButton, styles.closeButton]}
+                        style={[dynamicStyles.actionButton, dynamicStyles.closeButton]}
                         onPress={() => handleUpdateStatus('closed')}
                       >
                         <Ionicons name="checkmark-circle" size={20} color="#FFF" />
-                        <Text style={styles.actionButtonText}>Close Conversation</Text>
+                        <Text style={dynamicStyles.actionButtonText}>Close Conversation</Text>
                       </TouchableOpacity>
                     )}
                     {selectedConversation.status === 'closed' && (
                       <TouchableOpacity
-                        style={[styles.actionButton, styles.archiveButton]}
+                        style={[dynamicStyles.actionButton, dynamicStyles.archiveButton]}
                         onPress={() => handleUpdateStatus('archived')}
                       >
                         <Ionicons name="archive" size={20} color="#FFF" />
-                        <Text style={styles.actionButtonText}>Archive</Text>
+                        <Text style={dynamicStyles.actionButtonText}>Archive</Text>
                       </TouchableOpacity>
                     )}
                     <TouchableOpacity
-                      style={[styles.actionButton, styles.deleteButton]}
+                      style={[dynamicStyles.actionButton, dynamicStyles.deleteButton]}
                       onPress={() => handleDeleteConversation(selectedConversation._id)}
                     >
                       <Ionicons name="trash" size={20} color="#FFF" />
-                      <Text style={styles.actionButtonText}>Delete</Text>
+                      <Text style={dynamicStyles.actionButtonText}>Delete</Text>
                     </TouchableOpacity>
                   </View>
                 </>
@@ -491,24 +496,24 @@ const AdminFreejobwalaChatScreen = ({ navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (isMobile, isTablet) => StyleSheet.create({
   scrollContainer: {
     flex: 1,
     backgroundColor: '#F5F6FA',
   },
   container: {
-    padding: 20,
+    padding: isMobile ? 12 : isTablet ? 16 : 20,
   },
   headerSection: {
-    marginBottom: 20,
+    marginBottom: isMobile ? 16 : isTablet ? 18 : 20,
   },
   pageTitle: {
-    fontSize: 28,
+    fontSize: isMobile ? 22 : isTablet ? 26 : 28,
     fontWeight: 'bold',
     color: '#333',
   },
   pageSubtitle: {
-    fontSize: 14,
+    fontSize: isMobile ? 12 : isTablet ? 13 : 14,
     color: '#666',
     marginTop: 4,
   },
@@ -525,11 +530,15 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 20,
     alignItems: 'center',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+    } : {
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+    }),
   },
   statNumber: {
     fontSize: 28,
@@ -552,11 +561,15 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 12,
     gap: 10,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
+    } : {
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.1,
+      shadowRadius: 2,
+    }),
   },
   searchInput: {
     flex: 1,
@@ -620,11 +633,15 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 20,
     marginBottom: 15,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+    } : {
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+    }),
   },
   convHeader: {
     flexDirection: 'row',
@@ -763,11 +780,15 @@ const styles = StyleSheet.create({
     width: '90%',
     maxWidth: 600,
     maxHeight: '85%',
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.25)',
+    } : {
+      elevation: 5,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 4,
+    }),
   },
   modalHeader: {
     flexDirection: 'row',
@@ -870,5 +891,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+
+const styles = StyleSheet.create({});
 
 export default AdminFreejobwalaChatScreen;

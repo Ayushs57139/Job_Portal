@@ -16,6 +16,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { colors, spacing, borderRadius, typography, shadows } from '../../styles/theme';
 import UserSidebar from '../../components/UserSidebar';
 import api from '../../config/api';
+import { useResponsive } from '../../utils/responsive';
 
 const isWeb = Platform.OS === 'web';
 const REFRESH_INTERVAL = 15000; // 15 seconds for real-time updates
@@ -23,11 +24,17 @@ const REFRESH_INTERVAL = 15000; // 15 seconds for real-time updates
 const ACTIVE_STATUSES = ['pending', 'reviewed', 'shortlisted', 'viewed', 'interviewed'];
 
 const ActiveApplicationsScreen = ({ navigation }) => {
+  const responsive = useResponsive();
+  const isPhone = responsive.width <= 480;
+  const isMobile = responsive.isMobile;
+  const isTablet = responsive.isTablet;
+  const isDesktop = responsive.isDesktop;
+  const dynamicStyles = getStyles(isPhone, isMobile, isTablet, isDesktop);
   const [applications, setApplications] = useState([]);
   const [activeApplications, setActiveApplications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(isWeb);
+  const [sidebarOpen, setSidebarOpen] = useState(isWeb && !isPhone);
   const [user, setUser] = useState(null);
   const intervalRef = useRef(null);
   const fadeAnim = useRef(new Animated.Value(1)).current;
@@ -142,24 +149,45 @@ const ActiveApplicationsScreen = ({ navigation }) => {
   };
 
   const handleLogout = async () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: async () => {
-            await api.logout();
-            navigation.reset({
-              index: 0,
-              routes: [{ name: 'Home' }],
-            });
+    if (Platform.OS === 'web') {
+      // For web, use window.confirm
+      if (window.confirm('Are you sure you want to logout?')) {
+        try {
+          await api.logout();
+        } catch (error) {
+          console.log('Logout error:', error);
+        }
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Home' }],
+        });
+      }
+    } else {
+      // For mobile, use Alert
+      Alert.alert(
+        'Logout',
+        'Are you sure you want to logout?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Logout',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await api.logout();
+              } catch (error) {
+                console.log('Logout error:', error);
+              } finally {
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: 'Home' }],
+                });
+              }
+            },
           },
-        },
-      ]
-    );
+        ]
+      );
+    }
   };
 
   const getStatusConfig = (status) => {
@@ -219,57 +247,78 @@ const ActiveApplicationsScreen = ({ navigation }) => {
 
   if (loading && activeApplications.length === 0) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={dynamicStyles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>Loading active applications...</Text>
+        <Text style={dynamicStyles.loadingText}>Loading active applications...</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={dynamicStyles.container}>
       {/* Sidebar */}
-      {sidebarOpen && (
+      {/* Sidebar - Always visible on web desktop */}
+      {isWeb && !isPhone ? (
         <UserSidebar
           navigation={navigation}
           activeKey="activeApplications"
-          onClose={!isWeb ? () => setSidebarOpen(false) : null}
+          onClose={null}
           badges={{
             activeApplications: activeApplications.length,
           }}
         />
-      )}
+      ) : sidebarOpen ? (
+        <>
+          {isPhone && (
+            <TouchableOpacity
+              style={dynamicStyles.backdrop}
+              onPress={() => setSidebarOpen(false)}
+              activeOpacity={1}
+            />
+          )}
+          <UserSidebar
+            navigation={navigation}
+            activeKey="activeApplications"
+            onClose={isPhone ? () => setSidebarOpen(false) : (!isWeb ? () => setSidebarOpen(false) : null)}
+            badges={{
+              activeApplications: activeApplications.length,
+            }}
+          />
+        </>
+      ) : null}
 
       {/* Main Content */}
-      <View style={styles.mainContent}>
+      <View style={dynamicStyles.mainContent}>
         {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity 
-            onPress={() => setSidebarOpen(!sidebarOpen)}
-            style={styles.menuButton}
-          >
-            <Ionicons name="menu" size={24} color={colors.text} />
-          </TouchableOpacity>
+        <View style={dynamicStyles.header}>
+          {(!isWeb || isPhone) && (
+            <TouchableOpacity 
+              onPress={() => setSidebarOpen(!sidebarOpen)}
+              style={dynamicStyles.menuButton}
+            >
+              <Ionicons name="menu" size={isPhone ? 20 : 24} color={colors.text} />
+            </TouchableOpacity>
+          )}
           
-          <Text style={styles.headerTitle}>Active Applications</Text>
+          <Text style={dynamicStyles.headerTitle}>Active Applications</Text>
           
-          <View style={styles.headerRight}>
-            <View style={styles.userInfo}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{getUserInitials()}</Text>
+          <View style={dynamicStyles.headerRight}>
+            <View style={dynamicStyles.userInfo}>
+              <View style={dynamicStyles.avatar}>
+                <Text style={dynamicStyles.avatarText}>{getUserInitials()}</Text>
               </View>
-              <Text style={styles.userName}>{user?.firstName || 'User'}</Text>
+              <Text style={dynamicStyles.userName}>{user?.firstName || 'User'}</Text>
             </View>
-            <TouchableOpacity style={styles.logoutButtonHeader} onPress={handleLogout}>
-              <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
-              <Text style={styles.logoutTextHeader}>Logout</Text>
+            <TouchableOpacity style={dynamicStyles.logoutButtonHeader} onPress={handleLogout}>
+              <Ionicons name="arrow-forward" size={isPhone ? 14 : 16} color="#FFFFFF" />
+              <Text style={dynamicStyles.logoutTextHeader}>Logout</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
+          style={dynamicStyles.scrollView}
+          contentContainerStyle={dynamicStyles.scrollContent}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -280,69 +329,69 @@ const ActiveApplicationsScreen = ({ navigation }) => {
           }
         >
           {/* Welcome Message with Live Indicator */}
-          <View style={styles.welcomeHeader}>
-            <Text style={styles.welcomeMessage}>
+          <View style={dynamicStyles.welcomeHeader}>
+            <Text style={dynamicStyles.welcomeMessage}>
               Your active job applications
             </Text>
-            <View style={styles.liveIndicator}>
-              <View style={styles.liveDot} />
-              <Text style={styles.liveText}>Live</Text>
+            <View style={dynamicStyles.liveIndicator}>
+              <View style={dynamicStyles.liveDot} />
+              <Text style={dynamicStyles.liveText}>Live</Text>
             </View>
           </View>
 
           {/* Stats Cards */}
-          <Animated.View style={[styles.statsGrid, { opacity: fadeAnim }]}>
-            <View style={styles.statCard}>
-              <View style={[styles.statIconContainer, { backgroundColor: '#10b981' }]}>
-                <Ionicons name="checkmark-circle" size={24} color="#FFFFFF" />
+          <Animated.View style={[dynamicStyles.statsGrid, { opacity: fadeAnim }]}>
+            <View style={dynamicStyles.statCard}>
+              <View style={[dynamicStyles.statIconContainer, { backgroundColor: '#10b981' }]}>
+                <Ionicons name="checkmark-circle" size={isPhone ? 20 : 24} color="#FFFFFF" />
               </View>
-              <Text style={styles.statValue}>{activeApplications.length}</Text>
-              <Text style={styles.statLabel}>Active Applications</Text>
+              <Text style={dynamicStyles.statValue}>{activeApplications.length}</Text>
+              <Text style={dynamicStyles.statLabel}>Active Applications</Text>
             </View>
 
-            <View style={styles.statCard}>
-              <View style={[styles.statIconContainer, { backgroundColor: '#f59e0b' }]}>
-                <Ionicons name="time-outline" size={24} color="#FFFFFF" />
+            <View style={dynamicStyles.statCard}>
+              <View style={[dynamicStyles.statIconContainer, { backgroundColor: '#f59e0b' }]}>
+                <Ionicons name="time-outline" size={isPhone ? 20 : 24} color="#FFFFFF" />
               </View>
-              <Text style={styles.statValue}>{statusCounts.pending}</Text>
-              <Text style={styles.statLabel}>Pending</Text>
+              <Text style={dynamicStyles.statValue}>{statusCounts.pending}</Text>
+              <Text style={dynamicStyles.statLabel}>Pending</Text>
             </View>
 
-            <View style={styles.statCard}>
-              <View style={[styles.statIconContainer, { backgroundColor: '#3b82f6' }]}>
-                <Ionicons name="eye-outline" size={24} color="#FFFFFF" />
+            <View style={dynamicStyles.statCard}>
+              <View style={[dynamicStyles.statIconContainer, { backgroundColor: '#3b82f6' }]}>
+                <Ionicons name="eye-outline" size={isPhone ? 20 : 24} color="#FFFFFF" />
               </View>
-              <Text style={styles.statValue}>{statusCounts.reviewed}</Text>
-              <Text style={styles.statLabel}>Under Review</Text>
+              <Text style={dynamicStyles.statValue}>{statusCounts.reviewed}</Text>
+              <Text style={dynamicStyles.statLabel}>Under Review</Text>
             </View>
 
-            <View style={styles.statCard}>
-              <View style={[styles.statIconContainer, { backgroundColor: '#8B5CF6' }]}>
-                <Ionicons name="star" size={24} color="#FFFFFF" />
+            <View style={dynamicStyles.statCard}>
+              <View style={[dynamicStyles.statIconContainer, { backgroundColor: '#8B5CF6' }]}>
+                <Ionicons name="star" size={isPhone ? 20 : 24} color="#FFFFFF" />
               </View>
-              <Text style={styles.statValue}>{statusCounts.shortlisted}</Text>
-              <Text style={styles.statLabel}>Shortlisted</Text>
+              <Text style={dynamicStyles.statValue}>{statusCounts.shortlisted}</Text>
+              <Text style={dynamicStyles.statLabel}>Shortlisted</Text>
             </View>
           </Animated.View>
 
           {/* Applications List */}
           {activeApplications.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Ionicons name="checkmark-circle-outline" size={64} color={colors.textSecondary} />
-              <Text style={styles.emptyTitle}>No Active Applications</Text>
-              <Text style={styles.emptySubtitle}>
+            <View style={dynamicStyles.emptyState}>
+              <Ionicons name="checkmark-circle-outline" size={isPhone ? 48 : (isMobile ? 56 : 64)} color={colors.textSecondary} />
+              <Text style={dynamicStyles.emptyTitle}>No Active Applications</Text>
+              <Text style={dynamicStyles.emptySubtitle}>
                 You don't have any active applications at the moment. Active applications include those with status: Pending, Viewed, Under Review, Shortlisted, or Interviewed.
               </Text>
               <TouchableOpacity
-                style={styles.browseJobsButton}
+                style={dynamicStyles.browseJobsButton}
                 onPress={() => navigation.navigate('Jobs')}
               >
-                <Text style={styles.browseJobsButtonText}>Browse Jobs</Text>
+                <Text style={dynamicStyles.browseJobsButtonText}>Browse Jobs</Text>
               </TouchableOpacity>
             </View>
           ) : (
-            <View style={styles.applicationsList}>
-              <Text style={styles.sectionTitle}>
+            <View style={dynamicStyles.applicationsList}>
+              <Text style={dynamicStyles.sectionTitle}>
                 Active Applications ({activeApplications.length})
               </Text>
               {activeApplications.map((application) => {
@@ -355,54 +404,54 @@ const ActiveApplicationsScreen = ({ navigation }) => {
                 return (
                   <TouchableOpacity
                     key={application.id || application._id || jobId}
-                    style={styles.applicationCard}
+                    style={dynamicStyles.applicationCard}
                     onPress={() => navigation.navigate('JobDetails', { jobId })}
                     activeOpacity={0.7}
                   >
-                    <View style={styles.cardHeader}>
-                      <View style={styles.jobInfo}>
-                        <Text style={styles.jobTitle}>{job.title || 'Job Title'}</Text>
-                        <Text style={styles.companyName}>{job.company || 'Company Name'}</Text>
+                    <View style={dynamicStyles.cardHeader}>
+                      <View style={dynamicStyles.jobInfo}>
+                        <Text style={dynamicStyles.jobTitle}>{job.title || 'Job Title'}</Text>
+                        <Text style={dynamicStyles.companyName}>{job.company || 'Company Name'}</Text>
                         {job.location && (
-                          <View style={styles.locationRow}>
-                            <Ionicons name="location-outline" size={14} color={colors.textSecondary} />
-                            <Text style={styles.jobLocation}>{job.location}</Text>
+                          <View style={dynamicStyles.locationRow}>
+                            <Ionicons name="location-outline" size={isPhone ? 12 : 14} color={colors.textSecondary} />
+                            <Text style={dynamicStyles.jobLocation}>{job.location}</Text>
                           </View>
                         )}
                       </View>
-                      <View style={styles.statusContainer}>
-                        <View style={[styles.statusBadge, { backgroundColor: `${status.color}20` }]}>
-                          <Ionicons name={status.icon} size={16} color={status.color} />
-                          <Text style={[styles.statusText, { color: status.color }]}>
+                      <View style={dynamicStyles.statusContainer}>
+                        <View style={[dynamicStyles.statusBadge, { backgroundColor: `${status.color}20` }]}>
+                          <Ionicons name={status.icon} size={isPhone ? 14 : 16} color={status.color} />
+                          <Text style={[dynamicStyles.statusText, { color: status.color }]}>
                             {status.label}
                           </Text>
                         </View>
                       </View>
                     </View>
 
-                    <View style={styles.cardDetails}>
+                    <View style={dynamicStyles.cardDetails}>
                       {application.currentJobTitle && (
-                        <View style={styles.detailRow}>
-                          <Ionicons name="briefcase-outline" size={16} color={colors.textSecondary} />
-                          <Text style={styles.detailText}>{application.currentJobTitle}</Text>
+                        <View style={dynamicStyles.detailRow}>
+                          <Ionicons name="briefcase-outline" size={isPhone ? 14 : 16} color={colors.textSecondary} />
+                          <Text style={dynamicStyles.detailText}>{application.currentJobTitle}</Text>
                         </View>
                       )}
                       {application.experienceLevel && (
-                        <View style={styles.detailRow}>
-                          <Ionicons name="school-outline" size={16} color={colors.textSecondary} />
-                          <Text style={styles.detailText}>{application.experienceLevel}</Text>
+                        <View style={dynamicStyles.detailRow}>
+                          <Ionicons name="school-outline" size={isPhone ? 14 : 16} color={colors.textSecondary} />
+                          <Text style={dynamicStyles.detailText}>{application.experienceLevel}</Text>
                         </View>
                       )}
-                      <View style={styles.detailRow}>
-                        <Ionicons name="time-outline" size={16} color={colors.textSecondary} />
-                        <Text style={styles.detailText}>
+                      <View style={dynamicStyles.detailRow}>
+                        <Ionicons name="time-outline" size={isPhone ? 14 : 16} color={colors.textSecondary} />
+                        <Text style={dynamicStyles.detailText}>
                           Applied {formatDate(application.appliedAt)}
                         </Text>
                       </View>
                       {application.updatedAt && application.updatedAt !== application.appliedAt && (
-                        <View style={styles.detailRow}>
-                          <Ionicons name="refresh-outline" size={16} color={colors.textSecondary} />
-                          <Text style={styles.detailText}>
+                        <View style={dynamicStyles.detailRow}>
+                          <Ionicons name="refresh-outline" size={isPhone ? 14 : 16} color={colors.textSecondary} />
+                          <Text style={dynamicStyles.detailText}>
                             Updated {formatDate(application.updatedAt)}
                           </Text>
                         </View>
@@ -410,17 +459,17 @@ const ActiveApplicationsScreen = ({ navigation }) => {
                     </View>
 
                     {job.salary && (
-                      <View style={styles.salaryContainer}>
-                        <Text style={styles.salaryText}>{formatSalary(job.salary)}</Text>
+                      <View style={dynamicStyles.salaryContainer}>
+                        <Text style={dynamicStyles.salaryText}>{formatSalary(job.salary)}</Text>
                       </View>
                     )}
 
                     <TouchableOpacity
-                      style={styles.viewJobButton}
+                      style={dynamicStyles.viewJobButton}
                       onPress={() => navigation.navigate('JobDetails', { jobId })}
                     >
-                      <Text style={styles.viewJobButtonText}>View Job Details</Text>
-                      <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
+                      <Text style={dynamicStyles.viewJobButtonText}>View Job Details</Text>
+                      <Ionicons name="arrow-forward" size={isPhone ? 14 : 16} color="#FFFFFF" />
                     </TouchableOpacity>
                   </TouchableOpacity>
                 );
@@ -433,291 +482,357 @@ const ActiveApplicationsScreen = ({ navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    flexDirection: 'row',
-    backgroundColor: colors.background,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.background,
-  },
-  loadingText: {
-    ...typography.body1,
-    color: colors.textSecondary,
-    marginTop: spacing.md,
-  },
-  mainContent: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    backgroundColor: '#FFFFFF',
-  },
-  menuButton: {
-    marginRight: spacing.md,
-  },
-  headerTitle: {
-    ...typography.h4,
-    color: colors.text,
-    fontWeight: '700',
-    flex: 1,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  userInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#4A90E2',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  userName: {
-    ...typography.body2,
-    color: colors.text,
-    fontWeight: '500',
-  },
-  logoutButtonHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ef4444',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.md,
-    gap: spacing.xs,
-  },
-  logoutTextHeader: {
-    ...typography.body2,
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: spacing.lg,
-    paddingBottom: spacing.xxl,
-  },
-  welcomeHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.xl,
-  },
-  welcomeMessage: {
-    ...typography.body1,
-    color: colors.textSecondary,
-    flex: 1,
-  },
-  liveIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#10b98115',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: borderRadius.sm,
-    gap: spacing.xs,
-  },
-  liveDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#10b981',
-  },
-  liveText: {
-    ...typography.caption,
-    color: '#10b981',
-    fontWeight: '600',
-    fontSize: 11,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.md,
-    marginBottom: spacing.xl,
-  },
-  statCard: {
-    width: '47%',
-    backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.md,
-    padding: spacing.lg,
-    alignItems: 'center',
-    ...shadows.sm,
-  },
-  statIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: borderRadius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.sm,
-  },
-  statValue: {
-    ...typography.h3,
-    color: colors.text,
-    fontWeight: '700',
-    marginBottom: spacing.xs,
-  },
-  statLabel: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    textAlign: 'center',
-  },
-  sectionTitle: {
-    ...typography.h5,
-    color: colors.text,
-    fontWeight: '700',
-    marginBottom: spacing.md,
-  },
-  applicationsList: {
-    gap: spacing.md,
-  },
-  applicationCard: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.md,
-    padding: spacing.lg,
-    ...shadows.sm,
-    marginBottom: spacing.sm,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: spacing.md,
-  },
-  jobInfo: {
-    flex: 1,
-    marginRight: spacing.md,
-  },
-  jobTitle: {
-    ...typography.h6,
-    color: colors.text,
-    fontWeight: '600',
-    marginBottom: spacing.xs,
-  },
-  companyName: {
-    ...typography.body1,
-    color: colors.textSecondary,
-    marginBottom: spacing.xs,
-  },
-  locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  jobLocation: {
-    ...typography.body2,
-    color: colors.textSecondary,
-  },
-  statusContainer: {
-    marginLeft: spacing.md,
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.sm,
-    gap: spacing.xs,
-  },
-  statusText: {
-    ...typography.caption,
-    fontWeight: '600',
-  },
-  cardDetails: {
-    marginBottom: spacing.md,
-    gap: spacing.xs,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  detailText: {
-    ...typography.body2,
-    color: colors.textSecondary,
-  },
-  salaryContainer: {
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    marginBottom: spacing.sm,
-  },
-  salaryText: {
-    ...typography.body1,
-    color: colors.primary,
-    fontWeight: '600',
-  },
-  viewJobButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primary,
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.md,
-    gap: spacing.xs,
-    marginTop: spacing.sm,
-  },
-  viewJobButtonText: {
-    ...typography.button,
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.xxl,
-  },
-  emptyTitle: {
-    ...typography.h5,
-    color: colors.text,
-    fontWeight: '600',
-    marginTop: spacing.lg,
-    marginBottom: spacing.sm,
-  },
-  emptySubtitle: {
-    ...typography.body1,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: spacing.xl,
-    paddingHorizontal: spacing.lg,
-  },
-  browseJobsButton: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.md,
-  },
-  browseJobsButtonText: {
-    ...typography.button,
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-});
+const getStyles = (isPhone, isMobile, isTablet, isDesktop) => {
+  const isWeb = Platform.OS === 'web';
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      flexDirection: isPhone ? 'column' : 'row',
+      backgroundColor: colors.background,
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.background,
+    },
+    loadingText: {
+      ...typography.body1,
+      color: colors.textSecondary,
+      marginTop: spacing.md,
+      fontSize: isPhone ? 14 : 16,
+    },
+    mainContent: {
+      flex: 1,
+      backgroundColor: '#FFFFFF',
+      ...(isWeb && !isPhone && {
+        marginLeft: isDesktop ? 280 : (isTablet ? 260 : 240),
+        width: `calc(100% - ${isDesktop ? 280 : (isTablet ? 260 : 240)}px)`,
+      }),
+      ...(isPhone && {
+        width: '100%',
+      }),
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: isPhone ? spacing.md : (isMobile ? spacing.lg : spacing.xl),
+      paddingVertical: isPhone ? spacing.sm : spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      backgroundColor: '#FFFFFF',
+      ...(isPhone && {
+        flexWrap: 'wrap',
+      }),
+    },
+    menuButton: {
+      marginRight: isPhone ? spacing.sm : spacing.md,
+    },
+    headerTitle: {
+      ...typography.h4,
+      color: colors.text,
+      fontWeight: '700',
+      flex: 1,
+      fontSize: isPhone ? 18 : (isMobile ? 20 : (isTablet ? 22 : 24)),
+    },
+    headerRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: isPhone ? spacing.sm : spacing.md,
+      ...(isPhone && {
+        width: '100%',
+        marginTop: spacing.sm,
+        justifyContent: 'flex-end',
+      }),
+    },
+    userInfo: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: isPhone ? spacing.xs : spacing.sm,
+      ...(isPhone && {
+        flex: 1,
+      }),
+    },
+    avatar: {
+      width: isPhone ? 32 : (isMobile ? 36 : 40),
+      height: isPhone ? 32 : (isMobile ? 36 : 40),
+      borderRadius: isPhone ? 16 : (isMobile ? 18 : 20),
+      backgroundColor: '#4A90E2',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    avatarText: {
+      color: '#FFFFFF',
+      fontSize: isPhone ? 12 : (isMobile ? 14 : 16),
+      fontWeight: '600',
+    },
+    userName: {
+      ...typography.body2,
+      color: colors.text,
+      fontWeight: '500',
+      fontSize: isPhone ? 13 : (isMobile ? 14 : 16),
+      ...(isPhone && {
+        display: 'none',
+      }),
+    },
+    logoutButtonHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: '#ef4444',
+      paddingHorizontal: isPhone ? spacing.sm : spacing.md,
+      paddingVertical: isPhone ? spacing.xs : spacing.sm,
+      borderRadius: borderRadius.md,
+      gap: spacing.xs,
+      ...(isWeb && {
+        cursor: 'pointer',
+      }),
+    },
+    logoutTextHeader: {
+      ...typography.body2,
+      color: '#FFFFFF',
+      fontWeight: '600',
+      fontSize: isPhone ? 12 : 14,
+    },
+    scrollView: {
+      flex: 1,
+    },
+    scrollContent: {
+      padding: isPhone ? spacing.md : (isMobile ? spacing.lg : spacing.xl),
+      paddingBottom: isPhone ? spacing.xl : spacing.xxl,
+    },
+    welcomeHeader: {
+      flexDirection: isPhone ? 'column' : 'row',
+      justifyContent: 'space-between',
+      alignItems: isPhone ? 'flex-start' : 'center',
+      marginBottom: isPhone ? spacing.lg : spacing.xl,
+      gap: isPhone ? spacing.sm : 0,
+    },
+    welcomeMessage: {
+      ...typography.body1,
+      color: colors.textSecondary,
+      flex: 1,
+      fontSize: isPhone ? 14 : (isMobile ? 15 : 16),
+    },
+    liveIndicator: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: '#10b98115',
+      paddingHorizontal: spacing.sm,
+      paddingVertical: 4,
+      borderRadius: borderRadius.sm,
+      gap: spacing.xs,
+    },
+    liveDot: {
+      width: isPhone ? 6 : 8,
+      height: isPhone ? 6 : 8,
+      borderRadius: isPhone ? 3 : 4,
+      backgroundColor: '#10b981',
+    },
+    liveText: {
+      ...typography.caption,
+      color: '#10b981',
+      fontWeight: '600',
+      fontSize: isPhone ? 10 : 11,
+    },
+    statsGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: isPhone ? spacing.sm : spacing.md,
+      marginBottom: isPhone ? spacing.lg : spacing.xl,
+    },
+    statCard: {
+      width: isPhone ? '48%' : (isMobile ? '47%' : (isTablet ? '47%' : '23%')),
+      backgroundColor: colors.cardBackground,
+      borderRadius: borderRadius.md,
+      padding: isPhone ? spacing.md : (isMobile ? spacing.lg : spacing.xl),
+      alignItems: 'center',
+      ...shadows.sm,
+    },
+    statIconContainer: {
+      width: isPhone ? 40 : (isMobile ? 44 : 48),
+      height: isPhone ? 40 : (isMobile ? 44 : 48),
+      borderRadius: borderRadius.md,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: spacing.sm,
+    },
+    statValue: {
+      ...typography.h3,
+      color: colors.text,
+      fontWeight: '700',
+      marginBottom: spacing.xs,
+      fontSize: isPhone ? 20 : (isMobile ? 24 : (isTablet ? 28 : 32)),
+    },
+    statLabel: {
+      ...typography.caption,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      fontSize: isPhone ? 11 : (isMobile ? 12 : 13),
+    },
+    sectionTitle: {
+      ...typography.h5,
+      color: colors.text,
+      fontWeight: '700',
+      marginBottom: spacing.md,
+      fontSize: isPhone ? 16 : (isMobile ? 18 : (isTablet ? 20 : 22)),
+    },
+    applicationsList: {
+      gap: spacing.md,
+    },
+    applicationCard: {
+      backgroundColor: colors.cardBackground,
+      borderRadius: borderRadius.md,
+      padding: isPhone ? spacing.md : spacing.lg,
+      ...shadows.sm,
+      marginBottom: spacing.sm,
+      ...(isWeb && {
+        cursor: 'pointer',
+      }),
+    },
+    cardHeader: {
+      flexDirection: isPhone ? 'column' : 'row',
+      justifyContent: 'space-between',
+      alignItems: isPhone ? 'flex-start' : 'flex-start',
+      marginBottom: spacing.md,
+      gap: isPhone ? spacing.sm : 0,
+    },
+    jobInfo: {
+      flex: 1,
+      marginRight: isPhone ? 0 : spacing.md,
+    },
+    jobTitle: {
+      ...typography.h6,
+      color: colors.text,
+      fontWeight: '600',
+      marginBottom: spacing.xs,
+      fontSize: isPhone ? 14 : (isMobile ? 15 : 16),
+    },
+    companyName: {
+      ...typography.body1,
+      color: colors.textSecondary,
+      marginBottom: spacing.xs,
+      fontSize: isPhone ? 13 : (isMobile ? 14 : 15),
+    },
+    locationRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+    },
+    jobLocation: {
+      ...typography.body2,
+      color: colors.textSecondary,
+      fontSize: isPhone ? 12 : (isMobile ? 13 : 14),
+    },
+    statusContainer: {
+      marginLeft: isPhone ? 0 : spacing.md,
+      marginTop: isPhone ? spacing.sm : 0,
+    },
+    statusBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: isPhone ? spacing.xs : spacing.sm,
+      paddingVertical: spacing.xs,
+      borderRadius: borderRadius.sm,
+      gap: spacing.xs,
+    },
+    statusText: {
+      ...typography.caption,
+      fontWeight: '600',
+      fontSize: isPhone ? 10 : 11,
+    },
+    cardDetails: {
+      marginBottom: spacing.md,
+      gap: spacing.xs,
+    },
+    detailRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+    },
+    detailText: {
+      ...typography.body2,
+      color: colors.textSecondary,
+      fontSize: isPhone ? 12 : (isMobile ? 13 : 14),
+    },
+    salaryContainer: {
+      paddingTop: spacing.sm,
+      paddingBottom: spacing.sm,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      marginBottom: spacing.sm,
+    },
+    salaryText: {
+      ...typography.body1,
+      color: colors.primary,
+      fontWeight: '600',
+      fontSize: isPhone ? 14 : (isMobile ? 15 : 16),
+    },
+    viewJobButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.primary,
+      paddingVertical: isPhone ? spacing.sm : spacing.md,
+      borderRadius: borderRadius.md,
+      gap: spacing.xs,
+      marginTop: spacing.sm,
+      ...(isWeb && {
+        cursor: 'pointer',
+      }),
+    },
+    viewJobButtonText: {
+      ...typography.button,
+      color: '#FFFFFF',
+      fontWeight: '600',
+      fontSize: isPhone ? 14 : 16,
+    },
+    emptyState: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: isPhone ? spacing.xl : spacing.xxl,
+    },
+    emptyTitle: {
+      ...typography.h5,
+      color: colors.text,
+      fontWeight: '600',
+      marginTop: spacing.lg,
+      marginBottom: spacing.sm,
+      fontSize: isPhone ? 16 : (isMobile ? 18 : 20),
+    },
+    emptySubtitle: {
+      ...typography.body1,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginBottom: spacing.xl,
+      paddingHorizontal: spacing.lg,
+      fontSize: isPhone ? 14 : 16,
+    },
+    browseJobsButton: {
+      backgroundColor: colors.primary,
+      paddingHorizontal: isPhone ? spacing.lg : spacing.xl,
+      paddingVertical: isPhone ? spacing.sm : spacing.md,
+      borderRadius: borderRadius.md,
+      ...(isWeb && {
+        cursor: 'pointer',
+      }),
+    },
+    browseJobsButtonText: {
+      ...typography.button,
+      color: '#FFFFFF',
+      fontWeight: '600',
+      fontSize: isPhone ? 14 : 16,
+    },
+    backdrop: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      zIndex: 999,
+    },
+  });
+};
 
 export default ActiveApplicationsScreen;
 

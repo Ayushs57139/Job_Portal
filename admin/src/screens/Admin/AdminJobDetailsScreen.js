@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, Alert, Platform } from 'react-native';
 import AdminLayout from '../../components/Admin/AdminLayout';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../../config/api';
+import { useResponsive } from '../../utils/responsive';
 
 const AdminJobDetailsScreen = ({ route, navigation }) => {
+  const responsive = useResponsive();
+  const isMobile = responsive.isMobile;
+  const isTablet = responsive.isTablet;
+  const dynamicStyles = getStyles(isMobile, isTablet);
   const { jobId } = route.params;
   const [loading, setLoading] = useState(true);
   const [job, setJob] = useState(null);
@@ -110,9 +115,9 @@ const AdminJobDetailsScreen = ({ route, navigation }) => {
         user={user}
         onLogout={handleLogout}
       >
-        <View style={styles.loadingContainer}>
+        <View style={dynamicStyles.loadingContainer}>
           <ActivityIndicator size="large" color="#4A90E2" />
-          <Text style={styles.loadingText}>Loading job details...</Text>
+          <Text style={dynamicStyles.loadingText}>Loading job details...</Text>
         </View>
       </AdminLayout>
     );
@@ -127,11 +132,11 @@ const AdminJobDetailsScreen = ({ route, navigation }) => {
         user={user}
         onLogout={handleLogout}
       >
-        <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle-outline" size={64} color="#E74C3C" />
-          <Text style={styles.errorText}>Job not found</Text>
-          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-            <Text style={styles.backButtonText}>Go Back</Text>
+        <View style={dynamicStyles.errorContainer}>
+          <Ionicons name="alert-circle-outline" size={isMobile ? 48 : isTablet ? 56 : 64} color="#E74C3C" />
+          <Text style={dynamicStyles.errorText}>Job not found</Text>
+          <TouchableOpacity style={dynamicStyles.backButton} onPress={handleBack}>
+            <Text style={dynamicStyles.backButtonText}>Go Back</Text>
           </TouchableOpacity>
         </View>
       </AdminLayout>
@@ -149,121 +154,121 @@ const AdminJobDetailsScreen = ({ route, navigation }) => {
       user={user}
       onLogout={handleLogout}
     >
-      <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-        <View style={styles.container}>
+      <ScrollView style={dynamicStyles.scrollContainer} showsVerticalScrollIndicator={false}>
+        <View style={dynamicStyles.container}>
           {/* Header with Back Button */}
-          <View style={styles.header}>
-            <TouchableOpacity style={styles.backBtn} onPress={handleBack}>
+          <View style={dynamicStyles.header}>
+            <TouchableOpacity style={dynamicStyles.backBtn} onPress={handleBack}>
               <Ionicons name="arrow-back" size={24} color="#4A90E2" />
-              <Text style={styles.backBtnText}>Back to Jobs</Text>
+              <Text style={dynamicStyles.backBtnText}>Back to Jobs</Text>
             </TouchableOpacity>
           </View>
 
           {/* Job Title Section */}
-          <View style={styles.titleSection}>
-            <Text style={styles.jobTitle}>{jobTitle}</Text>
-            <View style={styles.statusBadge}>
-              <Text style={styles.statusText}>
+          <View style={dynamicStyles.titleSection}>
+            <Text style={dynamicStyles.jobTitle}>{jobTitle}</Text>
+            <View style={dynamicStyles.statusBadge}>
+              <Text style={dynamicStyles.statusText}>
                 {job.status === 'active' ? 'ACTIVE' : 'INACTIVE'}
               </Text>
             </View>
           </View>
 
           {/* Company Info */}
-          <View style={styles.section}>
-            <View style={styles.infoRow}>
+          <View style={dynamicStyles.section}>
+            <View style={dynamicStyles.infoRow}>
               <Ionicons name="business-outline" size={20} color="#4A90E2" />
-              <Text style={styles.infoLabel}>Company:</Text>
-              <Text style={styles.infoValue}>{companyName}</Text>
+              <Text style={dynamicStyles.infoLabel}>Company:</Text>
+              <Text style={dynamicStyles.infoValue}>{companyName}</Text>
             </View>
             {job.company?.type && (
-              <View style={styles.infoRow}>
+              <View style={dynamicStyles.infoRow}>
                 <Ionicons name="briefcase-outline" size={20} color="#4A90E2" />
-                <Text style={styles.infoLabel}>Company Type:</Text>
-                <Text style={styles.infoValue}>{job.company.type}</Text>
+                <Text style={dynamicStyles.infoLabel}>Company Type:</Text>
+                <Text style={dynamicStyles.infoValue}>{job.company.type}</Text>
               </View>
             )}
           </View>
 
           {/* Key Information */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Key Information</Text>
+          <View style={dynamicStyles.section}>
+            <Text style={dynamicStyles.sectionTitle}>Key Information</Text>
             
-            <View style={styles.infoRow}>
+            <View style={dynamicStyles.infoRow}>
               <Ionicons name="location-outline" size={20} color="#4A90E2" />
-              <Text style={styles.infoLabel}>Location:</Text>
-              <Text style={styles.infoValue}>{formatLocation(job.location)}</Text>
+              <Text style={dynamicStyles.infoLabel}>Location:</Text>
+              <Text style={dynamicStyles.infoValue}>{formatLocation(job.location)}</Text>
             </View>
 
-            <View style={styles.infoRow}>
+            <View style={dynamicStyles.infoRow}>
               <Ionicons name="briefcase-outline" size={20} color="#4A90E2" />
-              <Text style={styles.infoLabel}>Experience:</Text>
-              <Text style={styles.infoValue}>{formatExperience(job.totalExperience)}</Text>
+              <Text style={dynamicStyles.infoLabel}>Experience:</Text>
+              <Text style={dynamicStyles.infoValue}>{formatExperience(job.totalExperience)}</Text>
             </View>
 
-            <View style={styles.infoRow}>
+            <View style={dynamicStyles.infoRow}>
               <Ionicons name="cash-outline" size={20} color="#4A90E2" />
-              <Text style={styles.infoLabel}>Salary:</Text>
-              <Text style={styles.infoValue}>{formatSalary(job.salary)}</Text>
+              <Text style={dynamicStyles.infoLabel}>Salary:</Text>
+              <Text style={dynamicStyles.infoValue}>{formatSalary(job.salary)}</Text>
             </View>
 
             {job.numberOfVacancy && (
-              <View style={styles.infoRow}>
+              <View style={dynamicStyles.infoRow}>
                 <Ionicons name="people-outline" size={20} color="#4A90E2" />
-                <Text style={styles.infoLabel}>Vacancies:</Text>
-                <Text style={styles.infoValue}>{job.numberOfVacancy}</Text>
+                <Text style={dynamicStyles.infoLabel}>Vacancies:</Text>
+                <Text style={dynamicStyles.infoValue}>{job.numberOfVacancy}</Text>
               </View>
             )}
 
             {job.employmentType && (
-              <View style={styles.infoRow}>
+              <View style={dynamicStyles.infoRow}>
                 <Ionicons name="time-outline" size={20} color="#4A90E2" />
-                <Text style={styles.infoLabel}>Employment Type:</Text>
-                <Text style={styles.infoValue}>{job.employmentType}</Text>
+                <Text style={dynamicStyles.infoLabel}>Employment Type:</Text>
+                <Text style={dynamicStyles.infoValue}>{job.employmentType}</Text>
               </View>
             )}
 
             {job.jobType && (
-              <View style={styles.infoRow}>
+              <View style={dynamicStyles.infoRow}>
                 <Ionicons name="calendar-outline" size={20} color="#4A90E2" />
-                <Text style={styles.infoLabel}>Job Type:</Text>
-                <Text style={styles.infoValue}>{job.jobType}</Text>
+                <Text style={dynamicStyles.infoLabel}>Job Type:</Text>
+                <Text style={dynamicStyles.infoValue}>{job.jobType}</Text>
               </View>
             )}
 
             {job.jobModeType && (
-              <View style={styles.infoRow}>
+              <View style={dynamicStyles.infoRow}>
                 <Ionicons name="laptop-outline" size={20} color="#4A90E2" />
-                <Text style={styles.infoLabel}>Work Mode:</Text>
-                <Text style={styles.infoValue}>{job.jobModeType}</Text>
+                <Text style={dynamicStyles.infoLabel}>Work Mode:</Text>
+                <Text style={dynamicStyles.infoValue}>{job.jobModeType}</Text>
               </View>
             )}
 
             {job.jobShiftType && (
-              <View style={styles.infoRow}>
+              <View style={dynamicStyles.infoRow}>
                 <Ionicons name="partly-sunny-outline" size={20} color="#4A90E2" />
-                <Text style={styles.infoLabel}>Shift:</Text>
-                <Text style={styles.infoValue}>{job.jobShiftType}</Text>
+                <Text style={dynamicStyles.infoLabel}>Shift:</Text>
+                <Text style={dynamicStyles.infoValue}>{job.jobShiftType}</Text>
               </View>
             )}
           </View>
 
           {/* Description */}
           {job.description && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Job Description</Text>
-              <Text style={styles.description}>{job.description}</Text>
+            <View style={dynamicStyles.section}>
+              <Text style={dynamicStyles.sectionTitle}>Job Description</Text>
+              <Text style={dynamicStyles.description}>{job.description}</Text>
             </View>
           )}
 
           {/* Key Skills */}
           {job.keySkills && job.keySkills.length > 0 && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Key Skills</Text>
-              <View style={styles.skillsContainer}>
+            <View style={dynamicStyles.section}>
+              <Text style={dynamicStyles.sectionTitle}>Key Skills</Text>
+              <View style={dynamicStyles.skillsContainer}>
                 {job.keySkills.map((skill, index) => (
-                  <View key={index} style={styles.skillBadge}>
-                    <Text style={styles.skillText}>{skill}</Text>
+                  <View key={index} style={dynamicStyles.skillBadge}>
+                    <Text style={dynamicStyles.skillText}>{skill}</Text>
                   </View>
                 ))}
               </View>
@@ -272,13 +277,13 @@ const AdminJobDetailsScreen = ({ route, navigation }) => {
 
           {/* Additional Benefits */}
           {job.additionalBenefits && job.additionalBenefits.length > 0 && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Additional Benefits</Text>
-              <View style={styles.benefitsList}>
+            <View style={dynamicStyles.section}>
+              <Text style={dynamicStyles.sectionTitle}>Additional Benefits</Text>
+              <View style={dynamicStyles.benefitsList}>
                 {job.additionalBenefits.map((benefit, index) => (
-                  <View key={index} style={styles.benefitItem}>
+                  <View key={index} style={dynamicStyles.benefitItem}>
                     <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-                    <Text style={styles.benefitText}>{benefit}</Text>
+                    <Text style={dynamicStyles.benefitText}>{benefit}</Text>
                   </View>
                 ))}
               </View>
@@ -287,51 +292,51 @@ const AdminJobDetailsScreen = ({ route, navigation }) => {
 
           {/* HR Contact */}
           {job.hrContact && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>HR Contact Information</Text>
+            <View style={dynamicStyles.section}>
+              <Text style={dynamicStyles.sectionTitle}>HR Contact Information</Text>
               {job.hrContact.name && (
-                <View style={styles.infoRow}>
+                <View style={dynamicStyles.infoRow}>
                   <Ionicons name="person-outline" size={20} color="#4A90E2" />
-                  <Text style={styles.infoLabel}>Name:</Text>
-                  <Text style={styles.infoValue}>{job.hrContact.name}</Text>
+                  <Text style={dynamicStyles.infoLabel}>Name:</Text>
+                  <Text style={dynamicStyles.infoValue}>{job.hrContact.name}</Text>
                 </View>
               )}
               {job.hrContact.email && (
-                <View style={styles.infoRow}>
+                <View style={dynamicStyles.infoRow}>
                   <Ionicons name="mail-outline" size={20} color="#4A90E2" />
-                  <Text style={styles.infoLabel}>Email:</Text>
-                  <Text style={styles.infoValue}>{job.hrContact.email}</Text>
+                  <Text style={dynamicStyles.infoLabel}>Email:</Text>
+                  <Text style={dynamicStyles.infoValue}>{job.hrContact.email}</Text>
                 </View>
               )}
               {job.hrContact.number && (
-                <View style={styles.infoRow}>
+                <View style={dynamicStyles.infoRow}>
                   <Ionicons name="call-outline" size={20} color="#4A90E2" />
-                  <Text style={styles.infoLabel}>Phone:</Text>
-                  <Text style={styles.infoValue}>{job.hrContact.number}</Text>
+                  <Text style={dynamicStyles.infoLabel}>Phone:</Text>
+                  <Text style={dynamicStyles.infoValue}>{job.hrContact.number}</Text>
                 </View>
               )}
             </View>
           )}
 
           {/* Metadata */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Job Metadata</Text>
-            <View style={styles.infoRow}>
+          <View style={dynamicStyles.section}>
+            <Text style={dynamicStyles.sectionTitle}>Job Metadata</Text>
+            <View style={dynamicStyles.infoRow}>
               <Ionicons name="calendar-outline" size={20} color="#4A90E2" />
-              <Text style={styles.infoLabel}>Posted:</Text>
-              <Text style={styles.infoValue}>{formatDate(job.createdAt)}</Text>
+              <Text style={dynamicStyles.infoLabel}>Posted:</Text>
+              <Text style={dynamicStyles.infoValue}>{formatDate(job.createdAt)}</Text>
             </View>
             {job.updatedAt && (
-              <View style={styles.infoRow}>
+              <View style={dynamicStyles.infoRow}>
                 <Ionicons name="refresh-outline" size={20} color="#4A90E2" />
-                <Text style={styles.infoLabel}>Last Updated:</Text>
-                <Text style={styles.infoValue}>{formatDate(job.updatedAt)}</Text>
+                <Text style={dynamicStyles.infoLabel}>Last Updated:</Text>
+                <Text style={dynamicStyles.infoValue}>{formatDate(job.updatedAt)}</Text>
               </View>
             )}
             {job.featured && (
-              <View style={styles.infoRow}>
+              <View style={dynamicStyles.infoRow}>
                 <Ionicons name="star-outline" size={20} color="#F59E0B" />
-                <Text style={styles.infoLabel}>Featured Job</Text>
+                <Text style={dynamicStyles.infoLabel}>Featured Job</Text>
               </View>
             )}
           </View>
@@ -341,12 +346,12 @@ const AdminJobDetailsScreen = ({ route, navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (isMobile, isTablet) => StyleSheet.create({
   scrollContainer: {
     flex: 1,
   },
   container: {
-    padding: 20,
+    padding: isMobile ? 12 : isTablet ? 16 : 20,
   },
   loadingContainer: {
     flex: 1,
@@ -355,34 +360,42 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 10,
-    fontSize: 16,
+    fontSize: isMobile ? 14 : isTablet ? 15 : 16,
     color: '#666',
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: isMobile ? 16 : isTablet ? 18 : 20,
   },
   errorText: {
-    fontSize: 18,
+    fontSize: isMobile ? 16 : isTablet ? 17 : 18,
     color: '#E74C3C',
     marginTop: 15,
     marginBottom: 20,
   },
   backButton: {
     backgroundColor: '#4A90E2',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingHorizontal: isMobile ? 16 : isTablet ? 18 : 20,
+    paddingVertical: isMobile ? 8 : isTablet ? 9 : 10,
     borderRadius: 8,
+    ...(Platform.OS === 'web' && {
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+      ':hover': {
+        backgroundColor: '#357ABD',
+        transform: 'translateY(-1px)',
+      },
+    }),
   },
   backButtonText: {
     color: '#FFF',
-    fontSize: 16,
+    fontSize: isMobile ? 14 : isTablet ? 15 : 16,
     fontWeight: '600',
   },
   header: {
-    marginBottom: 20,
+    marginBottom: isMobile ? 16 : isTablet ? 18 : 20,
   },
   backBtn: {
     flexDirection: 'row',
@@ -489,10 +502,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   benefitText: {
-    fontSize: 14,
+    fontSize: isMobile ? 13 : isTablet ? 13.5 : 14,
     color: '#555',
   },
 });
+
+const styles = StyleSheet.create({});
 
 export default AdminJobDetailsScreen;
 

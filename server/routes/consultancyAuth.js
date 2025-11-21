@@ -84,6 +84,11 @@ router.post('/login', async (req, res) => {
         // Find consultancy
         const consultancy = await User.findOne({ email });
         if (!consultancy) {
+            const logger = require('../utils/logger');
+            logger.warn('Consultancy login failed: User not found', {
+                email: email.substring(0, 10) + '***',
+                ip: req.ip
+            });
             return res.status(400).json({ message: 'No account found with this email address' });
         }
 
@@ -114,12 +119,24 @@ router.post('/login', async (req, res) => {
 
         // Check if account is active
         if (!consultancy.isActive) {
+            const logger = require('../utils/logger');
+            logger.warn('Consultancy login failed: Account deactivated', {
+                userId: consultancy._id,
+                email: consultancy.email,
+                ip: req.ip
+            });
             return res.status(400).json({ message: 'Account is deactivated. Please contact support' });
         }
 
         // Check password (only after user type validation passes)
         const isMatch = await consultancy.comparePassword(password);
         if (!isMatch) {
+            const logger = require('../utils/logger');
+            logger.warn('Consultancy login failed: Incorrect password', {
+                userId: consultancy._id,
+                email: consultancy.email,
+                ip: req.ip
+            });
             return res.status(400).json({ message: 'Incorrect password. Please try again' });
         }
 

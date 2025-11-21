@@ -2,16 +2,18 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Linking, Dimensions, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { colors, spacing, typography } from '../styles/theme';
+import { useResponsive } from '../utils/responsive';
 
-const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
-const isPhone = width <= 480;
-const isMobile = width <= 600;
-const isTablet = width > 600 && width <= 1024;
-const isDesktop = width > 1024;
 
 const Footer = () => {
   const navigation = useNavigation();
+  const responsive = useResponsive();
+  const isPhone = responsive.width <= 480;
+  const isMobile = responsive.isMobile;
+  const isTablet = responsive.isTablet;
+  const isDesktop = responsive.isDesktop;
+  const dynamicStyles = getStyles(isPhone, isMobile, isTablet, isDesktop, responsive.width);
 
   const handleNavigation = (route) => {
     try {
@@ -21,28 +23,31 @@ const Footer = () => {
     }
   };
 
-  const FooterSection = ({ title, links }) => (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      {links.map((link, index) => (
-        <TouchableOpacity
-          key={index}
-          onPress={() => handleNavigation(link.route)}
-          style={styles.linkButton}
-        >
-          <Text style={styles.linkText}>{link.label}</Text>
-        </TouchableOpacity>
-      ))}
-    </View>
-  );
+  const FooterSection = ({ title, links }) => {
+    const dynamicStyles = getStyles(isPhone, isMobile, isTablet, isDesktop, responsive.width);
+    return (
+      <View style={dynamicStyles.section}>
+        <Text style={dynamicStyles.sectionTitle}>{title}</Text>
+        {links.map((link, index) => (
+          <TouchableOpacity
+            key={index}
+            onPress={() => handleNavigation(link.route)}
+            style={dynamicStyles.linkButton}
+          >
+            <Text style={dynamicStyles.linkText}>{link.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    );
+  };
 
   return (
-    <View style={styles.footer}>
-      <View style={styles.footerContent}>
+    <View style={dynamicStyles.footer}>
+      <View style={dynamicStyles.footerContent}>
         {/* Company Info */}
-        <View style={styles.companySection}>
-          <Text style={styles.companyName}>JobWala</Text>
-          <Text style={styles.tagline}>Connecting talent with opportunity</Text>
+        <View style={dynamicStyles.companySection}>
+          <Text style={dynamicStyles.companyName}>JobWala</Text>
+          <Text style={dynamicStyles.tagline}>Connecting talent with opportunity</Text>
         </View>
 
         {/* Quick Links */}
@@ -67,8 +72,8 @@ const Footer = () => {
         />
       </View>
 
-      <View style={styles.bottomBar}>
-        <Text style={styles.copyright}>
+      <View style={dynamicStyles.bottomBar}>
+        <Text style={dynamicStyles.copyright}>
           © 2025 JobWala. All rights reserved.
         </Text>
       </View>
@@ -76,7 +81,7 @@ const Footer = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (isPhone, isMobile, isTablet, isDesktop, width) => StyleSheet.create({
   footer: {
     backgroundColor: '#2D3748',
     paddingTop: isPhone ? spacing.lg : (isMobile ? spacing.xl : isTablet ? spacing.xl : spacing.xxl),

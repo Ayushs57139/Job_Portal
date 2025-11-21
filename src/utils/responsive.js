@@ -1,5 +1,6 @@
 // Responsive utility functions for React Native Web
 import { Platform, Dimensions } from 'react-native';
+import { useState, useEffect } from 'react';
 
 // Get window dimensions
 const getWindowDimensions = () => {
@@ -17,12 +18,23 @@ export const breakpoints = {
 // Check if current platform is web
 export const isWeb = Platform.OS === 'web';
 
-// Get responsive values based on screen width
+// Get responsive values based on screen width with dynamic updates
 export const useResponsive = () => {
-  const { width } = getWindowDimensions();
+  const [dimensions, setDimensions] = useState(() => getWindowDimensions());
+
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setDimensions(window);
+    });
+
+    return () => subscription?.remove();
+  }, []);
+
+  const { width, height } = dimensions;
   
   return {
     width,
+    height,
     isMobile: width <= breakpoints.mobile,
     isTablet: width > breakpoints.mobile && width <= breakpoints.tablet,
     isDesktop: width > breakpoints.tablet,
@@ -33,7 +45,7 @@ export const useResponsive = () => {
   };
 };
 
-// Get responsive style values
+// Get responsive style values (static version for StyleSheet)
 export const getResponsiveValue = (mobile, tablet, desktop) => {
   const { width } = getWindowDimensions();
   
@@ -68,6 +80,31 @@ export const getResponsivePadding = (basePadding) => {
     return basePadding * 0.875;
   }
   return basePadding;
+};
+
+// Get responsive margin
+export const getResponsiveMargin = (baseMargin) => {
+  const { width } = getWindowDimensions();
+  
+  if (width <= breakpoints.mobile) {
+    return baseMargin * 0.75;
+  } else if (width <= breakpoints.tablet) {
+    return baseMargin * 0.875;
+  }
+  return baseMargin;
+};
+
+// Get responsive width percentage
+export const getResponsiveWidth = (mobilePercent, tabletPercent, desktopPercent) => {
+  const { width } = getWindowDimensions();
+  
+  if (width <= breakpoints.mobile) {
+    return `${mobilePercent}%`;
+  } else if (width <= breakpoints.tablet) {
+    return `${tabletPercent !== undefined ? tabletPercent : mobilePercent}%`;
+  } else {
+    return `${desktopPercent !== undefined ? desktopPercent : tabletPercent !== undefined ? tabletPercent : mobilePercent}%`;
+  }
 };
 
 // Export window dimensions helper

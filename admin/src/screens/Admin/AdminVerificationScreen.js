@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, Alert, TextInput } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, Alert, TextInput, Platform } from 'react-native';
 import AdminLayout from '../../components/Admin/AdminLayout';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../../config/api';
+import { useResponsive } from '../../utils/responsive';
 
 const AdminVerificationScreen = ({ navigation }) => {
+  const responsive = useResponsive();
+  const isMobile = responsive.isMobile;
+  const isTablet = responsive.isTablet;
+  const dynamicStyles = getStyles(isMobile, isTablet);
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState([]);
   const [filteredUsers, setFilteredUsers] = useState([]);
@@ -190,38 +195,38 @@ const AdminVerificationScreen = ({ navigation }) => {
       user={user}
       onLogout={handleLogout}
     >
-      <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-        <View style={styles.container}>
-          <View style={styles.headerSection}>
-            <Text style={styles.pageTitle}>User Verification Management</Text>
-            <Text style={styles.pageSubtitle}>Verify users to allow them to access the platform</Text>
+      <ScrollView style={dynamicStyles.scrollContainer} showsVerticalScrollIndicator={false}>
+        <View style={dynamicStyles.container}>
+          <View style={dynamicStyles.headerSection}>
+            <Text style={dynamicStyles.pageTitle}>User Verification Management</Text>
+            <Text style={dynamicStyles.pageSubtitle}>Verify users to allow them to access the platform</Text>
           </View>
 
           {/* Statistics Cards */}
-          <View style={styles.statsGrid}>
-            <View style={styles.statCard}>
+          <View style={dynamicStyles.statsGrid}>
+            <View style={dynamicStyles.statCard}>
               <Ionicons name="people" size={24} color="#4A90E2" />
-              <Text style={styles.statNumber}>{stats.total}</Text>
-              <Text style={styles.statLabel}>Total Users</Text>
+              <Text style={dynamicStyles.statNumber}>{stats.total}</Text>
+              <Text style={dynamicStyles.statLabel}>Total Users</Text>
             </View>
-            <View style={styles.statCard}>
+            <View style={dynamicStyles.statCard}>
               <Ionicons name="checkmark-circle" size={24} color="#27AE60" />
-              <Text style={styles.statNumber}>{stats.verified}</Text>
-              <Text style={styles.statLabel}>Verified</Text>
+              <Text style={dynamicStyles.statNumber}>{stats.verified}</Text>
+              <Text style={dynamicStyles.statLabel}>Verified</Text>
             </View>
-            <View style={styles.statCard}>
+            <View style={dynamicStyles.statCard}>
               <Ionicons name="alert-circle" size={24} color="#F39C12" />
-              <Text style={styles.statNumber}>{stats.unverified}</Text>
-              <Text style={styles.statLabel}>Unverified</Text>
+              <Text style={dynamicStyles.statNumber}>{stats.unverified}</Text>
+              <Text style={dynamicStyles.statLabel}>Unverified</Text>
             </View>
           </View>
 
           {/* Search Bar */}
-          <View style={styles.searchSection}>
-            <View style={styles.searchBar}>
+          <View style={dynamicStyles.searchSection}>
+            <View style={dynamicStyles.searchBar}>
               <Ionicons name="search" size={20} color="#999" />
               <TextInput
-                style={styles.searchInput}
+                style={dynamicStyles.searchInput}
                 placeholder="Search by name, email, or company..."
                 value={searchQuery}
                 onChangeText={setSearchQuery}
@@ -236,68 +241,68 @@ const AdminVerificationScreen = ({ navigation }) => {
           </View>
 
           {/* Filter Chips */}
-          <View style={styles.filtersSection}>
-            <Text style={styles.filtersLabel}>User Type:</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filtersScroll}>
+          <View style={dynamicStyles.filtersSection}>
+            <Text style={dynamicStyles.filtersLabel}>User Type:</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={dynamicStyles.filtersScroll}>
               <TouchableOpacity
-                style={[styles.filterChip, selectedUserType === 'all' && styles.filterChipActive]}
+                style={[dynamicStyles.filterChip, selectedUserType === 'all' && dynamicStyles.filterChipActive]}
                 onPress={() => setSelectedUserType('all')}
               >
-                <Text style={[styles.filterChipText, selectedUserType === 'all' && styles.filterChipTextActive]}>
+                <Text style={[dynamicStyles.filterChipText, selectedUserType === 'all' && dynamicStyles.filterChipTextActive]}>
                   All ({stats.total})
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.filterChip, selectedUserType === 'jobseeker' && styles.filterChipActive]}
+                style={[dynamicStyles.filterChip, selectedUserType === 'jobseeker' && dynamicStyles.filterChipActive]}
                 onPress={() => setSelectedUserType('jobseeker')}
               >
-                <Text style={[styles.filterChipText, selectedUserType === 'jobseeker' && styles.filterChipTextActive]}>
+                <Text style={[dynamicStyles.filterChipText, selectedUserType === 'jobseeker' && dynamicStyles.filterChipTextActive]}>
                   Job Seekers ({stats.jobseekers})
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.filterChip, selectedUserType === 'company' && styles.filterChipActive]}
+                style={[dynamicStyles.filterChip, selectedUserType === 'company' && dynamicStyles.filterChipActive]}
                 onPress={() => setSelectedUserType('company')}
               >
-                <Text style={[styles.filterChipText, selectedUserType === 'company' && styles.filterChipTextActive]}>
+                <Text style={[dynamicStyles.filterChipText, selectedUserType === 'company' && dynamicStyles.filterChipTextActive]}>
                   Companies ({stats.companies})
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.filterChip, selectedUserType === 'consultancy' && styles.filterChipActive]}
+                style={[dynamicStyles.filterChip, selectedUserType === 'consultancy' && dynamicStyles.filterChipActive]}
                 onPress={() => setSelectedUserType('consultancy')}
               >
-                <Text style={[styles.filterChipText, selectedUserType === 'consultancy' && styles.filterChipTextActive]}>
+                <Text style={[dynamicStyles.filterChipText, selectedUserType === 'consultancy' && dynamicStyles.filterChipTextActive]}>
                   Consultancies ({stats.consultancies})
                 </Text>
               </TouchableOpacity>
             </ScrollView>
           </View>
 
-          <View style={styles.filtersSection}>
-            <Text style={styles.filtersLabel}>Verification Status:</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filtersScroll}>
+          <View style={dynamicStyles.filtersSection}>
+            <Text style={dynamicStyles.filtersLabel}>Verification Status:</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={dynamicStyles.filtersScroll}>
               <TouchableOpacity
-                style={[styles.filterChip, selectedStatus === 'all' && styles.filterChipActive]}
+                style={[dynamicStyles.filterChip, selectedStatus === 'all' && dynamicStyles.filterChipActive]}
                 onPress={() => setSelectedStatus('all')}
               >
-                <Text style={[styles.filterChipText, selectedStatus === 'all' && styles.filterChipTextActive]}>
+                <Text style={[dynamicStyles.filterChipText, selectedStatus === 'all' && dynamicStyles.filterChipTextActive]}>
                   All ({stats.total})
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.filterChip, selectedStatus === 'verified' && styles.filterChipActive]}
+                style={[dynamicStyles.filterChip, selectedStatus === 'verified' && dynamicStyles.filterChipActive]}
                 onPress={() => setSelectedStatus('verified')}
               >
-                <Text style={[styles.filterChipText, selectedStatus === 'verified' && styles.filterChipTextActive]}>
+                <Text style={[dynamicStyles.filterChipText, selectedStatus === 'verified' && dynamicStyles.filterChipTextActive]}>
                   Verified ({stats.verified})
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.filterChip, selectedStatus === 'unverified' && styles.filterChipActive]}
+                style={[dynamicStyles.filterChip, selectedStatus === 'unverified' && dynamicStyles.filterChipActive]}
                 onPress={() => setSelectedStatus('unverified')}
               >
-                <Text style={[styles.filterChipText, selectedStatus === 'unverified' && styles.filterChipTextActive]}>
+                <Text style={[dynamicStyles.filterChipText, selectedStatus === 'unverified' && dynamicStyles.filterChipTextActive]}>
                   Unverified ({stats.unverified})
                 </Text>
               </TouchableOpacity>
@@ -305,95 +310,95 @@ const AdminVerificationScreen = ({ navigation }) => {
           </View>
 
           {/* Users List */}
-          <View style={styles.resultsSection}>
-            <Text style={styles.resultsText}>
+          <View style={dynamicStyles.resultsSection}>
+            <Text style={dynamicStyles.resultsText}>
               Showing {filteredUsers.length} {filteredUsers.length === 1 ? 'user' : 'users'}
             </Text>
           </View>
 
           {loading ? (
-            <View style={styles.loadingContainer}>
+            <View style={dynamicStyles.loadingContainer}>
               <ActivityIndicator size="large" color="#4A90E2" />
-              <Text style={styles.loadingText}>Loading users...</Text>
+              <Text style={dynamicStyles.loadingText}>Loading users...</Text>
             </View>
           ) : filteredUsers.length > 0 ? (
             filteredUsers.map((u, index) => (
-              <View key={u._id || index} style={styles.userCard}>
-                <View style={styles.userHeader}>
-                  <View style={styles.userInfo}>
-                    <Text style={styles.userName}>
+              <View key={u._id || index} style={dynamicStyles.userCard}>
+                <View style={dynamicStyles.userHeader}>
+                  <View style={dynamicStyles.userInfo}>
+                    <Text style={dynamicStyles.userName}>
                       {u.firstName} {u.lastName}
                     </Text>
-                    <Text style={styles.userEmail}>{u.email}</Text>
+                    <Text style={dynamicStyles.userEmail}>{u.email}</Text>
                     {u.companyName && (
-                      <Text style={styles.companyName}>
+                      <Text style={dynamicStyles.companyName}>
                         <Ionicons name="business" size={14} color="#666" /> {u.companyName}
                       </Text>
                     )}
                   </View>
-                  <View style={styles.badges}>
-                    <View style={[styles.typeBadge, styles[`${u.userType}Badge`]]}>
-                      <Text style={styles.typeBadgeText}>
+                  <View style={dynamicStyles.badges}>
+                    <View style={[dynamicStyles.typeBadge, styles[`${u.userType}Badge`]]}>
+                      <Text style={dynamicStyles.typeBadgeText}>
                         {u.userType === 'jobseeker' ? 'Job Seeker' : u.userType === 'company' ? 'Company' : 'Consultancy'}
                       </Text>
                     </View>
                     <View style={[
-                      styles.statusBadge,
-                      u.isVerified ? styles.verifiedBadge : styles.unverifiedBadge
+                      dynamicStyles.statusBadge,
+                      u.isVerified ? dynamicStyles.verifiedBadge : dynamicStyles.unverifiedBadge
                     ]}>
                       <Ionicons 
                         name={u.isVerified ? "checkmark-circle" : "alert-circle"} 
                         size={16} 
                         color={u.isVerified ? "#27AE60" : "#F39C12"} 
                       />
-                      <Text style={styles.statusText}>{u.isVerified ? 'Verified' : 'Unverified'}</Text>
+                      <Text style={dynamicStyles.statusText}>{u.isVerified ? 'Verified' : 'Unverified'}</Text>
                     </View>
                   </View>
                 </View>
 
-                <View style={styles.userMeta}>
-                  <View style={styles.metaItem}>
+                <View style={dynamicStyles.userMeta}>
+                  <View style={dynamicStyles.metaItem}>
                     <Ionicons name="calendar" size={16} color="#999" />
-                    <Text style={styles.metaText}>
+                    <Text style={dynamicStyles.metaText}>
                       Joined: {new Date(u.createdAt).toLocaleDateString()}
                     </Text>
                   </View>
                   {u.verifiedAt && (
-                    <View style={styles.metaItem}>
+                    <View style={dynamicStyles.metaItem}>
                       <Ionicons name="checkmark-done" size={16} color="#999" />
-                      <Text style={styles.metaText}>
+                      <Text style={dynamicStyles.metaText}>
                         Verified: {new Date(u.verifiedAt).toLocaleDateString()}
                       </Text>
                     </View>
                   )}
                 </View>
 
-                <View style={styles.actions}>
+                <View style={dynamicStyles.actions}>
                   {u.isVerified ? (
                     <TouchableOpacity
-                      style={[styles.actionButton, styles.unverifyButton]}
+                      style={[dynamicStyles.actionButton, dynamicStyles.unverifyButton]}
                       onPress={() => handleUnverify(u._id, `${u.firstName} ${u.lastName}`)}
                     >
                       <Ionicons name="close-circle" size={20} color="#FFF" />
-                      <Text style={styles.actionButtonText}>Unverify</Text>
+                      <Text style={dynamicStyles.actionButtonText}>Unverify</Text>
                     </TouchableOpacity>
                   ) : (
                     <TouchableOpacity
-                      style={[styles.actionButton, styles.verifyButton]}
+                      style={[dynamicStyles.actionButton, dynamicStyles.verifyButton]}
                       onPress={() => handleVerify(u._id, `${u.firstName} ${u.lastName}`)}
                     >
                       <Ionicons name="checkmark-circle" size={20} color="#FFF" />
-                      <Text style={styles.actionButtonText}>Verify User</Text>
+                      <Text style={dynamicStyles.actionButtonText}>Verify User</Text>
                     </TouchableOpacity>
                   )}
                 </View>
               </View>
             ))
           ) : (
-            <View style={styles.emptyState}>
+            <View style={dynamicStyles.emptyState}>
               <Ionicons name="people-outline" size={64} color="#CCC" />
-              <Text style={styles.emptyStateText}>No users found</Text>
-              <Text style={styles.emptyStateSubtext}>
+              <Text style={dynamicStyles.emptyStateText}>No users found</Text>
+              <Text style={dynamicStyles.emptyStateSubtext}>
                 {searchQuery ? 'Try adjusting your search or filters' : 'No users to display'}
               </Text>
             </View>
@@ -404,7 +409,7 @@ const AdminVerificationScreen = ({ navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (isMobile, isTablet) => StyleSheet.create({
   scrollContainer: {
     flex: 1,
     backgroundColor: '#F5F6FA',
@@ -666,6 +671,8 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
 });
+
+const styles = StyleSheet.create({});
 
 export default AdminVerificationScreen;
 

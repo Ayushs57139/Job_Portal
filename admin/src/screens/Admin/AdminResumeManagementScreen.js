@@ -10,14 +10,21 @@ import {
   Alert,
   RefreshControl,
   Modal,
-  Linking
+  Linking,
+  Platform
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import AdminLayout from '../../components/Admin/AdminLayout';
 import { API_URL } from '../../config/api';
+import { useResponsive } from '../../utils/responsive';
 
 const AdminResumeManagementScreen = ({ navigation }) => {
+  const responsive = useResponsive();
+  const isMobile = responsive.isMobile;
+  const isTablet = responsive.isTablet;
+  const dynamicStyles = getStyles(isMobile, isTablet);
+  
   const handleLogout = () => navigation.replace('AdminLogin');
   const handleNavigate = (screen) => navigation.navigate(screen);
 
@@ -178,13 +185,13 @@ const AdminResumeManagementScreen = ({ navigation }) => {
   };
 
   const renderStatCard = (title, value, icon, color) => (
-    <View style={[styles.statCard, { borderLeftColor: color }]}>
-      <View style={[styles.statIconContainer, { backgroundColor: color + '15' }]}>
+    <View style={[dynamicStyles.statCard, { borderLeftColor: color }]}>
+      <View style={[dynamicStyles.statIconContainer, { backgroundColor: color + '15' }]}>
         <Ionicons name={icon} size={24} color={color} />
       </View>
-      <View style={styles.statContent}>
-        <Text style={styles.statValue}>{value}</Text>
-        <Text style={styles.statTitle}>{title}</Text>
+      <View style={dynamicStyles.statContent}>
+        <Text style={dynamicStyles.statValue}>{value}</Text>
+        <Text style={dynamicStyles.statTitle}>{title}</Text>
       </View>
     </View>
   );
@@ -206,77 +213,77 @@ const AdminResumeManagementScreen = ({ navigation }) => {
     const currentCompany = profile.professional?.currentCompanyName || 'Not specified';
 
     return (
-      <View key={profile._id} style={styles.resumeCard}>
+      <View key={profile._id} style={dynamicStyles.resumeCard}>
         {/* Header */}
-        <View style={styles.resumeHeader}>
-          <View style={styles.resumeHeaderLeft}>
-            <View style={styles.avatarContainer}>
-              <Text style={styles.avatarText}>
+        <View style={dynamicStyles.resumeHeader}>
+          <View style={dynamicStyles.resumeHeaderLeft}>
+            <View style={dynamicStyles.avatarContainer}>
+              <Text style={dynamicStyles.avatarText}>
                 {fullName.charAt(0).toUpperCase()}
               </Text>
             </View>
-            <View style={styles.resumeHeaderInfo}>
-              <Text style={styles.resumeName}>{fullName}</Text>
-              <Text style={styles.resumeJobTitle}>{currentJobTitle}</Text>
+            <View style={dynamicStyles.resumeHeaderInfo}>
+              <Text style={dynamicStyles.resumeName}>{fullName}</Text>
+              <Text style={dynamicStyles.resumeJobTitle}>{currentJobTitle}</Text>
             </View>
           </View>
-          <View style={styles.statusBadges}>
+          <View style={dynamicStyles.statusBadges}>
             {isVerified && (
-              <View style={[styles.badge, styles.verifiedBadge]}>
+              <View style={[dynamicStyles.badge, dynamicStyles.verifiedBadge]}>
                 <Ionicons name="checkmark-circle" size={12} color="#10B981" />
-                <Text style={styles.verifiedBadgeText}>Verified</Text>
+                <Text style={dynamicStyles.verifiedBadgeText}>Verified</Text>
               </View>
             )}
             {isComplete && (
-              <View style={[styles.badge, styles.completeBadge]}>
+              <View style={[dynamicStyles.badge, dynamicStyles.completeBadge]}>
                 <Ionicons name="checkmark-done" size={12} color="#3B82F6" />
-                <Text style={styles.completeBadgeText}>Complete</Text>
+                <Text style={dynamicStyles.completeBadgeText}>Complete</Text>
               </View>
             )}
           </View>
         </View>
 
         {/* Contact Info */}
-        <View style={styles.resumeSection}>
-          <View style={styles.infoRow}>
+        <View style={dynamicStyles.resumeSection}>
+          <View style={dynamicStyles.infoRow}>
             <Ionicons name="mail-outline" size={16} color="#666" />
-            <Text style={styles.infoText}>{email}</Text>
+            <Text style={dynamicStyles.infoText}>{email}</Text>
           </View>
-          <View style={styles.infoRow}>
+          <View style={dynamicStyles.infoRow}>
             <Ionicons name="call-outline" size={16} color="#666" />
-            <Text style={styles.infoText}>{phone}</Text>
+            <Text style={dynamicStyles.infoText}>{phone}</Text>
           </View>
-          <View style={styles.infoRow}>
+          <View style={dynamicStyles.infoRow}>
             <Ionicons name="location-outline" size={16} color="#666" />
-            <Text style={styles.infoText}>{location}</Text>
+            <Text style={dynamicStyles.infoText}>{location}</Text>
           </View>
         </View>
 
         {/* Professional Info */}
-        <View style={styles.resumeSection}>
-          <View style={styles.infoRow}>
+        <View style={dynamicStyles.resumeSection}>
+          <View style={dynamicStyles.infoRow}>
             <Ionicons name="briefcase-outline" size={16} color="#666" />
-            <Text style={styles.infoText}>{currentCompany}</Text>
+            <Text style={dynamicStyles.infoText}>{currentCompany}</Text>
           </View>
-          <View style={styles.infoRow}>
+          <View style={dynamicStyles.infoRow}>
             <Ionicons name="time-outline" size={16} color="#666" />
-            <Text style={styles.infoText}>Experience: {experience}</Text>
+            <Text style={dynamicStyles.infoText}>Experience: {experience}</Text>
           </View>
         </View>
 
         {/* Skills */}
         {skills.length > 0 && (
-          <View style={styles.skillsSection}>
-            <Text style={styles.skillsLabel}>Skills:</Text>
-            <View style={styles.skillsContainer}>
+          <View style={dynamicStyles.skillsSection}>
+            <Text style={dynamicStyles.skillsLabel}>Skills:</Text>
+            <View style={dynamicStyles.skillsContainer}>
               {skills.slice(0, 5).map((skill, index) => (
-                <View key={index} style={styles.skillTag}>
-                  <Text style={styles.skillText}>{skill}</Text>
+                <View key={index} style={dynamicStyles.skillTag}>
+                  <Text style={dynamicStyles.skillText}>{skill}</Text>
                 </View>
               ))}
               {skills.length > 5 && (
-                <View style={styles.skillTag}>
-                  <Text style={styles.skillText}>+{skills.length - 5} more</Text>
+                <View style={dynamicStyles.skillTag}>
+                  <Text style={dynamicStyles.skillText}>+{skills.length - 5} more</Text>
                 </View>
               )}
             </View>
@@ -284,29 +291,29 @@ const AdminResumeManagementScreen = ({ navigation }) => {
         )}
 
         {/* Actions */}
-        <View style={styles.resumeActions}>
+        <View style={dynamicStyles.resumeActions}>
           <TouchableOpacity 
-            style={styles.actionButton}
+            style={dynamicStyles.actionButton}
             onPress={() => handleViewDetails(profile)}
           >
             <Ionicons name="eye-outline" size={18} color="#3B82F6" />
-            <Text style={styles.actionButtonText}>View Details</Text>
+            <Text style={dynamicStyles.actionButtonText}>View Details</Text>
           </TouchableOpacity>
           
           <TouchableOpacity 
-            style={styles.actionButton}
+            style={dynamicStyles.actionButton}
             onPress={() => handleContactCandidate(profile, 'email')}
           >
             <Ionicons name="mail-outline" size={18} color="#10B981" />
-            <Text style={styles.actionButtonText}>Email</Text>
+            <Text style={dynamicStyles.actionButtonText}>Email</Text>
           </TouchableOpacity>
           
           <TouchableOpacity 
-            style={styles.actionButton}
+            style={dynamicStyles.actionButton}
             onPress={() => handleContactCandidate(profile, 'phone')}
           >
             <Ionicons name="call-outline" size={18} color="#F59E0B" />
-            <Text style={styles.actionButtonText}>Call</Text>
+            <Text style={dynamicStyles.actionButtonText}>Call</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -328,14 +335,14 @@ const AdminResumeManagementScreen = ({ navigation }) => {
         <TouchableOpacity
           key={i}
           style={[
-            styles.pageButton,
-            pagination.current === i && styles.pageButtonActive
+            dynamicStyles.pageButton,
+            pagination.current === i && dynamicStyles.pageButtonActive
           ]}
           onPress={() => handlePageChange(i)}
         >
           <Text style={[
-            styles.pageButtonText,
-            pagination.current === i && styles.pageButtonTextActive
+            dynamicStyles.pageButtonText,
+            pagination.current === i && dynamicStyles.pageButtonTextActive
           ]}>
             {i}
           </Text>
@@ -344,9 +351,9 @@ const AdminResumeManagementScreen = ({ navigation }) => {
     }
 
     return (
-      <View style={styles.paginationContainer}>
+      <View style={dynamicStyles.paginationContainer}>
         <TouchableOpacity
-          style={[styles.pageButton, pagination.current === 1 && styles.pageButtonDisabled]}
+          style={[dynamicStyles.pageButton, pagination.current === 1 && dynamicStyles.pageButtonDisabled]}
           onPress={() => handlePageChange(pagination.current - 1)}
           disabled={pagination.current === 1}
         >
@@ -355,10 +362,10 @@ const AdminResumeManagementScreen = ({ navigation }) => {
 
         {startPage > 1 && (
           <>
-            <TouchableOpacity style={styles.pageButton} onPress={() => handlePageChange(1)}>
-              <Text style={styles.pageButtonText}>1</Text>
+            <TouchableOpacity style={dynamicStyles.pageButton} onPress={() => handlePageChange(1)}>
+              <Text style={dynamicStyles.pageButtonText}>1</Text>
             </TouchableOpacity>
-            {startPage > 2 && <Text style={styles.ellipsis}>...</Text>}
+            {startPage > 2 && <Text style={dynamicStyles.ellipsis}>...</Text>}
           </>
         )}
 
@@ -366,22 +373,22 @@ const AdminResumeManagementScreen = ({ navigation }) => {
 
         {endPage < pagination.pages && (
           <>
-            {endPage < pagination.pages - 1 && <Text style={styles.ellipsis}>...</Text>}
-            <TouchableOpacity style={styles.pageButton} onPress={() => handlePageChange(pagination.pages)}>
-              <Text style={styles.pageButtonText}>{pagination.pages}</Text>
+            {endPage < pagination.pages - 1 && <Text style={dynamicStyles.ellipsis}>...</Text>}
+            <TouchableOpacity style={dynamicStyles.pageButton} onPress={() => handlePageChange(pagination.pages)}>
+              <Text style={dynamicStyles.pageButtonText}>{pagination.pages}</Text>
             </TouchableOpacity>
           </>
         )}
 
         <TouchableOpacity
-          style={[styles.pageButton, pagination.current === pagination.pages && styles.pageButtonDisabled]}
+          style={[dynamicStyles.pageButton, pagination.current === pagination.pages && dynamicStyles.pageButtonDisabled]}
           onPress={() => handlePageChange(pagination.current + 1)}
           disabled={pagination.current === pagination.pages}
         >
           <Ionicons name="chevron-forward" size={20} color={pagination.current === pagination.pages ? '#ccc' : '#333'} />
         </TouchableOpacity>
 
-        <Text style={styles.paginationInfo}>
+        <Text style={dynamicStyles.paginationInfo}>
           Page {pagination.current} of {pagination.pages} ({pagination.total} total)
         </Text>
       </View>
@@ -395,32 +402,32 @@ const AdminResumeManagementScreen = ({ navigation }) => {
       animationType="slide"
       onRequestClose={() => setShowFilters(false)}
     >
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Filters</Text>
+      <View style={dynamicStyles.modalOverlay}>
+        <View style={dynamicStyles.modalContent}>
+          <View style={dynamicStyles.modalHeader}>
+            <Text style={dynamicStyles.modalTitle}>Filters</Text>
             <TouchableOpacity onPress={() => setShowFilters(false)}>
               <Ionicons name="close" size={24} color="#333" />
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.modalBody}>
+          <ScrollView style={dynamicStyles.modalBody}>
             {/* Status Filter */}
-            <View style={styles.filterSection}>
-              <Text style={styles.filterLabel}>Profile Status</Text>
-              <View style={styles.filterOptions}>
+            <View style={dynamicStyles.filterSection}>
+              <Text style={dynamicStyles.filterLabel}>Profile Status</Text>
+              <View style={dynamicStyles.filterOptions}>
                 {['all', 'complete', 'incomplete', 'verified', 'unverified'].map((status) => (
                   <TouchableOpacity
                     key={status}
                     style={[
-                      styles.filterOption,
-                      statusFilter === status && styles.filterOptionActive
+                      dynamicStyles.filterOption,
+                      statusFilter === status && dynamicStyles.filterOptionActive
                     ]}
                     onPress={() => setStatusFilter(status)}
                   >
                     <Text style={[
-                      styles.filterOptionText,
-                      statusFilter === status && styles.filterOptionTextActive
+                      dynamicStyles.filterOptionText,
+                      statusFilter === status && dynamicStyles.filterOptionTextActive
                     ]}>
                       {status.charAt(0).toUpperCase() + status.slice(1)}
                     </Text>
@@ -430,9 +437,9 @@ const AdminResumeManagementScreen = ({ navigation }) => {
             </View>
 
             {/* Experience Filter */}
-            <View style={styles.filterSection}>
-              <Text style={styles.filterLabel}>Experience Level</Text>
-              <View style={styles.filterOptions}>
+            <View style={dynamicStyles.filterSection}>
+              <Text style={dynamicStyles.filterLabel}>Experience Level</Text>
+              <View style={dynamicStyles.filterOptions}>
                 {[
                   { value: 'all', label: 'All' },
                   { value: 'fresher', label: 'Fresher' },
@@ -444,14 +451,14 @@ const AdminResumeManagementScreen = ({ navigation }) => {
                   <TouchableOpacity
                     key={exp.value}
                     style={[
-                      styles.filterOption,
-                      experienceFilter === exp.value && styles.filterOptionActive
+                      dynamicStyles.filterOption,
+                      experienceFilter === exp.value && dynamicStyles.filterOptionActive
                     ]}
                     onPress={() => setExperienceFilter(exp.value)}
                   >
                     <Text style={[
-                      styles.filterOptionText,
-                      experienceFilter === exp.value && styles.filterOptionTextActive
+                      dynamicStyles.filterOptionText,
+                      experienceFilter === exp.value && dynamicStyles.filterOptionTextActive
                     ]}>
                       {exp.label}
                     </Text>
@@ -461,26 +468,26 @@ const AdminResumeManagementScreen = ({ navigation }) => {
             </View>
           </ScrollView>
 
-          <View style={styles.modalFooter}>
+          <View style={dynamicStyles.modalFooter}>
             <TouchableOpacity
-              style={styles.resetButton}
+              style={dynamicStyles.resetButton}
               onPress={() => {
                 setStatusFilter('all');
                 setExperienceFilter('all');
                 setSearchQuery('');
               }}
             >
-              <Text style={styles.resetButtonText}>Reset All</Text>
+              <Text style={dynamicStyles.resetButtonText}>Reset All</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.applyButton}
+              style={dynamicStyles.applyButton}
               onPress={() => {
                 setShowFilters(false);
                 setPagination(prev => ({ ...prev, current: 1 }));
                 fetchResumes();
               }}
             >
-              <Text style={styles.applyButtonText}>Apply Filters</Text>
+              <Text style={dynamicStyles.applyButtonText}>Apply Filters</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -496,25 +503,25 @@ const AdminResumeManagementScreen = ({ navigation }) => {
       onLogout={handleLogout}
     >
       <ScrollView 
-        style={styles.container}
+        style={dynamicStyles.container}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
       >
         {/* Header */}
-        <View style={styles.header}>
+        <View style={dynamicStyles.header}>
           <View>
-            <Text style={styles.pageTitle}>Resume Management</Text>
-            <Text style={styles.pageSubtitle}>Manage and view all candidate resumes</Text>
+            <Text style={dynamicStyles.pageTitle}>Resume Management</Text>
+            <Text style={dynamicStyles.pageSubtitle}>Manage and view all candidate resumes</Text>
           </View>
-          <TouchableOpacity style={styles.exportButton} onPress={handleExport}>
+          <TouchableOpacity style={dynamicStyles.exportButton} onPress={handleExport}>
             <Ionicons name="download-outline" size={20} color="#FFF" />
-            <Text style={styles.exportButtonText}>Export CSV</Text>
+            <Text style={dynamicStyles.exportButtonText}>Export CSV</Text>
           </TouchableOpacity>
         </View>
 
         {/* Statistics Cards */}
-        <View style={styles.statsContainer}>
+        <View style={dynamicStyles.statsContainer}>
           {renderStatCard('Total Resumes', stats.total, 'documents-outline', '#3B82F6')}
           {renderStatCard('Complete Profiles', stats.complete, 'checkmark-done-outline', '#10B981')}
           {renderStatCard('Verified', stats.verified, 'shield-checkmark-outline', '#8B5CF6')}
@@ -522,11 +529,11 @@ const AdminResumeManagementScreen = ({ navigation }) => {
         </View>
 
         {/* Search and Filters */}
-        <View style={styles.searchContainer}>
-          <View style={styles.searchInputContainer}>
-            <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
+        <View style={dynamicStyles.searchContainer}>
+          <View style={dynamicStyles.searchInputContainer}>
+            <Ionicons name="search" size={20} color="#666" style={dynamicStyles.searchIcon} />
             <TextInput
-              style={styles.searchInput}
+              style={dynamicStyles.searchInput}
               placeholder="Search by name, email, or skills..."
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -542,14 +549,14 @@ const AdminResumeManagementScreen = ({ navigation }) => {
             )}
           </View>
           
-          <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
+          <TouchableOpacity style={dynamicStyles.searchButton} onPress={handleSearch}>
             <Ionicons name="search" size={20} color="#FFF" />
           </TouchableOpacity>
 
           <TouchableOpacity 
             style={[
-              styles.filterButton,
-              (statusFilter !== 'all' || experienceFilter !== 'all') && styles.filterButtonActive
+              dynamicStyles.filterButton,
+              (statusFilter !== 'all' || experienceFilter !== 'all') && dynamicStyles.filterButtonActive
             ]} 
             onPress={() => setShowFilters(true)}
           >
@@ -559,11 +566,11 @@ const AdminResumeManagementScreen = ({ navigation }) => {
 
         {/* Active Filters Display */}
         {(statusFilter !== 'all' || experienceFilter !== 'all') && (
-          <View style={styles.activeFilters}>
-            <Text style={styles.activeFiltersLabel}>Active Filters:</Text>
+          <View style={dynamicStyles.activeFilters}>
+            <Text style={dynamicStyles.activeFiltersLabel}>Active Filters:</Text>
             {statusFilter !== 'all' && (
-              <View style={styles.activeFilterTag}>
-                <Text style={styles.activeFilterText}>
+              <View style={dynamicStyles.activeFilterTag}>
+                <Text style={dynamicStyles.activeFilterText}>
                   Status: {statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)}
                 </Text>
                 <TouchableOpacity onPress={() => setStatusFilter('all')}>
@@ -572,8 +579,8 @@ const AdminResumeManagementScreen = ({ navigation }) => {
               </View>
             )}
             {experienceFilter !== 'all' && (
-              <View style={styles.activeFilterTag}>
-                <Text style={styles.activeFilterText}>Experience: {experienceFilter}</Text>
+              <View style={dynamicStyles.activeFilterTag}>
+                <Text style={dynamicStyles.activeFilterText}>Experience: {experienceFilter}</Text>
                 <TouchableOpacity onPress={() => setExperienceFilter('all')}>
                   <Ionicons name="close" size={16} color="#666" />
                 </TouchableOpacity>
@@ -584,17 +591,17 @@ const AdminResumeManagementScreen = ({ navigation }) => {
 
         {/* Loading State */}
         {loading && !refreshing ? (
-          <View style={styles.loadingContainer}>
+          <View style={dynamicStyles.loadingContainer}>
             <ActivityIndicator size="large" color="#3B82F6" />
-            <Text style={styles.loadingText}>Loading resumes...</Text>
+            <Text style={dynamicStyles.loadingText}>Loading resumes...</Text>
           </View>
         ) : (
           <>
             {/* Resume List */}
             {resumes.length > 0 ? (
               <>
-                <View style={styles.resultsHeader}>
-                  <Text style={styles.resultsCount}>
+                <View style={dynamicStyles.resultsHeader}>
+                  <Text style={dynamicStyles.resultsCount}>
                     {pagination.total} resume{pagination.total !== 1 ? 's' : ''} found
                   </Text>
                 </View>
@@ -604,10 +611,10 @@ const AdminResumeManagementScreen = ({ navigation }) => {
                 {pagination.pages > 1 && renderPagination()}
               </>
             ) : (
-              <View style={styles.emptyContainer}>
+              <View style={dynamicStyles.emptyContainer}>
                 <Ionicons name="document-outline" size={64} color="#ccc" />
-                <Text style={styles.emptyTitle}>No Resumes Found</Text>
-                <Text style={styles.emptyText}>
+                <Text style={dynamicStyles.emptyTitle}>No Resumes Found</Text>
+                <Text style={dynamicStyles.emptyText}>
                   {searchQuery || statusFilter !== 'all' || experienceFilter !== 'all'
                     ? 'Try adjusting your search or filters'
                     : 'No resumes have been uploaded yet'}
@@ -624,23 +631,25 @@ const AdminResumeManagementScreen = ({ navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (isMobile, isTablet) => StyleSheet.create({
   container: {
     flex: 1,
+    padding: isMobile ? 12 : isTablet ? 16 : 20,
   },
   header: {
-    flexDirection: 'row',
+    flexDirection: isMobile ? 'column' : 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 20,
+    alignItems: isMobile ? 'flex-start' : 'flex-start',
+    marginBottom: isMobile ? 16 : isTablet ? 18 : 20,
+    gap: isMobile ? 12 : 0,
   },
   pageTitle: {
-    fontSize: 28,
+    fontSize: isMobile ? 22 : isTablet ? 26 : 28,
     fontWeight: 'bold',
     color: '#333',
   },
   pageSubtitle: {
-    fontSize: 14,
+    fontSize: isMobile ? 12 : isTablet ? 13 : 14,
     color: '#666',
     marginTop: 4,
   },
@@ -648,66 +657,79 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#10B981',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: isMobile ? 12 : isTablet ? 14 : 16,
+    paddingVertical: isMobile ? 8 : isTablet ? 9 : 10,
     borderRadius: 8,
-    gap: 8,
+    gap: isMobile ? 6 : 8,
+    alignSelf: isMobile ? 'stretch' : 'auto',
+    ...(Platform.OS === 'web' && {
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+      ':hover': {
+        backgroundColor: '#059669',
+        transform: 'translateY(-1px)',
+      },
+    }),
   },
   exportButtonText: {
     color: '#FFF',
-    fontSize: 14,
+    fontSize: isMobile ? 13 : isTablet ? 13.5 : 14,
     fontWeight: '600',
   },
 
   // Statistics Cards
   statsContainer: {
-    flexDirection: 'row',
+    flexDirection: isMobile ? 'column' : 'row',
     flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 20,
+    gap: isMobile ? 10 : 12,
+    marginBottom: isMobile ? 16 : isTablet ? 18 : 20,
   },
   statCard: {
-    flex: 1,
-    minWidth: 200,
+    flex: isMobile ? 1 : 1,
+    minWidth: isMobile ? '100%' : 200,
     backgroundColor: '#FFF',
     borderRadius: 12,
-    padding: 16,
+    padding: isMobile ? 12 : isTablet ? 14 : 16,
     flexDirection: 'row',
     alignItems: 'center',
     borderLeftWidth: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
+    } : {
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 4,
+    }),
   },
   statIconContainer: {
-    width: 48,
-    height: 48,
+    width: isMobile ? 40 : isTablet ? 44 : 48,
+    height: isMobile ? 40 : isTablet ? 44 : 48,
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: isMobile ? 10 : 12,
   },
   statContent: {
     flex: 1,
   },
   statValue: {
-    fontSize: 24,
+    fontSize: isMobile ? 20 : isTablet ? 22 : 24,
     fontWeight: 'bold',
     color: '#333',
   },
   statTitle: {
-    fontSize: 12,
+    fontSize: isMobile ? 11 : isTablet ? 11.5 : 12,
     color: '#666',
     marginTop: 2,
   },
 
   // Search and Filters
   searchContainer: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 16,
+    flexDirection: isMobile ? 'column' : 'row',
+    gap: isMobile ? 8 : 12,
+    marginBottom: isMobile ? 12 : isTablet ? 14 : 16,
   },
   searchInputContainer: {
     flex: 1,
@@ -715,34 +737,51 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#FFF',
     borderRadius: 8,
-    paddingHorizontal: 12,
+    paddingHorizontal: isMobile ? 10 : 12,
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
   searchIcon: {
-    marginRight: 8,
+    marginRight: isMobile ? 6 : 8,
   },
   searchInput: {
     flex: 1,
-    paddingVertical: 12,
-    fontSize: 14,
+    paddingVertical: isMobile ? 10 : 12,
+    fontSize: isMobile ? 13 : isTablet ? 13.5 : 14,
     color: '#333',
+    ...(Platform.OS === 'web' && {
+      outline: 'none',
+    }),
   },
   searchButton: {
     backgroundColor: '#3B82F6',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: isMobile ? 12 : isTablet ? 14 : 16,
+    paddingVertical: isMobile ? 10 : 12,
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
+    ...(Platform.OS === 'web' && {
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+      ':hover': {
+        backgroundColor: '#2563EB',
+      },
+    }),
   },
   filterButton: {
     backgroundColor: '#6B7280',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: isMobile ? 12 : isTablet ? 14 : 16,
+    paddingVertical: isMobile ? 10 : 12,
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
+    ...(Platform.OS === 'web' && {
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+      ':hover': {
+        backgroundColor: '#4B5563',
+      },
+    }),
   },
   filterButtonActive: {
     backgroundColor: '#F59E0B',
@@ -757,7 +796,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   activeFiltersLabel: {
-    fontSize: 14,
+    fontSize: isMobile ? 12 : isTablet ? 13 : 14,
     fontWeight: '600',
     color: '#666',
   },
@@ -765,59 +804,70 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#EFF6FF',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: isMobile ? 10 : 12,
+    paddingVertical: isMobile ? 5 : 6,
     borderRadius: 16,
-    gap: 6,
+    gap: isMobile ? 5 : 6,
   },
   activeFilterText: {
-    fontSize: 12,
+    fontSize: isMobile ? 11 : isTablet ? 11.5 : 12,
     color: '#3B82F6',
     fontWeight: '500',
   },
 
   // Resume Cards
   resultsHeader: {
-    marginBottom: 12,
+    marginBottom: isMobile ? 10 : 12,
   },
   resultsCount: {
-    fontSize: 14,
+    fontSize: isMobile ? 13 : isTablet ? 13.5 : 14,
     color: '#666',
     fontWeight: '500',
   },
   resumeCard: {
     backgroundColor: '#FFF',
     borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    padding: isMobile ? 12 : isTablet ? 14 : 16,
+    marginBottom: isMobile ? 10 : 12,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
+      transition: 'transform 0.2s, box-shadow 0.2s',
+      ':hover': {
+        transform: 'translateY(-2px)',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+      },
+    } : {
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 4,
+    }),
   },
   resumeHeader: {
-    flexDirection: 'row',
+    flexDirection: isMobile ? 'column' : 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
+    alignItems: isMobile ? 'flex-start' : 'flex-start',
+    marginBottom: isMobile ? 10 : 12,
+    gap: isMobile ? 10 : 0,
   },
   resumeHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
+    width: isMobile ? '100%' : 'auto',
   },
   avatarContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: isMobile ? 40 : isTablet ? 44 : 48,
+    height: isMobile ? 40 : isTablet ? 44 : 48,
+    borderRadius: isMobile ? 20 : isTablet ? 22 : 24,
     backgroundColor: '#3B82F6',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: isMobile ? 10 : 12,
   },
   avatarText: {
-    fontSize: 20,
+    fontSize: isMobile ? 18 : isTablet ? 19 : 20,
     fontWeight: 'bold',
     color: '#FFF',
   },
@@ -825,12 +875,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   resumeName: {
-    fontSize: 16,
+    fontSize: isMobile ? 14 : isTablet ? 15 : 16,
     fontWeight: 'bold',
     color: '#333',
   },
   resumeJobTitle: {
-    fontSize: 14,
+    fontSize: isMobile ? 12 : isTablet ? 13 : 14,
     color: '#666',
     marginTop: 2,
   },
@@ -871,32 +921,32 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   infoText: {
-    fontSize: 14,
+    fontSize: isMobile ? 13 : isTablet ? 13.5 : 14,
     color: '#666',
     flex: 1,
   },
   skillsSection: {
-    marginBottom: 12,
+    marginBottom: isMobile ? 10 : 12,
   },
   skillsLabel: {
-    fontSize: 13,
+    fontSize: isMobile ? 12 : isTablet ? 12.5 : 13,
     fontWeight: '600',
     color: '#666',
-    marginBottom: 8,
+    marginBottom: isMobile ? 6 : 8,
   },
   skillsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
+    gap: isMobile ? 5 : 6,
   },
   skillTag: {
     backgroundColor: '#F3F4F6',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: isMobile ? 8 : 10,
+    paddingVertical: isMobile ? 4 : 5,
     borderRadius: 12,
   },
   skillText: {
-    fontSize: 12,
+    fontSize: isMobile ? 11 : isTablet ? 11.5 : 12,
     color: '#374151',
   },
   resumeActions: {
@@ -917,7 +967,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   actionButtonText: {
-    fontSize: 13,
+    fontSize: isMobile ? 12 : isTablet ? 12.5 : 13,
     fontWeight: '600',
     color: '#374151',
   },
@@ -928,20 +978,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 20,
-    marginBottom: 20,
-    paddingHorizontal: 16,
+    gap: isMobile ? 6 : 8,
+    marginTop: isMobile ? 16 : isTablet ? 18 : 20,
+    marginBottom: isMobile ? 16 : isTablet ? 18 : 20,
+    paddingHorizontal: isMobile ? 12 : 16,
   },
   pageButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: isMobile ? 10 : 12,
+    paddingVertical: isMobile ? 6 : 8,
     borderRadius: 6,
     backgroundColor: '#FFF',
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    minWidth: 40,
+    minWidth: isMobile ? 36 : 40,
     alignItems: 'center',
+    ...(Platform.OS === 'web' && {
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+      ':hover': {
+        backgroundColor: '#F9FAFB',
+      },
+    }),
   },
   pageButtonActive: {
     backgroundColor: '#3B82F6',
@@ -951,7 +1008,7 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   pageButtonText: {
-    fontSize: 14,
+    fontSize: isMobile ? 12 : isTablet ? 13 : 14,
     color: '#333',
     fontWeight: '500',
   },
@@ -960,14 +1017,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   ellipsis: {
-    fontSize: 14,
+    fontSize: isMobile ? 12 : isTablet ? 13 : 14,
     color: '#666',
     paddingHorizontal: 4,
   },
   paginationInfo: {
-    fontSize: 13,
+    fontSize: isMobile ? 12 : isTablet ? 12.5 : 13,
     color: '#666',
-    marginLeft: 12,
+    marginLeft: isMobile ? 8 : 12,
   },
 
   // Modal
@@ -975,37 +1032,48 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
+    ...(Platform.OS === 'web' && {
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      zIndex: 9999,
+    }),
   },
   modalContent: {
     backgroundColor: '#FFF',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: '80%',
+    maxHeight: isMobile ? '85%' : '80%',
+    ...(Platform.OS === 'web' && {
+      boxShadow: '0 -8px 32px rgba(0, 0, 0, 0.2)',
+    }),
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    padding: isMobile ? 16 : isTablet ? 18 : 20,
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: isMobile ? 18 : isTablet ? 19 : 20,
     fontWeight: 'bold',
     color: '#333',
   },
   modalBody: {
-    padding: 20,
+    padding: isMobile ? 16 : isTablet ? 18 : 20,
   },
   filterSection: {
-    marginBottom: 24,
+    marginBottom: isMobile ? 20 : isTablet ? 22 : 24,
   },
   filterLabel: {
-    fontSize: 16,
+    fontSize: isMobile ? 14 : isTablet ? 15 : 16,
     fontWeight: '600',
     color: '#333',
-    marginBottom: 12,
+    marginBottom: isMobile ? 10 : 12,
   },
   filterOptions: {
     flexDirection: 'row',
@@ -1025,7 +1093,7 @@ const styles = StyleSheet.create({
     borderColor: '#3B82F6',
   },
   filterOptionText: {
-    fontSize: 14,
+    fontSize: isMobile ? 13 : isTablet ? 13.5 : 14,
     color: '#666',
     fontWeight: '500',
   },
@@ -1035,32 +1103,47 @@ const styles = StyleSheet.create({
   },
   modalFooter: {
     flexDirection: 'row',
-    gap: 12,
-    padding: 20,
+    gap: isMobile ? 8 : 12,
+    padding: isMobile ? 16 : isTablet ? 18 : 20,
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
   },
   resetButton: {
     flex: 1,
-    paddingVertical: 14,
+    paddingVertical: isMobile ? 12 : isTablet ? 13 : 14,
     borderRadius: 8,
     backgroundColor: '#F3F4F6',
     alignItems: 'center',
+    ...(Platform.OS === 'web' && {
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+      ':hover': {
+        backgroundColor: '#E5E7EB',
+      },
+    }),
   },
   resetButtonText: {
-    fontSize: 16,
+    fontSize: isMobile ? 14 : isTablet ? 15 : 16,
     fontWeight: '600',
     color: '#666',
   },
   applyButton: {
     flex: 1,
-    paddingVertical: 14,
+    paddingVertical: isMobile ? 12 : isTablet ? 13 : 14,
     borderRadius: 8,
     backgroundColor: '#3B82F6',
     alignItems: 'center',
+    ...(Platform.OS === 'web' && {
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+      ':hover': {
+        backgroundColor: '#2563EB',
+        transform: 'translateY(-1px)',
+      },
+    }),
   },
   applyButtonText: {
-    fontSize: 16,
+    fontSize: isMobile ? 14 : isTablet ? 15 : 16,
     fontWeight: '600',
     color: '#FFF',
   },
@@ -1070,32 +1153,34 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 60,
+    paddingVertical: isMobile ? 40 : isTablet ? 50 : 60,
   },
   loadingText: {
     marginTop: 12,
-    fontSize: 14,
+    fontSize: isMobile ? 13 : isTablet ? 13.5 : 14,
     color: '#666',
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 60,
+    paddingVertical: isMobile ? 40 : isTablet ? 50 : 60,
   },
   emptyTitle: {
-    fontSize: 18,
+    fontSize: isMobile ? 16 : isTablet ? 17 : 18,
     fontWeight: 'bold',
     color: '#333',
     marginTop: 16,
   },
   emptyText: {
-    fontSize: 14,
+    fontSize: isMobile ? 13 : isTablet ? 13.5 : 14,
     color: '#666',
     marginTop: 8,
     textAlign: 'center',
   },
 });
+
+const styles = StyleSheet.create({});
 
 export default AdminResumeManagementScreen;
 

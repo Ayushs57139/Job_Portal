@@ -5,8 +5,12 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../../config/api';
 import * as DocumentPicker from 'expo-document-picker';
+import { useResponsive } from '../../utils/responsive';
 
 const AdminJobsScreen = ({ navigation }) => {
+  const responsive = useResponsive();
+  const isMobile = responsive.isMobile;
+  const isTablet = responsive.isTablet;
   const [loading, setLoading] = useState(true);
   const [jobs, setJobs] = useState([]);
   const [filteredJobs, setFilteredJobs] = useState([]);
@@ -263,6 +267,8 @@ const AdminJobsScreen = ({ navigation }) => {
     return `${day}-${month}-${year}`;
   };
 
+  const dynamicStyles = getStyles(isMobile, isTablet);
+
   if (loading) {
     return (
       <AdminLayout
@@ -272,9 +278,9 @@ const AdminJobsScreen = ({ navigation }) => {
         user={user}
         onLogout={handleLogout}
       >
-        <View style={styles.loadingContainer}>
+        <View style={dynamicStyles.loadingContainer}>
           <ActivityIndicator size="large" color="#4A90E2" />
-          <Text style={styles.loadingText}>Loading jobs...</Text>
+          <Text style={dynamicStyles.loadingText}>Loading jobs...</Text>
         </View>
       </AdminLayout>
     );
@@ -288,121 +294,121 @@ const AdminJobsScreen = ({ navigation }) => {
       user={user}
       onLogout={handleLogout}
     >
-      <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-        <View style={styles.container}>
-          <View style={styles.headerSection}>
-            <Text style={styles.pageTitle}>Job Management</Text>
-            <Text style={styles.pageSubtitle}>Manage all job postings</Text>
+      <ScrollView style={dynamicStyles.scrollContainer} showsVerticalScrollIndicator={false}>
+        <View style={dynamicStyles.container}>
+          <View style={dynamicStyles.headerSection}>
+            <Text style={dynamicStyles.pageTitle}>Job Management</Text>
+            <Text style={dynamicStyles.pageSubtitle}>Manage all job postings</Text>
           </View>
 
-          <View style={styles.filterSection}>
-            <View style={styles.searchContainer}>
-              <Ionicons name="search" size={20} color="#999" style={styles.searchIcon} />
+          <View style={dynamicStyles.filterSection}>
+            <View style={dynamicStyles.searchContainer}>
+              <Ionicons name="search" size={20} color="#999" style={dynamicStyles.searchIcon} />
               <TextInput
-                style={styles.searchInput}
+                style={dynamicStyles.searchInput}
                 placeholder="Search by job title or company..."
                 value={searchQuery}
                 onChangeText={setSearchQuery}
               />
             </View>
 
-            <View style={styles.filterButtons}>
+            <View style={dynamicStyles.filterButtons}>
               <TouchableOpacity
-                style={[styles.filterButton, filterStatus === 'ALL' && styles.activeFilter]}
+                style={[dynamicStyles.filterButton, filterStatus === 'ALL' && dynamicStyles.activeFilter]}
                 onPress={() => setFilterStatus('ALL')}
               >
-                <Text style={[styles.filterButtonText, filterStatus === 'ALL' && styles.activeFilterText]}>
+                <Text style={[dynamicStyles.filterButtonText, filterStatus === 'ALL' && dynamicStyles.activeFilterText]}>
                   All Jobs
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.filterButton, filterStatus === 'ACTIVE' && styles.activeFilter]}
+                style={[dynamicStyles.filterButton, filterStatus === 'ACTIVE' && dynamicStyles.activeFilter]}
                 onPress={() => setFilterStatus('ACTIVE')}
               >
-                <Text style={[styles.filterButtonText, filterStatus === 'ACTIVE' && styles.activeFilterText]}>
+                <Text style={[dynamicStyles.filterButtonText, filterStatus === 'ACTIVE' && dynamicStyles.activeFilterText]}>
                   Active
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.filterButton, filterStatus === 'INACTIVE' && styles.activeFilter]}
+                style={[dynamicStyles.filterButton, filterStatus === 'INACTIVE' && dynamicStyles.activeFilter]}
                 onPress={() => setFilterStatus('INACTIVE')}
               >
-                <Text style={[styles.filterButtonText, filterStatus === 'INACTIVE' && styles.activeFilterText]}>
+                <Text style={[dynamicStyles.filterButtonText, filterStatus === 'INACTIVE' && dynamicStyles.activeFilterText]}>
                   Inactive
                 </Text>
               </TouchableOpacity>
             </View>
           </View>
 
-          <View style={styles.bulkActionsBar}>
-            <TouchableOpacity style={styles.bulkActionButton} onPress={handleDownloadSample}>
+          <View style={dynamicStyles.bulkActionsBar}>
+            <TouchableOpacity style={dynamicStyles.bulkActionButton} onPress={handleDownloadSample}>
               <Ionicons name="document-text-outline" size={18} color="#4A90E2" />
-              <Text style={styles.bulkActionButtonText}>Sample CSV</Text>
+              <Text style={dynamicStyles.bulkActionButtonText}>Sample CSV</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.bulkActionButton} onPress={handleBulkImport}>
+            <TouchableOpacity style={dynamicStyles.bulkActionButton} onPress={handleBulkImport}>
               <Ionicons name="cloud-upload-outline" size={18} color="#10B981" />
-              <Text style={styles.bulkActionButtonText}>Bulk Import</Text>
+              <Text style={dynamicStyles.bulkActionButtonText}>Bulk Import</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.bulkActionButton} onPress={handleBulkExport}>
+            <TouchableOpacity style={dynamicStyles.bulkActionButton} onPress={handleBulkExport}>
               <Ionicons name="cloud-download-outline" size={18} color="#F59E0B" />
-              <Text style={styles.bulkActionButtonText}>Bulk Export</Text>
+              <Text style={dynamicStyles.bulkActionButtonText}>Bulk Export</Text>
             </TouchableOpacity>
           </View>
 
-          <View style={styles.statsBar}>
-            <Text style={styles.statsText}>Total Jobs: {filteredJobs.length}</Text>
+          <View style={dynamicStyles.statsBar}>
+            <Text style={dynamicStyles.statsText}>Total Jobs: {filteredJobs.length}</Text>
           </View>
 
-          <View style={styles.tableContainer}>
-            <View style={styles.table}>
-              <View style={styles.tableHeader}>
-                <Text style={[styles.tableHeaderText, styles.titleColumn]}>Job Title</Text>
-                <Text style={[styles.tableHeaderText, styles.companyColumn]}>Company</Text>
-                <Text style={[styles.tableHeaderText, styles.locationColumn]}>Location</Text>
-                <Text style={[styles.tableHeaderText, styles.statusColumn]}>Status</Text>
-                <Text style={[styles.tableHeaderText, styles.postedColumn]}>Posted</Text>
-                <Text style={[styles.tableHeaderText, styles.actionsColumn]}>Actions</Text>
+          <View style={dynamicStyles.tableContainer}>
+            <View style={dynamicStyles.table}>
+              <View style={dynamicStyles.tableHeader}>
+                <Text style={[dynamicStyles.tableHeaderText, dynamicStyles.titleColumn]}>Job Title</Text>
+                <Text style={[dynamicStyles.tableHeaderText, dynamicStyles.companyColumn]}>Company</Text>
+                <Text style={[dynamicStyles.tableHeaderText, dynamicStyles.locationColumn]}>Location</Text>
+                <Text style={[dynamicStyles.tableHeaderText, dynamicStyles.statusColumn]}>Status</Text>
+                <Text style={[dynamicStyles.tableHeaderText, dynamicStyles.postedColumn]}>Posted</Text>
+                <Text style={[dynamicStyles.tableHeaderText, dynamicStyles.actionsColumn]}>Actions</Text>
               </View>
 
               {filteredJobs.length > 0 ? (
                 filteredJobs.map((job, index) => (
-                  <View key={job._id || index} style={styles.tableRow}>
-                    <Text style={[styles.tableCellText, styles.titleColumn, styles.jobTitle]}>
+                  <View key={job._id || index} style={dynamicStyles.tableRow}>
+                    <Text style={[dynamicStyles.tableCellText, dynamicStyles.titleColumn, dynamicStyles.jobTitle]}>
                       {job.title || 'N/A'}
                     </Text>
-                    <Text style={[styles.tableCellText, styles.companyColumn]}>
+                    <Text style={[dynamicStyles.tableCellText, dynamicStyles.companyColumn]}>
                       {typeof job.company === 'object' ? (job.company?.name || 'N/A') : (job.company || job.postedBy?.companyName || 'N/A')}
                     </Text>
-                    <Text style={[styles.tableCellText, styles.locationColumn]}>
+                    <Text style={[dynamicStyles.tableCellText, dynamicStyles.locationColumn]}>
                       {typeof job.location === 'object' 
                         ? `${job.location?.city || ''}${job.location?.city && job.location?.state ? ', ' : ''}${job.location?.state || ''}`.trim() || 'N/A'
                         : (job.location || 'N/A')}
                     </Text>
-                    <View style={styles.statusColumn}>
+                    <View style={dynamicStyles.statusColumn}>
                       <TouchableOpacity
                         style={[
-                          styles.statusBadge,
-                          job.status === 'active' ? styles.activeBadge : styles.inactiveBadge,
+                          dynamicStyles.statusBadge,
+                          job.status === 'active' ? dynamicStyles.activeBadge : dynamicStyles.inactiveBadge,
                         ]}
                         onPress={() => toggleJobStatus(job._id, job.status)}
                       >
-                        <Text style={styles.statusBadgeText}>
+                        <Text style={dynamicStyles.statusBadgeText}>
                           {job.status === 'active' ? 'ACTIVE' : 'INACTIVE'}
                         </Text>
                       </TouchableOpacity>
                     </View>
-                    <Text style={[styles.tableCellText, styles.postedColumn]}>
+                    <Text style={[dynamicStyles.tableCellText, dynamicStyles.postedColumn]}>
                       {formatDate(job.createdAt)}
                     </Text>
-                    <View style={styles.actionsColumn}>
+                    <View style={dynamicStyles.actionsColumn}>
                       <TouchableOpacity
-                        style={styles.actionButton}
+                        style={dynamicStyles.actionButton}
                         onPress={() => navigation.navigate('AdminJobDetails', { jobId: job._id })}
                       >
                         <Ionicons name="eye-outline" size={18} color="#4A90E2" />
                       </TouchableOpacity>
                       <TouchableOpacity
-                        style={[styles.actionButton, styles.deleteButton]}
+                        style={[dynamicStyles.actionButton, dynamicStyles.deleteButton]}
                         onPress={() => deleteJob(job._id)}
                       >
                         <Ionicons name="trash-outline" size={18} color="#E74C3C" />
@@ -411,9 +417,9 @@ const AdminJobsScreen = ({ navigation }) => {
                   </View>
                 ))
               ) : (
-                <View style={styles.emptyState}>
+                <View style={dynamicStyles.emptyState}>
                   <Ionicons name="briefcase-outline" size={64} color="#CCC" />
-                  <Text style={styles.emptyStateText}>No jobs found</Text>
+                  <Text style={dynamicStyles.emptyStateText}>No jobs found</Text>
                 </View>
               )}
             </View>
@@ -424,12 +430,12 @@ const AdminJobsScreen = ({ navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (isMobile, isTablet) => StyleSheet.create({
   scrollContainer: {
     flex: 1,
   },
   container: {
-    padding: 20,
+    padding: isMobile ? 12 : isTablet ? 16 : 20,
   },
   loadingContainer: {
     flex: 1,
@@ -438,19 +444,19 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 10,
-    fontSize: 16,
+    fontSize: isMobile ? 14 : isTablet ? 15 : 16,
     color: '#666',
   },
   headerSection: {
-    marginBottom: 20,
+    marginBottom: isMobile ? 16 : isTablet ? 18 : 20,
   },
   pageTitle: {
-    fontSize: 28,
+    fontSize: isMobile ? 22 : isTablet ? 26 : 28,
     fontWeight: 'bold',
     color: '#333',
   },
   pageSubtitle: {
-    fontSize: 14,
+    fontSize: isMobile ? 12 : isTablet ? 13 : 14,
     color: '#666',
     marginTop: 4,
   },
@@ -459,11 +465,15 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 15,
     marginBottom: 15,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+    } : {
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+    }),
   },
   searchContainer: {
     flexDirection: 'row',
@@ -523,11 +533,15 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
+    } : {
+      elevation: 1,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+    }),
   },
   bulkActionButtonText: {
     fontSize: 13,
@@ -552,35 +566,62 @@ const styles = StyleSheet.create({
   table: {
     backgroundColor: '#FFF',
     borderRadius: 12,
-    padding: 20,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    padding: isMobile ? 12 : isTablet ? 16 : 20,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+      overflowX: isMobile ? 'hidden' : 'auto',
+    } : {
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+    }),
   },
   tableHeader: {
     flexDirection: 'row',
     borderBottomWidth: 2,
     borderBottomColor: '#E0E0E0',
-    paddingBottom: 12,
-    marginBottom: 12,
+    paddingBottom: isMobile ? 10 : isTablet ? 11 : 12,
+    marginBottom: isMobile ? 10 : isTablet ? 11 : 12,
+    display: isMobile ? 'none' : 'flex',
+    ...(Platform.OS === 'web' && {
+      display: isMobile ? 'none' : 'flex',
+      minWidth: isTablet ? 700 : 900,
+    }),
   },
   tableHeaderText: {
-    fontSize: 14,
+    fontSize: isMobile ? 12 : isTablet ? 13 : 14,
     fontWeight: '600',
     color: '#666',
   },
   tableRow: {
-    flexDirection: 'row',
-    paddingVertical: 12,
+    flexDirection: isMobile ? 'column' : 'row',
+    paddingVertical: isMobile ? 16 : isTablet ? 14 : 12,
+    paddingHorizontal: isMobile ? 12 : 0,
     borderBottomWidth: 1,
     borderBottomColor: '#F5F5F5',
-    alignItems: 'center',
+    alignItems: isMobile ? 'flex-start' : 'center',
+    marginBottom: isMobile ? 12 : 0,
+    borderRadius: isMobile ? 12 : 0,
+    backgroundColor: isMobile ? '#FAFAFA' : 'transparent',
+    ...(Platform.OS === 'web' && {
+      minWidth: isTablet ? 700 : 900,
+      transition: 'background-color 0.2s',
+      ':hover': {
+        backgroundColor: isMobile ? '#F5F5F5' : 'rgba(0, 0, 0, 0.02)',
+      },
+    }),
   },
   tableCellText: {
-    fontSize: 14,
+    fontSize: isMobile ? 13 : isTablet ? 13.5 : 14,
     color: '#333',
+    marginBottom: isMobile ? 8 : 0,
+    ...(Platform.OS === 'web' && {
+      overflow: isMobile ? 'visible' : 'hidden',
+      textOverflow: isMobile ? 'clip' : 'ellipsis',
+      whiteSpace: isMobile ? 'normal' : 'nowrap',
+    }),
   },
   titleColumn: {
     flex: 2.5,
@@ -636,11 +677,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyStateText: {
-    fontSize: 16,
+    fontSize: isMobile ? 14 : isTablet ? 15 : 16,
     color: '#999',
     marginTop: 15,
   },
 });
+
+const styles = StyleSheet.create({});
 
 export default AdminJobsScreen;
 

@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, typography } from '../../styles/theme';
 import Header from '../../components/Header';
 import api from '../../config/api';
+import { useResponsive } from '../../utils/responsive';
 
 const TABS = [
   { id: 'all', label: 'All Jobs' },
@@ -12,6 +13,8 @@ const TABS = [
 ];
 
 const EmployerJobsScreen = ({ navigation, route }) => {
+  const responsive = useResponsive();
+  const { isMobile } = responsive;
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState(route?.params?.tab || 'all');
@@ -62,7 +65,7 @@ const EmployerJobsScreen = ({ navigation, route }) => {
         <Text style={styles.sub} numberOfLines={1}>{job.company?.name} • {job.location?.city}, {job.location?.state}</Text>
         <Text style={styles.meta}>Posted {api.formatIndianDate(job.createdAt)} • Applications {job.applications?.length || 0}</Text>
       </View>
-      <View style={styles.rowActions}>
+      <View style={[styles.rowActions, isMobile && styles.rowActionsMobile]}>
         <View style={[styles.badge, job.status === 'active' ? styles.badgeActive : styles.badgeInactive]}>
           <Text style={styles.badgeText}>{job.status?.toUpperCase() || 'UNKNOWN'}</Text>
         </View>
@@ -86,11 +89,11 @@ const EmployerJobsScreen = ({ navigation, route }) => {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
       >
         {/* Tabs */}
-        <View style={styles.tabs}>
+        <View style={[styles.tabs, isMobile && styles.tabsMobile]}>
           {TABS.map(tab => (
             <TouchableOpacity
               key={tab.id}
-              style={[styles.tab, activeTab === tab.id && styles.tabActive]}
+              style={[styles.tab, activeTab === tab.id && styles.tabActive, isMobile && styles.tabMobile]}
               onPress={() => setActiveTab(tab.id)}
               activeOpacity={0.85}
             >
@@ -126,7 +129,9 @@ const EmployerJobsScreen = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg },
+  contentMobile: { padding: spacing.md },
   tabs: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },
+  tabsMobile: { flexDirection: 'row', gap: spacing.xs, marginBottom: spacing.md, flexWrap: 'wrap' },
   tab: {
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.lg,
@@ -134,6 +139,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.cardBackground,
+  },
+  tabMobile: {
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    flex: 1,
+    minWidth: '30%',
   },
   tabActive: { backgroundColor: '#4A6CF7', borderColor: '#4A6CF7' },
   tabText: { ...typography.body2, color: colors.text },
@@ -156,6 +167,7 @@ const styles = StyleSheet.create({
   sub: { ...typography.body2, color: colors.textSecondary },
   meta: { ...typography.caption, color: colors.textLight },
   rowActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' },
+  rowActionsMobile: { flexDirection: 'column', gap: spacing.xs, width: '100%' },
   badge: { paddingVertical: 4, paddingHorizontal: 8, borderRadius: 12 },
   badgeActive: { backgroundColor: 'rgba(16,185,129,0.15)' },
   badgeInactive: { backgroundColor: 'rgba(107,114,128,0.15)' },

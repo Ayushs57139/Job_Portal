@@ -1,22 +1,92 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Platform, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useResponsive } from '../../utils/responsive';
+
+// Module-level variable to persist scroll position across re-renders
+let savedScrollPosition = 0;
 
 const AdminSidebar = ({ activeScreen, onNavigate, onClose }) => {
-  const [dimensions, setDimensions] = useState(() => Dimensions.get('window'));
+  const responsive = useResponsive();
   const [expandedMenus, setExpandedMenus] = useState({});
+  const scrollViewRef = useRef(null);
+  const isScrollingRef = useRef(false);
 
+  const isMobile = responsive.isMobile;
+  const isTablet = responsive.isTablet;
+
+  // Restore scroll position after navigation or component mount
   useEffect(() => {
-    const subscription = Dimensions.addEventListener('change', ({ window }) => {
-      setDimensions(window);
-    });
+    const restoreScroll = () => {
+      if (!scrollViewRef.current || isScrollingRef.current) return;
+      
+      if (Platform.OS === 'web') {
+        // For web, find the actual scrollable element
+        const findScrollElement = (ref) => {
+          if (!ref) return null;
+          const node = ref.getNode ? ref.getNode() : ref;
+          if (!node) return null;
+          
+          // Try to find the actual scrollable div
+          if (node._component) {
+            const component = node._component;
+            if (component && component.scrollTop !== undefined) {
+              return component;
+            }
+          }
+          
+          // Try direct access
+          if (node.scrollTop !== undefined || node.scrollY !== undefined) {
+            return node;
+          }
+          
+          // Try to find child scrollable element
+          if (node.querySelector) {
+            const scrollable = node.querySelector('[data-scrollable="true"]') || node.querySelector('div[style*="overflow"]');
+            if (scrollable) return scrollable;
+          }
+          
+          return node;
+        };
+        
+        const scrollElement = findScrollElement(scrollViewRef.current);
+        if (scrollElement && savedScrollPosition > 0) {
+          if (typeof scrollElement.scrollTo === 'function') {
+            scrollElement.scrollTo(0, savedScrollPosition);
+          } else if (scrollElement.scrollTop !== undefined) {
+            scrollElement.scrollTop = savedScrollPosition;
+          } else if (scrollElement.scrollY !== undefined) {
+            scrollElement.scrollY = savedScrollPosition;
+          }
+        }
+      } else {
+        // For native platforms
+        if (savedScrollPosition > 0) {
+          scrollViewRef.current.scrollTo({
+            y: savedScrollPosition,
+            animated: false,
+          });
+        }
+      }
+    };
 
-    return () => subscription?.remove();
-  }, []);
+    // Restore scroll position with multiple attempts
+    if (savedScrollPosition > 0) {
+      // Immediate attempt
+      restoreScroll();
+      
+      // After a microtask
+      setTimeout(restoreScroll, 0);
+      
+      // After render
+      requestAnimationFrame(() => {
+        restoreScroll();
+        // One more attempt after animation frame
+        setTimeout(restoreScroll, 10);
+      });
+    }
+  }, [activeScreen]);
 
-  const width = dimensions?.width || Dimensions.get('window').width;
-  const isMobile = width < 768;
-  const isTablet = width >= 768 && width < 1024;
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: 'speedometer-outline', screen: 'AdminDashboard' },
@@ -38,6 +108,7 @@ const AdminSidebar = ({ activeScreen, onNavigate, onClose }) => {
     { id: 'candidateSearch', label: 'Candidate Search (Fastdex)', icon: 'people-outline', screen: 'AdminCandidateSearch' },
     { id: 'jobAlerts', label: 'Job Alerts', icon: 'notifications-outline', screen: 'AdminJobAlerts' },
     { id: 'packageManagement', label: 'Package Management', icon: 'cube-outline', screen: 'AdminPackageManagement' },
+    { id: 'razorpayIntegration', label: 'Razorpay Integration', icon: 'card-outline', screen: 'AdminRazorpayIntegration' },
     { id: 'advertisementManagement', label: 'Advertisement Management', icon: 'megaphone-outline', screen: 'AdminAdvertisementManagement' },
     { id: 'liveChatSupport', label: 'Live Chat Support', icon: 'chatbox-ellipses-outline', screen: 'AdminLiveChatSupport' },
     { id: 'settings', label: 'Settings', icon: 'settings-outline', screen: 'AdminSettings' },
@@ -55,7 +126,9 @@ const AdminSidebar = ({ activeScreen, onNavigate, onClose }) => {
         { id: 'jobTitles', label: 'Job Titles', screen: 'AdminJobTitles' },
         { id: 'keySkills', label: 'Key Skills', screen: 'AdminKeySkills' },
         { id: 'industries', label: 'Industries', screen: 'AdminIndustries' },
+        { id: 'subIndustries', label: 'Sub-Industries', screen: 'AdminSubIndustries' },
         { id: 'departments', label: 'Departments', screen: 'AdminDepartments' },
+        { id: 'subDepartments', label: 'Sub-Departments', screen: 'AdminSubDepartments' },
         { id: 'courses', label: 'Courses', screen: 'AdminCourses' },
         { id: 'specializations', label: 'Specializations', screen: 'AdminSpecializations' },
         { id: 'educationFields', label: 'Education Fields', screen: 'AdminEducationFields' },
@@ -71,6 +144,39 @@ const AdminSidebar = ({ activeScreen, onNavigate, onClose }) => {
     }));
   };
 
+  const handleMenuItemPress = (item) => {
+    // Save scroll position immediately before any action
+    if (Platform.OS === 'web' && scrollViewRef.current) {
+      try {
+        const scrollElement = scrollViewRef.current?.getNode ? scrollViewRef.current.getNode() : scrollViewRef.current;
+        if (scrollElement) {
+          // Try multiple ways to get scroll position
+          if (scrollElement.scrollTop !== undefined) {
+            savedScrollPosition = scrollElement.scrollTop;
+          } else if (scrollElement.scrollY !== undefined) {
+            savedScrollPosition = scrollElement.scrollY;
+          } else if (scrollElement._component?.scrollTop !== undefined) {
+            savedScrollPosition = scrollElement._component.scrollTop;
+          } else if (scrollElement.querySelector) {
+            const scrollableDiv = scrollElement.querySelector('div[style*="overflow"]');
+            if (scrollableDiv && scrollableDiv.scrollTop !== undefined) {
+              savedScrollPosition = scrollableDiv.scrollTop;
+            }
+          }
+        }
+      } catch (e) {
+        // Fallback to saved position from onScroll
+      }
+    }
+    // For native, savedScrollPosition is already updated via onScroll
+    
+    if (item.expandable) {
+      toggleMenu(item.id);
+    } else {
+      onNavigate(item.screen);
+    }
+  };
+
   const renderMenuItem = (item, isSubItem = false, styles) => {
     const isActive = activeScreen === item.screen;
     const isExpanded = expandedMenus[item.id];
@@ -83,18 +189,12 @@ const AdminSidebar = ({ activeScreen, onNavigate, onClose }) => {
             isActive && styles.activeMenuItem,
             isSubItem && styles.subMenuItem
           ]}
-          onPress={() => {
-            if (item.expandable) {
-              toggleMenu(item.id);
-            } else {
-              onNavigate(item.screen);
-            }
-          }}
+          onPress={() => handleMenuItemPress(item)}
         >
           <Ionicons 
             name={item.icon} 
-            size={isSubItem ? (isMobile ? 15 : 16) : (isMobile ? 18 : isTablet ? 19 : 20)} 
-            color={isActive ? '#4A90E2' : '#B0B0B0'} 
+            size={isSubItem ? (isMobile ? 16 : 17) : (isMobile ? 20 : isTablet ? 21 : 22)} 
+            color={isActive ? '#60A5FA' : 'rgba(255, 255, 255, 0.6)'} 
           />
           <Text style={[
             styles.menuLabel,
@@ -106,8 +206,8 @@ const AdminSidebar = ({ activeScreen, onNavigate, onClose }) => {
           {item.expandable && (
             <Ionicons 
               name={isExpanded ? 'chevron-down' : 'chevron-forward'} 
-              size={16} 
-              color="#B0B0B0" 
+              size={18} 
+              color="rgba(255, 255, 255, 0.6)" 
               style={styles.expandIcon}
             />
           )}
@@ -137,10 +237,27 @@ const AdminSidebar = ({ activeScreen, onNavigate, onClose }) => {
         )}
       </View>
       <ScrollView 
+        ref={scrollViewRef}
         style={styles.menuContainer} 
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={true}
         nestedScrollEnabled={true}
+        onScroll={(event) => {
+          const scrollY = event.nativeEvent.contentOffset.y || 0;
+          savedScrollPosition = scrollY;
+          isScrollingRef.current = true;
+          // Reset scrolling flag after a delay
+          setTimeout(() => {
+            isScrollingRef.current = false;
+          }, 150);
+        }}
+        onScrollBeginDrag={() => {
+          isScrollingRef.current = true;
+        }}
+        onScrollEndDrag={() => {
+          isScrollingRef.current = false;
+        }}
+        scrollEventThrottle={16}
       >
         {menuItems.map(item => renderMenuItem(item, false, styles))}
       </ScrollView>
@@ -151,7 +268,7 @@ const AdminSidebar = ({ activeScreen, onNavigate, onClose }) => {
 const getStyles = (isMobile, isTablet) => StyleSheet.create({
   container: {
     width: isMobile ? 280 : isTablet ? 220 : 240,
-    backgroundColor: '#2C3E50',
+    backgroundColor: '#1A202C',
     flexShrink: 0,
     flexDirection: 'column',
     alignSelf: 'stretch',
@@ -165,29 +282,33 @@ const getStyles = (isMobile, isTablet) => StyleSheet.create({
       overflow: 'hidden',
       display: 'flex',
       flexDirection: 'column',
+      boxShadow: '2px 0 12px rgba(0, 0, 0, 0.15)',
     }),
   },
   header: {
-    padding: isMobile ? 16 : 20,
+    padding: isMobile ? 18 : 22,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
     flexShrink: 0,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
   },
   headerContent: {
     flex: 1,
   },
   brandTitle: {
-    fontSize: isMobile ? 18 : isTablet ? 19 : 20,
-    fontWeight: 'bold',
-    color: '#4A90E2',
+    fontSize: isMobile ? 20 : isTablet ? 21 : 22,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
   },
   brandSubtitle: {
-    fontSize: isMobile ? 11 : 12,
-    color: '#B0B0B0',
+    fontSize: isMobile ? 12 : 13,
+    color: 'rgba(255, 255, 255, 0.7)',
     marginTop: 4,
+    fontWeight: '500',
   },
   closeButton: {
     padding: 4,
@@ -212,27 +333,42 @@ const getStyles = (isMobile, isTablet) => StyleSheet.create({
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: isMobile ? 14 : 12,
-    paddingHorizontal: isMobile ? 16 : 20,
-    marginHorizontal: isMobile ? 4 : 8,
-    borderRadius: 6,
+    paddingVertical: isMobile ? 14 : 13,
+    paddingHorizontal: isMobile ? 16 : 18,
+    marginHorizontal: isMobile ? 6 : 10,
+    marginVertical: 2,
+    borderRadius: 10,
+    ...(Platform.OS === 'web' && {
+      transition: 'all 0.2s ease',
+      cursor: 'pointer',
+      ':hover': {
+        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+      },
+    }),
   },
   activeMenuItem: {
-    backgroundColor: 'rgba(74, 144, 226, 0.15)',
+    backgroundColor: 'rgba(74, 144, 226, 0.2)',
+    borderLeftWidth: 3,
+    borderLeftColor: '#4A90E2',
+    ...(Platform.OS === 'web' && {
+      boxShadow: 'inset 0 0 20px rgba(74, 144, 226, 0.1)',
+    }),
   },
   subMenuItem: {
-    paddingLeft: 50,
+    paddingLeft: 52,
     paddingVertical: 10,
+    marginLeft: 10,
   },
   menuLabel: {
-    fontSize: isMobile ? 13 : isTablet ? 13.5 : 14,
-    color: '#E0E0E0',
-    marginLeft: isMobile ? 10 : 12,
+    fontSize: isMobile ? 13.5 : isTablet ? 14 : 14.5,
+    color: 'rgba(255, 255, 255, 0.85)',
+    marginLeft: isMobile ? 12 : 14,
     flex: 1,
+    fontWeight: '500',
   },
   activeMenuLabel: {
-    color: '#4A90E2',
-    fontWeight: '600',
+    color: '#60A5FA',
+    fontWeight: '700',
   },
   subMenuLabel: {
     fontSize: 13,
@@ -241,7 +377,11 @@ const getStyles = (isMobile, isTablet) => StyleSheet.create({
     marginLeft: 'auto',
   },
   subMenuContainer: {
-    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    backgroundColor: 'rgba(0, 0, 0, 0.15)',
+    marginTop: 4,
+    marginBottom: 4,
+    borderRadius: 8,
+    paddingVertical: 4,
   },
 });
 

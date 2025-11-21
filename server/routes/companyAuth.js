@@ -84,6 +84,11 @@ router.post('/login', async (req, res) => {
         // Find company
         const company = await User.findOne({ email });
         if (!company) {
+            const logger = require('../utils/logger');
+            logger.warn('Company login failed: User not found', {
+                email: email.substring(0, 10) + '***',
+                ip: req.ip
+            });
             return res.status(400).json({ message: 'No account found with this email address' });
         }
 
@@ -120,12 +125,24 @@ router.post('/login', async (req, res) => {
 
         // Check if account is active
         if (!company.isActive) {
+            const logger = require('../utils/logger');
+            logger.warn('Company login failed: Account deactivated', {
+                userId: company._id,
+                email: company.email,
+                ip: req.ip
+            });
             return res.status(400).json({ message: 'Account is deactivated. Please contact support' });
         }
 
         // Check password (only after user type validation passes)
         const isMatch = await company.comparePassword(password);
         if (!isMatch) {
+            const logger = require('../utils/logger');
+            logger.warn('Company login failed: Incorrect password', {
+                userId: company._id,
+                email: company.email,
+                ip: req.ip
+            });
             return res.status(400).json({ message: 'Incorrect password. Please try again' });
         }
 

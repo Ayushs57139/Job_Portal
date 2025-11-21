@@ -1,11 +1,21 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, typography } from '../styles/theme';
+import { useResponsive } from '../utils/responsive';
 
 const isWeb = Platform.OS === 'web';
 
 const UserSidebar = ({ navigation, activeKey = 'dashboard', onClose = null, badges = {} }) => {
+  const responsive = useResponsive();
+  const isPhone = responsive.width <= 480;
+  const isMobile = responsive.isMobile;
+  const isTablet = responsive.isTablet;
+  const isDesktop = responsive.isDesktop;
+  
+  const dynamicStyles = useMemo(() => {
+    return getStyles(isPhone, isMobile, isTablet, isDesktop, responsive.width);
+  }, [isPhone, isMobile, isTablet, isDesktop, responsive.width]);
   const items = [
     { 
       key: 'dashboard', 
@@ -100,35 +110,50 @@ const UserSidebar = ({ navigation, activeKey = 'dashboard', onClose = null, badg
   ];
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.brandTitle}>
-          Free <Text style={styles.brandTitleOrange}>job</Text> wala
-        </Text>
-        <Text style={styles.brandSubtitle}>Dashboard</Text>
+    <View style={dynamicStyles.container}>
+      <View style={dynamicStyles.header}>
+        <TouchableOpacity 
+          style={dynamicStyles.headerContent}
+          onPress={() => navigation.navigate('Home')}
+          activeOpacity={0.7}
+        >
+          <Text style={dynamicStyles.brandTitle}>
+            Free <Text style={dynamicStyles.brandTitleOrange}>job</Text> wala
+          </Text>
+          <Text style={dynamicStyles.brandSubtitle}>Dashboard</Text>
+        </TouchableOpacity>
+        {isPhone && onClose && (
+          <TouchableOpacity
+            style={dynamicStyles.closeButton}
+            onPress={onClose}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="close" size={isPhone ? 22 : 24} color="#FFFFFF" />
+          </TouchableOpacity>
+        )}
       </View>
-      <ScrollView style={styles.menuContainer} showsVerticalScrollIndicator={false}>
+      <ScrollView style={dynamicStyles.menuContainer} showsVerticalScrollIndicator={false}>
         {items.map((item) => {
           const isActive = activeKey === item.key;
           return (
             <TouchableOpacity
               key={item.key}
-              style={[styles.item, isActive && styles.activeItem]}
+              style={[dynamicStyles.item, isActive && dynamicStyles.activeItem]}
               onPress={item.action}
               activeOpacity={0.8}
             >
               <Ionicons 
                 name={item.icon} 
-                size={20} 
+                size={isPhone ? 18 : (isMobile ? 20 : 22)} 
                 color={isActive ? '#4A90E2' : '#FFFFFF'} 
-                style={styles.icon}
+                style={dynamicStyles.icon}
               />
-              <Text style={[styles.itemText, isActive && styles.activeItemText]}>
+              <Text style={[dynamicStyles.itemText, isActive && dynamicStyles.activeItemText]}>
                 {item.label}
               </Text>
               {item.badge !== null && item.badge > 0 && (
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>{item.badge}</Text>
+                <View style={dynamicStyles.badge}>
+                  <Text style={dynamicStyles.badgeText}>{item.badge}</Text>
                 </View>
               )}
             </TouchableOpacity>
@@ -139,75 +164,113 @@ const UserSidebar = ({ navigation, activeKey = 'dashboard', onClose = null, badg
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    width: isWeb ? 260 : 260,
-    backgroundColor: '#2C3E50',
-    height: '100%',
-    paddingTop: spacing.xl,
-  },
-  header: {
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  brandTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  brandTitleOrange: {
-    color: '#FF6B35',
-  },
-  brandSubtitle: {
-    fontSize: 12,
-    color: '#B0B0B0',
-    marginTop: 4,
-  },
-  menuContainer: {
-    flex: 1,
-    paddingVertical: 10,
-  },
-  item: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    marginHorizontal: 8,
-    marginVertical: 2,
-    borderRadius: 6,
-  },
-  icon: {
-    marginRight: 12,
-  },
-  itemText: {
-    fontSize: 15,
-    color: '#FFFFFF',
-    fontWeight: '500',
-    flex: 1,
-  },
-  activeItem: {
-    backgroundColor: '#4A90E2',
-  },
-  activeItemText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-  },
-  badge: {
-    backgroundColor: '#FF6B35',
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    minWidth: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badgeText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-});
+const getStyles = (isPhone, isMobile, isTablet, isDesktop, width) => {
+  const isWeb = Platform.OS === 'web';
+  return StyleSheet.create({
+    container: {
+      width: isPhone ? Math.min(width * 0.85, 320) : (isMobile ? 240 : (isTablet ? 260 : (isDesktop ? 280 : 260))),
+      backgroundColor: '#2C3E50',
+      height: '100%',
+      paddingTop: isPhone ? spacing.lg : (isMobile ? spacing.xl : spacing.xxl),
+      ...(isPhone && {
+        position: 'absolute',
+        left: 0,
+        top: 0,
+        bottom: 0,
+        zIndex: 1000,
+      }),
+      ...(isWeb && !isPhone && {
+        position: 'fixed',
+        left: 0,
+        top: 0,
+        bottom: 0,
+        zIndex: 100,
+      }),
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: isPhone ? spacing.md : (isMobile ? spacing.lg : 20),
+      borderBottomWidth: 1,
+      borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    },
+    headerContent: {
+      flex: 1,
+      ...(isWeb && {
+        cursor: 'pointer',
+      }),
+    },
+    closeButton: {
+      padding: spacing.sm,
+      marginLeft: spacing.sm,
+      borderRadius: borderRadius.sm,
+      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+      ...(isWeb && {
+        cursor: 'pointer',
+      }),
+    },
+    brandTitle: {
+      fontSize: isPhone ? 16 : (isMobile ? 17 : (isTablet ? 18 : 20)),
+      fontWeight: 'bold',
+      color: '#FFFFFF',
+    },
+    brandTitleOrange: {
+      color: '#FF6B35',
+    },
+    brandSubtitle: {
+      fontSize: isPhone ? 11 : (isMobile ? 12 : 13),
+      color: '#B0B0B0',
+      marginTop: 4,
+    },
+    menuContainer: {
+      flex: 1,
+      paddingVertical: isPhone ? spacing.sm : 10,
+    },
+    item: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: isPhone ? spacing.sm : (isMobile ? 12 : 14),
+      paddingHorizontal: isPhone ? spacing.md : (isMobile ? spacing.lg : 20),
+      marginHorizontal: isPhone ? spacing.sm : 8,
+      marginVertical: isPhone ? 1 : 2,
+      borderRadius: 6,
+      ...(isWeb && {
+        cursor: 'pointer',
+      }),
+    },
+    icon: {
+      marginRight: isPhone ? spacing.sm : 12,
+    },
+    itemText: {
+      fontSize: isPhone ? 13 : (isMobile ? 14 : 15),
+      color: '#FFFFFF',
+      fontWeight: '500',
+      flex: 1,
+    },
+    activeItem: {
+      backgroundColor: '#4A90E2',
+    },
+    activeItemText: {
+      color: '#FFFFFF',
+      fontWeight: '700',
+    },
+    badge: {
+      backgroundColor: '#FF6B35',
+      borderRadius: 12,
+      paddingHorizontal: isPhone ? 6 : 8,
+      paddingVertical: 2,
+      minWidth: isPhone ? 20 : 24,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    badgeText: {
+      color: '#FFFFFF',
+      fontSize: isPhone ? 10 : 12,
+      fontWeight: '600',
+    },
+  });
+};
 
 export default UserSidebar;
 

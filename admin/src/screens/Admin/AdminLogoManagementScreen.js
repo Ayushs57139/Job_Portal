@@ -17,8 +17,13 @@ import * as ImagePicker from 'expo-image-picker';
 import AdminLayout from '../../components/Admin/AdminLayout';
 import api from '../../config/api';
 import { colors, spacing, typography, borderRadius } from '../../styles/theme';
+import { useResponsive } from '../../utils/responsive';
 
 const AdminLogoManagementScreen = ({ navigation }) => {
+  const responsive = useResponsive();
+  const isMobile = responsive.isMobile;
+  const isTablet = responsive.isTablet;
+  const dynamicStyles = getStyles(isMobile, isTablet);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('theme'); // theme, logo, favicon
@@ -282,16 +287,16 @@ const AdminLogoManagementScreen = ({ navigation }) => {
   };
 
   const ColorButton = ({ label, colorKey, value }) => (
-    <View style={styles.colorRow}>
-      <Text style={styles.colorLabel}>{label}</Text>
+    <View style={dynamicStyles.colorRow}>
+      <Text style={dynamicStyles.colorLabel}>{label}</Text>
       <TouchableOpacity
-        style={[styles.colorButton, { backgroundColor: value }]}
+        style={[dynamicStyles.colorButton, { backgroundColor: value }]}
         onPress={() => {
           setSelectedColorType(colorKey);
           setShowColorPicker(true);
         }}
       >
-        <Text style={styles.colorCode}>{value}</Text>
+        <Text style={dynamicStyles.colorCode}>{value}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -302,9 +307,9 @@ const AdminLogoManagementScreen = ({ navigation }) => {
   if (loading) {
     return (
       <AdminLayout title="Logo Management" activeScreen="AdminLogoManagement" onNavigate={handleNavigate} onLogout={handleLogout}>
-        <View style={styles.loadingContainer}>
+        <View style={dynamicStyles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading branding settings...</Text>
+          <Text style={dynamicStyles.loadingText}>Loading branding settings...</Text>
         </View>
       </AdminLayout>
     );
@@ -312,81 +317,81 @@ const AdminLogoManagementScreen = ({ navigation }) => {
 
   return (
     <AdminLayout title="Logo Management" activeScreen="AdminLogoManagement" onNavigate={handleNavigate} onLogout={handleLogout}>
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <Text style={styles.pageTitle}>Logo & Branding Management</Text>
-          <Text style={styles.pageSubtitle}>Customize your website's appearance and branding</Text>
+      <ScrollView style={dynamicStyles.container} showsVerticalScrollIndicator={false}>
+        <View style={dynamicStyles.header}>
+          <Text style={dynamicStyles.pageTitle}>Logo & Branding Management</Text>
+          <Text style={dynamicStyles.pageSubtitle}>Customize your website's appearance and branding</Text>
         </View>
 
         {/* Tabs */}
-        <View style={styles.tabsContainer}>
+        <View style={dynamicStyles.tabsContainer}>
           <TouchableOpacity
-            style={[styles.tab, activeTab === 'theme' && styles.activeTab]}
+            style={[dynamicStyles.tab, activeTab === 'theme' && dynamicStyles.activeTab]}
             onPress={() => setActiveTab('theme')}
           >
             <Ionicons name="color-palette" size={20} color={activeTab === 'theme' ? colors.white : colors.text} />
-            <Text style={[styles.tabText, activeTab === 'theme' && styles.activeTabText]}>Theme Colors</Text>
+            <Text style={[dynamicStyles.tabText, activeTab === 'theme' && dynamicStyles.activeTabText]}>Theme Colors</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.tab, activeTab === 'logo' && styles.activeTab]}
+            style={[dynamicStyles.tab, activeTab === 'logo' && dynamicStyles.activeTab]}
             onPress={() => setActiveTab('logo')}
           >
             <Ionicons name="image" size={20} color={activeTab === 'logo' ? colors.white : colors.text} />
-            <Text style={[styles.tabText, activeTab === 'logo' && styles.activeTabText]}>Logo</Text>
+            <Text style={[dynamicStyles.tabText, activeTab === 'logo' && dynamicStyles.activeTabText]}>Logo</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.tab, activeTab === 'favicon' && styles.activeTab]}
+            style={[dynamicStyles.tab, activeTab === 'favicon' && dynamicStyles.activeTab]}
             onPress={() => setActiveTab('favicon')}
           >
             <Ionicons name="browsers" size={20} color={activeTab === 'favicon' ? colors.white : colors.text} />
-            <Text style={[styles.tabText, activeTab === 'favicon' && styles.activeTabText]}>Icons</Text>
+            <Text style={[dynamicStyles.tabText, activeTab === 'favicon' && dynamicStyles.activeTabText]}>Icons</Text>
           </TouchableOpacity>
         </View>
 
         {/* Theme Colors Tab */}
         {activeTab === 'theme' && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Theme Colors</Text>
-            <Text style={styles.sectionDescription}>
+          <View style={dynamicStyles.section}>
+            <Text style={dynamicStyles.sectionTitle}>Theme Colors</Text>
+            <Text style={dynamicStyles.sectionDescription}>
               Customize the color scheme of your website. Changes will be reflected across the entire platform.
             </Text>
 
             {/* Theme Presets */}
             <TouchableOpacity
-              style={styles.presetsButton}
+              style={dynamicStyles.presetsButton}
               onPress={() => setShowThemePresets(!showThemePresets)}
             >
               <Ionicons name="color-palette" size={20} color={colors.primary} />
-              <Text style={styles.presetsButtonText}>Choose Theme Preset</Text>
+              <Text style={dynamicStyles.presetsButtonText}>Choose Theme Preset</Text>
               <Ionicons name={showThemePresets ? "chevron-up" : "chevron-down"} size={20} color={colors.textSecondary} />
             </TouchableOpacity>
 
             {showThemePresets && (
-              <View style={styles.presetsContainer}>
+              <View style={dynamicStyles.presetsContainer}>
                 {themePresets.map((preset, index) => (
                   <TouchableOpacity
                     key={index}
-                    style={styles.presetCard}
+                    style={dynamicStyles.presetCard}
                     onPress={() => {
                       setThemeColors(preset.colors);
                       setShowThemePresets(false);
                       Alert.alert('Theme Applied', `${preset.name} theme has been applied`);
                     }}
                   >
-                    <Text style={styles.presetName}>{preset.name}</Text>
-                    <View style={styles.presetColorsPreview}>
-                      <View style={[styles.presetColorDot, { backgroundColor: preset.colors.primary }]} />
-                      <View style={[styles.presetColorDot, { backgroundColor: preset.colors.secondary }]} />
-                      <View style={[styles.presetColorDot, { backgroundColor: preset.colors.success }]} />
+                    <Text style={dynamicStyles.presetName}>{preset.name}</Text>
+                    <View style={dynamicStyles.presetColorsPreview}>
+                      <View style={[dynamicStyles.presetColorDot, { backgroundColor: preset.colors.primary }]} />
+                      <View style={[dynamicStyles.presetColorDot, { backgroundColor: preset.colors.secondary }]} />
+                      <View style={[dynamicStyles.presetColorDot, { backgroundColor: preset.colors.success }]} />
                     </View>
                   </TouchableOpacity>
                 ))}
               </View>
             )}
 
-            <View style={styles.divider} />
+            <View style={dynamicStyles.divider} />
 
             <ColorButton label="Primary Color" colorKey="primary" value={themeColors.primary} />
             <ColorButton label="Secondary Color" colorKey="secondary" value={themeColors.secondary} />
@@ -396,26 +401,26 @@ const AdminLogoManagementScreen = ({ navigation }) => {
             <ColorButton label="Info Color" colorKey="info" value={themeColors.info} />
 
             {/* Preview */}
-            <View style={styles.previewCard}>
-              <Text style={styles.previewTitle}>Preview</Text>
-              <View style={styles.previewColors}>
-                <View style={[styles.previewBox, { backgroundColor: themeColors.primary }]}>
-                  <Text style={styles.previewLabel}>Primary</Text>
+            <View style={dynamicStyles.previewCard}>
+              <Text style={dynamicStyles.previewTitle}>Preview</Text>
+              <View style={dynamicStyles.previewColors}>
+                <View style={[dynamicStyles.previewBox, { backgroundColor: themeColors.primary }]}>
+                  <Text style={dynamicStyles.previewLabel}>Primary</Text>
                 </View>
-                <View style={[styles.previewBox, { backgroundColor: themeColors.secondary }]}>
-                  <Text style={styles.previewLabel}>Secondary</Text>
+                <View style={[dynamicStyles.previewBox, { backgroundColor: themeColors.secondary }]}>
+                  <Text style={dynamicStyles.previewLabel}>Secondary</Text>
                 </View>
-                <View style={[styles.previewBox, { backgroundColor: themeColors.success }]}>
-                  <Text style={styles.previewLabel}>Success</Text>
+                <View style={[dynamicStyles.previewBox, { backgroundColor: themeColors.success }]}>
+                  <Text style={dynamicStyles.previewLabel}>Success</Text>
                 </View>
-                <View style={[styles.previewBox, { backgroundColor: themeColors.error }]}>
-                  <Text style={styles.previewLabel}>Error</Text>
+                <View style={[dynamicStyles.previewBox, { backgroundColor: themeColors.error }]}>
+                  <Text style={dynamicStyles.previewLabel}>Error</Text>
                 </View>
               </View>
             </View>
 
             <TouchableOpacity
-              style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+              style={[dynamicStyles.saveButton, saving && dynamicStyles.saveButtonDisabled]}
               onPress={handleSaveTheme}
               disabled={saving}
             >
@@ -424,7 +429,7 @@ const AdminLogoManagementScreen = ({ navigation }) => {
               ) : (
                 <>
                   <Ionicons name="checkmark-circle" size={20} color={colors.white} />
-                  <Text style={styles.saveButtonText}>Save Theme</Text>
+                  <Text style={dynamicStyles.saveButtonText}>Save Theme</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -433,64 +438,64 @@ const AdminLogoManagementScreen = ({ navigation }) => {
 
         {/* Logo Tab */}
         {activeTab === 'logo' && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Logo Configuration</Text>
-            <Text style={styles.sectionDescription}>
+          <View style={dynamicStyles.section}>
+            <Text style={dynamicStyles.sectionTitle}>Logo Configuration</Text>
+            <Text style={dynamicStyles.sectionDescription}>
               Choose between text logo, image logo, or a combination of both.
             </Text>
 
             {/* Logo Type Selection */}
-            <Text style={styles.label}>Logo Type</Text>
-            <View style={styles.logoTypeButtons}>
+            <Text style={dynamicStyles.label}>Logo Type</Text>
+            <View style={dynamicStyles.logoTypeButtons}>
               <TouchableOpacity
                 style={[
-                  styles.logoTypeButton,
-                  logoConfig.logoType === 'text' && styles.logoTypeButtonActive
+                  dynamicStyles.logoTypeButton,
+                  logoConfig.logoType === 'text' && dynamicStyles.logoTypeButtonActive
                 ]}
                 onPress={() => setLogoConfig({ ...logoConfig, logoType: 'text' })}
               >
                 <Text style={[
-                  styles.logoTypeButtonText,
-                  logoConfig.logoType === 'text' && styles.logoTypeButtonTextActive
+                  dynamicStyles.logoTypeButtonText,
+                  logoConfig.logoType === 'text' && dynamicStyles.logoTypeButtonTextActive
                 ]}>Text Logo</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[
-                  styles.logoTypeButton,
-                  logoConfig.logoType === 'image' && styles.logoTypeButtonActive
+                  dynamicStyles.logoTypeButton,
+                  logoConfig.logoType === 'image' && dynamicStyles.logoTypeButtonActive
                 ]}
                 onPress={() => setLogoConfig({ ...logoConfig, logoType: 'image' })}
               >
                 <Text style={[
-                  styles.logoTypeButtonText,
-                  logoConfig.logoType === 'image' && styles.logoTypeButtonTextActive
+                  dynamicStyles.logoTypeButtonText,
+                  logoConfig.logoType === 'image' && dynamicStyles.logoTypeButtonTextActive
                 ]}>Image Logo</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[
-                  styles.logoTypeButton,
-                  logoConfig.logoType === 'combined' && styles.logoTypeButtonActive
+                  dynamicStyles.logoTypeButton,
+                  logoConfig.logoType === 'combined' && dynamicStyles.logoTypeButtonActive
                 ]}
                 onPress={() => setLogoConfig({ ...logoConfig, logoType: 'combined' })}
               >
                 <Text style={[
-                  styles.logoTypeButtonText,
-                  logoConfig.logoType === 'combined' && styles.logoTypeButtonTextActive
+                  dynamicStyles.logoTypeButtonText,
+                  logoConfig.logoType === 'combined' && dynamicStyles.logoTypeButtonTextActive
                 ]}>Combined</Text>
               </TouchableOpacity>
             </View>
 
             {/* Text Logo Configuration */}
             {(logoConfig.logoType === 'text' || logoConfig.logoType === 'combined') && (
-              <View style={styles.configSection}>
-                <Text style={styles.configTitle}>Text Logo Settings</Text>
+              <View style={dynamicStyles.configSection}>
+                <Text style={dynamicStyles.configTitle}>Text Logo Settings</Text>
                 
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Primary Text</Text>
+                <View style={dynamicStyles.inputGroup}>
+                  <Text style={dynamicStyles.label}>Primary Text</Text>
                   <TextInput
-                    style={styles.input}
+                    style={dynamicStyles.input}
                     value={logoConfig.textLogo.primaryText}
                     onChangeText={(text) => setLogoConfig({
                       ...logoConfig,
@@ -501,10 +506,10 @@ const AdminLogoManagementScreen = ({ navigation }) => {
                   />
                 </View>
 
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Secondary Text</Text>
+                <View style={dynamicStyles.inputGroup}>
+                  <Text style={dynamicStyles.label}>Secondary Text</Text>
                   <TextInput
-                    style={styles.input}
+                    style={dynamicStyles.input}
                     value={logoConfig.textLogo.secondaryText}
                     onChangeText={(text) => setLogoConfig({
                       ...logoConfig,
@@ -516,15 +521,15 @@ const AdminLogoManagementScreen = ({ navigation }) => {
                 </View>
 
                 {/* Logo Preview */}
-                <View style={styles.logoPreview}>
+                <View style={dynamicStyles.logoPreview}>
                   <Text style={[
-                    styles.logoPreviewText,
+                    dynamicStyles.logoPreviewText,
                     { color: logoConfig.textLogo.primaryColor }
                   ]}>
                     {logoConfig.textLogo.primaryText}
                   </Text>
                   <Text style={[
-                    styles.logoPreviewText,
+                    dynamicStyles.logoPreviewText,
                     { color: logoConfig.textLogo.secondaryColor }
                   ]}>
                     {logoConfig.textLogo.secondaryText}
@@ -535,29 +540,29 @@ const AdminLogoManagementScreen = ({ navigation }) => {
 
             {/* Image Logo Configuration */}
             {(logoConfig.logoType === 'image' || logoConfig.logoType === 'combined') && (
-              <View style={styles.configSection}>
-                <Text style={styles.configTitle}>Image Logo Settings</Text>
+              <View style={dynamicStyles.configSection}>
+                <Text style={dynamicStyles.configTitle}>Image Logo Settings</Text>
                 
                 <TouchableOpacity
-                  style={styles.uploadButton}
+                  style={dynamicStyles.uploadButton}
                   onPress={() => pickImage('logo')}
                 >
                   <Ionicons name="cloud-upload" size={24} color={colors.white} />
-                  <Text style={styles.uploadButtonText}>Upload Logo Image</Text>
+                  <Text style={dynamicStyles.uploadButtonText}>Upload Logo Image</Text>
                 </TouchableOpacity>
 
                 {logoConfig.imageLogo.url ? (
-                  <View style={styles.imagePreview}>
-                    <Text style={styles.imagePreviewText}>Image selected ✓</Text>
+                  <View style={dynamicStyles.imagePreview}>
+                    <Text style={dynamicStyles.imagePreviewText}>Image selected ✓</Text>
                   </View>
                 ) : (
-                  <Text style={styles.noImageText}>No image selected</Text>
+                  <Text style={dynamicStyles.noImageText}>No image selected</Text>
                 )}
 
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Alt Text</Text>
+                <View style={dynamicStyles.inputGroup}>
+                  <Text style={dynamicStyles.label}>Alt Text</Text>
                   <TextInput
-                    style={styles.input}
+                    style={dynamicStyles.input}
                     value={logoConfig.imageLogo.altText}
                     onChangeText={(text) => setLogoConfig({
                       ...logoConfig,
@@ -571,7 +576,7 @@ const AdminLogoManagementScreen = ({ navigation }) => {
             )}
 
             <TouchableOpacity
-              style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+              style={[dynamicStyles.saveButton, saving && dynamicStyles.saveButtonDisabled]}
               onPress={handleSaveLogo}
               disabled={saving}
             >
@@ -580,7 +585,7 @@ const AdminLogoManagementScreen = ({ navigation }) => {
               ) : (
                 <>
                   <Ionicons name="image" size={20} color={colors.white} />
-                  <Text style={styles.saveButtonText}>Save Logo</Text>
+                  <Text style={dynamicStyles.saveButtonText}>Save Logo</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -589,50 +594,50 @@ const AdminLogoManagementScreen = ({ navigation }) => {
 
         {/* Icons Tab */}
         {activeTab === 'favicon' && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Favicon & Icons</Text>
-            <Text style={styles.sectionDescription}>
+          <View style={dynamicStyles.section}>
+            <Text style={dynamicStyles.sectionTitle}>Favicon & Icons</Text>
+            <Text style={dynamicStyles.sectionDescription}>
               Upload favicon and app icons for different platforms.
             </Text>
 
             {/* Favicon */}
-            <View style={styles.iconSection}>
-              <Text style={styles.iconTitle}>Favicon (16x16, 32x32)</Text>
-              <Text style={styles.iconDescription}>
+            <View style={dynamicStyles.iconSection}>
+              <Text style={dynamicStyles.iconTitle}>Favicon (16x16, 32x32)</Text>
+              <Text style={dynamicStyles.iconDescription}>
                 The small icon displayed in browser tabs and bookmarks
               </Text>
               <TouchableOpacity
-                style={styles.uploadButton}
+                style={dynamicStyles.uploadButton}
                 onPress={() => pickImage('favicon')}
               >
                 <Ionicons name="browsers" size={24} color={colors.white} />
-                <Text style={styles.uploadButtonText}>Upload Favicon</Text>
+                <Text style={dynamicStyles.uploadButtonText}>Upload Favicon</Text>
               </TouchableOpacity>
               {faviconUrl ? (
-                <Text style={styles.uploadedText}>Favicon uploaded ✓</Text>
+                <Text style={dynamicStyles.uploadedText}>Favicon uploaded ✓</Text>
               ) : null}
             </View>
 
             {/* Apple Touch Icon */}
-            <View style={styles.iconSection}>
-              <Text style={styles.iconTitle}>Apple Touch Icon (180x180)</Text>
-              <Text style={styles.iconDescription}>
+            <View style={dynamicStyles.iconSection}>
+              <Text style={dynamicStyles.iconTitle}>Apple Touch Icon (180x180)</Text>
+              <Text style={dynamicStyles.iconDescription}>
                 The icon used when adding your site to iOS home screen
               </Text>
               <TouchableOpacity
-                style={styles.uploadButton}
+                style={dynamicStyles.uploadButton}
                 onPress={() => pickImage('apple-touch-icon')}
               >
                 <Ionicons name="logo-apple" size={24} color={colors.white} />
-                <Text style={styles.uploadButtonText}>Upload Apple Touch Icon</Text>
+                <Text style={dynamicStyles.uploadButtonText}>Upload Apple Touch Icon</Text>
               </TouchableOpacity>
               {appleTouchIconUrl ? (
-                <Text style={styles.uploadedText}>Apple Touch Icon uploaded ✓</Text>
+                <Text style={dynamicStyles.uploadedText}>Apple Touch Icon uploaded ✓</Text>
               ) : null}
             </View>
 
             <TouchableOpacity
-              style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+              style={[dynamicStyles.saveButton, saving && dynamicStyles.saveButtonDisabled]}
               onPress={handleSaveTheme}
               disabled={saving}
             >
@@ -641,7 +646,7 @@ const AdminLogoManagementScreen = ({ navigation }) => {
               ) : (
                 <>
                   <Ionicons name="browsers" size={20} color={colors.white} />
-                  <Text style={styles.saveButtonText}>Save Icons</Text>
+                  <Text style={dynamicStyles.saveButtonText}>Save Icons</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -655,18 +660,18 @@ const AdminLogoManagementScreen = ({ navigation }) => {
           animationType="slide"
           onRequestClose={() => setShowColorPicker(false)}
         >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Select Color</Text>
+          <View style={dynamicStyles.modalOverlay}>
+            <View style={dynamicStyles.modalContent}>
+              <View style={dynamicStyles.modalHeader}>
+                <Text style={dynamicStyles.modalTitle}>Select Color</Text>
                 <TouchableOpacity onPress={() => setShowColorPicker(false)}>
                   <Ionicons name="close" size={24} color={colors.text} />
                 </TouchableOpacity>
               </View>
 
-              <View style={styles.colorPickerContent}>
+              <View style={dynamicStyles.colorPickerContent}>
                 <TextInput
-                  style={styles.colorInput}
+                  style={dynamicStyles.colorInput}
                   value={themeColors[selectedColorType] || '#000000'}
                   onChangeText={(text) => setThemeColors({
                     ...themeColors,
@@ -678,13 +683,13 @@ const AdminLogoManagementScreen = ({ navigation }) => {
                 />
 
                 {/* Preset Colors */}
-                <Text style={styles.presetsTitle}>Preset Colors</Text>
-                <View style={styles.presetsGrid}>
+                <Text style={dynamicStyles.presetsTitle}>Preset Colors</Text>
+                <View style={dynamicStyles.presetsGrid}>
                   {['#2563EB', '#FF6B35', '#10b981', '#ef4444', '#f59e0b', '#3b82f6',
                     '#8B5CF6', '#EC4899', '#14B8A6', '#F97316'].map((color) => (
                     <TouchableOpacity
                       key={color}
-                      style={[styles.presetColor, { backgroundColor: color }]}
+                      style={[dynamicStyles.presetColor, { backgroundColor: color }]}
                       onPress={() => {
                         setThemeColors({ ...themeColors, [selectedColorType]: color });
                         setShowColorPicker(false);
@@ -695,22 +700,22 @@ const AdminLogoManagementScreen = ({ navigation }) => {
               </View>
 
               <TouchableOpacity
-                style={styles.modalButton}
+                style={dynamicStyles.modalButton}
                 onPress={() => setShowColorPicker(false)}
               >
-                <Text style={styles.modalButtonText}>Done</Text>
+                <Text style={dynamicStyles.modalButtonText}>Done</Text>
               </TouchableOpacity>
             </View>
           </View>
         </Modal>
 
-        <View style={styles.bottomSpacing} />
+        <View style={dynamicStyles.bottomSpacing} />
       </ScrollView>
     </AdminLayout>
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (isMobile, isTablet) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -747,11 +752,15 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.md,
     borderRadius: borderRadius.lg,
     padding: spacing.xs,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+    } : {
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+    }),
   },
   tab: {
     flex: 1,
@@ -779,11 +788,15 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.md,
     padding: spacing.lg,
     borderRadius: borderRadius.lg,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+    } : {
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+    }),
   },
   sectionTitle: {
     ...typography.h3,
@@ -1101,5 +1114,7 @@ const styles = StyleSheet.create({
     marginVertical: spacing.lg,
   },
 });
+
+const styles = StyleSheet.create({});
 
 export default AdminLogoManagementScreen;

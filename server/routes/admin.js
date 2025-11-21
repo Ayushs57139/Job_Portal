@@ -6,6 +6,8 @@ const Application = require('../models/Application');
 const Package = require('../models/Package');
 const EmailTemplate = require('../models/EmailTemplate');
 const EmailLog = require('../models/EmailLog');
+const PaymentTransaction = require('../models/PaymentTransaction');
+const PlatformSettings = require('../models/PlatformSettings');
 const { adminAuth, superAdminAuth, requirePermission } = require('../middleware/adminAuth');
 const emailTemplateService = require('../services/emailTemplateService');
 
@@ -5417,6 +5419,188 @@ router.put('/master-data/locations/:id', requirePermission('canManageSettings'),
   } catch (error) {
     console.error('Update location error:', error);
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ============================================
+// Razorpay Integration Routes
+// ============================================
+
+// @route   GET /api/admin/razorpay/settings
+// @desc    Get Razorpay integration settings
+// @access  Private (Admin)
+router.get('/razorpay/settings', requirePermission('canManageSettings'), async (req, res) => {
+  try {
+    const settings = await PlatformSettings.getSettings();
+    const razorpaySettings = settings.payment?.paymentGateways?.razorpay || {
+      enabled: false,
+      keyId: '',
+      keySecret: '',
+      webhookSecret: '',
+      testMode: true
+    };
+
+    res.json({
+      success: true,
+      settings: {
+        enabled: razorpaySettings.enabled || false,
+        keyId: razorpaySettings.keyId || '',
+        keySecret: razorpaySettings.keySecret ? '****' : '',
+        webhookSecret: razorpaySettings.webhookSecret ? '****' : '',
+        testMode: razorpaySettings.testMode !== undefined ? razorpaySettings.testMode : true
+      }
+    });
+  } catch (error) {
+    console.error('Get Razorpay settings error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// @route   PUT /api/admin/razorpay/settings
+// @desc    Update Razorpay integration settings
+// @access  Private (Admin)
+router.put('/razorpay/settings', requirePermission('canManageSettings'), async (req, res) => {
+  try {
+    const settings = await PlatformSettings.getSettings();
+    const { enabled, keyId, keySecret, webhookSecret, testMode } = req.body;
+
+    if (!settings.payment) {
+      settings.payment = {};
+    }
+    if (!settings.payment.paymentGateways) {
+      settings.payment.paymentGateways = {};
+    }
+    if (!settings.payment.paymentGateways.razorpay) {
+      settings.payment.paymentGateways.razorpay = {};
+    }
+
+    if (enabled !== undefined) {
+      settings.payment.paymentGateways.razorpay.enabled = enabled;
+    }
+    if (keyId) {
+      settings.payment.paymentGateways.razorpay.keyId = keyId.trim();
+    }
+    if (keySecret) {
+      settings.payment.paymentGateways.razorpay.keySecret = keySecret.trim();
+    }
+    if (webhookSecret !== undefined) {
+      settings.payment.paymentGateways.razorpay.webhookSecret = webhookSecret.trim();
+    }
+    if (testMode !== undefined) {
+      settings.payment.paymentGateways.razorpay.testMode = testMode;
+    }
+
+    settings.lastUpdatedBy = req.user._id;
+    settings.version += 1;
+    await settings.save();
+
+    res.json({
+      success: true,
+      message: 'Razorpay settings updated successfully',
+      settings: {
+        enabled: settings.payment.paymentGateways.razorpay.enabled,
+        keyId: settings.payment.paymentGateways.razorpay.keyId,
+        keySecret: '****',
+        webhookSecret: settings.payment.paymentGateways.razorpay.webhookSecret ? '****' : '',
+        testMode: settings.payment.paymentGateways.razorpay.testMode
+      }
+    });
+  } catch (error) {
+    console.error('Update Razorpay settings error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// @route   POST /api/admin/razorpay/test-connection
+// @desc    Test Razorpay connection
+// @access  Private (Admin)
+router.post('/razorpay/test-connection', requirePermission('canManageSettings'), async (req, res) => {
+  try {
+    const { keyId, keySecret } = req.body;
+
+    if (!keyId || !keySecret) {
+      return res.status(400).json({
+        success: false,
+        message: 'Key ID and Key Secret are required'
+      });
+    }
+
+    // Test Razorpay connection by making a simple API call
+    const Razorpay = require('razorpay');
+    const razorpay = new Razorpay({
+      key_id: keyId,
+      key_secret: keySecret
+    });
+
+    // Try to fetch account details to test connection
+    try {
+      const payments = await razorpay.payments.all({ count: 1 });
+      res.json({
+        success: true,
+        message: 'Connection test successful! Razorpay is properly configured.'
+      });
+    } catch (razorpayError) {
+      res.status(400).json({
+        success: false,
+        message: razorpayError.message || 'Connection test failed. Please check your credentials.'
+      });
+    }
+  } catch (error) {
+    console.error('Test Razorpay connection error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to test connection. Please ensure razorpay package is installed.'
+    });
+  }
+});
+
+// @route   GET /api/admin/razorpay/transactions
+// @desc    Get all Razorpay transactions
+// @access  Private (Admin)
+router.get('/razorpay/transactions', requirePermission('canManageSettings'), async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 50;
+    const skip = (page - 1) * limit;
+    const status = req.query.status;
+
+    let query = { paymentGateway: 'razorpay' };
+    if (status) {
+      query.status = status;
+    }
+
+    const transactions = await PaymentTransaction.find(query)
+      .populate('user', 'firstName lastName email')
+      .populate('package', 'name price')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    const total = await PaymentTransaction.countDocuments(query);
+
+    res.json({
+      success: true,
+      transactions: transactions.map(t => ({
+        _id: t._id,
+        razorpayOrderId: t.razorpayOrderId,
+        razorpayPaymentId: t.razorpayPaymentId,
+        user: t.user,
+        package: t.package,
+        amount: t.amount,
+        totalAmount: t.totalAmount,
+        status: t.status,
+        createdAt: t.createdAt,
+        packageActivated: t.packageActivated
+      })),
+      pagination: {
+        current: page,
+        pages: Math.ceil(total / limit),
+        total
+      }
+    });
+  } catch (error) {
+    console.error('Get Razorpay transactions error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 

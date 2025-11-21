@@ -7,14 +7,20 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
-  Linking
+  Linking,
+  Platform
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import AdminLayout from '../../components/Admin/AdminLayout';
 import { API_URL } from '../../config/api';
+import { useResponsive } from '../../utils/responsive';
 
 const AdminCandidateDetailsScreen = ({ route, navigation }) => {
+  const responsive = useResponsive();
+  const isMobile = responsive.isMobile;
+  const isTablet = responsive.isTablet;
+  const dynamicStyles = getStyles(isMobile, isTablet);
   const { candidateId } = route.params;
   const [loading, setLoading] = useState(true);
   const [candidate, setCandidate] = useState(null);
@@ -67,20 +73,20 @@ const AdminCandidateDetailsScreen = ({ route, navigation }) => {
   };
 
   const renderSection = (title, content) => (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      <View style={styles.sectionContent}>
+    <View style={dynamicStyles.section}>
+      <Text style={dynamicStyles.sectionTitle}>{title}</Text>
+      <View style={dynamicStyles.sectionContent}>
         {content}
       </View>
     </View>
   );
 
   const renderDetailRow = (label, value, icon = null) => (
-    <View style={styles.detailRow}>
-      {icon && <Ionicons name={icon} size={20} color="#666" style={styles.detailIcon} />}
-      <View style={styles.detailContent}>
-        <Text style={styles.detailLabel}>{label}</Text>
-        <Text style={styles.detailValue}>{value || 'Not specified'}</Text>
+    <View style={dynamicStyles.detailRow}>
+      {icon && <Ionicons name={icon} size={20} color="#666" style={dynamicStyles.detailIcon} />}
+      <View style={dynamicStyles.detailContent}>
+        <Text style={dynamicStyles.detailLabel}>{label}</Text>
+        <Text style={dynamicStyles.detailValue}>{value || 'Not specified'}</Text>
       </View>
     </View>
   );
@@ -88,9 +94,9 @@ const AdminCandidateDetailsScreen = ({ route, navigation }) => {
   if (loading) {
     return (
       <AdminLayout navigation={navigation} title="Candidate Details">
-        <View style={styles.loadingContainer}>
+        <View style={dynamicStyles.loadingContainer}>
           <ActivityIndicator size="large" color="#007bff" />
-          <Text style={styles.loadingText}>Loading candidate details...</Text>
+          <Text style={dynamicStyles.loadingText}>Loading candidate details...</Text>
         </View>
       </AdminLayout>
     );
@@ -99,14 +105,14 @@ const AdminCandidateDetailsScreen = ({ route, navigation }) => {
   if (!candidate) {
     return (
       <AdminLayout navigation={navigation} title="Candidate Details">
-        <View style={styles.errorContainer}>
+        <View style={dynamicStyles.errorContainer}>
           <Ionicons name="alert-circle-outline" size={64} color="#dc3545" />
-          <Text style={styles.errorText}>Candidate not found</Text>
+          <Text style={dynamicStyles.errorText}>Candidate not found</Text>
           <TouchableOpacity
-            style={styles.backButton}
+            style={dynamicStyles.backButton}
             onPress={() => navigation.goBack()}
           >
-            <Text style={styles.backButtonText}>Go Back</Text>
+            <Text style={dynamicStyles.backButtonText}>Go Back</Text>
           </TouchableOpacity>
         </View>
       </AdminLayout>
@@ -115,55 +121,55 @@ const AdminCandidateDetailsScreen = ({ route, navigation }) => {
 
   return (
     <AdminLayout navigation={navigation} title="Candidate Details">
-      <ScrollView style={styles.container}>
+      <ScrollView style={dynamicStyles.container}>
         {/* Header Card */}
-        <View style={styles.headerCard}>
-          <View style={styles.headerTop}>
-            <View style={styles.profileImageContainer}>
+        <View style={dynamicStyles.headerCard}>
+          <View style={dynamicStyles.headerTop}>
+            <View style={dynamicStyles.profileImageContainer}>
               <Ionicons name="person" size={48} color="#007bff" />
             </View>
-            <View style={styles.headerInfo}>
-              <Text style={styles.candidateName}>
+            <View style={dynamicStyles.headerInfo}>
+              <Text style={dynamicStyles.candidateName}>
                 {candidate.personalInfo?.fullName || 'Not specified'}
               </Text>
-              <Text style={styles.candidateRole}>
+              <Text style={dynamicStyles.candidateRole}>
                 {candidate.professional?.currentJobTitle || 'Not specified'}
               </Text>
-              <Text style={styles.candidateCompany}>
+              <Text style={dynamicStyles.candidateCompany}>
                 {candidate.professional?.currentCompany || 'Not specified'}
               </Text>
             </View>
           </View>
           
           {/* Quick Actions */}
-          <View style={styles.quickActions}>
+          <View style={dynamicStyles.quickActions}>
             {candidate.personalInfo?.email && (
               <TouchableOpacity
-                style={styles.actionButton}
+                style={dynamicStyles.actionButton}
                 onPress={() => handleContact('email', candidate.personalInfo.email)}
               >
                 <Ionicons name="mail" size={20} color="#fff" />
-                <Text style={styles.actionButtonText}>Email</Text>
+                <Text style={dynamicStyles.actionButtonText}>Email</Text>
               </TouchableOpacity>
             )}
             
             {candidate.personalInfo?.phone && (
               <TouchableOpacity
-                style={styles.actionButton}
+                style={dynamicStyles.actionButton}
                 onPress={() => handleContact('phone', candidate.personalInfo.phone)}
               >
                 <Ionicons name="call" size={20} color="#fff" />
-                <Text style={styles.actionButtonText}>Call</Text>
+                <Text style={dynamicStyles.actionButtonText}>Call</Text>
               </TouchableOpacity>
             )}
             
             {candidate.personalInfo?.whatsappAvailable && candidate.personalInfo?.phone && (
               <TouchableOpacity
-                style={[styles.actionButton, { backgroundColor: '#25D366' }]}
+                style={[dynamicStyles.actionButton, { backgroundColor: '#25D366' }]}
                 onPress={() => handleContact('whatsapp', candidate.personalInfo.phone)}
               >
                 <Ionicons name="logo-whatsapp" size={20} color="#fff" />
-                <Text style={styles.actionButtonText}>WhatsApp</Text>
+                <Text style={dynamicStyles.actionButtonText}>WhatsApp</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -195,12 +201,12 @@ const AdminCandidateDetailsScreen = ({ route, navigation }) => {
             {renderDetailRow('Current Salary', candidate.professional?.currentSalary ? `₹${candidate.professional.currentSalary.toLocaleString()}` : 'Not specified', 'cash-outline')}
             
             {candidate.professional?.keySkills && candidate.professional.keySkills.length > 0 && (
-              <View style={styles.skillsSection}>
-                <Text style={styles.detailLabel}>Key Skills</Text>
-                <View style={styles.skillsContainer}>
+              <View style={dynamicStyles.skillsSection}>
+                <Text style={dynamicStyles.detailLabel}>Key Skills</Text>
+                <View style={dynamicStyles.skillsContainer}>
                   {candidate.professional.keySkills.map((skill, index) => (
-                    <View key={index} style={styles.skillTag}>
-                      <Text style={styles.skillText}>{skill}</Text>
+                    <View key={index} style={dynamicStyles.skillTag}>
+                      <Text style={dynamicStyles.skillText}>{skill}</Text>
                     </View>
                   ))}
                 </View>
@@ -208,9 +214,9 @@ const AdminCandidateDetailsScreen = ({ route, navigation }) => {
             )}
             
             {candidate.professional?.preferredLanguage && candidate.professional.preferredLanguage.length > 0 && (
-              <View style={styles.languagesSection}>
-                <Text style={styles.detailLabel}>Preferred Languages</Text>
-                <Text style={styles.detailValue}>
+              <View style={dynamicStyles.languagesSection}>
+                <Text style={dynamicStyles.detailLabel}>Preferred Languages</Text>
+                <Text style={dynamicStyles.detailValue}>
                   {candidate.professional.preferredLanguage.join(', ')}
                 </Text>
               </View>
@@ -224,30 +230,30 @@ const AdminCandidateDetailsScreen = ({ route, navigation }) => {
         {candidate.education && candidate.education.length > 0 && renderSection('Education', (
           <>
             {candidate.education.map((edu, index) => (
-              <View key={index} style={styles.educationCard}>
-                <Text style={styles.educationTitle}>
+              <View key={index} style={dynamicStyles.educationCard}>
+                <Text style={dynamicStyles.educationTitle}>
                   {edu.degree || edu.educationLevel || 'Education'}
                 </Text>
                 {edu.institution && (
-                  <Text style={styles.educationInstitution}>{edu.institution}</Text>
+                  <Text style={dynamicStyles.educationInstitution}>{edu.institution}</Text>
                 )}
                 {edu.specialization && (
-                  <Text style={styles.educationSpecialization}>{edu.specialization}</Text>
+                  <Text style={dynamicStyles.educationSpecialization}>{edu.specialization}</Text>
                 )}
-                <View style={styles.educationDetails}>
+                <View style={dynamicStyles.educationDetails}>
                   {edu.educationStatus && (
-                    <Text style={styles.educationDetail}>Status: {edu.educationStatus}</Text>
+                    <Text style={dynamicStyles.educationDetail}>Status: {edu.educationStatus}</Text>
                   )}
                   {edu.educationType && (
-                    <Text style={styles.educationDetail}>Type: {edu.educationType}</Text>
+                    <Text style={dynamicStyles.educationDetail}>Type: {edu.educationType}</Text>
                   )}
                   {(edu.startDate || edu.endDate) && (
-                    <Text style={styles.educationDetail}>
+                    <Text style={dynamicStyles.educationDetail}>
                       {edu.startDate || 'N/A'} - {edu.endDate || 'N/A'}
                     </Text>
                   )}
                   {edu.marksType && edu.marksValue && (
-                    <Text style={styles.educationDetail}>
+                    <Text style={dynamicStyles.educationDetail}>
                       {edu.marksType}: {edu.marksValue}
                     </Text>
                   )}
@@ -270,21 +276,21 @@ const AdminCandidateDetailsScreen = ({ route, navigation }) => {
             {renderDetailRow('Willing to Relocate', candidate.preferences?.willingToRelocate ? 'Yes' : 'No')}
             
             {candidate.preferences?.preferredLocations && candidate.preferences.preferredLocations.length > 0 && (
-              <View style={styles.preferredLocationsSection}>
-                <Text style={styles.detailLabel}>Preferred Locations</Text>
-                <Text style={styles.detailValue}>
+              <View style={dynamicStyles.preferredLocationsSection}>
+                <Text style={dynamicStyles.detailLabel}>Preferred Locations</Text>
+                <Text style={dynamicStyles.detailValue}>
                   {candidate.preferences.preferredLocations.join(', ')}
                 </Text>
               </View>
             )}
             
             {candidate.preferences?.assetRequirements && candidate.preferences.assetRequirements.length > 0 && (
-              <View style={styles.assetsSection}>
-                <Text style={styles.detailLabel}>Asset Requirements</Text>
-                <View style={styles.assetsContainer}>
+              <View style={dynamicStyles.assetsSection}>
+                <Text style={dynamicStyles.detailLabel}>Asset Requirements</Text>
+                <View style={dynamicStyles.assetsContainer}>
                   {candidate.preferences.assetRequirements.map((asset, index) => (
-                    <View key={index} style={styles.assetTag}>
-                      <Text style={styles.assetText}>{asset}</Text>
+                    <View key={index} style={dynamicStyles.assetTag}>
+                      <Text style={dynamicStyles.assetText}>{asset}</Text>
                     </View>
                   ))}
                 </View>
@@ -297,13 +303,13 @@ const AdminCandidateDetailsScreen = ({ route, navigation }) => {
         {candidate.professional?.certifications && candidate.professional.certifications.length > 0 && renderSection('Certifications', (
           <>
             {candidate.professional.certifications.map((cert, index) => (
-              <View key={index} style={styles.certificationCard}>
-                <Text style={styles.certificationName}>{cert.name}</Text>
+              <View key={index} style={dynamicStyles.certificationCard}>
+                <Text style={dynamicStyles.certificationName}>{cert.name}</Text>
                 {cert.issuer && (
-                  <Text style={styles.certificationIssuer}>Issued by: {cert.issuer}</Text>
+                  <Text style={dynamicStyles.certificationIssuer}>Issued by: {cert.issuer}</Text>
                 )}
                 {cert.date && (
-                  <Text style={styles.certificationDate}>
+                  <Text style={dynamicStyles.certificationDate}>
                     Date: {new Date(cert.date).toLocaleDateString()}
                   </Text>
                 )}
@@ -315,53 +321,53 @@ const AdminCandidateDetailsScreen = ({ route, navigation }) => {
         {/* Profile Status */}
         {renderSection('Profile Status', (
           <>
-            <View style={styles.statusRow}>
+            <View style={dynamicStyles.statusRow}>
               <Ionicons 
                 name={candidate.profileStatus?.hasResume ? 'checkmark-circle' : 'close-circle'} 
                 size={24} 
                 color={candidate.profileStatus?.hasResume ? '#28a745' : '#dc3545'} 
               />
-              <Text style={styles.statusText}>Resume Uploaded</Text>
+              <Text style={dynamicStyles.statusText}>Resume Uploaded</Text>
             </View>
             
-            <View style={styles.statusRow}>
+            <View style={dynamicStyles.statusRow}>
               <Ionicons 
                 name={candidate.profileStatus?.emailVerified ? 'checkmark-circle' : 'close-circle'} 
                 size={24} 
                 color={candidate.profileStatus?.emailVerified ? '#28a745' : '#dc3545'} 
               />
-              <Text style={styles.statusText}>Email Verified</Text>
+              <Text style={dynamicStyles.statusText}>Email Verified</Text>
             </View>
             
-            <View style={styles.statusRow}>
+            <View style={dynamicStyles.statusRow}>
               <Ionicons 
                 name={candidate.profileStatus?.mobileVerified ? 'checkmark-circle' : 'close-circle'} 
                 size={24} 
                 color={candidate.profileStatus?.mobileVerified ? '#28a745' : '#dc3545'} 
               />
-              <Text style={styles.statusText}>Mobile Verified</Text>
+              <Text style={dynamicStyles.statusText}>Mobile Verified</Text>
             </View>
             
-            <View style={styles.statusRow}>
+            <View style={dynamicStyles.statusRow}>
               <Ionicons 
                 name={candidate.profileStatus?.whatsappAvailable ? 'checkmark-circle' : 'close-circle'} 
                 size={24} 
                 color={candidate.profileStatus?.whatsappAvailable ? '#28a745' : '#dc3545'} 
               />
-              <Text style={styles.statusText}>WhatsApp Available</Text>
+              <Text style={dynamicStyles.statusText}>WhatsApp Available</Text>
             </View>
             
-            <View style={styles.completionBar}>
-              <View style={styles.completionBarLabel}>
-                <Text style={styles.completionLabel}>Profile Completion</Text>
-                <Text style={styles.completionPercentage}>
+            <View style={dynamicStyles.completionBar}>
+              <View style={dynamicStyles.completionBarLabel}>
+                <Text style={dynamicStyles.completionLabel}>Profile Completion</Text>
+                <Text style={dynamicStyles.completionPercentage}>
                   {candidate.profileStatus?.completionPercentage || 0}%
                 </Text>
               </View>
-              <View style={styles.completionBarBackground}>
+              <View style={dynamicStyles.completionBarBackground}>
                 <View 
                   style={[
-                    styles.completionBarFill, 
+                    dynamicStyles.completionBarFill, 
                     { width: `${candidate.profileStatus?.completionPercentage || 0}%` }
                   ]} 
                 />
@@ -372,14 +378,14 @@ const AdminCandidateDetailsScreen = ({ route, navigation }) => {
 
         {/* Additional Information */}
         {candidate.additionalInfo?.bio && renderSection('About', (
-          <Text style={styles.bioText}>{candidate.additionalInfo.bio}</Text>
+          <Text style={dynamicStyles.bioText}>{candidate.additionalInfo.bio}</Text>
         ))}
       </ScrollView>
     </AdminLayout>
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (isMobile, isTablet) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5'
@@ -423,11 +429,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     padding: 20,
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+    } : {
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+    }),
   },
   headerTop: {
     flexDirection: 'row',
@@ -485,11 +495,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     padding: 20,
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
+    } : {
+      elevation: 1,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+    }),
   },
   sectionTitle: {
     fontSize: 18,
