@@ -1,7 +1,7 @@
 import React from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { Platform, StyleSheet, View, Text } from 'react-native';
+import { Platform, StyleSheet, View, Text, TouchableOpacity } from 'react-native';
 import AdminNavigator from './src/navigation/AdminNavigator';
 
 // Inject global styles for web
@@ -26,32 +26,86 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
   document.head.appendChild(style);
 }
 
-// Error Boundary Component
+// Enhanced Error Boundary Component
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { 
+      hasError: false, 
+      error: null, 
+      errorInfo: null,
+      errorId: null
+    };
   }
 
   static getDerivedStateFromError(error) {
-    return { hasError: true, error };
+    return { 
+      hasError: true, 
+      error,
+      errorId: Date.now().toString(36)
+    };
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error('Error caught by boundary:', error, errorInfo);
+    // Comprehensive error logging
+    console.error('========== ERROR BOUNDARY CAUGHT ERROR ==========');
+    console.error('Error:', error);
+    console.error('Error Name:', error?.name);
+    console.error('Error Message:', error?.message);
+    console.error('Error Stack:', error?.stack);
+    console.error('Component Stack:', errorInfo?.componentStack);
+    console.error('Error ID:', this.state.errorId);
+    console.error('==================================================');
+    
+    // Log to native console for APK debugging
+    if (Platform.OS === 'android') {
+      console.log('[ERROR_BOUNDARY] Error Name:', error?.name);
+      console.log('[ERROR_BOUNDARY] Error Message:', error?.message);
+      console.log('[ERROR_BOUNDARY] Error Stack:', error?.stack);
+      console.log('[ERROR_BOUNDARY] Component Stack:', errorInfo?.componentStack);
+      console.log('[ERROR_BOUNDARY] Error ID:', this.state.errorId);
+    }
+
+    this.setState({
+      error,
+      errorInfo
+    });
+
+    // In production, you could send this to an error tracking service
+    // Example: logErrorToService(error, errorInfo);
   }
+
+  handleReset = () => {
+    this.setState({ 
+      hasError: false, 
+      error: null, 
+      errorInfo: null,
+      errorId: null
+    });
+  };
 
   render() {
     if (this.state.hasError) {
       return (
         <View style={errorStyles.container}>
-          <Text style={errorStyles.title}>Something went wrong</Text>
+          <Text style={errorStyles.title}>⚠️ Something went wrong</Text>
           <Text style={errorStyles.message}>
             {this.state.error?.message || 'An unexpected error occurred'}
           </Text>
           <Text style={errorStyles.subtitle}>
-            Please refresh the page or contact support if the problem persists.
+            Please try again or contact support if the problem persists.
           </Text>
+          {__DEV__ && this.state.errorInfo && (
+            <View style={errorStyles.detailsContainer}>
+              <Text style={errorStyles.detailsTitle}>Error ID: {this.state.errorId}</Text>
+              <Text style={errorStyles.detailsText}>
+                {this.state.errorInfo.componentStack}
+              </Text>
+            </View>
+          )}
+          <TouchableOpacity style={errorStyles.button} onPress={this.handleReset}>
+            <Text style={errorStyles.buttonText}>Try Again</Text>
+          </TouchableOpacity>
         </View>
       );
     }
@@ -126,20 +180,55 @@ const errorStyles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#d32f2f',
     marginBottom: 16,
+    textAlign: 'center',
   },
   message: {
     fontSize: 16,
-    color: '#666',
+    color: '#333',
     marginBottom: 8,
     textAlign: 'center',
+    paddingHorizontal: 20,
   },
   subtitle: {
     fontSize: 14,
-    color: '#999',
+    color: '#666',
     textAlign: 'center',
     marginTop: 8,
+    paddingHorizontal: 20,
+  },
+  detailsContainer: {
+    backgroundColor: '#f5f5f5',
+    padding: 15,
+    borderRadius: 8,
+    marginTop: 20,
+    marginBottom: 20,
+    maxWidth: '90%',
+    maxHeight: 200,
+  },
+  detailsTitle: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#666',
+    marginBottom: 8,
+  },
+  detailsText: {
+    fontSize: 10,
+    color: '#999',
+    fontFamily: Platform.OS === 'android' ? 'monospace' : 'Courier',
+  },
+  button: {
+    backgroundColor: '#667eea',
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+    minWidth: 120,
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 

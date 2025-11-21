@@ -128,6 +128,18 @@ app.use((req, res, next) => {
   next();
 });
 
+// Production environment validation
+if (process.env.NODE_ENV === 'production') {
+  const { validateProductionEnvironment } = require('./utils/productionCheck');
+  const isValid = validateProductionEnvironment();
+  if (!isValid) {
+    logger.error('Production environment validation failed. Please check your environment variables.');
+    logger.error('Server will continue but may not function correctly.');
+  } else {
+    logger.info('Production environment validated successfully');
+  }
+}
+
 // MongoDB connection
 const connectDB = require('./config/database');
 connectDB();

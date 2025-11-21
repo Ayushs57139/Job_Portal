@@ -137,14 +137,21 @@ const errorHandler = (err, req, res, next) => {
   // Send error response
   const statusCode = error.statusCode || err.statusCode || 500;
   const isDevelopment = process.env.NODE_ENV === 'development';
+  const isProduction = process.env.NODE_ENV === 'production';
   
+  // In production, don't expose internal error details
   const response = {
     success: false,
     message: error.message || err.message || 'Server Error',
     ...(isDevelopment && { 
       stack: error.stack || err.stack,
       originalError: err.message,
-      errorType: err.name || 'UnknownError'
+      errorType: err.name || 'UnknownError',
+      ...(errorContext && { context: errorContext })
+    }),
+    // In production, only include safe error information
+    ...(isProduction && statusCode >= 500 && {
+      message: 'An internal server error occurred. Please try again later.'
     })
   };
 

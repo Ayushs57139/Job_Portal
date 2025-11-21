@@ -11,13 +11,24 @@ import {
   RefreshControl,
   Modal,
   Linking,
-  Platform
+  Platform as RNPlatform
 } from 'react-native';
+
+// Safely assign Platform with fallback to prevent runtime errors
+let Platform;
+try {
+  Platform = (typeof RNPlatform !== 'undefined' && RNPlatform && typeof RNPlatform.OS !== 'undefined') 
+    ? RNPlatform 
+    : { OS: 'android' };
+} catch (e) {
+  Platform = { OS: 'android' };
+}
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import AdminLayout from '../../components/Admin/AdminLayout';
 import { API_URL } from '../../config/api';
 import { useResponsive } from '../../utils/responsive';
+import { handleApiError, showError, safeAsyncStorage } from '../../utils/errorHandler';
 
 const AdminResumeManagementScreen = ({ navigation }) => {
   const responsive = useResponsive();
@@ -49,9 +60,9 @@ const AdminResumeManagementScreen = ({ navigation }) => {
     try {
       setLoading(true);
 
-      const token = await AsyncStorage.getItem('adminToken');
+      const token = await safeAsyncStorage.getItem('adminToken');
       if (!token) {
-        Alert.alert('Error', 'Please login again');
+        showError('Please login again', 'Authentication Required');
         navigation.replace('AdminLogin');
         return;
       }
@@ -74,26 +85,65 @@ const AdminResumeManagementScreen = ({ navigation }) => {
         params.append('experience', experienceFilter);
       }
 
-      const response = await fetch(`${API_URL}/bulk-import-export/resumes?${params.toString()}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+      // Add timeout and error handling
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+      try {
+        const response = await fetch(`${API_URL}/bulk-import-export/resumes?${params.toString()}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          let errorData;
+          try {
+            errorData = await response.json();
+          } catch (parseError) {
+            throw new Error(`Server error: ${response.status} ${response.statusText}`);
+          }
+
+          // Handle authentication errors
+          if (response.status === 401 || response.status === 403) {
+            await safeAsyncStorage.removeItem('adminToken');
+            showError('Session expired. Please login again.', 'Authentication Required');
+            navigation.replace('AdminLogin');
+            return;
+          }
+
+          throw new Error(errorData.message || `Failed to fetch resumes: ${response.status}`);
         }
-      });
 
-      const data = await response.json();
+        const data = await response.json();
 
-      if (response.ok && data.success) {
-        setResumes(data.data.profiles || []);
-        setPagination(data.data.pagination || { current: 1, pages: 1, total: 0, limit: 10 });
-        setStats(data.data.stats || { total: 0, complete: 0, verified: 0, recent: 0 });
-      } else {
-        Alert.alert('Error', data.message || 'Failed to fetch resumes');
+        if (data.success) {
+          setResumes(data.data?.profiles || []);
+          setPagination(data.data?.pagination || { current: 1, pages: 1, total: 0, limit: 10 });
+          setStats(data.data?.stats || { total: 0, complete: 0, verified: 0, recent: 0 });
+        } else {
+          throw new Error(data.message || 'Failed to fetch resumes');
+        }
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        
+        if (fetchError.name === 'AbortError') {
+          throw new Error('Request timeout. Please check your connection and try again.');
+        }
+        throw fetchError;
       }
     } catch (error) {
-      console.error('Fetch resumes error:', error);
-      Alert.alert('Error', 'Failed to fetch resumes. Please try again.');
+      const errorMessage = handleApiError(error, 'fetchResumes');
+      showError(errorMessage, 'Error Loading Resumes');
+      
+      // Set empty state on error
+      setResumes([]);
+      setStats({ total: 0, complete: 0, verified: 0, recent: 0 });
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -126,9 +176,10 @@ const AdminResumeManagementScreen = ({ navigation }) => {
 
   const handleExport = async () => {
     try {
-      const token = await AsyncStorage.getItem('adminToken');
+      const token = await safeAsyncStorage.getItem('adminToken');
       if (!token) {
-        Alert.alert('Error', 'Please login again');
+        showError('Please login again', 'Authentication Required');
+        navigation.replace('AdminLogin');
         return;
       }
 
@@ -154,33 +205,64 @@ const AdminResumeManagementScreen = ({ navigation }) => {
           { text: 'Cancel', style: 'cancel' },
           {
             text: 'Export',
-            onPress: () => {
-              Linking.openURL(exportUrl).catch(() => {
-                Alert.alert('Error', 'Failed to open export URL');
-              });
+            onPress: async () => {
+              try {
+                const canOpen = await Linking.canOpenURL(exportUrl);
+                if (canOpen) {
+                  await Linking.openURL(exportUrl);
+                } else {
+                  showError('Cannot open export URL. Please check your browser settings.', 'Export Error');
+                }
+              } catch (linkError) {
+                handleApiError(linkError, 'handleExport');
+                showError('Failed to open export URL. Please try again.', 'Export Error');
+              }
             }
           }
         ]
       );
     } catch (error) {
-      console.error('Export error:', error);
-      Alert.alert('Error', 'Failed to export resumes');
+      const errorMessage = handleApiError(error, 'handleExport');
+      showError(errorMessage, 'Export Error');
     }
   };
 
-  const handleContactCandidate = (profile, type) => {
-    const email = profile.personalInfo?.email || profile.userId?.email;
-    const phone = profile.personalInfo?.mobileNumber || profile.personalInfo?.phone;
+  const handleContactCandidate = async (profile, type) => {
+    try {
+      const email = profile.personalInfo?.email || profile.userId?.email;
+      const phone = profile.personalInfo?.mobileNumber || profile.personalInfo?.phone;
 
-    if (type === 'email' && email) {
-      Linking.openURL(`mailto:${email}`);
-    } else if (type === 'phone' && phone) {
-      Linking.openURL(`tel:${phone}`);
-    } else if (type === 'whatsapp' && phone) {
-      const cleanPhone = phone.replace(/\D/g, '');
-      Linking.openURL(`https://wa.me/${cleanPhone}`);
-    } else {
-      Alert.alert('Error', `${type} not available for this candidate`);
+      if (type === 'email' && email) {
+        const mailtoUrl = `mailto:${email}`;
+        const canOpen = await Linking.canOpenURL(mailtoUrl);
+        if (canOpen) {
+          await Linking.openURL(mailtoUrl);
+        } else {
+          showError('Cannot open email client. Please check your device settings.', 'Contact Error');
+        }
+      } else if (type === 'phone' && phone) {
+        const telUrl = `tel:${phone}`;
+        const canOpen = await Linking.canOpenURL(telUrl);
+        if (canOpen) {
+          await Linking.openURL(telUrl);
+        } else {
+          showError('Cannot make phone call. Please check your device settings.', 'Contact Error');
+        }
+      } else if (type === 'whatsapp' && phone) {
+        const cleanPhone = phone.replace(/\D/g, '');
+        const whatsappUrl = `https://wa.me/${cleanPhone}`;
+        const canOpen = await Linking.canOpenURL(whatsappUrl);
+        if (canOpen) {
+          await Linking.openURL(whatsappUrl);
+        } else {
+          showError('WhatsApp is not installed or cannot be opened.', 'Contact Error');
+        }
+      } else {
+        showError(`${type} not available for this candidate`, 'Contact Error');
+      }
+    } catch (error) {
+      handleApiError(error, 'handleContactCandidate');
+      showError('Failed to open contact method. Please try again.', 'Contact Error');
     }
   };
 

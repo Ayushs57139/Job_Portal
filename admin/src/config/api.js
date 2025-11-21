@@ -196,38 +196,164 @@ class JobWalaAPI {
     return headers;
   }
 
-  // Make API request
+  // Make API request with comprehensive error handling
   async request(endpoint, options = {}) {
+    const requestId = Math.random().toString(36).substring(7);
+    const maxRetries = 3;
+    let lastError = null;
+
     // Ensure init is called before making requests
     if (!this.token && AsyncStorage) {
-      await this.init();
-    }
-
-    try {
-      const url = `${this.baseURL}${endpoint}`;
-      const config = {
-        headers: this.getHeaders(),
-        ...options,
-      };
-
-      const response = await fetch(url, config);
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'API request failed' }));
-        // Handle validation errors array
-        if (errorData.errors && Array.isArray(errorData.errors)) {
-          const errorMessages = errorData.errors.map(err => err.msg || err.message || JSON.stringify(err)).join(', ');
-          throw new Error(errorMessages);
-        }
-        throw new Error(errorData.message || 'API request failed');
+      try {
+        await this.init();
+      } catch (initError) {
+        console.error('API init error:', initError);
       }
-
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      console.error('API Error:', error);
-      throw error;
     }
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const url = `${this.baseURL}${endpoint}`;
+        const config = {
+          headers: this.getHeaders(),
+          ...options,
+        };
+
+        // Add timeout for fetch request (30 seconds)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
+        const startTime = Date.now();
+
+        try {
+          const response = await fetch(url, {
+            ...config,
+            signal: controller.signal
+          });
+
+          clearTimeout(timeoutId);
+          const endTime = Date.now();
+          const duration = endTime - startTime;
+
+          // Handle non-OK responses
+          if (!response.ok) {
+            let errorData;
+            try {
+              errorData = await response.json();
+            } catch (parseError) {
+              errorData = { 
+                message: `Server error: ${response.status} ${response.statusText}`,
+                status: response.status
+              };
+            }
+
+            // Handle authentication errors
+            if (response.status === 401 || response.status === 403) {
+              // Clear token and redirect to login
+              try {
+                await this.clearToken();
+              } catch (clearError) {
+                console.error('Error clearing token:', clearError);
+              }
+              throw new Error('Session expired. Please login again.');
+            }
+
+            // Handle validation errors array
+            if (errorData.errors && Array.isArray(errorData.errors)) {
+              const errorMessages = errorData.errors.map(err => err.msg || err.message || JSON.stringify(err)).join(', ');
+              throw new Error(errorMessages);
+            }
+
+            // Handle server errors (5xx) - retry if not last attempt
+            if (response.status >= 500 && attempt < maxRetries) {
+              lastError = new Error(errorData.message || `Server error: ${response.status}`);
+              console.warn(`API request failed (attempt ${attempt}/${maxRetries}), retrying...`, {
+                endpoint,
+                status: response.status,
+                duration
+              });
+              await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // Exponential backoff
+              continue;
+            }
+
+            throw new Error(errorData.message || `API request failed: ${response.status}`);
+          }
+
+          // Parse response
+          let data;
+          try {
+            data = await response.json();
+          } catch (parseError) {
+            throw new Error('Invalid response format from server');
+          }
+
+          return data;
+        } catch (fetchError) {
+          clearTimeout(timeoutId);
+          
+          // Handle timeout errors
+          if (fetchError.name === 'AbortError') {
+            if (attempt < maxRetries) {
+              lastError = new Error('Request timeout: Server did not respond within 30 seconds');
+              console.warn(`API request timeout (attempt ${attempt}/${maxRetries}), retrying...`, { endpoint });
+              await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+              continue;
+            }
+            throw new Error('Request timeout: Server did not respond within 30 seconds. Please check your connection and try again.');
+          }
+
+          // Handle network errors - retry if not last attempt
+          if ((fetchError.message.includes('Network request failed') || 
+               fetchError.message.includes('Failed to fetch') ||
+               fetchError.message.includes('ECONNREFUSED') ||
+               fetchError.message.includes('ETIMEDOUT')) && 
+              attempt < maxRetries) {
+            lastError = fetchError;
+            console.warn(`Network error (attempt ${attempt}/${maxRetries}), retrying...`, {
+              endpoint,
+              error: fetchError.message
+            });
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+            continue;
+          }
+
+          throw fetchError;
+        }
+      } catch (error) {
+        lastError = error;
+        
+        // If this is the last attempt, throw the error
+        if (attempt === maxRetries) {
+          // Provide user-friendly error messages
+          let userMessage = 'An error occurred. Please try again.';
+          
+          if (error.message.includes('timeout')) {
+            userMessage = 'Request timed out. Please check your internet connection and try again.';
+          } else if (error.message.includes('Network request failed') || error.message.includes('Failed to fetch')) {
+            userMessage = 'Network error. Please check your internet connection and try again.';
+          } else if (error.message.includes('Session expired')) {
+            userMessage = error.message;
+          } else if (error.message) {
+            userMessage = error.message;
+          }
+
+          console.error(`API Error (final attempt):`, {
+            endpoint,
+            error: error.message,
+            requestId,
+            attempts: attempt
+          });
+
+          const enhancedError = new Error(userMessage);
+          enhancedError.originalError = error;
+          enhancedError.endpoint = endpoint;
+          enhancedError.requestId = requestId;
+          throw enhancedError;
+        }
+      }
+    }
+
+    // This should never be reached, but just in case
+    throw lastError || new Error('API request failed after multiple attempts');
   }
 
   // Authentication APIs
