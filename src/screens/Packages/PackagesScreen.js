@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Platform,
   Dimensions,
   ActivityIndicator,
   Alert,
@@ -17,7 +16,18 @@ import Header from '../../components/Header';
 import api from '../../config/api';
 
 const { width } = Dimensions.get('window');
-const isWeb = Platform.OS === 'web';
+// Safely get Platform - lazy evaluation
+const getPlatform = () => {
+  try {
+    const { Platform } = require('react-native');
+    if (Platform && typeof Platform.OS !== 'undefined') {
+      return Platform;
+    }
+  } catch (e) {}
+  return { OS: 'android' };
+};
+
+const isWeb = getPlatform().OS === 'web';
 const isPhone = width <= 480;
 const isMobile = width <= 600;
 const isTablet = width > 600 && width <= 1024;

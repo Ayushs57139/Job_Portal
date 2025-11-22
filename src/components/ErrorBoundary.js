@@ -1,5 +1,16 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+
+// Safely get Platform - lazy evaluation
+const getPlatform = () => {
+  try {
+    const { Platform } = require('react-native');
+    if (Platform && typeof Platform.OS !== 'undefined') {
+      return Platform;
+    }
+  } catch (e) {}
+  return { OS: 'android' };
+};
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -23,7 +34,7 @@ class ErrorBoundary extends React.Component {
     console.error('==================================================');
     
     // Also try to log to native console for APK debugging
-    if (Platform.OS === 'android') {
+    if (getPlatform().OS === 'android') {
       // Use console.log for better compatibility with logcat
       console.log('[ERROR_BOUNDARY] Error Name:', error?.name);
       console.log('[ERROR_BOUNDARY] Error Message:', error?.message);
@@ -123,7 +134,7 @@ const styles = StyleSheet.create({
   detailsText: {
     fontSize: 12,
     color: '#999',
-    fontFamily: Platform.OS === 'android' ? 'monospace' : 'Courier',
+    fontFamily: getPlatform().OS === 'android' ? 'monospace' : 'Courier',
   },
   button: {
     backgroundColor: '#667eea',

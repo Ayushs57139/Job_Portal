@@ -1,12 +1,18 @@
 // API Configuration and Service for React Native
 import AsyncStorage from '@react-native-async-storage/async-storage';
-// Import Platform - use try-catch wrapper in case it's not ready during module evaluation
-import { Platform as RNPlatform } from 'react-native';
 
-// Safely assign Platform with fallback
-const Platform = (typeof RNPlatform !== 'undefined' && RNPlatform) 
-  ? RNPlatform 
-  : { OS: 'android' };
+// Safely get Platform - lazy evaluation to avoid runtime errors
+const getPlatform = () => {
+  try {
+    const { Platform } = require('react-native');
+    if (Platform && typeof Platform.OS !== 'undefined') {
+      return Platform;
+    }
+  } catch (e) {
+    // Platform not ready
+  }
+  return { OS: 'android' };
+};
 
 // Lazy API URL resolution - only resolve when actually needed
 let _cachedApiUrl = null;
@@ -28,6 +34,7 @@ const getApiUrl = () => {
     // Never access Platform.OS if Platform might not be ready
     let platformOS = 'android'; // default fallback - safest for most cases
     try {
+      const Platform = getPlatform();
       // Check if Platform exists and is an object before accessing
       if (Platform && typeof Platform === 'object' && Platform !== null) {
         try {

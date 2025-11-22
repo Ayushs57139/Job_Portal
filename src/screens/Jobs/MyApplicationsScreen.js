@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
   Alert,
   RefreshControl,
-  Platform,
   Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,7 +17,18 @@ import UserSidebar from '../../components/UserSidebar';
 import api from '../../config/api';
 import { useResponsive } from '../../utils/responsive';
 
-const isWeb = Platform.OS === 'web';
+// Safely get Platform - lazy evaluation
+const getPlatform = () => {
+  try {
+    const { Platform } = require('react-native');
+    if (Platform && typeof Platform.OS !== 'undefined') {
+      return Platform;
+    }
+  } catch (e) {}
+  return { OS: 'android' };
+};
+
+const isWeb = getPlatform().OS === 'web';
 const REFRESH_INTERVAL = 15000; // 15 seconds for real-time updates
 
 const MyApplicationsScreen = ({ navigation, route }) => {
@@ -165,7 +175,7 @@ const MyApplicationsScreen = ({ navigation, route }) => {
   };
 
   const handleLogout = async () => {
-    if (Platform.OS === 'web') {
+    if (getPlatform().OS === 'web') {
       // For web, use window.confirm
       if (window.confirm('Are you sure you want to logout?')) {
         try {
@@ -557,7 +567,18 @@ const MyApplicationsScreen = ({ navigation, route }) => {
 };
 
 const getStyles = (isPhone, isMobile, isTablet, isDesktop) => {
-  const isWeb = Platform.OS === 'web';
+  // Safely get Platform - lazy evaluation
+const getPlatform = () => {
+  try {
+    const { Platform } = require('react-native');
+    if (Platform && typeof Platform.OS !== 'undefined') {
+      return Platform;
+    }
+  } catch (e) {}
+  return { OS: 'android' };
+};
+
+const isWeb = getPlatform().OS === 'web';
   return StyleSheet.create({
     container: {
       flex: 1,

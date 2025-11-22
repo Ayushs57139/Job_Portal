@@ -6,7 +6,6 @@ import {
   StyleSheet,
   Alert,
   TouchableOpacity,
-  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, typography } from '../../styles/theme';
@@ -17,7 +16,18 @@ import EmployerSidebar from '../../components/EmployerSidebar';
 import api from '../../config/api';
 import { useResponsive } from '../../utils/responsive';
 
-const isWeb = Platform.OS === 'web';
+// Safely get Platform - lazy evaluation
+const getPlatform = () => {
+  try {
+    const { Platform } = require('react-native');
+    if (Platform && typeof Platform.OS !== 'undefined') {
+      return Platform;
+    }
+  } catch (e) {}
+  return { OS: 'android' };
+};
+
+const isWeb = getPlatform().OS === 'web';
 
 const UserSettingsScreen = ({ navigation }) => {
   const responsive = useResponsive();
@@ -648,7 +658,7 @@ const UserSettingsScreen = ({ navigation }) => {
 };
 
 const getStyles = (isPhone, isMobile, isTablet, isDesktop) => {
-  const isWeb = Platform.OS === 'web';
+  const isWeb = getPlatform().OS === 'web';
   return StyleSheet.create({
     container: {
       flex: 1,

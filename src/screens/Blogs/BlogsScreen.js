@@ -8,7 +8,6 @@ import {
   TextInput,
   ActivityIndicator,
   RefreshControl,
-  Platform,
   Dimensions,
   Alert,
 } from 'react-native';
@@ -20,7 +19,18 @@ import Header from '../../components/Header';
 import api from '../../config/api';
 import { useResponsive } from '../../utils/responsive';
 
-const isWeb = Platform.OS === 'web';
+// Safely get Platform - lazy evaluation
+const getPlatform = () => {
+  try {
+    const { Platform } = require('react-native');
+    if (Platform && typeof Platform.OS !== 'undefined') {
+      return Platform;
+    }
+  } catch (e) {}
+  return { OS: 'android' };
+};
+
+const isWeb = getPlatform().OS === 'web';
 
 const BlogsScreen = ({ navigation }) => {
   const responsive = useResponsive();
@@ -503,7 +513,18 @@ const BlogsScreen = ({ navigation }) => {
 };
 
 const getStyles = (isPhone, isMobile, isTablet, isDesktop, width) => {
-  const isWeb = Platform.OS === 'web';
+  // Safely get Platform - lazy evaluation
+const getPlatform = () => {
+  try {
+    const { Platform } = require('react-native');
+    if (Platform && typeof Platform.OS !== 'undefined') {
+      return Platform;
+    }
+  } catch (e) {}
+  return { OS: 'android' };
+};
+
+const isWeb = getPlatform().OS === 'web';
   return StyleSheet.create({
   container: {
     flex: 1,

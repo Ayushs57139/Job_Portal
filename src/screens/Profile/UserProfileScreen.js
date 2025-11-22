@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, Alert, TouchableOpacity, Modal, Platform } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Alert, TouchableOpacity, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, typography } from '../../styles/theme';
 import Input from '../../components/Input';
@@ -10,7 +10,18 @@ import api from '../../config/api';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useResponsive } from '../../utils/responsive';
 
-const isWeb = Platform.OS === 'web';
+// Safely get Platform - lazy evaluation
+const getPlatform = () => {
+  try {
+    const { Platform } = require('react-native');
+    if (Platform && typeof Platform.OS !== 'undefined') {
+      return Platform;
+    }
+  } catch (e) {}
+  return { OS: 'android' };
+};
+
+const isWeb = getPlatform().OS === 'web';
 
 const UserProfileScreen = ({ navigation }) => {
   const responsive = useResponsive();
@@ -348,7 +359,7 @@ const UserProfileScreen = ({ navigation }) => {
   };
 
   const handleLogout = async () => {
-    if (Platform.OS === 'web') {
+    if (getPlatform().OS === 'web') {
       // For web, use window.confirm
       if (window.confirm('Are you sure you want to logout?')) {
         try {
@@ -2259,7 +2270,7 @@ const UserProfileScreen = ({ navigation }) => {
               <DateTimePicker
                 value={formData.personalInfo.dateOfBirth}
                 mode="date"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                display={getPlatform().OS === 'ios' ? 'spinner' : 'default'}
                 onChange={(event, selectedDate) => {
                   setShowDatePicker(false);
                   if (selectedDate && datePickerMode === 'dateOfBirth') {
@@ -2268,7 +2279,7 @@ const UserProfileScreen = ({ navigation }) => {
                 }}
                 maximumDate={new Date()}
               />
-              {Platform.OS === 'ios' && (
+              {getPlatform().OS === 'ios' && (
                 <Button title="Done" onPress={() => setShowDatePicker(false)} />
               )}
             </View>
@@ -2281,7 +2292,7 @@ const UserProfileScreen = ({ navigation }) => {
 };
 
 const getStyles = (isPhone, isMobile, isTablet, isDesktop) => {
-  const isWeb = Platform.OS === 'web';
+  const isWeb = getPlatform().OS === 'web';
   return StyleSheet.create({
     container: {
       flex: 1,

@@ -4,7 +4,16 @@
  * Use this instead of console.log for better visibility in logcat
  */
 
-import { Platform } from 'react-native';
+// Safely get Platform - lazy evaluation
+const getPlatform = () => {
+  try {
+    const { Platform } = require('react-native');
+    if (Platform && typeof Platform.OS !== 'undefined') {
+      return Platform;
+    }
+  } catch (e) {}
+  return { OS: 'android' };
+};
 
 const DEBUG_PREFIX = '[JOBWALA_DEBUG]';
 const ERROR_PREFIX = '[JOBWALA_ERROR]';
@@ -19,7 +28,7 @@ export const debugLogger = {
    * Log debug messages
    */
   log: (...args) => {
-    if (__DEV__ || Platform.OS === 'android') {
+    if (__DEV__ || getPlatform().OS === 'android') {
       console.log(DEBUG_PREFIX, ...args);
     }
   },
@@ -30,7 +39,7 @@ export const debugLogger = {
   error: (...args) => {
     console.error(ERROR_PREFIX, ...args);
     // Also log with console.log for better logcat visibility on Android
-    if (Platform.OS === 'android') {
+    if (getPlatform().OS === 'android') {
       console.log(ERROR_PREFIX, ...args);
     }
   },
@@ -41,7 +50,7 @@ export const debugLogger = {
   warn: (...args) => {
     console.warn(WARN_PREFIX, ...args);
     // Also log with console.log for better logcat visibility on Android
-    if (Platform.OS === 'android') {
+    if (getPlatform().OS === 'android') {
       console.log(WARN_PREFIX, ...args);
     }
   },
@@ -50,7 +59,7 @@ export const debugLogger = {
    * Log info messages
    */
   info: (...args) => {
-    if (__DEV__ || Platform.OS === 'android') {
+    if (__DEV__ || getPlatform().OS === 'android') {
       console.log(INFO_PREFIX, ...args);
     }
   },
@@ -59,7 +68,7 @@ export const debugLogger = {
    * Log API calls
    */
   api: (method, url, data, response) => {
-    if (__DEV__ || Platform.OS === 'android') {
+    if (__DEV__ || getPlatform().OS === 'android') {
       console.log('[JOBWALA_API]', method, url);
       if (data) {
         console.log('[JOBWALA_API_DATA]', JSON.stringify(data, null, 2));
@@ -74,7 +83,7 @@ export const debugLogger = {
    * Log navigation events
    */
   navigation: (action, routeName, params) => {
-    if (__DEV__ || Platform.OS === 'android') {
+    if (__DEV__ || getPlatform().OS === 'android') {
       console.log('[JOBWALA_NAV]', action, routeName, params ? JSON.stringify(params) : '');
     }
   },
@@ -83,7 +92,7 @@ export const debugLogger = {
    * Log component lifecycle
    */
   component: (componentName, lifecycle, props) => {
-    if (__DEV__ || Platform.OS === 'android') {
+    if (__DEV__ || getPlatform().OS === 'android') {
       console.log('[JOBWALA_COMPONENT]', componentName, lifecycle, props ? JSON.stringify(props) : '');
     }
   },
@@ -92,7 +101,7 @@ export const debugLogger = {
    * Log with a custom tag
    */
   tagged: (tag, ...args) => {
-    if (__DEV__ || Platform.OS === 'android') {
+    if (__DEV__ || getPlatform().OS === 'android') {
       console.log(`[JOBWALA_${tag.toUpperCase()}]`, ...args);
     }
   },
@@ -101,7 +110,7 @@ export const debugLogger = {
    * Log object with pretty formatting
    */
   object: (label, obj) => {
-    if (__DEV__ || Platform.OS === 'android') {
+    if (__DEV__ || getPlatform().OS === 'android') {
       console.log(`[JOBWALA_OBJECT] ${label}:`, JSON.stringify(obj, null, 2));
     }
   },
@@ -110,7 +119,7 @@ export const debugLogger = {
    * Log stack trace
    */
   stack: (label = 'Stack trace') => {
-    if (__DEV__ || Platform.OS === 'android') {
+    if (__DEV__ || getPlatform().OS === 'android') {
       const stack = new Error().stack;
       console.log(`[JOBWALA_STACK] ${label}:`, stack);
     }

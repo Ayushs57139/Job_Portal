@@ -1,10 +1,21 @@
 import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { Platform, StyleSheet, View, LogBox } from 'react-native';
+import { StyleSheet, View, LogBox } from 'react-native';
 import AppNavigator from './src/navigation/AppNavigator';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import api from './src/config/api';
+
+// Safely get Platform - lazy evaluation
+const getPlatform = () => {
+  try {
+    const { Platform } = require('react-native');
+    if (Platform && typeof Platform.OS !== 'undefined') {
+      return Platform;
+    }
+  } catch (e) {}
+  return { OS: 'android' };
+};
 
 // Enable LogBox for better error visibility in development
 if (__DEV__) {
@@ -35,12 +46,15 @@ export default function App() {
             console.error('==========================================');
             
             // Log to native console for APK debugging
-            if (Platform.OS === 'android') {
-              console.log('[GLOBAL_ERROR] Fatal:', isFatal);
-              console.log('[GLOBAL_ERROR] Error Name:', error?.name);
-              console.log('[GLOBAL_ERROR] Error Message:', error?.message);
-              console.log('[GLOBAL_ERROR] Error Stack:', error?.stack);
-            }
+            try {
+              const Platform = getPlatform();
+              if (Platform.OS === 'android') {
+                console.log('[GLOBAL_ERROR] Fatal:', isFatal);
+                console.log('[GLOBAL_ERROR] Error Name:', error?.name);
+                console.log('[GLOBAL_ERROR] Error Message:', error?.message);
+                console.log('[GLOBAL_ERROR] Error Stack:', error?.stack);
+              }
+            } catch (e) {}
             
             // Call original handler
             if (originalErrorHandler) {
@@ -65,14 +79,17 @@ export default function App() {
         console.error('================================================');
         
         // Log to native console for APK debugging
-        if (Platform.OS === 'android') {
-          console.log('[UNHANDLED_REJECTION] Reason:', reason);
-          if (reason) {
-            console.log('[UNHANDLED_REJECTION] Error Name:', reason?.name);
-            console.log('[UNHANDLED_REJECTION] Error Message:', reason?.message);
-            console.log('[UNHANDLED_REJECTION] Error Stack:', reason?.stack);
+        try {
+          const Platform = getPlatform();
+          if (Platform.OS === 'android') {
+            console.log('[UNHANDLED_REJECTION] Reason:', reason);
+            if (reason) {
+              console.log('[UNHANDLED_REJECTION] Error Name:', reason?.name);
+              console.log('[UNHANDLED_REJECTION] Error Message:', reason?.message);
+              console.log('[UNHANDLED_REJECTION] Error Stack:', reason?.stack);
+            }
           }
-        }
+        } catch (e) {}
       };
 
       // Add listener for unhandled promise rejections (Web)
@@ -88,13 +105,21 @@ export default function App() {
       console.error = (...args) => {
         originalConsoleError(...args);
         // Additional logging for APK
-        if (Platform.OS === 'android') {
-          console.log('[CONSOLE_ERROR]', ...args);
-        }
+        try {
+          const Platform = getPlatform();
+          if (Platform.OS === 'android') {
+            console.log('[CONSOLE_ERROR]', ...args);
+          }
+        } catch (e) {}
       };
 
       console.log('✅ Error handlers initialized');
-      console.log('📱 Platform:', Platform.OS);
+      try {
+        const Platform = getPlatform();
+        console.log('📱 Platform:', Platform?.OS || 'unknown');
+      } catch (e) {
+        console.log('📱 Platform: unknown');
+      }
       console.log('🔧 __DEV__:', __DEV__);
       console.log('📦 App version: 1.0.0');
     };
@@ -121,7 +146,9 @@ export default function App() {
     }
 
     // Add viewport meta tag for responsive web design
-    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+    try {
+      const Platform = getPlatform();
+      if (Platform.OS === 'web' && typeof document !== 'undefined') {
       let viewport = document.querySelector('meta[name="viewport"]');
       if (!viewport) {
         viewport = document.createElement('meta');
@@ -151,7 +178,8 @@ export default function App() {
         }
       `;
       document.getElementsByTagName('head')[0].appendChild(style);
-    }
+      }
+    } catch (e) {}
 
     // Cleanup function
     return () => {
@@ -161,9 +189,18 @@ export default function App() {
     };
   }, []);
 
+  const getSafeAreaStyle = () => {
+    try {
+      const Platform = getPlatform();
+      return Platform.OS === 'web' ? { height: '100%', width: '100%' } : undefined;
+    } catch (e) {
+      return undefined;
+    }
+  };
+
   return (
     <ErrorBoundary>
-      <SafeAreaProvider style={Platform.OS === 'web' ? { height: '100%', width: '100%' } : undefined}>
+      <SafeAreaProvider style={getSafeAreaStyle()}>
         <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
           <View style={styles.container}>
           <StatusBar style="light" />
@@ -175,16 +212,31 @@ export default function App() {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#000', // fallback for devices with transparent system bars
-  },
-  container: {
-    flex: 1,
-    ...(Platform.OS === 'web' && {
-      height: '100%',
-      width: '100%',
-    }),
-  },
-});
+const getStyles = () => {
+  const getPlatform = () => {
+    try {
+      const { Platform } = require('react-native');
+      if (Platform && typeof Platform.OS !== 'undefined') {
+        return Platform;
+      }
+    } catch (e) {}
+    return { OS: 'android' };
+  };
+  
+  const Platform = getPlatform();
+  return StyleSheet.create({
+    safeArea: {
+      flex: 1,
+      backgroundColor: '#000', // fallback for devices with transparent system bars
+    },
+    container: {
+      flex: 1,
+      ...(Platform.OS === 'web' && {
+        height: '100%',
+        width: '100%',
+      }),
+    },
+  });
+};
+
+const styles = getStyles();

@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   TextInput,
-  Platform,
   Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,7 +23,18 @@ import { keySkillsOptions } from '../../data/jobPostFormConfig';
 import { DEPARTMENTS_DATA } from '../../data/departmentsData';
 import { useResponsive } from '../../utils/responsive';
 
-const isWeb = Platform.OS === 'web';
+// Safely get Platform - lazy evaluation
+const getPlatform = () => {
+  try {
+    const { Platform } = require('react-native');
+    if (Platform && typeof Platform.OS !== 'undefined') {
+      return Platform;
+    }
+  } catch (e) {}
+  return { OS: 'android' };
+};
+
+const isWeb = getPlatform().OS === 'web';
 
 const HomeScreen = ({ navigation }) => {
   const responsive = useResponsive();

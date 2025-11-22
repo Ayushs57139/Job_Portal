@@ -10,7 +10,6 @@ import {
   RefreshControl,
   Modal,
   Alert,
-  Platform,
   Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,7 +18,18 @@ import { colors, spacing, typography, borderRadius } from '../../styles/theme';
 import UserSidebar from '../../components/UserSidebar';
 import api from '../../config/api';
 
-const isWeb = Platform.OS === 'web';
+// Safely get Platform - lazy evaluation
+const getPlatform = () => {
+  try {
+    const { Platform } = require('react-native');
+    if (Platform && typeof Platform.OS !== 'undefined') {
+      return Platform;
+    }
+  } catch (e) {}
+  return { OS: 'android' };
+};
+
+const isWeb = getPlatform().OS === 'web';
 const REFRESH_INTERVAL = 10000; // 10 seconds for real-time chat updates
 
 const LiveChatSupportScreen = ({ navigation }) => {

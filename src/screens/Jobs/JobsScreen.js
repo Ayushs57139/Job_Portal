@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
   RefreshControl,
   TouchableOpacity,
-  Platform,
   Modal,
   Dimensions,
 } from 'react-native';
@@ -21,10 +20,21 @@ import AdvertisementWidget from '../../components/AdvertisementWidget';
 import api from '../../config/api';
 import { useResponsive } from '../../utils/responsive';
 
-const isWeb = Platform.OS === 'web';
+// Safely get Platform - lazy evaluation
+const getPlatform = () => {
+  try {
+    const { Platform } = require('react-native');
+    if (Platform && typeof Platform.OS !== 'undefined') {
+      return Platform;
+    }
+  } catch (e) {}
+  return { OS: 'android' };
+};
+
+const isWeb = getPlatform().OS === 'web';
 
 const getStyles = (isPhone, isMobile, isTablet, isDesktop, width) => {
-  const isWeb = Platform.OS === 'web';
+  const isWeb = getPlatform().OS === 'web';
   return StyleSheet.create({
   container: {
     flex: 1,

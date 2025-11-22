@@ -1,5 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, Platform, Linking } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, Linking } from 'react-native';
+
+// Safely get Platform - lazy evaluation
+const getPlatform = () => {
+  try {
+    const { Platform } = require('react-native');
+    if (Platform && typeof Platform.OS !== 'undefined') {
+      return Platform;
+    }
+  } catch (e) {}
+  return { OS: 'android' };
+};
 import { API_URL } from '../config/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AdSenseComponent from './AdSenseComponent';
@@ -44,7 +55,7 @@ const AdvertisementWidget = ({
   };
 
   const detectDevice = () => {
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    if (getPlatform().OS === 'web' && typeof window !== 'undefined') {
       const width = window.innerWidth || 1024;
       if (width < 768) {
         setDevice('mobile');
@@ -53,7 +64,7 @@ const AdvertisementWidget = ({
       } else {
         setDevice('desktop');
       }
-    } else if (Platform.OS === 'ios' || Platform.OS === 'android') {
+    } else if (getPlatform().OS === 'ios' || getPlatform().OS === 'android') {
       setDevice('mobile');
     }
   };
@@ -127,7 +138,7 @@ const AdvertisementWidget = ({
           ? ad.content.linkUrl 
           : `https://${ad.content.linkUrl}`;
         
-        if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        if (getPlatform().OS === 'web' && typeof window !== 'undefined') {
           window.open(url, '_blank');
         } else {
           await Linking.openURL(url);
@@ -167,7 +178,7 @@ const AdvertisementWidget = ({
         onPress={() => handleAdClick(ad)}
         activeOpacity={0.8}
       >
-        {content.html && Platform.OS === 'web' && typeof document !== 'undefined' && (
+        {content.html && getPlatform().OS === 'web' && typeof document !== 'undefined' && (
           React.createElement('div', { dangerouslySetInnerHTML: { __html: content.html } })
         )}
 
@@ -201,7 +212,7 @@ const AdvertisementWidget = ({
     const adsense = ad.adsense || {};
     const displaySettings = ad.displaySettings || {};
 
-    if (Platform.OS !== 'web') {
+    if (getPlatform().OS !== 'web') {
       return null; // AdSense only on web
     }
 
@@ -238,7 +249,7 @@ const AdvertisementWidget = ({
     const admob = ad.admob || {};
     const displaySettings = ad.displaySettings || {};
 
-    if (Platform.OS === 'web') {
+    if (getPlatform().OS === 'web') {
       return null; // AdMob only on mobile
     }
 

@@ -11,18 +11,8 @@ import {
   RefreshControl,
   Modal,
   Linking,
-  Platform as RNPlatform
+  Platform
 } from 'react-native';
-
-// Safely assign Platform with fallback to prevent runtime errors
-let Platform;
-try {
-  Platform = (typeof RNPlatform !== 'undefined' && RNPlatform && typeof RNPlatform.OS !== 'undefined') 
-    ? RNPlatform 
-    : { OS: 'android' };
-} catch (e) {
-  Platform = { OS: 'android' };
-}
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import AdminLayout from '../../components/Admin/AdminLayout';

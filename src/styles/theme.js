@@ -108,11 +108,22 @@ export const borderRadius = {
   full: 999,
 };
 
-import { Platform } from 'react-native';
+// Safely get Platform - lazy evaluation
+const getPlatform = () => {
+  try {
+    const { Platform } = require('react-native');
+    if (Platform && typeof Platform.OS !== 'undefined') {
+      return Platform;
+    }
+  } catch (e) {}
+  return { OS: 'android' };
+};
+
+const isWeb = getPlatform().OS === 'web';
 
 export const shadows = {
   xs: {
-    ...(Platform.OS === 'web' ? {
+    ...(isWeb ? {
       boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
     } : {
       shadowColor: '#000',
@@ -123,7 +134,7 @@ export const shadows = {
     }),
   },
   sm: {
-    ...(Platform.OS === 'web' ? {
+    ...(isWeb ? {
       boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
     } : {
       shadowColor: '#000',
@@ -134,7 +145,7 @@ export const shadows = {
     }),
   },
   md: {
-    ...(Platform.OS === 'web' ? {
+    ...(isWeb ? {
       boxShadow: '0 4px 8px rgba(0, 0, 0, 0.15)',
     } : {
       shadowColor: '#000',
@@ -145,7 +156,7 @@ export const shadows = {
     }),
   },
   lg: {
-    ...(Platform.OS === 'web' ? {
+    ...(isWeb ? {
       boxShadow: '0 8px 16px rgba(0, 0, 0, 0.2)',
     } : {
       shadowColor: '#000',

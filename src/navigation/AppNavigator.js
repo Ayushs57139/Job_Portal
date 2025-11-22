@@ -3,7 +3,18 @@ import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ActivityIndicator, View, Platform } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
+
+// Safely get Platform - lazy evaluation
+const getPlatform = () => {
+  try {
+    const { Platform } = require('react-native');
+    if (Platform && typeof Platform.OS !== 'undefined') {
+      return Platform;
+    }
+  } catch (e) {}
+  return { OS: 'android' };
+};
 import ChatbotWidget from '../components/ChatbotWidget';
 
 // Auth Screens
@@ -166,7 +177,7 @@ const AppNavigator = () => {
 
   const containerStyle = {
     flex: 1,
-    ...(Platform.OS === 'web' && {
+    ...(getPlatform().OS === 'web' && {
       height: '100%',
       width: '100%',
       display: 'flex',
@@ -234,7 +245,7 @@ const AppNavigator = () => {
               fontSize: 18,
             },
             headerBackTitleVisible: false,
-            ...(Platform.OS === 'web' && {
+            ...(getPlatform().OS === 'web' && {
               cardStyle: { flex: 1, height: '100%' },
             }),
           }}

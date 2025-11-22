@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   Modal,
-  Platform,
   Alert,
   Dimensions,
   Animated,
@@ -22,7 +21,18 @@ import Header from '../../components/Header';
 import { RESUME_TEMPLATES } from '../../components/ResumeTemplates';
 
 const { width } = Dimensions.get('window');
-const isWeb = Platform.OS === 'web';
+// Safely get Platform - lazy evaluation
+const getPlatform = () => {
+  try {
+    const { Platform } = require('react-native');
+    if (Platform && typeof Platform.OS !== 'undefined') {
+      return Platform;
+    }
+  } catch (e) {}
+  return { OS: 'android' };
+};
+
+const isWeb = getPlatform().OS === 'web';
 
 // Resume Themes Configuration
 const RESUME_THEMES = [
@@ -336,7 +346,7 @@ const CreateResumeScreen = ({ navigation }) => {
   const exportToPDF = async () => {
     try {
       setExporting(true);
-      if (Platform.OS === 'web') {
+      if (getPlatform().OS === 'web') {
         // Web export using print
         window.print();
       } else {
@@ -398,7 +408,7 @@ const CreateResumeScreen = ({ navigation }) => {
         content += `SKILLS\n${resumeData.skills.join(', ')}\n`;
       }
 
-      if (Platform.OS === 'web') {
+      if (getPlatform().OS === 'web') {
         // Download as text file on web
         const blob = new Blob([content], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);

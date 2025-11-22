@@ -1,9 +1,22 @@
 // Common styles used across the app
-import { StyleSheet, Platform, Dimensions } from 'react-native';
+import { StyleSheet, Dimensions } from 'react-native';
 import { colors, spacing, typography, borderRadius, shadows } from './theme';
 
+// Safely get Platform - lazy evaluation to avoid runtime errors
+const getPlatform = () => {
+  try {
+    const { Platform } = require('react-native');
+    if (Platform && typeof Platform.OS !== 'undefined') {
+      return Platform;
+    }
+  } catch (e) {
+    // Platform not ready
+  }
+  return { OS: 'android' };
+};
+
 const { width } = Dimensions.get('window');
-const isWeb = Platform.OS === 'web';
+const isWeb = getPlatform().OS === 'web';
 const isMobile = width <= 600;
 const isTablet = width > 600 && width <= 768;
 

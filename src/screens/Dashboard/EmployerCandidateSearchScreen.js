@@ -16,6 +16,18 @@ import { colors, spacing, borderRadius, typography, shadows } from '../../styles
 import EmployerSidebar from '../../components/EmployerSidebar';
 import api from '../../config/api';
 import { useResponsive } from '../../utils/responsive';
+
+// Safely get Platform - lazy evaluation
+const getPlatform = () => {
+  try {
+    const { Platform } = require('react-native');
+    if (Platform && typeof Platform.OS !== 'undefined') {
+      return Platform;
+    }
+  } catch (e) {}
+  return { OS: 'android' };
+};
+
 import {
   jobTitleOptions,
   companyTypeOptions,
@@ -2138,7 +2150,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     fontSize: 14,
     ...shadows.sm,
-    ...(Platform.OS === 'web' ? {} : {
+    ...(getPlatform().OS === 'web' ? {} : {
       shadowOpacity: 0.03
     })
   },
@@ -2216,7 +2228,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm + 2, 
     ...shadows.sm,
     minHeight: 40,
-    ...(Platform.OS === 'web' ? {} : {
+    ...(getPlatform().OS === 'web' ? {} : {
       shadowOpacity: 0.03,
     })
   },
@@ -2235,7 +2247,7 @@ const styles = StyleSheet.create({
     maxHeight: 280, 
     ...shadows.md,
     overflow: 'hidden',
-    ...(Platform.OS === 'web' ? {
+    ...(getPlatform().OS === 'web' ? {
       boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
     } : {
       shadowOpacity: 0.08,

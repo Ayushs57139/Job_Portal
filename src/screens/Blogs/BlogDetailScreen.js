@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
   Alert,
   Share,
-  Platform,
   Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -18,7 +17,18 @@ import { colors, typography, spacing, borderRadius, shadows } from '../../styles
 import api from '../../config/api';
 
 const { width } = Dimensions.get('window');
-const isWeb = Platform.OS === 'web';
+// Safely get Platform - lazy evaluation
+const getPlatform = () => {
+  try {
+    const { Platform } = require('react-native');
+    if (Platform && typeof Platform.OS !== 'undefined') {
+      return Platform;
+    }
+  } catch (e) {}
+  return { OS: 'android' };
+};
+
+const isWeb = getPlatform().OS === 'web';
 const isPhone = width <= 480;
 const isMobile = width <= 600;
 const isTablet = width > 600 && width <= 1024;

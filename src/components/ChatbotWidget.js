@@ -8,7 +8,6 @@ import {
   ScrollView, 
   Modal, 
   KeyboardAvoidingView, 
-  Platform, 
   ActivityIndicator,
   Dimensions,
   Animated
@@ -19,7 +18,18 @@ import { API_URL } from '../config/api';
 import { colors, spacing, borderRadius, shadows, typography } from '../styles/theme';
 import { useResponsive } from '../utils/responsive';
 
-const isWeb = Platform.OS === 'web';
+// Safely get Platform - lazy evaluation
+const getPlatform = () => {
+  try {
+    const { Platform } = require('react-native');
+    if (Platform && typeof Platform.OS !== 'undefined') {
+      return Platform;
+    }
+  } catch (e) {}
+  return { OS: 'android' };
+};
+
+const isWeb = getPlatform().OS === 'web';
 
 const ChatbotWidget = () => {
   const responsive = useResponsive();
@@ -104,8 +114,8 @@ const ChatbotWidget = () => {
         },
         body: JSON.stringify({
           guestName: 'Guest',
-          platform: Platform.OS,
-          userAgent: Platform.OS === 'web' ? navigator.userAgent : `React Native ${Platform.Version}`
+          platform: getPlatform().OS,
+          userAgent: getPlatform().OS === 'web' ? (typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown') : `React Native ${getPlatform().Version || 'unknown'}`
         })
       });
 
@@ -299,9 +309,9 @@ const ChatbotWidget = () => {
           onPress={() => !isMinimized && setIsOpen(false)}
         >
           <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            behavior={getPlatform().OS === 'ios' ? 'padding' : 'height'}
             style={dynamicStyles.modalContainer}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+            keyboardVerticalOffset={getPlatform().OS === 'ios' ? 0 : 0}
           >
             <TouchableOpacity 
               activeOpacity={1}

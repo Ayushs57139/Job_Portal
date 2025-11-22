@@ -1,6 +1,19 @@
 // Responsive utility functions for React Native Web
-import { Platform, Dimensions } from 'react-native';
+import { Dimensions } from 'react-native';
 import { useState, useEffect } from 'react';
+
+// Safely get Platform - lazy evaluation to avoid runtime errors
+const getPlatform = () => {
+  try {
+    const { Platform } = require('react-native');
+    if (Platform && typeof Platform.OS !== 'undefined') {
+      return Platform;
+    }
+  } catch (e) {
+    // Platform not ready
+  }
+  return { OS: 'android' };
+};
 
 // Get window dimensions
 const getWindowDimensions = () => {
@@ -15,8 +28,14 @@ export const breakpoints = {
   wide: 1200,
 };
 
-// Check if current platform is web
-export const isWeb = Platform.OS === 'web';
+// Check if current platform is web - lazy evaluation
+export const isWeb = () => {
+  try {
+    return getPlatform().OS === 'web';
+  } catch (e) {
+    return false;
+  }
+};
 
 // Get responsive values based on screen width with dynamic updates
 export const useResponsive = () => {
@@ -40,8 +59,8 @@ export const useResponsive = () => {
     isDesktop: width > breakpoints.tablet,
     isWideScreen: width > breakpoints.wide,
     // For web, also check if it's mobile viewport
-    isMobileWeb: isWeb && width <= breakpoints.mobile,
-    isTabletWeb: isWeb && width > breakpoints.mobile && width <= breakpoints.tablet,
+    isMobileWeb: isWeb() && width <= breakpoints.mobile,
+    isTabletWeb: isWeb() && width > breakpoints.mobile && width <= breakpoints.tablet,
   };
 };
 

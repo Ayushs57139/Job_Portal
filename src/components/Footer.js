@@ -1,10 +1,21 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Linking, Dimensions, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Linking, Dimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { colors, spacing, typography } from '../styles/theme';
 import { useResponsive } from '../utils/responsive';
 
-const isWeb = Platform.OS === 'web';
+// Safely get Platform - lazy evaluation
+const getPlatform = () => {
+  try {
+    const { Platform } = require('react-native');
+    if (Platform && typeof Platform.OS !== 'undefined') {
+      return Platform;
+    }
+  } catch (e) {}
+  return { OS: 'android' };
+};
+
+const isWeb = getPlatform().OS === 'web';
 
 const Footer = () => {
   const navigation = useNavigation();

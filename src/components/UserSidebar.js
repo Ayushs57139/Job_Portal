@@ -1,10 +1,21 @@
 import React, { useMemo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, typography } from '../styles/theme';
 import { useResponsive } from '../utils/responsive';
 
-const isWeb = Platform.OS === 'web';
+// Safely get Platform - lazy evaluation
+const getPlatform = () => {
+  try {
+    const { Platform } = require('react-native');
+    if (Platform && typeof Platform.OS !== 'undefined') {
+      return Platform;
+    }
+  } catch (e) {}
+  return { OS: 'android' };
+};
+
+const isWeb = getPlatform().OS === 'web';
 
 const UserSidebar = ({ navigation, activeKey = 'dashboard', onClose = null, badges = {} }) => {
   const responsive = useResponsive();
@@ -165,7 +176,7 @@ const UserSidebar = ({ navigation, activeKey = 'dashboard', onClose = null, badg
 };
 
 const getStyles = (isPhone, isMobile, isTablet, isDesktop, width) => {
-  const isWeb = Platform.OS === 'web';
+  const isWeb = getPlatform().OS === 'web';
   return StyleSheet.create({
     container: {
       width: isPhone ? Math.min(width * 0.85, 320) : (isMobile ? 240 : (isTablet ? 260 : (isDesktop ? 280 : 260))),
