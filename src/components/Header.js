@@ -26,10 +26,24 @@ const Header = ({ showBack = false, title }) => {
   const [activeDropdown, setActiveDropdown] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
-  const isPhone = responsive.width <= 480;
-  const isMobile = responsive.isMobile;
-  const isTablet = responsive.isTablet;
-  const isDesktop = responsive.isDesktop;
+  // Enhanced device detection
+  const { width } = responsive;
+  const isXsPhone = width <= 320;
+  const isSmallPhone = width > 320 && width <= 375;
+  const isPhone = width > 375 && width <= 414;
+  const isLargePhone = width > 414 && width <= 480;
+  const isMobile = width <= 480;
+  const isSmallTablet = width > 480 && width <= 600;
+  const isTablet = width > 600 && width <= 768;
+  const isLargeTablet = width > 768 && width <= 834;
+  const isTabletDevice = width > 480 && width <= 834;
+  const isSmallLaptop = width > 834 && width <= 1024;
+  const isLaptop = width > 1024 && width <= 1200;
+  const isDesktop = width > 1200 && width <= 1440;
+  const isLargeDesktop = width > 1440;
+  const isDesktopDevice = width > 834;
+  const showMobileMenu = width <= 768;
+  const showCompactNav = width > 768 && width <= 1024;
 
   useEffect(() => {
     loadUser();
@@ -90,79 +104,20 @@ const Header = ({ showBack = false, title }) => {
       screen: 'Jobs',
       hasDropdown: true,
       items: [
-        { 
-          label: 'All Jobs', 
-          screen: 'Jobs', 
-          icon: 'briefcase',
-          params: null
-        },
-        { 
-          label: 'Work From Home Jobs', 
-          screen: 'Jobs', 
-          icon: 'home-outline',
-          params: { filterType: 'workMode', filterValue: 'wfh', filterLabel: 'Work From Home Jobs' }
-        },
-        { 
-          label: 'Part Time Jobs', 
-          screen: 'Jobs', 
-          icon: 'time-outline',
-          params: { filterType: 'workType', filterValue: 'parttime', filterLabel: 'Part Time Jobs' }
-        },
-        { 
-          label: 'Freshers Jobs', 
-          screen: 'Jobs', 
-          icon: 'school-outline',
-          params: { filterType: 'experience', filterValue: 'fresher', filterLabel: 'Freshers Jobs' }
-        },
-        { 
-          label: 'Jobs for Women', 
-          screen: 'Jobs', 
-          icon: 'female-outline',
-          params: { filterType: 'gender', filterValue: 'female', filterLabel: 'Jobs for Women' }
-        },
-        { 
-          label: 'Full Time Jobs', 
-          screen: 'Jobs', 
-          icon: 'briefcase-outline',
-          params: { filterType: 'workType', filterValue: 'fulltime', filterLabel: 'Full Time Jobs' }
-        },
-        { 
-          label: 'Night Shift Jobs', 
-          screen: 'Jobs', 
-          icon: 'moon-outline',
-          params: { filterType: 'workShift', filterValue: 'night', filterLabel: 'Night Shift Jobs' }
-        },
-        { 
-          label: 'Jobs By City', 
-          screen: 'Jobs', 
-          icon: 'location-outline',
-          params: { filterType: 'location', filterValue: 'city', filterLabel: 'Jobs By City' }
-        },
-        { 
-          label: 'Jobs By Department', 
-          screen: 'Jobs', 
-          icon: 'business-outline',
-          params: { filterType: 'department', filterValue: 'all', filterLabel: 'Jobs By Department' }
-        },
-        { 
-          label: 'Jobs By Company', 
-          screen: 'Companies', 
-          icon: 'albums-outline',
-          params: null
-        },
-        { 
-          label: 'Jobs By Qualification', 
-          screen: 'Jobs', 
-          icon: 'ribbon-outline',
-          params: { filterType: 'qualification', filterValue: 'all', filterLabel: 'Jobs By Qualification' }
-        },
+        { label: 'All Jobs', screen: 'Jobs', icon: 'briefcase', params: null },
+        { label: 'Work From Home Jobs', screen: 'Jobs', icon: 'home-outline', params: { filterType: 'workMode', filterValue: 'wfh', filterLabel: 'Work From Home Jobs' } },
+        { label: 'Part Time Jobs', screen: 'Jobs', icon: 'time-outline', params: { filterType: 'workType', filterValue: 'parttime', filterLabel: 'Part Time Jobs' } },
+        { label: 'Freshers Jobs', screen: 'Jobs', icon: 'school-outline', params: { filterType: 'experience', filterValue: 'fresher', filterLabel: 'Freshers Jobs' } },
+        { label: 'Jobs for Women', screen: 'Jobs', icon: 'female-outline', params: { filterType: 'gender', filterValue: 'female', filterLabel: 'Jobs for Women' } },
+        { label: 'Full Time Jobs', screen: 'Jobs', icon: 'briefcase-outline', params: { filterType: 'workType', filterValue: 'fulltime', filterLabel: 'Full Time Jobs' } },
+        { label: 'Night Shift Jobs', screen: 'Jobs', icon: 'moon-outline', params: { filterType: 'workShift', filterValue: 'night', filterLabel: 'Night Shift Jobs' } },
+        { label: 'Jobs By City', screen: 'Jobs', icon: 'location-outline', params: { filterType: 'location', filterValue: 'city', filterLabel: 'Jobs By City' } },
+        { label: 'Jobs By Department', screen: 'Jobs', icon: 'business-outline', params: { filterType: 'department', filterValue: 'all', filterLabel: 'Jobs By Department' } },
+        { label: 'Jobs By Company', screen: 'Companies', icon: 'albums-outline', params: null },
+        { label: 'Jobs By Qualification', screen: 'Jobs', icon: 'ribbon-outline', params: { filterType: 'qualification', filterValue: 'all', filterLabel: 'Jobs By Qualification' } },
       ],
     },
-    {
-      label: 'Companies',
-      screen: 'Companies',
-      hasDropdown: false,
-    },
+    { label: 'Companies', screen: 'Companies', hasDropdown: false },
     {
       label: 'Services',
       screen: 'Services',
@@ -172,30 +127,51 @@ const Header = ({ showBack = false, title }) => {
         { label: 'Packages', screen: 'Packages', icon: 'cube-outline' },
       ],
     },
-    {
-      label: 'Blogs',
-      screen: 'Blogs',
-      hasDropdown: false,
-    },
-    {
-      label: 'Social Updates',
-      screen: 'SocialUpdates',
-      hasDropdown: false,
-    },
+    { label: 'Blogs', screen: 'Blogs', hasDropdown: false },
+    { label: 'Social Updates', screen: 'SocialUpdates', hasDropdown: false },
   ];
+
+  // Get responsive sizes
+  const getLogoSize = () => {
+    if (isXsPhone) return 16;
+    if (isSmallPhone) return 18;
+    if (isMobile) return 20;
+    if (isSmallTablet) return 22;
+    if (isTablet) return 24;
+    if (isLargeTablet) return 26;
+    if (isSmallLaptop) return 28;
+    return 30;
+  };
+
+  const getIconSize = () => {
+    if (isXsPhone) return 18;
+    if (isSmallPhone) return 20;
+    if (isMobile) return 22;
+    if (isTabletDevice) return 24;
+    return 26;
+  };
+
+  const getMenuFontSize = () => {
+    if (isSmallLaptop) return 13;
+    if (isLaptop) return 14;
+    return 15;
+  };
+
+  const dynamicStyles = getStyles(
+    isXsPhone, isSmallPhone, isPhone, isLargePhone, isMobile,
+    isSmallTablet, isTablet, isLargeTablet, isTabletDevice,
+    isSmallLaptop, isLaptop, isDesktop, isLargeDesktop, isDesktopDevice,
+    showMobileMenu, showCompactNav, width
+  );
 
   // Render navigation menu item
   const renderMenuItem = (item, index) => {
     const isActive = activeDropdown === item.label;
-    const dynamicStyles = getStyles(isPhone, isMobile, isTablet, isDesktop);
     
     return (
       <View 
         key={index} 
-        style={[
-          dynamicStyles.menuItemWrapper,
-          isActive && dynamicStyles.menuItemWrapperActive
-        ]}
+        style={[dynamicStyles.menuItemWrapper, isActive && dynamicStyles.menuItemWrapperActive]}
       >
         <TouchableOpacity
           style={dynamicStyles.menuItem}
@@ -212,7 +188,7 @@ const Header = ({ showBack = false, title }) => {
           {item.hasDropdown && (
             <Ionicons
               name={isActive ? 'chevron-up' : 'chevron-down'}
-              size={isPhone ? 14 : 16}
+              size={showCompactNav ? 12 : 14}
               color={colors.text}
               style={dynamicStyles.menuItemIcon}
             />
@@ -232,7 +208,7 @@ const Header = ({ showBack = false, title }) => {
                 onPress={() => navigateTo(dropdownItem.screen, dropdownItem.params)}
                 activeOpacity={0.7}
               >
-                <Ionicons name={dropdownItem.icon} size={isPhone ? 16 : 18} color={colors.primary} />
+                <Ionicons name={dropdownItem.icon} size={showCompactNav ? 14 : 16} color={colors.primary} />
                 <Text style={dynamicStyles.dropdownItemText}>{dropdownItem.label}</Text>
               </TouchableOpacity>
             ))}
@@ -241,8 +217,6 @@ const Header = ({ showBack = false, title }) => {
       </View>
     );
   };
-
-  const dynamicStyles = getStyles(isPhone, isMobile, isTablet, isDesktop);
 
   return (
     <>
@@ -267,9 +241,9 @@ const Header = ({ showBack = false, title }) => {
                     style={dynamicStyles.backButton}
                     activeOpacity={0.7}
                   >
-                    <Ionicons name="arrow-back" size={isPhone ? 20 : 24} color={colors.primary} />
+                    <Ionicons name="arrow-back" size={getIconSize()} color={colors.primary} />
                   </TouchableOpacity>
-                  {title && <Text style={dynamicStyles.titleText}>{title}</Text>}
+                  {title && <Text style={dynamicStyles.titleText} numberOfLines={1}>{title}</Text>}
                 </View>
               ) : (
                 <TouchableOpacity
@@ -277,7 +251,7 @@ const Header = ({ showBack = false, title }) => {
                   style={dynamicStyles.logo}
                   activeOpacity={0.8}
                 >
-                  <Text style={dynamicStyles.logoText}>
+                  <Text style={[dynamicStyles.logoText, { fontSize: getLogoSize() }]}>
                     <Text style={dynamicStyles.logoFree}>Free</Text>
                     <Text style={dynamicStyles.logoJob}>job</Text>
                     <Text style={dynamicStyles.logoWala}>wala</Text>
@@ -286,7 +260,7 @@ const Header = ({ showBack = false, title }) => {
               )}
 
               {/* Navigation Menu - Desktop/Tablet (only show if not showing back button) */}
-              {!showBack && !responsive.isMobile && (
+              {!showBack && !showMobileMenu && (
                 <View style={dynamicStyles.navMenu}>
                   {menuItems.map((item, index) => renderMenuItem(item, index))}
                 </View>
@@ -300,7 +274,6 @@ const Header = ({ showBack = false, title }) => {
                 <TouchableOpacity 
                   style={dynamicStyles.userAvatarContainer}
                   onPress={() => {
-                    // Navigate based on user type
                     if (user.userType === 'employer') {
                       if (user.employerType === 'company') {
                         navigation.navigate('CompanyDashboard');
@@ -321,69 +294,80 @@ const Header = ({ showBack = false, title }) => {
                     </Text>
                   </View>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => {
-                    // Navigate based on user type
-                    if (user.userType === 'employer') {
-                      if (user.employerType === 'company') {
-                        navigation.navigate('CompanyDashboard');
-                      } else if (user.employerType === 'consultancy') {
-                        navigation.navigate('ConsultancyDashboard');
+                {!isMobile && (
+                  <TouchableOpacity
+                    onPress={() => {
+                      if (user.userType === 'employer') {
+                        if (user.employerType === 'company') {
+                          navigation.navigate('CompanyDashboard');
+                        } else if (user.employerType === 'consultancy') {
+                          navigation.navigate('ConsultancyDashboard');
+                        }
+                      } else if (user.userType === 'admin' || user.userType === 'superadmin') {
+                        navigation.navigate('AdminDashboard');
+                      } else {
+                        navigation.navigate('UserDashboard');
                       }
-                    } else if (user.userType === 'admin' || user.userType === 'superadmin') {
-                      navigation.navigate('AdminDashboard');
-                    } else {
-                      navigation.navigate('UserDashboard');
-                    }
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Text style={dynamicStyles.userName} numberOfLines={1}>
-                    {user.firstName || user.name}
-                  </Text>
-                </TouchableOpacity>
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={dynamicStyles.userName} numberOfLines={1}>
+                      {user.firstName || user.name}
+                    </Text>
+                  </TouchableOpacity>
+                )}
                 <TouchableOpacity
                   onPress={handleLogout}
                   style={dynamicStyles.logoutButton}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name="log-out-outline" size={isPhone ? 18 : 20} color={colors.primary} />
+                  <Ionicons name="log-out-outline" size={isMobile ? 16 : 18} color={colors.primary} />
                 </TouchableOpacity>
               </View>
             ) : (
               <View style={dynamicStyles.authButtons}>
-                <TouchableOpacity
-                  style={dynamicStyles.loginButton}
-                  onPress={() => navigateTo('Login')}
-                  activeOpacity={0.8}
-                >
-                  <Text style={dynamicStyles.loginButtonText}>Candidate Login</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={dynamicStyles.postJobButton}
-                  onPress={() => navigateTo('PostJob')}
-                  activeOpacity={0.8}
-                >
-                  <Text style={dynamicStyles.postJobButtonText}>Post Job</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={dynamicStyles.employersButton}
-                  onPress={() => navigateTo('EmployerOptions')}
-                  activeOpacity={0.8}
-                >
-                  <Text style={dynamicStyles.employersButtonText}>Employers Login</Text>
-                </TouchableOpacity>
+                {!isXsPhone && (
+                  <TouchableOpacity
+                    style={dynamicStyles.loginButton}
+                    onPress={() => navigateTo('Login')}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={dynamicStyles.loginButtonText}>
+                      {isMobile ? 'Login' : 'Candidate Login'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                {!isMobile && (
+                  <>
+                    <TouchableOpacity
+                      style={dynamicStyles.postJobButton}
+                      onPress={() => navigateTo('PostJob')}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={dynamicStyles.postJobButtonText}>Post Job</Text>
+                    </TouchableOpacity>
+                    {!showCompactNav && (
+                      <TouchableOpacity
+                        style={dynamicStyles.employersButton}
+                        onPress={() => navigateTo('EmployerOptions')}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={dynamicStyles.employersButtonText}>Employers Login</Text>
+                      </TouchableOpacity>
+                    )}
+                  </>
+                )}
               </View>
             )}
 
             {/* Mobile Menu Button */}
-            {responsive.isMobile && (
+            {showMobileMenu && (
               <TouchableOpacity
                 style={dynamicStyles.mobileMenuButton}
                 onPress={() => setMobileMenuOpen(true)}
                 activeOpacity={0.7}
               >
-                <Ionicons name="menu" size={isPhone ? 24 : 28} color={colors.text} />
+                <Ionicons name="menu" size={getIconSize()} color={colors.text} />
               </TouchableOpacity>
             )}
           </View>
@@ -405,7 +389,7 @@ const Header = ({ showBack = false, title }) => {
                 onPress={() => setMobileMenuOpen(false)}
                 style={dynamicStyles.mobileMenuClose}
               >
-                <Ionicons name="close" size={isPhone ? 24 : 28} color={colors.text} />
+                <Ionicons name="close" size={getIconSize()} color={colors.text} />
               </TouchableOpacity>
             </View>
 
@@ -425,7 +409,7 @@ const Header = ({ showBack = false, title }) => {
                   {item.hasDropdown && (
                     <Ionicons
                       name={activeDropdown === item.label ? 'chevron-up' : 'chevron-down'}
-                      size={isPhone ? 18 : 20}
+                      size={isMobile ? 16 : 18}
                       color={colors.text}
                     />
                   )}
@@ -439,7 +423,7 @@ const Header = ({ showBack = false, title }) => {
                         style={dynamicStyles.mobileDropdownItem}
                         onPress={() => navigateTo(dropdownItem.screen, dropdownItem.params)}
                       >
-                        <Ionicons name={dropdownItem.icon} size={isPhone ? 16 : 18} color={colors.primary} />
+                        <Ionicons name={dropdownItem.icon} size={isMobile ? 14 : 16} color={colors.primary} />
                         <Text style={dynamicStyles.mobileDropdownItemText}>{dropdownItem.label}</Text>
                       </TouchableOpacity>
                     ))}
@@ -462,6 +446,12 @@ const Header = ({ showBack = false, title }) => {
                 >
                   <Text style={dynamicStyles.mobilePostJobButtonText}>Post Job</Text>
                 </TouchableOpacity>
+                <TouchableOpacity
+                  style={dynamicStyles.mobileEmployersButton}
+                  onPress={() => navigateTo('EmployerOptions')}
+                >
+                  <Text style={dynamicStyles.mobileEmployersButtonText}>Employers Login</Text>
+                </TouchableOpacity>
               </View>
             )}
           </View>
@@ -472,381 +462,392 @@ const Header = ({ showBack = false, title }) => {
   );
 };
 
-const getStyles = (isPhone, isMobile, isTablet, isDesktop) => {
-  const width = typeof window !== 'undefined' ? window.innerWidth : Dimensions.get('window').width;
+const getStyles = (
+  isXsPhone, isSmallPhone, isPhone, isLargePhone, isMobile,
+  isSmallTablet, isTablet, isLargeTablet, isTabletDevice,
+  isSmallLaptop, isLaptop, isDesktop, isLargeDesktop, isDesktopDevice,
+  showMobileMenu, showCompactNav, width
+) => {
+  // Calculate responsive values
+  const headerHeight = isXsPhone ? 48 : isSmallPhone ? 52 : isMobile ? 56 : isTabletDevice ? 60 : isSmallLaptop ? 64 : 70;
+  const horizontalPadding = isXsPhone ? 8 : isSmallPhone ? 10 : isMobile ? 12 : isSmallTablet ? 16 : isTablet ? 20 : isLargeTablet ? 24 : isSmallLaptop ? 32 : isLaptop ? 40 : 48;
+  const menuGap = showCompactNav ? 2 : isLaptop ? 4 : 8;
+  const menuPadding = showCompactNav ? 6 : isLaptop ? 8 : 12;
+  
   return StyleSheet.create({
-  backdrop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'transparent',
-    zIndex: 998,
-    ...(isWeb && {
-      position: 'fixed',
-    }),
-  },
-  headerWrapper: {
-    backgroundColor: colors.cardBackground,
-    ...shadows.md,
-    elevation: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    zIndex: 999,
-    ...(isWeb && {
+    backdrop: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'transparent',
+      zIndex: 998,
+      ...(isWeb && {
+        position: 'fixed',
+      }),
+    },
+    headerWrapper: {
+      backgroundColor: colors.cardBackground,
+      ...shadows.md,
+      elevation: 4,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      zIndex: 999,
+      ...(isWeb && {
+        position: 'relative',
+      }),
+    },
+    header: {
+      backgroundColor: colors.cardBackground,
+      overflow: 'visible',
+    },
+    headerContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 0,
+      paddingVertical: isXsPhone ? 4 : isSmallPhone ? 6 : isMobile ? 8 : 12,
+      minHeight: headerHeight,
+      width: '100%',
+      overflow: 'visible',
+    },
+    logo: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    logoText: {
+      fontWeight: '700',
+      letterSpacing: -0.5,
+    },
+    logoFree: {
+      color: colors.text,
+    },
+    logoJob: {
+      color: '#FF6B35',
+    },
+    logoWala: {
+      color: colors.text,
+    },
+    
+    // Left Section Container
+    leftSectionContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+      gap: isSmallLaptop ? 12 : isLaptop ? 16 : 24,
+      paddingLeft: horizontalPadding,
+    },
+    leftSection: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: isMobile ? 8 : 12,
+      flex: 1,
+    },
+    backButton: {
+      width: isMobile ? 32 : 40,
+      height: isMobile ? 32 : 40,
+      borderRadius: borderRadius.md,
+      backgroundColor: colors.background,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    titleText: {
+      fontSize: isMobile ? 16 : isTabletDevice ? 18 : 20,
+      fontWeight: '700',
+      color: colors.text,
+      flex: 1,
+    },
+    
+    // Navigation Menu
+    navMenu: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: menuGap,
+      overflow: 'visible',
+      flexWrap: showCompactNav ? 'wrap' : 'nowrap',
+    },
+    menuItemWrapper: {
       position: 'relative',
-    }),
-  },
-  header: {
-    backgroundColor: colors.cardBackground,
-    overflow: 'visible',
-  },
-  headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 0,
-    paddingVertical: isPhone ? spacing.xs : (isMobile ? spacing.sm : spacing.md),
-    minHeight: isPhone ? 56 : (isMobile ? 60 : isTablet ? 65 : 70),
-    width: '100%',
-    overflow: 'visible',
-  },
-  logo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  logoText: {
-    fontSize: isPhone ? 18 : (isMobile ? 22 : (isTablet ? 26 : (isDesktop ? 32 : 28))),
-    fontWeight: '700',
-    letterSpacing: -0.5,
-  },
-  logoFree: {
-    color: colors.text,
-  },
-  logoJob: {
-    color: '#FF6B35',
-  },
-  logoWala: {
-    color: colors.text,
-  },
-  
-  // Left Section Container
-  leftSectionContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    gap: spacing.lg,
-    paddingLeft: isPhone ? spacing.sm : (isMobile ? spacing.md : isTablet ? spacing.lg : spacing.xl),
-  },
-  // Back Button & Title
-  leftSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.background,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  titleText: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  
-  // Navigation Menu
-  navMenu: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: isTablet ? spacing.xs : spacing.sm,
-    overflow: 'visible',
-    flexWrap: 'wrap',
-  },
-  menuItemWrapper: {
-    position: 'relative',
-    overflow: 'visible',
-    zIndex: 100,
-  },
-  menuItemWrapperActive: {
-    zIndex: 9999,
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: isTablet ? spacing.sm : spacing.md,
-    paddingVertical: spacing.sm,
-    gap: spacing.xs,
-    ...(isWeb && {
-      cursor: 'pointer',
-    }),
-  },
-  menuItemText: {
-    fontSize: isTablet ? 14 : 15,
-    fontWeight: '500',
-    color: colors.text,
-  },
-  menuItemIcon: {
-    marginLeft: 2,
-  },
-  
-  // Dropdown
-  dropdown: {
-    position: 'absolute',
-    top: '100%',
-    left: 0,
-    minWidth: 220,
-    backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.md,
-    marginTop: spacing.xs,
-    borderWidth: 1,
-    borderColor: colors.border,
-    zIndex: 9999,
-    ...(isWeb ? {
-      boxShadow: '0 10px 25px rgba(0,0,0,0.15)',
-    } : {
-      elevation: 10,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.15,
-      shadowRadius: 12,
-    }),
-  },
-  dropdownItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    gap: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
-    backgroundColor: colors.cardBackground,
-    ...(isWeb && {
-      cursor: 'pointer',
-      transition: 'background-color 0.2s',
-    }),
-  },
-  dropdownItemText: {
-    fontSize: 14,
-    color: colors.text,
-    fontWeight: '500',
-    flex: 1,
-  },
-  dropdownItemLast: {
-    borderBottomWidth: 0,
-  },
-  
-  // Header Actions
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginLeft: 'auto',
-    paddingRight: isPhone ? spacing.sm : (isMobile ? spacing.md : isTablet ? spacing.lg : spacing.xl),
-  },
-  authButtons: {
-    flexDirection: 'row',
-    gap: isMobile ? spacing.xs : spacing.sm,
-    alignItems: 'center',
-    flexWrap: 'wrap',
-  },
-  loginButton: {
-    paddingHorizontal: isMobile ? spacing.md : spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.md,
-    backgroundColor: 'transparent',
-    borderWidth: 1.5,
-    borderColor: '#E0E7FF',
-    minWidth: isMobile ? 70 : 80,
-    alignItems: 'center',
-  },
-  loginButtonText: {
-    color: '#4F46E5',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  postJobButton: {
-    paddingHorizontal: isMobile ? spacing.md : spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.md,
-    backgroundColor: '#4F46E5',
-    minWidth: isMobile ? 80 : 100,
-    alignItems: 'center',
-  },
-  postJobButtonText: {
-    color: colors.textWhite,
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  employersButton: {
-    paddingHorizontal: isMobile ? spacing.md : spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.md,
-    backgroundColor: 'transparent',
-    borderWidth: 1.5,
-    borderColor: '#E0E7FF',
-    minWidth: isMobile ? 100 : 120,
-    alignItems: 'center',
-    ...(isMobile && {
-      display: 'none', // Hide on mobile to save space
-    }),
-  },
-  employersButtonText: {
-    color: '#4F46E5',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  
-  // User Menu
-  userMenu: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.background,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  userAvatarContainer: {
-    // Container for clickable avatar
-  },
-  userAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: colors.primary,
-  },
-  userInitial: {
-    color: colors.textWhite,
-    fontWeight: '700',
-    fontSize: 16,
-  },
-  userName: {
-    color: colors.text,
-    fontWeight: '600',
-    maxWidth: isMobile ? 80 : (isTablet ? 120 : 150),
-    fontSize: isMobile ? 12 : 14,
-    ...(isMobile && {
-      display: 'none', // Hide on mobile to save space
-    }),
-  },
-  logoutButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.background,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  
-  // Mobile Menu Button
-  mobileMenuButton: {
-    padding: spacing.sm,
-  },
-  
-  // Mobile Menu Modal
-  mobileMenuOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  mobileMenuContent: {
-    backgroundColor: colors.cardBackground,
-    borderTopLeftRadius: borderRadius.xl,
-    borderTopRightRadius: borderRadius.xl,
-    maxHeight: '80%',
-    paddingBottom: spacing.xl,
-  },
-  mobileMenuHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  mobileMenuTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  mobileMenuClose: {
-    padding: spacing.xs,
-  },
-  mobileMenuItem: {
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
-  },
-  mobileMenuItemButton: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: spacing.lg,
-  },
-  mobileMenuItemText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: colors.text,
-  },
-  mobileDropdown: {
-    backgroundColor: colors.background,
-    paddingVertical: spacing.xs,
-  },
-  mobileDropdownItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-    gap: spacing.sm,
-  },
-  mobileDropdownItemText: {
-    fontSize: 14,
-    color: colors.text,
-  },
-  mobileAuthButtons: {
-    padding: spacing.lg,
-    gap: spacing.md,
-  },
-  mobileLoginButton: {
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-  },
-  mobileLoginButtonText: {
-    color: colors.textWhite,
-    fontWeight: '600',
-    fontSize: 16,
-  },
-  mobilePostJobButton: {
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.md,
-    backgroundColor: 'transparent',
-    borderWidth: 2,
-    borderColor: colors.primary,
-    alignItems: 'center',
-  },
-  mobilePostJobButtonText: {
-    color: colors.primary,
-    fontWeight: '600',
-    fontSize: 16,
-  },
-});
+      overflow: 'visible',
+      zIndex: 100,
+    },
+    menuItemWrapperActive: {
+      zIndex: 9999,
+    },
+    menuItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: menuPadding,
+      paddingVertical: showCompactNav ? 6 : 8,
+      gap: 4,
+      ...(isWeb && {
+        cursor: 'pointer',
+      }),
+    },
+    menuItemText: {
+      fontSize: showCompactNav ? 12 : isLaptop ? 13 : 14,
+      fontWeight: '500',
+      color: colors.text,
+    },
+    menuItemIcon: {
+      marginLeft: 2,
+    },
+    
+    // Dropdown
+    dropdown: {
+      position: 'absolute',
+      top: '100%',
+      left: 0,
+      minWidth: showCompactNav ? 180 : 220,
+      backgroundColor: colors.cardBackground,
+      borderRadius: borderRadius.md,
+      marginTop: 4,
+      borderWidth: 1,
+      borderColor: colors.border,
+      zIndex: 9999,
+      ...(isWeb ? {
+        boxShadow: '0 10px 25px rgba(0,0,0,0.15)',
+      } : {
+        elevation: 10,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+      }),
+    },
+    dropdownItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: showCompactNav ? 12 : 16,
+      paddingVertical: showCompactNav ? 10 : 12,
+      gap: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.borderLight,
+      backgroundColor: colors.cardBackground,
+      ...(isWeb && {
+        cursor: 'pointer',
+        transition: 'background-color 0.2s',
+      }),
+    },
+    dropdownItemText: {
+      fontSize: showCompactNav ? 12 : 13,
+      color: colors.text,
+      fontWeight: '500',
+      flex: 1,
+    },
+    dropdownItemLast: {
+      borderBottomWidth: 0,
+    },
+    
+    // Header Actions
+    headerActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: isXsPhone ? 4 : isSmallPhone ? 6 : isMobile ? 8 : 12,
+      marginLeft: 'auto',
+      paddingRight: horizontalPadding,
+    },
+    authButtons: {
+      flexDirection: 'row',
+      gap: isXsPhone ? 4 : isSmallPhone ? 6 : isMobile ? 8 : showCompactNav ? 6 : 10,
+      alignItems: 'center',
+      flexWrap: 'nowrap',
+    },
+    loginButton: {
+      paddingHorizontal: isMobile ? 8 : showCompactNav ? 10 : 14,
+      paddingVertical: isMobile ? 6 : 8,
+      borderRadius: borderRadius.md,
+      backgroundColor: 'transparent',
+      borderWidth: 1.5,
+      borderColor: '#E0E7FF',
+      alignItems: 'center',
+    },
+    loginButtonText: {
+      color: '#4F46E5',
+      fontWeight: '600',
+      fontSize: isMobile ? 11 : showCompactNav ? 12 : 13,
+    },
+    postJobButton: {
+      paddingHorizontal: showCompactNav ? 10 : 14,
+      paddingVertical: 8,
+      borderRadius: borderRadius.md,
+      backgroundColor: '#4F46E5',
+      alignItems: 'center',
+    },
+    postJobButtonText: {
+      color: colors.textWhite,
+      fontWeight: '600',
+      fontSize: showCompactNav ? 12 : 13,
+    },
+    employersButton: {
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderRadius: borderRadius.md,
+      backgroundColor: 'transparent',
+      borderWidth: 1.5,
+      borderColor: '#E0E7FF',
+      alignItems: 'center',
+    },
+    employersButtonText: {
+      color: '#4F46E5',
+      fontWeight: '600',
+      fontSize: 13,
+    },
+    
+    // User Menu
+    userMenu: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: isMobile ? 6 : 10,
+      backgroundColor: colors.background,
+      paddingVertical: 4,
+      paddingHorizontal: isMobile ? 8 : 12,
+      borderRadius: borderRadius.lg,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    userAvatarContainer: {},
+    userAvatar: {
+      width: isMobile ? 28 : 34,
+      height: isMobile ? 28 : 34,
+      borderRadius: isMobile ? 14 : 17,
+      backgroundColor: colors.primary,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 2,
+      borderColor: colors.primary,
+    },
+    userInitial: {
+      color: colors.textWhite,
+      fontWeight: '700',
+      fontSize: isMobile ? 12 : 14,
+    },
+    userName: {
+      color: colors.text,
+      fontWeight: '600',
+      maxWidth: isTabletDevice ? 80 : showCompactNav ? 100 : 140,
+      fontSize: showCompactNav ? 12 : 13,
+    },
+    logoutButton: {
+      width: isMobile ? 26 : 30,
+      height: isMobile ? 26 : 30,
+      borderRadius: isMobile ? 13 : 15,
+      backgroundColor: colors.background,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    
+    // Mobile Menu Button
+    mobileMenuButton: {
+      padding: isXsPhone ? 4 : 8,
+    },
+    
+    // Mobile Menu Modal
+    mobileMenuOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'flex-end',
+    },
+    mobileMenuContent: {
+      backgroundColor: colors.cardBackground,
+      borderTopLeftRadius: borderRadius.xl,
+      borderTopRightRadius: borderRadius.xl,
+      maxHeight: '85%',
+      paddingBottom: 24,
+    },
+    mobileMenuHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: isMobile ? 16 : 20,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    mobileMenuTitle: {
+      fontSize: isMobile ? 18 : 20,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    mobileMenuClose: {
+      padding: 4,
+    },
+    mobileMenuItem: {
+      borderBottomWidth: 1,
+      borderBottomColor: colors.borderLight,
+    },
+    mobileMenuItemButton: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: isMobile ? 14 : 18,
+    },
+    mobileMenuItemText: {
+      fontSize: isMobile ? 15 : 16,
+      fontWeight: '500',
+      color: colors.text,
+    },
+    mobileDropdown: {
+      backgroundColor: colors.background,
+      paddingVertical: 4,
+    },
+    mobileDropdownItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: isMobile ? 20 : 28,
+      paddingVertical: isMobile ? 10 : 12,
+      gap: 10,
+    },
+    mobileDropdownItemText: {
+      fontSize: isMobile ? 13 : 14,
+      color: colors.text,
+    },
+    mobileAuthButtons: {
+      padding: isMobile ? 16 : 20,
+      gap: 12,
+    },
+    mobileLoginButton: {
+      paddingVertical: 14,
+      borderRadius: borderRadius.md,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+    },
+    mobileLoginButtonText: {
+      color: colors.textWhite,
+      fontWeight: '600',
+      fontSize: 15,
+    },
+    mobilePostJobButton: {
+      paddingVertical: 14,
+      borderRadius: borderRadius.md,
+      backgroundColor: 'transparent',
+      borderWidth: 2,
+      borderColor: colors.primary,
+      alignItems: 'center',
+    },
+    mobilePostJobButtonText: {
+      color: colors.primary,
+      fontWeight: '600',
+      fontSize: 15,
+    },
+    mobileEmployersButton: {
+      paddingVertical: 14,
+      borderRadius: borderRadius.md,
+      backgroundColor: colors.background,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: 'center',
+    },
+    mobileEmployersButtonText: {
+      color: colors.text,
+      fontWeight: '600',
+      fontSize: 15,
+    },
+  });
 };
 
 export default Header;
-

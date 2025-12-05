@@ -65,7 +65,7 @@ import {
 
 const EmployerCandidateSearchScreen = ({ navigation }) => {
   const responsive = useResponsive();
-  const { isMobile } = responsive;
+  const { isMobile, isTabletDevice } = responsive;
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searching, setSearching] = useState(false);
   const [candidates, setCandidates] = useState([]);
@@ -527,7 +527,7 @@ const EmployerCandidateSearchScreen = ({ navigation }) => {
   return (
     <View style={styles.page}>
       {!isMobile && (
-        <View style={styles.sidebar}>
+        <View style={[styles.sidebar, isTabletDevice && styles.sidebarTablet]}>
           <EmployerSidebar permanent navigation={navigation} role="company" activeKey="resume" />
         </View>
       )}
@@ -548,12 +548,12 @@ const EmployerCandidateSearchScreen = ({ navigation }) => {
           <Ionicons name="menu" size={24} color={colors.text} />
         </TouchableOpacity>
       )}
-      <View style={[styles.content, isMobile && styles.contentMobile]}>
+      <View style={[styles.content, isMobile && styles.contentMobile, isTabletDevice && styles.contentTablet]}>
         <LinearGradient
           colors={['#FFFFFF', '#F8FAFC']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={[styles.headerBar, isMobile && styles.headerBarMobile]}
+          style={[styles.headerBar, isMobile && styles.headerBarMobile, isTabletDevice && styles.headerBarTablet]}
         >
           <View style={[styles.headerLeft, isMobile && styles.headerLeftMobile]}>
             <View style={[styles.headerIconContainer, isMobile && styles.headerIconContainerMobile]}>
@@ -1806,6 +1806,7 @@ const EmployerCandidateSearchScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   page: { flex: 1, flexDirection: 'row', backgroundColor: '#F1F5F9' },
   sidebar: { width: 280, backgroundColor: colors.sidebarBackground },
+  sidebarTablet: { width: 240 },
   menuButton: {
     position: 'absolute',
     top: spacing.md,
@@ -1820,6 +1821,9 @@ const styles = StyleSheet.create({
   contentMobile: {
     paddingTop: spacing.xl + 40,
   },
+  contentTablet: {
+    paddingTop: 0,
+  },
   headerBar: { 
     padding: spacing.xl, 
     ...shadows.md,
@@ -1827,6 +1831,9 @@ const styles = StyleSheet.create({
   headerBarMobile: {
     padding: spacing.md,
     paddingTop: spacing.xl + 40,
+  },
+  headerBarTablet: {
+    padding: spacing.lg,
   },
   headerLeft: {
     flexDirection: 'row',

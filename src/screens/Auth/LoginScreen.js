@@ -16,8 +16,16 @@ import { colors, spacing, borderRadius, typography, shadows } from '../../styles
 import api from '../../config/api';
 import { useResponsive } from '../../utils/responsive';
 
-const getStyles = (isPhone, isMobile, isTablet, isDesktop, width) => {
+const getStyles = (
+  isXsPhone, isSmallPhone, isPhone, isLargePhone, isMobile,
+  isSmallTablet, isTablet, isLargeTablet, isTabletDevice,
+  isSmallLaptop, isLaptop, isDesktop, isLargeDesktop, isDesktopDevice, width
+) => {
   const isWeb = Platform.OS === 'web';
+  // Calculate responsive values
+  const leftPadding = isXsPhone ? 12 : isSmallPhone ? 16 : isMobile ? 20 : isSmallTablet ? 24 : isTabletDevice ? 32 : 48;
+  const topPadding = isXsPhone ? 60 : isSmallPhone ? 70 : isMobile ? 80 : isTabletDevice ? 90 : 100;
+  
   return StyleSheet.create({
     container: {
       flex: 1,
@@ -48,17 +56,17 @@ const getStyles = (isPhone, isMobile, isTablet, isDesktop, width) => {
     },
     leftContent: {
       flex: 1,
-      padding: 48,
-      paddingTop: 100,
+      padding: leftPadding,
+      paddingTop: topPadding,
       justifyContent: 'center',
     },
     leftContentPhone: {
-      padding: 20,
-      paddingTop: 80,
+      padding: leftPadding,
+      paddingTop: topPadding,
     },
     leftContentTablet: {
-      padding: 32,
-      paddingTop: 90,
+      padding: leftPadding,
+      paddingTop: topPadding,
     },
     leftContentLaptop: {
       padding: 48,
@@ -66,14 +74,14 @@ const getStyles = (isPhone, isMobile, isTablet, isDesktop, width) => {
     },
     logoContainer: {
       position: 'absolute',
-      top: 32,
-      left: 20,
+      top: isXsPhone ? 16 : isSmallPhone ? 20 : isMobile ? 24 : 32,
+      left: isXsPhone ? 12 : isSmallPhone ? 14 : isMobile ? 16 : 20,
       zIndex: 10,
       paddingTop: 8,
-      paddingHorizontal: 8,
+      paddingHorizontal: isXsPhone ? 4 : 8,
     },
     logoText: {
-      fontSize: 28,
+      fontSize: isXsPhone ? 20 : isSmallPhone ? 22 : isMobile ? 24 : isTabletDevice ? 26 : 28,
       fontWeight: '800',
       letterSpacing: -0.5,
     },
@@ -88,66 +96,66 @@ const getStyles = (isPhone, isMobile, isTablet, isDesktop, width) => {
     },
     headerSection: {
       alignItems: 'center',
-      marginBottom: 24,
+      marginBottom: isXsPhone ? 16 : isSmallPhone ? 18 : isMobile ? 20 : 24,
     },
     iconCircle: {
-      width: 70,
-      height: 70,
-      borderRadius: 35,
+      width: isXsPhone ? 50 : isSmallPhone ? 56 : isMobile ? 60 : isTabletDevice ? 65 : 70,
+      height: isXsPhone ? 50 : isSmallPhone ? 56 : isMobile ? 60 : isTabletDevice ? 65 : 70,
+      borderRadius: isXsPhone ? 25 : isSmallPhone ? 28 : isMobile ? 30 : isTabletDevice ? 32 : 35,
       backgroundColor: '#ffffff',
       alignItems: 'center',
       justifyContent: 'center',
-      marginBottom: 16,
+      marginBottom: isXsPhone ? 10 : isSmallPhone ? 12 : 16,
       ...shadows.lg,
-      borderWidth: 3,
+      borderWidth: isXsPhone ? 2 : 3,
       borderColor: '#e0e7ff',
     },
     welcomeTitle: {
-      fontSize: 28,
+      fontSize: isXsPhone ? 20 : isSmallPhone ? 22 : isMobile ? 24 : isTabletDevice ? 26 : 28,
       fontWeight: '700',
       color: '#1e293b',
-      marginBottom: 6,
+      marginBottom: isXsPhone ? 4 : 6,
       textAlign: 'center',
       letterSpacing: -0.5,
     },
     welcomeSubtitle: {
-      fontSize: 14,
+      fontSize: isXsPhone ? 12 : isSmallPhone ? 13 : isMobile ? 14 : 15,
       color: '#64748b',
       textAlign: 'center',
-      lineHeight: 20,
+      lineHeight: isXsPhone ? 16 : isSmallPhone ? 18 : 20,
     },
     loginFormCard: {
       backgroundColor: '#ffffff',
-      borderRadius: 20,
-      padding: 24,
+      borderRadius: isXsPhone ? 14 : isSmallPhone ? 16 : 20,
+      padding: isXsPhone ? 14 : isSmallPhone ? 18 : isMobile ? 20 : 24,
       ...shadows.lg,
       borderWidth: 1,
       borderColor: '#e2e8f0',
     },
     inputGroup: {
-      marginBottom: 16,
+      marginBottom: isXsPhone ? 12 : isSmallPhone ? 14 : 16,
     },
     labelContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginBottom: 10,
+      marginBottom: isXsPhone ? 6 : isSmallPhone ? 8 : 10,
     },
     labelIcon: {
-      marginRight: 8,
+      marginRight: isXsPhone ? 6 : 8,
     },
     inputLabel: {
-      fontSize: 14,
+      fontSize: isXsPhone ? 12 : isSmallPhone ? 13 : 14,
       fontWeight: '600',
       color: '#1e293b',
     },
     inputWrapper: {
-      borderWidth: 2,
+      borderWidth: isXsPhone ? 1.5 : 2,
       borderColor: '#e2e8f0',
-      borderRadius: 12,
+      borderRadius: isXsPhone ? 8 : isSmallPhone ? 10 : 12,
       backgroundColor: '#ffffff',
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: 4,
+      paddingHorizontal: isXsPhone ? 2 : 4,
     },
     inputWrapperError: {
       borderColor: '#ef4444',
@@ -155,9 +163,9 @@ const getStyles = (isPhone, isMobile, isTablet, isDesktop, width) => {
     },
     input: {
       flex: 1,
-      paddingHorizontal: 16,
-      paddingVertical: 14,
-      fontSize: 15,
+      paddingHorizontal: isXsPhone ? 10 : isSmallPhone ? 12 : 16,
+      paddingVertical: isXsPhone ? 10 : isSmallPhone ? 12 : 14,
+      fontSize: isXsPhone ? 13 : isSmallPhone ? 14 : 15,
       color: '#1e293b',
     },
     eyeIcon: {
@@ -320,12 +328,30 @@ const getStyles = (isPhone, isMobile, isTablet, isDesktop, width) => {
 
 const LoginScreen = ({ navigation }) => {
   const responsive = useResponsive();
-  const isPhone = responsive.width <= 480;
-  const isMobile = responsive.isMobile;
-  const isTablet = responsive.isTablet;
-  const isDesktop = responsive.isDesktop;
-  const isWideScreen = responsive.width > 768;
-  const dynamicStyles = getStyles(isPhone, isMobile, isTablet, isDesktop, responsive.width);
+  
+  // Enhanced device detection
+  const { width } = responsive;
+  const isXsPhone = width <= 320;
+  const isSmallPhone = width > 320 && width <= 375;
+  const isPhone = width > 375 && width <= 414;
+  const isLargePhone = width > 414 && width <= 480;
+  const isMobile = width <= 480;
+  const isSmallTablet = width > 480 && width <= 600;
+  const isTablet = width > 600 && width <= 768;
+  const isLargeTablet = width > 768 && width <= 834;
+  const isTabletDevice = width > 480 && width <= 834;
+  const isSmallLaptop = width > 834 && width <= 1024;
+  const isLaptop = width > 1024 && width <= 1200;
+  const isDesktop = width > 1200 && width <= 1440;
+  const isLargeDesktop = width > 1440;
+  const isDesktopDevice = width > 834;
+  const isWideScreen = width > 768;
+  
+  const dynamicStyles = getStyles(
+    isXsPhone, isSmallPhone, isPhone, isLargePhone, isMobile,
+    isSmallTablet, isTablet, isLargeTablet, isTabletDevice,
+    isSmallLaptop, isLaptop, isDesktop, isLargeDesktop, isDesktopDevice, width
+  );
   
   const [userType] = useState('jobseeker');
   const [loginId, setLoginId] = useState('');

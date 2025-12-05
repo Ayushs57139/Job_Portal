@@ -11,7 +11,7 @@ import { useResponsive } from '../../utils/responsive';
 const DRAFTS_INDEX_KEY = 'jobDrafts:index';
 const EmployerPostJobScreen = ({ navigation, route }) => {
   const responsive = useResponsive();
-  const { isMobile } = responsive;
+  const { isMobile, isTabletDevice } = responsive;
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [draftMeta, setDraftMeta] = useState({ draftId: null, initialData: {}, initialStep: 0 });
 
@@ -150,7 +150,7 @@ const EmployerPostJobScreen = ({ navigation, route }) => {
   return (
     <View style={styles.container}>
       {!isMobile && (
-        <View style={styles.sidebarWrapper}>
+        <View style={[styles.sidebarWrapper, isTabletDevice && styles.sidebarWrapperTablet]}>
           <EmployerSidebar permanent navigation={navigation} role="company" activeKey="postJob" />
         </View>
       )}
@@ -171,8 +171,8 @@ const EmployerPostJobScreen = ({ navigation, route }) => {
           <Ionicons name="menu" size={24} color={colors.text} />
         </TouchableOpacity>
       )}
-      <ScrollView contentContainerStyle={[styles.contentWrapper, isMobile && styles.contentWrapperMobile]}>
-        <View style={[styles.headerBar, isMobile && styles.headerBarMobile]}>
+      <ScrollView contentContainerStyle={[styles.contentWrapper, isMobile && styles.contentWrapperMobile, isTabletDevice && styles.contentWrapperTablet]}>
+        <View style={[styles.headerBar, isMobile && styles.headerBarMobile, isTabletDevice && styles.headerBarTablet]}>
           <Text style={[styles.headerTitle, isMobile && styles.headerTitleMobile]}>Post New Job</Text>
           <Text style={[styles.headerSubtitle, isMobile && styles.headerSubtitleMobile]}>Fill the details below to publish your job</Text>
         </View>
@@ -200,6 +200,9 @@ const styles = StyleSheet.create({
   sidebarWrapper: {
     width: 280,
   },
+  sidebarWrapperTablet: {
+    width: 240,
+  },
   menuButton: {
     position: 'absolute',
     top: spacing.md,
@@ -219,6 +222,9 @@ const styles = StyleSheet.create({
     padding: spacing.sm,
     paddingTop: spacing.xl + 40,
   },
+  contentWrapperTablet: {
+    padding: spacing.md,
+  },
   headerBar: {
     backgroundColor: '#FFF',
     padding: spacing.lg,
@@ -229,6 +235,10 @@ const styles = StyleSheet.create({
   },
   headerBarMobile: {
     padding: spacing.md,
+  },
+  headerBarTablet: {
+    padding: spacing.md,
+    marginBottom: spacing.md,
   },
   headerTitle: {
     fontSize: 20,

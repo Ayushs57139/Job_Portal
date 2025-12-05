@@ -384,9 +384,11 @@ const AdminLoginScreen = ({ navigation, route }) => {
     );
   };
 
+  const shouldShowTwoColumns = (isWeb || isWideScreen) && width >= 1024 && !isTablet;
+  
   const content = (
     <View style={dynamicStyles.contentWrapper}>
-      {isWeb || isWideScreen ? (
+      {shouldShowTwoColumns ? (
         <View style={dynamicStyles.twoColumnLayout}>
           <View style={dynamicStyles.leftColumn}>
             {renderContent()}
@@ -394,7 +396,18 @@ const AdminLoginScreen = ({ navigation, route }) => {
           {renderRightSideContent()}
         </View>
       ) : (
-        renderContent()
+        <ScrollView
+          contentContainerStyle={dynamicStyles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+        >
+          {renderContent()}
+          {!isMobile && width >= 768 && width < 1024 && (
+            <View style={dynamicStyles.mobileRightSection}>
+              {renderRightSideContent()}
+            </View>
+          )}
+        </ScrollView>
       )}
     </View>
   );
@@ -406,17 +419,7 @@ const AdminLoginScreen = ({ navigation, route }) => {
         style={dynamicStyles.keyboardView}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
-        {isWeb || isWideScreen ? (
-          content
-        ) : (
-          <ScrollView
-            contentContainerStyle={dynamicStyles.scrollContent}
-            showsVerticalScrollIndicator={false}
-            bounces={false}
-          >
-            {content}
-          </ScrollView>
-        )}
+        {content}
       </KeyboardAvoidingView>
     </View>
   );
@@ -519,14 +522,27 @@ const getStyles = (isMobile, isTablet, isWideScreen, isWeb) => StyleSheet.create
     maxWidth: 1400,
     ...(Platform.OS === 'web' && {
       display: 'flex',
+      flexWrap: 'nowrap',
     }),
+    ...(isTablet && {
+      flexDirection: 'column',
+    }),
+  },
+  mobileRightSection: {
+    marginTop: spacing.xl,
+    paddingTop: spacing.xl,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
   },
   leftColumn: {
     flex: 1,
-    maxWidth: 520,
+    maxWidth: isTablet ? '100%' : 520,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: isWeb || isWideScreen ? spacing.md : spacing.lg,
+    paddingHorizontal: isWeb || isWideScreen ? (isTablet ? spacing.lg : spacing.md) : spacing.lg,
+    ...(isTablet && {
+      paddingBottom: spacing.xl,
+    }),
   },
   rightSideContent: {
     flex: 1,
@@ -1012,6 +1028,58 @@ const getStyles = (isMobile, isTablet, isWideScreen, isWeb) => StyleSheet.create
       : (isMobile ? 17 : isTablet ? 18 : 19),
     fontWeight: '600',
     letterSpacing: 0.2,
+  },
+  loginCard: {
+    width: '100%',
+    maxWidth: isWeb || isWideScreen ? 480 : 520,
+    backgroundColor: 'rgba(255, 255, 255, 0.98)',
+    borderRadius: isMobile ? 24 : 28,
+    padding: isWeb || isWideScreen
+      ? (isMobile ? spacing.lg : isTablet ? spacing.xl : spacing.xl + spacing.sm)
+      : (isMobile ? spacing.xl + spacing.sm : isTablet ? spacing.xxl : spacing.xxl + spacing.md),
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 20px 60px rgba(0, 0, 0, 0.15), 0 8px 16px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.6)',
+      backdropFilter: 'blur(20px)',
+    } : {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 20 },
+      shadowOpacity: 0.15,
+      shadowRadius: 40,
+      elevation: 20,
+    }),
+  },
+  loginCardContent: {
+    width: '100%',
+  },
+  loginTitle: {
+    ...typography.h3,
+    color: '#1A202C',
+    fontWeight: '800',
+    marginBottom: spacing.xs,
+    textAlign: 'center',
+    fontSize: isWeb || isWideScreen
+      ? (isMobile ? 22 : isTablet ? 24 : 26)
+      : (isMobile ? 28 : isTablet ? 30 : 32),
+    letterSpacing: 0.5,
+  },
+  loginSubtitle: {
+    ...typography.body1,
+    color: '#718096',
+    textAlign: 'center',
+    marginBottom: isWeb || isWideScreen ? spacing.lg : spacing.xl,
+    fontSize: isWeb || isWideScreen
+      ? (isMobile ? 13 : isTablet ? 14 : 15)
+      : (isMobile ? 15 : isTablet ? 16 : 17),
+    fontWeight: '500',
+  },
+  inputContainer: {
+    marginBottom: isWeb || isWideScreen ? spacing.md : spacing.lg,
+    width: '100%',
+  },
+  inputIcon: {
+    marginRight: spacing.sm,
   },
 });
 

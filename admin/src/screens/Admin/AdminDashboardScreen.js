@@ -44,6 +44,7 @@ const getStyles = (isMobile, isTablet) => StyleSheet.create({
     flexWrap: isMobile ? 'wrap' : 'nowrap',
     marginHorizontal: isMobile ? -4 : -8,
     marginBottom: isMobile ? 12 : 0,
+    gap: isMobile ? 8 : isTablet ? 12 : 16,
     ...(Platform.OS === 'web' && {
       display: 'flex',
       flexWrap: isMobile ? 'wrap' : 'nowrap',
@@ -262,6 +263,12 @@ const getStyles = (isMobile, isTablet) => StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: '#22C55E',
+    letterSpacing: 0.5,
+  },
+  inactiveBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#EF4444',
     letterSpacing: 0.5,
   },
   emptyState: {

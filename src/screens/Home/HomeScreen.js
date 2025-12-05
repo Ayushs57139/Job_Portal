@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   StyleSheet,
   TextInput,
   Dimensions,
+  FlatList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, typography, shadows } from '../../styles/theme';
@@ -38,11 +39,23 @@ const isWeb = getPlatform().OS === 'web';
 
 const HomeScreen = ({ navigation }) => {
   const responsive = useResponsive();
-  const isPhone = responsive.width <= 480;
-  const isMobile = responsive.isMobile;
-  const isTablet = responsive.isTablet;
-  const isDesktop = responsive.isDesktop;
-  const isLargeDesktop = responsive.width > 1400;
+  
+  // Enhanced device detection
+  const { width } = responsive;
+  const isXsPhone = width <= 320;
+  const isSmallPhone = width > 320 && width <= 375;
+  const isPhone = width > 375 && width <= 414;
+  const isLargePhone = width > 414 && width <= 480;
+  const isMobile = width <= 480;
+  const isSmallTablet = width > 480 && width <= 600;
+  const isTablet = width > 600 && width <= 768;
+  const isLargeTablet = width > 768 && width <= 834;
+  const isTabletDevice = width > 480 && width <= 834;
+  const isSmallLaptop = width > 834 && width <= 1024;
+  const isLaptop = width > 1024 && width <= 1200;
+  const isDesktop = width > 1200 && width <= 1440;
+  const isLargeDesktop = width > 1440;
+  const isDesktopDevice = width > 834;
   
   const [latestJobs, setLatestJobs] = useState([]);
   const [topCompanies, setTopCompanies] = useState([]);
@@ -157,12 +170,17 @@ const HomeScreen = ({ navigation }) => {
     'Surat, Gujarat',
   ];
 
-  const skillOptions = keySkillsOptions.map(option => option.label);
-  const departmentOptions = DEPARTMENTS_DATA.map(item => item.department);
-  const searchOptions = [...skillOptions, ...departmentOptions];
-  const filteredSearchOptions = searchOptions.filter(option =>
-    option.toLowerCase().includes(searchFilter.toLowerCase())
-  );
+  const searchOptions = useMemo(() => {
+    const skills = keySkillsOptions.map(option => option.label);
+    const departments = DEPARTMENTS_DATA.map(item => item.department);
+    return [...skills, ...departments];
+  }, []);
+
+  const filteredSearchOptions = useMemo(() => (
+    searchOptions.filter(option =>
+      option.toLowerCase().includes(searchFilter.toLowerCase())
+    )
+  ), [searchOptions, searchFilter]);
 
   useEffect(() => {
     loadHomeData();
@@ -261,7 +279,11 @@ const HomeScreen = ({ navigation }) => {
     });
   };
 
-  const dynamicStyles = getStyles(isPhone, isMobile, isTablet, isDesktop, isLargeDesktop, responsive.width);
+  const dynamicStyles = getStyles(
+    isXsPhone, isSmallPhone, isPhone, isLargePhone, isMobile,
+    isSmallTablet, isTablet, isLargeTablet, isTabletDevice,
+    isSmallLaptop, isLaptop, isDesktop, isLargeDesktop, isDesktopDevice, width
+  );
 
   const renderHeroSection = () => (
     <View style={dynamicStyles.hero}>
@@ -310,53 +332,57 @@ const HomeScreen = ({ navigation }) => {
                       autoFocus={true}
                     />
                   </View>
-                  <ScrollView
+                  <FlatList
+                    data={filteredSearchOptions}
+                    keyExtractor={(item, index) => `${item}-${index}`}
                     style={dynamicStyles.experienceMenuScroll}
+                    contentContainerStyle={dynamicStyles.optionsListContent}
                     nestedScrollEnabled={true}
                     showsVerticalScrollIndicator={false}
-                  >
-                    {filteredSearchOptions.length > 0 ? (
-                      filteredSearchOptions.map((option, index) => (
-                        <TouchableOpacity
-                          key={`${option}-${index}`}
-                          style={[
-                            dynamicStyles.experienceOption,
-                            index === filteredSearchOptions.length - 1 && dynamicStyles.experienceOptionLast,
-                            selectedSkills.includes(option) && dynamicStyles.experienceOptionActive,
-                          ]}
-                          onPress={() => {
-                            setSelectedSkills((prev) => {
-                              const exists = prev.includes(option);
-                              if (exists) {
-                                const updated = prev.filter(item => item !== option);
-                                setSearchQuery(updated.join(', '));
-                                return updated;
-                              }
-                              if (prev.length >= 12) return prev;
-                              const updated = [...prev, option];
+                    initialNumToRender={20}
+                    maxToRenderPerBatch={20}
+                    windowSize={5}
+                    keyboardShouldPersistTaps="handled"
+                    renderItem={({ item: option, index }) => (
+                      <TouchableOpacity
+                        style={[
+                          dynamicStyles.experienceOption,
+                          index === filteredSearchOptions.length - 1 && dynamicStyles.experienceOptionLast,
+                          selectedSkills.includes(option) && dynamicStyles.experienceOptionActive,
+                        ]}
+                        onPress={() => {
+                          setSelectedSkills((prev) => {
+                            const exists = prev.includes(option);
+                            if (exists) {
+                              const updated = prev.filter(item => item !== option);
                               setSearchQuery(updated.join(', '));
                               return updated;
-                            });
-                            setSearchFilter('');
-                          }}
-                          activeOpacity={0.7}
+                            }
+                            if (prev.length >= 12) return prev;
+                            const updated = [...prev, option];
+                            setSearchQuery(updated.join(', '));
+                            return updated;
+                          });
+                          setSearchFilter('');
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Text
+                          style={[
+                            dynamicStyles.experienceOptionText,
+                            selectedSkills.includes(option) && dynamicStyles.experienceOptionTextActive,
+                          ]}
                         >
-                          <Text
-                            style={[
-                              dynamicStyles.experienceOptionText,
-                              selectedSkills.includes(option) && dynamicStyles.experienceOptionTextActive,
-                            ]}
-                          >
-                            {option}
-                          </Text>
-                        </TouchableOpacity>
-                      ))
-                    ) : (
+                          {option}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                    ListEmptyComponent={(
                       <View style={dynamicStyles.noResultsContainer}>
                         <Text style={dynamicStyles.noResultsText}>No results found</Text>
                       </View>
                     )}
-                  </ScrollView>
+                  />
                 </View>
                 <TouchableOpacity
                   style={dynamicStyles.dropdownBackdrop}
@@ -395,14 +421,19 @@ const HomeScreen = ({ navigation }) => {
             {showExperienceMenu && (
               <>
                 <View style={dynamicStyles.experienceMenu}>
-                  <ScrollView
+                  <FlatList
+                    data={experienceOptions}
+                    keyExtractor={(item, index) => `${item}-${index}`}
                     style={dynamicStyles.experienceMenuScroll}
+                    contentContainerStyle={dynamicStyles.optionsListContent}
                     nestedScrollEnabled={true}
                     showsVerticalScrollIndicator={false}
-                  >
-                    {experienceOptions.map((option, index) => (
+                    initialNumToRender={25}
+                    maxToRenderPerBatch={20}
+                    windowSize={6}
+                    keyboardShouldPersistTaps="handled"
+                    renderItem={({ item: option, index }) => (
                       <TouchableOpacity
-                        key={index}
                         style={[
                           dynamicStyles.experienceOption,
                           index === experienceOptions.length - 1 && dynamicStyles.experienceOptionLast,
@@ -421,8 +452,8 @@ const HomeScreen = ({ navigation }) => {
                           {option}
                         </Text>
                       </TouchableOpacity>
-                    ))}
-                  </ScrollView>
+                    )}
+                  />
                 </View>
                 <TouchableOpacity
                   style={dynamicStyles.dropdownBackdrop}
@@ -458,14 +489,19 @@ const HomeScreen = ({ navigation }) => {
             {showLocationMenu && (
               <>
                 <View style={dynamicStyles.experienceMenu}>
-                  <ScrollView
+                  <FlatList
+                    data={locationOptions}
+                    keyExtractor={(item, index) => `${item}-${index}`}
                     style={dynamicStyles.experienceMenuScroll}
+                    contentContainerStyle={dynamicStyles.optionsListContent}
                     nestedScrollEnabled={true}
                     showsVerticalScrollIndicator={false}
-                  >
-                    {locationOptions.map((option, index) => (
+                    initialNumToRender={20}
+                    maxToRenderPerBatch={20}
+                    windowSize={5}
+                    keyboardShouldPersistTaps="handled"
+                    renderItem={({ item: option, index }) => (
                       <TouchableOpacity
-                        key={option}
                         style={[
                           dynamicStyles.experienceOption,
                           index === locationOptions.length - 1 && dynamicStyles.experienceOptionLast,
@@ -479,15 +515,15 @@ const HomeScreen = ({ navigation }) => {
                       >
                         <Text
                           style={[
-                          dynamicStyles.experienceOptionText,
-                          locationQuery === option && dynamicStyles.experienceOptionTextActive,
+                            dynamicStyles.experienceOptionText,
+                            locationQuery === option && dynamicStyles.experienceOptionTextActive,
                           ]}
                         >
                           {option}
                         </Text>
                       </TouchableOpacity>
-                    ))}
-                  </ScrollView>
+                    )}
+                  />
                 </View>
                 <TouchableOpacity
                   style={dynamicStyles.dropdownBackdrop}
@@ -776,7 +812,16 @@ const HomeScreen = ({ navigation }) => {
   );
 };
 
-const getStyles = (isPhone, isMobile, isTablet, isDesktop, isLargeDesktop, width) => StyleSheet.create({
+const getStyles = (
+  isXsPhone, isSmallPhone, isPhone, isLargePhone, isMobile,
+  isSmallTablet, isTablet, isLargeTablet, isTabletDevice,
+  isSmallLaptop, isLaptop, isDesktop, isLargeDesktop, isDesktopDevice, width
+) => {
+  // Calculate responsive values
+  const horizontalPadding = isXsPhone ? 8 : isSmallPhone ? 10 : isMobile ? 12 : isSmallTablet ? 16 : isTablet ? 20 : isLargeTablet ? 24 : isSmallLaptop ? 32 : isLaptop ? 40 : 48;
+  const maxWidth = isDesktopDevice ? (isLargeDesktop ? 1400 : isDesktop ? 1320 : 1140) : '100%';
+  
+  return StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -804,44 +849,40 @@ const getStyles = (isPhone, isMobile, isTablet, isDesktop, isLargeDesktop, width
   },
   hero: {
     backgroundColor: colors.cardBackground,
-    paddingVertical: isPhone ? spacing.lg : (isMobile ? spacing.xl : isTablet ? spacing.xxl : spacing.xxl * 1.5),
-    paddingHorizontal: isPhone ? spacing.sm : (isMobile ? spacing.md : isTablet ? spacing.lg : spacing.xl),
+    paddingVertical: isXsPhone ? spacing.md : isSmallPhone ? spacing.lg : isMobile ? spacing.xl : isTabletDevice ? spacing.xxl : spacing.xxl * 1.25,
+    paddingHorizontal: horizontalPadding,
     alignItems: 'center',
-    maxWidth: isDesktop ? 1400 : '100%',
+    maxWidth: maxWidth,
     alignSelf: 'center',
     width: '100%',
   },
   heroTitle: {
-    fontSize: isPhone ? 24 : (isMobile ? 28 : (isTablet ? 36 : 48)),
+    fontSize: isXsPhone ? 20 : isSmallPhone ? 22 : isMobile ? 26 : isSmallTablet ? 30 : isTabletDevice ? 36 : isSmallLaptop ? 40 : 48,
     fontWeight: '700',
     color: '#2D3748',
     textAlign: 'center',
-    marginBottom: spacing.sm,
-    paddingHorizontal: isPhone ? spacing.sm : (isMobile ? spacing.md : 0),
-    lineHeight: isPhone ? 32 : (isMobile ? 36 : undefined),
-    ...(isPhone && {
-      maxWidth: '100%',
-    }),
+    marginBottom: isXsPhone ? 6 : spacing.sm,
+    paddingHorizontal: isMobile ? spacing.xs : 0,
+    lineHeight: isXsPhone ? 26 : isSmallPhone ? 28 : isMobile ? 32 : isTabletDevice ? 42 : 56,
+    maxWidth: '100%',
   },
   heroSubtitle: {
     ...typography.h5,
-    fontSize: isPhone ? 16 : typography.h5.fontSize,
+    fontSize: isXsPhone ? 13 : isSmallPhone ? 14 : isMobile ? 15 : isTabletDevice ? 16 : 18,
     color: colors.textSecondary,
     textAlign: 'center',
-    marginBottom: isPhone ? spacing.lg : spacing.xl,
-    paddingHorizontal: isPhone ? spacing.sm : 0,
-    ...(isPhone && {
-      maxWidth: '100%',
-    }),
+    marginBottom: isXsPhone ? spacing.md : isMobile ? spacing.lg : spacing.xl,
+    paddingHorizontal: isMobile ? spacing.xs : 0,
+    maxWidth: '100%',
   },
   searchContainer: {
     width: '100%',
-    maxWidth: 1000,
-    paddingHorizontal: isPhone ? spacing.xs : 0,
+    maxWidth: isDesktopDevice ? 1000 : '100%',
+    paddingHorizontal: isXsPhone ? 4 : isMobile ? spacing.xs : 0,
   },
   searchRow: {
-    flexDirection: isPhone ? 'column' : (isMobile ? 'column' : 'row'),
-    gap: isPhone ? spacing.xs : (isMobile ? spacing.xs : spacing.sm),
+    flexDirection: isMobile ? 'column' : 'row',
+    gap: isXsPhone ? 6 : isMobile ? spacing.xs : spacing.sm,
     alignItems: 'stretch',
     position: 'relative',
     zIndex: 1,
@@ -937,6 +978,9 @@ const getStyles = (isPhone, isMobile, isTablet, isDesktop, isLargeDesktop, width
   },
   experienceMenuScroll: {
     maxHeight: isPhone ? 250 : (isMobile ? 280 : 320),
+  },
+  optionsListContent: {
+    paddingBottom: spacing.sm,
   },
   searchFilterInput: {
     flexDirection: 'row',
@@ -1066,48 +1110,52 @@ const getStyles = (isPhone, isMobile, isTablet, isDesktop, isLargeDesktop, width
     paddingHorizontal: isPhone ? spacing.sm : 0,
   },
   section: {
-    paddingVertical: isPhone ? spacing.lg : (isMobile ? spacing.xl : isTablet ? spacing.xl : spacing.xxl),
-    paddingHorizontal: isPhone ? spacing.sm : (isMobile ? spacing.md : isTablet ? spacing.lg : spacing.xl),
-    maxWidth: isDesktop ? (isLargeDesktop ? 1400 : 1200) : '100%',
+    paddingVertical: isXsPhone ? spacing.md : isSmallPhone ? spacing.lg : isMobile ? spacing.xl : isTabletDevice ? spacing.xl : spacing.xxl,
+    paddingHorizontal: horizontalPadding,
+    maxWidth: maxWidth,
     width: '100%',
     alignSelf: 'center',
   },
   sectionHeader: {
-    marginBottom: isPhone ? spacing.lg : spacing.xl,
+    marginBottom: isXsPhone ? spacing.md : isMobile ? spacing.lg : spacing.xl,
     alignItems: 'center',
   },
   sectionTitle: {
-    fontSize: isPhone ? 20 : (isMobile ? 24 : (isTablet ? 28 : 36)),
+    fontSize: isXsPhone ? 18 : isSmallPhone ? 20 : isMobile ? 22 : isSmallTablet ? 24 : isTabletDevice ? 28 : isSmallLaptop ? 32 : 36,
     fontWeight: '700',
     color: '#2D3748',
     textAlign: 'center',
     marginBottom: spacing.xs,
-    paddingHorizontal: isPhone ? spacing.sm : (isMobile ? spacing.md : 0),
-    lineHeight: isPhone ? 28 : undefined,
+    paddingHorizontal: isMobile ? spacing.xs : 0,
+    lineHeight: isXsPhone ? 24 : isSmallPhone ? 26 : isMobile ? 28 : isTabletDevice ? 34 : 44,
   },
   sectionSubtitle: {
     ...typography.body1,
-    fontSize: isPhone ? 14 : typography.body1.fontSize,
+    fontSize: isXsPhone ? 12 : isSmallPhone ? 13 : isMobile ? 14 : 16,
     color: colors.textSecondary,
     textAlign: 'center',
-    paddingHorizontal: isPhone ? spacing.sm : 0,
+    paddingHorizontal: isMobile ? spacing.xs : 0,
   },
   jobsGrid: {
     flexDirection: isMobile ? 'column' : 'row',
     flexWrap: 'wrap',
-    gap: isPhone ? spacing.sm : spacing.md,
-    justifyContent: isDesktop ? 'flex-start' : 'center',
+    gap: isXsPhone ? 8 : isSmallPhone ? 10 : isMobile ? spacing.sm : spacing.md,
+    justifyContent: isDesktopDevice ? 'flex-start' : 'center',
   },
   jobCardWrapper: {
-    width: isPhone ? '100%' : 
-           isMobile ? '100%' : 
-           isTablet ? (width > 900 ? '48%' : '100%') : 
+    width: isMobile ? '100%' : 
+           isSmallTablet ? '100%' : 
+           isTablet ? '48%' : 
+           isLargeTablet ? '48%' :
+           isSmallLaptop ? '31.5%' :
+           isLaptop ? '31.5%' :
            isDesktop ? '23.5%' : 
+           isLargeDesktop ? '23.5%' : 
            '100%',
-    flexBasis: isDesktop ? '23.5%' : undefined,
+    flexBasis: isDesktopDevice ? (isLaptop || isSmallLaptop ? '31.5%' : '23.5%') : undefined,
     flexGrow: 0,
     flexShrink: 0,
-    maxWidth: isDesktop ? 'none' : undefined,
+    maxWidth: isDesktopDevice ? 'none' : undefined,
   },
   horizontalScroll: {
     paddingRight: spacing.lg,
@@ -1236,6 +1284,6 @@ const getStyles = (isPhone, isMobile, isTablet, isDesktop, isLargeDesktop, width
     paddingRight: spacing.lg,
     gap: spacing.md,
   },
-});
+})};
 
 export default HomeScreen;

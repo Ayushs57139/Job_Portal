@@ -24,11 +24,28 @@ const JobCard = ({ job }) => {
   const responsive = useResponsive();
   const [isSaved, setIsSaved] = useState(false);
   
-  const isPhone = responsive.width <= 480;
-  const isMobile = responsive.isMobile;
-  const isTablet = responsive.isTablet;
-  const isDesktop = responsive.isDesktop;
-  const dynamicStyles = getStyles(isPhone, isMobile, isTablet, isDesktop);
+  // Enhanced device detection
+  const { width } = responsive;
+  const isXsPhone = width <= 320;
+  const isSmallPhone = width > 320 && width <= 375;
+  const isPhone = width > 375 && width <= 414;
+  const isLargePhone = width > 414 && width <= 480;
+  const isMobile = width <= 480;
+  const isSmallTablet = width > 480 && width <= 600;
+  const isTablet = width > 600 && width <= 768;
+  const isLargeTablet = width > 768 && width <= 834;
+  const isTabletDevice = width > 480 && width <= 834;
+  const isSmallLaptop = width > 834 && width <= 1024;
+  const isLaptop = width > 1024 && width <= 1200;
+  const isDesktop = width > 1200 && width <= 1440;
+  const isLargeDesktop = width > 1440;
+  const isDesktopDevice = width > 834;
+  
+  const dynamicStyles = getStyles(
+    isXsPhone, isSmallPhone, isPhone, isLargePhone, isMobile,
+    isSmallTablet, isTablet, isLargeTablet, isTabletDevice,
+    isSmallLaptop, isLaptop, isDesktop, isLargeDesktop, isDesktopDevice, width
+  );
 
   const formatSalary = (min, max) => {
     if (!min && !max) return 'Not disclosed';
@@ -41,16 +58,11 @@ const JobCard = ({ job }) => {
 
   const formatLocation = (location) => {
     if (!location) return 'Location not specified';
-    
-    // If location is a string, return it directly
     if (typeof location === 'string') return location;
-    
-    // If location is an object, build a formatted string
     const parts = [];
     if (location.locality) parts.push(location.locality);
     if (location.city) parts.push(location.city);
     if (location.state) parts.push(location.state);
-    
     return parts.length > 0 ? parts.join(', ') : 'Location not specified';
   };
 
@@ -79,13 +91,29 @@ const JobCard = ({ job }) => {
   };
 
   const handleJobClick = () => {
-    if (isWeb && typeof window !== 'undefined') {
-      const url = `${window.location.origin}/jobs/${job._id}`;
-      window.open(url, '_blank');
-    } else {
-      navigation.navigate('JobDetails', { jobId: job._id });
-    }
+    navigation.navigate('JobDetails', { jobId: job._id, id: job._id });
   };
+
+  // Get icon size based on device
+  const getIconSize = (base) => {
+    if (isXsPhone) return base - 4;
+    if (isSmallPhone) return base - 2;
+    if (isMobile) return base;
+    if (isTabletDevice) return base + 2;
+    return base + 4;
+  };
+
+  // Get number of skills to show
+  const getSkillsToShow = () => {
+    if (isXsPhone) return 2;
+    if (isSmallPhone) return 2;
+    if (isMobile) return 3;
+    if (isSmallTablet) return 3;
+    if (isTabletDevice) return 4;
+    return 5;
+  };
+
+  const skillsToShow = getSkillsToShow();
 
   return (
     <TouchableOpacity
@@ -97,7 +125,7 @@ const JobCard = ({ job }) => {
       <View style={dynamicStyles.topBar}>
         <View style={dynamicStyles.companyLogoContainer}>
           <View style={dynamicStyles.companyLogo}>
-            <Ionicons name="business" size={isPhone ? 20 : (isMobile ? 22 : 24)} color={colors.primary} />
+            <Ionicons name="business" size={getIconSize(18)} color={colors.primary} />
           </View>
           <View style={dynamicStyles.companyInfo}>
             {companyName && (
@@ -117,7 +145,7 @@ const JobCard = ({ job }) => {
         >
           <Ionicons
             name={isSaved ? "bookmark" : "bookmark-outline"}
-            size={isPhone ? 20 : (isMobile ? 22 : 24)}
+            size={getIconSize(18)}
             color={isSaved ? colors.primary : colors.textSecondary}
           />
         </TouchableOpacity>
@@ -133,7 +161,7 @@ const JobCard = ({ job }) => {
         {job.location && (
           <View style={dynamicStyles.detailItem}>
             <View style={dynamicStyles.detailIcon}>
-              <Ionicons name="location" size={isPhone ? 14 : 16} color={colors.primary} />
+              <Ionicons name="location" size={getIconSize(12)} color={colors.primary} />
             </View>
             <View style={dynamicStyles.detailContent}>
               <Text style={dynamicStyles.detailLabel}>Location</Text>
@@ -147,7 +175,7 @@ const JobCard = ({ job }) => {
         {experienceRequired && (
           <View style={dynamicStyles.detailItem}>
             <View style={dynamicStyles.detailIcon}>
-              <Ionicons name="briefcase" size={isPhone ? 14 : 16} color={colors.primary} />
+              <Ionicons name="briefcase" size={getIconSize(12)} color={colors.primary} />
             </View>
             <View style={dynamicStyles.detailContent}>
               <Text style={dynamicStyles.detailLabel}>Experience</Text>
@@ -161,7 +189,7 @@ const JobCard = ({ job }) => {
 
       {/* Salary Badge */}
       <View style={dynamicStyles.salaryBadge}>
-        <Ionicons name="cash" size={isPhone ? 16 : 18} color={colors.success || '#10B981'} />
+        <Ionicons name="cash" size={getIconSize(14)} color={colors.success || '#10B981'} />
         <Text style={dynamicStyles.salaryText}>
           {formatSalary(salaryMin, salaryMax)}
         </Text>
@@ -170,14 +198,14 @@ const JobCard = ({ job }) => {
       {/* Skills */}
       {jobSkills && jobSkills.length > 0 && (
         <View style={dynamicStyles.skills}>
-          {jobSkills.slice(0, isPhone ? 3 : 4).map((skill, index) => (
+          {jobSkills.slice(0, skillsToShow).map((skill, index) => (
             <View key={index} style={dynamicStyles.skill}>
-              <Text style={dynamicStyles.skillText}>{skill}</Text>
+              <Text style={dynamicStyles.skillText} numberOfLines={1}>{skill}</Text>
             </View>
           ))}
-          {jobSkills.length > (isPhone ? 3 : 4) && (
+          {jobSkills.length > skillsToShow && (
             <View style={dynamicStyles.skill}>
-              <Text style={dynamicStyles.skillText}>+{jobSkills.length - (isPhone ? 3 : 4)}</Text>
+              <Text style={dynamicStyles.skillText}>+{jobSkills.length - skillsToShow}</Text>
             </View>
           )}
         </View>
@@ -194,184 +222,194 @@ const JobCard = ({ job }) => {
           activeOpacity={0.8}
         >
           <Text style={dynamicStyles.applyButtonText}>Apply Now</Text>
-          <Ionicons name="arrow-forward" size={isPhone ? 16 : 18} color={colors.textWhite} />
+          <Ionicons name="arrow-forward" size={getIconSize(14)} color={colors.textWhite} />
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
   );
 };
 
-const getStyles = (isPhone, isMobile, isTablet, isDesktop) => StyleSheet.create({
-  card: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.xl,
-    padding: isPhone ? spacing.md : (isMobile ? spacing.md : isTablet ? spacing.lg : spacing.lg),
-    width: '100%',
-    height: isPhone ? 380 : (isMobile ? 400 : (isTablet ? 420 : 440)),
-    flexDirection: 'column',
-    ...shadows.md,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    ...(isWeb && {
-      transition: 'transform 0.25s ease, box-shadow 0.25s ease',
-      cursor: 'pointer',
-      boxShadow: '0 15px 40px rgba(15, 23, 42, 0.08)',
-    }),
-  },
-  topBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: spacing.md,
-  },
-  companyLogoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    flex: 1,
-  },
-  companyLogo: {
-    width: isPhone ? 40 : (isMobile ? 44 : (isTablet ? 48 : 50)),
-    height: isPhone ? 40 : (isMobile ? 44 : (isTablet ? 48 : 50)),
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.background,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  companyInfo: {
-    flex: 1,
-    gap: spacing.xs / 2,
-  },
-  company: {
-    ...typography.body1,
-    color: colors.text,
-    fontWeight: '600',
-    fontSize: isPhone ? 13 : (isMobile ? 14 : (isTablet ? 15 : (isDesktop ? 16 : 15))),
-  },
-  postedDate: {
-    ...typography.caption,
-    color: colors.textLight,
-    fontSize: isPhone ? 10 : (isMobile ? 11 : (isTablet ? 11 : (isDesktop ? 12 : 11))),
-  },
-  saveButton: {
-    padding: spacing.xs,
-    borderRadius: borderRadius.sm,
-  },
-  title: {
-    ...typography.h5,
-    color: colors.text,
-    fontWeight: '700',
-    marginBottom: isPhone ? spacing.sm : spacing.md,
-    lineHeight: isPhone ? 20 : (isMobile ? 22 : (isTablet ? 24 : (isDesktop ? 26 : 24))),
-    fontSize: isPhone ? 14 : (isMobile ? 16 : (isTablet ? 17 : (isDesktop ? 18 : 17))),
-  },
-  detailsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: isPhone ? spacing.xs : (isMobile ? spacing.sm : isTablet ? spacing.sm : spacing.md),
-    marginBottom: isPhone ? spacing.sm : spacing.md,
-  },
-  detailItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    minWidth: isPhone ? '100%' : (isMobile ? '100%' : '45%'),
-    flex: isPhone ? 1 : (isMobile ? 1 : 0),
-  },
-  detailIcon: {
-    width: isPhone ? 26 : (isMobile ? 28 : (isTablet ? 30 : 32)),
-    height: isPhone ? 26 : (isMobile ? 28 : (isTablet ? 30 : 32)),
-    borderRadius: borderRadius.sm,
-    backgroundColor: colors.background,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  detailContent: {
-    flex: 1,
-    gap: spacing.xs / 2,
-  },
-  detailLabel: {
-    ...typography.caption,
-    color: colors.textLight,
-    fontSize: isPhone ? 9 : (isMobile ? 10 : (isTablet ? 10 : (isDesktop ? 11 : 10))),
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  detailValue: {
-    ...typography.body2,
-    color: colors.text,
-    fontWeight: '600',
-    fontSize: isPhone ? 12 : (isMobile ? 13 : (isTablet ? 13 : (isDesktop ? 14 : 13))),
-  },
-  salaryBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: '#ECFDF5',
-    paddingHorizontal: isPhone ? spacing.sm : (isMobile ? spacing.sm : isTablet ? spacing.md : spacing.md),
-    paddingVertical: isPhone ? spacing.xs : spacing.sm,
-    borderRadius: borderRadius.md,
-    alignSelf: 'flex-start',
-    marginBottom: isPhone ? spacing.sm : spacing.md,
-    borderWidth: 1,
-    borderColor: '#A7F3D0',
-  },
-  salaryText: {
-    ...typography.body2,
-    color: '#059669',
-    fontWeight: '700',
-    fontSize: isPhone ? 12 : (isMobile ? 13 : (isTablet ? 13 : (isDesktop ? 14 : 13))),
-  },
-  skills: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: isPhone ? spacing.xs : spacing.xs,
-    marginBottom: isPhone ? spacing.md : spacing.lg,
-  },
-  skill: {
-    backgroundColor: colors.background,
-    paddingHorizontal: isPhone ? spacing.sm : (isMobile ? spacing.sm : isTablet ? spacing.md : spacing.md),
-    paddingVertical: isPhone ? spacing.xs : spacing.sm,
-    borderRadius: borderRadius.xl,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  skillText: {
-    ...typography.caption,
-    color: colors.primary,
-    fontWeight: '600',
-    fontSize: isPhone ? 10 : (isMobile ? 11 : (isTablet ? 11 : (isDesktop ? 12 : 11))),
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingTop: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderLight,
-    marginTop: 'auto',
-  },
-  applyButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.primary,
-    paddingHorizontal: isPhone ? spacing.md : (isMobile ? spacing.lg : isTablet ? spacing.lg : spacing.xl),
-    paddingVertical: isPhone ? spacing.sm : spacing.md,
-    borderRadius: borderRadius.md,
-    ...shadows.sm,
-    width: isPhone ? 120 : (isMobile ? 140 : (isTablet ? 150 : 160)),
-  },
-  applyButtonText: {
-    ...typography.button,
-    color: colors.textWhite,
-    fontWeight: '700',
-    fontSize: isPhone ? 13 : (isMobile ? 14 : (isTablet ? 14 : (isDesktop ? 15 : 14))),
-  },
-});
+const getStyles = (
+  isXsPhone, isSmallPhone, isPhone, isLargePhone, isMobile,
+  isSmallTablet, isTablet, isLargeTablet, isTabletDevice,
+  isSmallLaptop, isLaptop, isDesktop, isLargeDesktop, isDesktopDevice, width
+) => {
+  // Calculate responsive values
+  const cardPadding = isXsPhone ? 10 : isSmallPhone ? 12 : isMobile ? 14 : isSmallTablet ? 16 : isTabletDevice ? 18 : 20;
+  const cardHeight = isXsPhone ? 340 : isSmallPhone ? 360 : isMobile ? 380 : isSmallTablet ? 400 : isTabletDevice ? 420 : 440;
+  
+  return StyleSheet.create({
+    card: {
+      backgroundColor: colors.cardBackground,
+      borderRadius: isXsPhone ? borderRadius.md : borderRadius.lg,
+      padding: cardPadding,
+      width: '100%',
+      height: cardHeight,
+      flexDirection: 'column',
+      ...shadows.card,
+      borderWidth: 1,
+      borderColor: colors.borderLight,
+      ...(isWeb && {
+        transition: 'transform 0.25s ease, box-shadow 0.25s ease',
+        cursor: 'pointer',
+        boxShadow: '0 10px 30px rgba(15, 23, 42, 0.06)',
+      }),
+    },
+    topBar: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      marginBottom: isXsPhone ? 8 : isMobile ? 10 : 14,
+    },
+    companyLogoContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: isXsPhone ? 6 : isMobile ? 8 : 10,
+      flex: 1,
+    },
+    companyLogo: {
+      width: isXsPhone ? 32 : isSmallPhone ? 36 : isMobile ? 40 : isTabletDevice ? 44 : 48,
+      height: isXsPhone ? 32 : isSmallPhone ? 36 : isMobile ? 40 : isTabletDevice ? 44 : 48,
+      borderRadius: borderRadius.md,
+      backgroundColor: colors.background,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    companyInfo: {
+      flex: 1,
+      gap: 2,
+    },
+    company: {
+      ...typography.body2,
+      color: colors.text,
+      fontWeight: '600',
+      fontSize: isXsPhone ? 11 : isSmallPhone ? 12 : isMobile ? 13 : isTabletDevice ? 14 : 15,
+    },
+    postedDate: {
+      ...typography.caption,
+      color: colors.textLight,
+      fontSize: isXsPhone ? 9 : isSmallPhone ? 9 : isMobile ? 10 : isTabletDevice ? 11 : 12,
+    },
+    saveButton: {
+      padding: isXsPhone ? 4 : 6,
+      borderRadius: borderRadius.sm,
+    },
+    title: {
+      ...typography.h6,
+      color: colors.text,
+      fontWeight: '700',
+      marginBottom: isXsPhone ? 8 : isMobile ? 10 : 14,
+      lineHeight: isXsPhone ? 18 : isSmallPhone ? 20 : isMobile ? 22 : isTabletDevice ? 24 : 26,
+      fontSize: isXsPhone ? 13 : isSmallPhone ? 14 : isMobile ? 15 : isTabletDevice ? 16 : 18,
+    },
+    detailsGrid: {
+      flexDirection: isXsPhone ? 'column' : 'row',
+      flexWrap: 'wrap',
+      gap: isXsPhone ? 6 : isMobile ? 8 : 10,
+      marginBottom: isXsPhone ? 8 : isMobile ? 10 : 14,
+    },
+    detailItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: isXsPhone ? 4 : 6,
+      minWidth: isXsPhone ? '100%' : isMobile ? '100%' : '45%',
+      flex: isXsPhone ? 1 : 0,
+    },
+    detailIcon: {
+      width: isXsPhone ? 22 : isSmallPhone ? 24 : isMobile ? 26 : isTabletDevice ? 28 : 30,
+      height: isXsPhone ? 22 : isSmallPhone ? 24 : isMobile ? 26 : isTabletDevice ? 28 : 30,
+      borderRadius: borderRadius.sm,
+      backgroundColor: colors.background,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    detailContent: {
+      flex: 1,
+      gap: 1,
+    },
+    detailLabel: {
+      ...typography.caption,
+      color: colors.textLight,
+      fontSize: isXsPhone ? 8 : isSmallPhone ? 8 : isMobile ? 9 : isTabletDevice ? 10 : 11,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    detailValue: {
+      ...typography.body2,
+      color: colors.text,
+      fontWeight: '600',
+      fontSize: isXsPhone ? 10 : isSmallPhone ? 11 : isMobile ? 12 : isTabletDevice ? 13 : 14,
+    },
+    salaryBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: isXsPhone ? 4 : 6,
+      backgroundColor: '#ECFDF5',
+      paddingHorizontal: isXsPhone ? 8 : isMobile ? 10 : 12,
+      paddingVertical: isXsPhone ? 4 : isMobile ? 6 : 8,
+      borderRadius: borderRadius.md,
+      alignSelf: 'flex-start',
+      marginBottom: isXsPhone ? 8 : isMobile ? 10 : 14,
+      borderWidth: 1,
+      borderColor: '#A7F3D0',
+    },
+    salaryText: {
+      ...typography.body2,
+      color: '#059669',
+      fontWeight: '700',
+      fontSize: isXsPhone ? 10 : isSmallPhone ? 11 : isMobile ? 12 : isTabletDevice ? 13 : 14,
+    },
+    skills: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: isXsPhone ? 4 : 6,
+      marginBottom: isXsPhone ? 10 : isMobile ? 12 : 16,
+    },
+    skill: {
+      backgroundColor: colors.background,
+      paddingHorizontal: isXsPhone ? 6 : isMobile ? 8 : 10,
+      paddingVertical: isXsPhone ? 3 : isMobile ? 4 : 6,
+      borderRadius: borderRadius.lg,
+      borderWidth: 1,
+      borderColor: colors.border,
+      maxWidth: isXsPhone ? 80 : isMobile ? 100 : 120,
+    },
+    skillText: {
+      ...typography.caption,
+      color: colors.primary,
+      fontWeight: '600',
+      fontSize: isXsPhone ? 9 : isSmallPhone ? 9 : isMobile ? 10 : isTabletDevice ? 11 : 12,
+    },
+    footer: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingTop: isXsPhone ? 10 : isMobile ? 12 : 14,
+      borderTopWidth: 1,
+      borderTopColor: colors.borderLight,
+      marginTop: 'auto',
+    },
+    applyButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: isXsPhone ? 4 : 6,
+      backgroundColor: colors.primary,
+      paddingHorizontal: isXsPhone ? 14 : isMobile ? 18 : isTabletDevice ? 22 : 28,
+      paddingVertical: isXsPhone ? 8 : isMobile ? 10 : 12,
+      borderRadius: borderRadius.md,
+      ...shadows.sm,
+      minWidth: isXsPhone ? 100 : isMobile ? 120 : isTabletDevice ? 140 : 160,
+    },
+    applyButtonText: {
+      ...typography.button,
+      color: colors.textWhite,
+      fontWeight: '700',
+      fontSize: isXsPhone ? 11 : isSmallPhone ? 12 : isMobile ? 13 : isTabletDevice ? 14 : 15,
+    },
+  });
+};
 
 export default JobCard;
-

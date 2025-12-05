@@ -10,7 +10,7 @@ import { useResponsive } from '../../utils/responsive';
 
 const CompanyDashboardScreen = ({ navigation }) => {
   const responsive = useResponsive();
-  const { isMobile, isTablet } = responsive;
+  const { isMobile, isTablet, isTabletDevice } = responsive;
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -203,7 +203,7 @@ const CompanyDashboardScreen = ({ navigation }) => {
   return (
     <View style={styles.container}>
       {!isMobile && (
-        <View style={styles.sidebarWrapper}>
+        <View style={[styles.sidebarWrapper, isTabletDevice && styles.sidebarWrapperTablet]}>
           <EmployerSidebar permanent navigation={navigation} role="company" activeKey="overview" />
         </View>
       )}
@@ -225,7 +225,7 @@ const CompanyDashboardScreen = ({ navigation }) => {
         </TouchableOpacity>
       )}
       <ScrollView 
-        contentContainerStyle={[styles.scrollContent, isMobile && styles.scrollContentMobile]}
+        contentContainerStyle={[styles.scrollContent, isMobile && styles.scrollContentMobile, isTabletDevice && styles.scrollContentTablet]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -240,7 +240,7 @@ const CompanyDashboardScreen = ({ navigation }) => {
           colors={['#FFFFFF', '#F8FAFC']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={[styles.headerBar, isMobile && styles.headerBarMobile]}
+          style={[styles.headerBar, isMobile && styles.headerBarMobile, isTabletDevice && styles.headerBarTablet]}
         >
           <View style={styles.headerLeft}>
             <View style={[styles.headerTitleContainer, isMobile && styles.headerTitleContainerMobile]}>
@@ -269,20 +269,20 @@ const CompanyDashboardScreen = ({ navigation }) => {
         </LinearGradient>
 
         {/* Stats Cards - Modern Design */}
-        <View style={[styles.statsContainer, isMobile && styles.statsContainerMobile]}>
+        <View style={[styles.statsContainer, isMobile && styles.statsContainerMobile, isTabletDevice && styles.statsContainerTablet]}>
           <LinearGradient
             colors={['#3B82F6', '#2563EB']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={[styles.statCard, styles.statCardGradient, isMobile && styles.statCardMobile]}
+            style={[styles.statCard, styles.statCardGradient, isMobile && styles.statCardMobile, isTabletDevice && styles.statCardTablet]}
           >
-            <View style={[styles.statCardContent, isMobile && styles.statCardContentMobile]}>
-              <View style={[styles.statIconContainer, { backgroundColor: 'rgba(255,255,255,0.2)' }, isMobile && styles.statIconContainerMobile]}>
-                <Ionicons name="briefcase" size={isMobile ? 24 : 28} color="#FFFFFF" />
+            <View style={[styles.statCardContent, isMobile && styles.statCardContentMobile, isTabletDevice && styles.statCardContentTablet]}>
+              <View style={[styles.statIconContainer, { backgroundColor: 'rgba(255,255,255,0.2)' }, isMobile && styles.statIconContainerMobile, isTabletDevice && styles.statIconContainerTablet]}>
+                <Ionicons name="briefcase" size={isMobile ? 24 : isTabletDevice ? 26 : 28} color="#FFFFFF" />
               </View>
               <View style={styles.statTextContainer}>
-                <Text style={[styles.statValue, isMobile && styles.statValueMobile]}>{stats.activeJobs}</Text>
-                <Text style={[styles.statLabel, isMobile && styles.statLabelMobile]}>Active Jobs</Text>
+                <Text style={[styles.statValue, isMobile && styles.statValueMobile, isTabletDevice && styles.statValueTablet]}>{stats.activeJobs}</Text>
+                <Text style={[styles.statLabel, isMobile && styles.statLabelMobile, isTabletDevice && styles.statLabelTablet]}>Active Jobs</Text>
               </View>
             </View>
             <View style={styles.statCardDecoration} />
@@ -292,35 +292,35 @@ const CompanyDashboardScreen = ({ navigation }) => {
             colors={['#10B981', '#059669']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={[styles.statCard, styles.statCardGradient, isMobile && styles.statCardMobile]}
+            style={[styles.statCard, styles.statCardGradient, isMobile && styles.statCardMobile, isTabletDevice && styles.statCardTablet]}
           >
-            <View style={[styles.statCardContent, isMobile && styles.statCardContentMobile]}>
-              <View style={[styles.statIconContainer, { backgroundColor: 'rgba(255,255,255,0.2)' }, isMobile && styles.statIconContainerMobile]}>
-                <Ionicons name="people" size={isMobile ? 24 : 28} color="#FFFFFF" />
+            <View style={[styles.statCardContent, isMobile && styles.statCardContentMobile, isTabletDevice && styles.statCardContentTablet]}>
+              <View style={[styles.statIconContainer, { backgroundColor: 'rgba(255,255,255,0.2)' }, isMobile && styles.statIconContainerMobile, isTabletDevice && styles.statIconContainerTablet]}>
+                <Ionicons name="people" size={isMobile ? 24 : isTabletDevice ? 26 : 28} color="#FFFFFF" />
               </View>
               <View style={styles.statTextContainer}>
-                <Text style={[styles.statValue, isMobile && styles.statValueMobile]}>{stats.totalApplications}</Text>
-                <Text style={[styles.statLabel, isMobile && styles.statLabelMobile]}>Applications</Text>
+                <Text style={[styles.statValue, isMobile && styles.statValueMobile, isTabletDevice && styles.statValueTablet]}>{stats.totalApplications}</Text>
+                <Text style={[styles.statLabel, isMobile && styles.statLabelMobile, isTabletDevice && styles.statLabelTablet]}>Applications</Text>
               </View>
             </View>
             <View style={styles.statCardDecoration} />
           </LinearGradient>
         </View>
 
-        <View style={[styles.statsContainer, isMobile && styles.statsContainerMobile]}>
+        <View style={[styles.statsContainer, isMobile && styles.statsContainerMobile, isTabletDevice && styles.statsContainerTablet]}>
           <LinearGradient
             colors={['#8B5CF6', '#7C3AED']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={[styles.statCard, styles.statCardGradient, isMobile && styles.statCardMobile]}
+            style={[styles.statCard, styles.statCardGradient, isMobile && styles.statCardMobile, isTabletDevice && styles.statCardTablet]}
           >
-            <View style={[styles.statCardContent, isMobile && styles.statCardContentMobile]}>
-              <View style={[styles.statIconContainer, { backgroundColor: 'rgba(255,255,255,0.2)' }, isMobile && styles.statIconContainerMobile]}>
-                <Ionicons name="checkmark-circle" size={isMobile ? 24 : 28} color="#FFFFFF" />
+            <View style={[styles.statCardContent, isMobile && styles.statCardContentMobile, isTabletDevice && styles.statCardContentTablet]}>
+              <View style={[styles.statIconContainer, { backgroundColor: 'rgba(255,255,255,0.2)' }, isMobile && styles.statIconContainerMobile, isTabletDevice && styles.statIconContainerTablet]}>
+                <Ionicons name="checkmark-circle" size={isMobile ? 24 : isTabletDevice ? 26 : 28} color="#FFFFFF" />
               </View>
               <View style={styles.statTextContainer}>
-                <Text style={[styles.statValue, isMobile && styles.statValueMobile]}>{stats.shortlistedCandidates}</Text>
-                <Text style={[styles.statLabel, isMobile && styles.statLabelMobile]}>Shortlisted</Text>
+                <Text style={[styles.statValue, isMobile && styles.statValueMobile, isTabletDevice && styles.statValueTablet]}>{stats.shortlistedCandidates}</Text>
+                <Text style={[styles.statLabel, isMobile && styles.statLabelMobile, isTabletDevice && styles.statLabelTablet]}>Shortlisted</Text>
               </View>
             </View>
             <View style={styles.statCardDecoration} />
@@ -330,15 +330,15 @@ const CompanyDashboardScreen = ({ navigation }) => {
             colors={['#F59E0B', '#D97706']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={[styles.statCard, styles.statCardGradient, isMobile && styles.statCardMobile]}
+            style={[styles.statCard, styles.statCardGradient, isMobile && styles.statCardMobile, isTabletDevice && styles.statCardTablet]}
           >
-            <View style={[styles.statCardContent, isMobile && styles.statCardContentMobile]}>
-              <View style={[styles.statIconContainer, { backgroundColor: 'rgba(255,255,255,0.2)' }, isMobile && styles.statIconContainerMobile]}>
-                <Ionicons name="time" size={isMobile ? 24 : 28} color="#FFFFFF" />
+            <View style={[styles.statCardContent, isMobile && styles.statCardContentMobile, isTabletDevice && styles.statCardContentTablet]}>
+              <View style={[styles.statIconContainer, { backgroundColor: 'rgba(255,255,255,0.2)' }, isMobile && styles.statIconContainerMobile, isTabletDevice && styles.statIconContainerTablet]}>
+                <Ionicons name="time" size={isMobile ? 24 : isTabletDevice ? 26 : 28} color="#FFFFFF" />
               </View>
               <View style={styles.statTextContainer}>
-                <Text style={[styles.statValue, isMobile && styles.statValueMobile]}>{stats.pendingReviews}</Text>
-                <Text style={[styles.statLabel, isMobile && styles.statLabelMobile]}>Pending Review</Text>
+                <Text style={[styles.statValue, isMobile && styles.statValueMobile, isTabletDevice && styles.statValueTablet]}>{stats.pendingReviews}</Text>
+                <Text style={[styles.statLabel, isMobile && styles.statLabelMobile, isTabletDevice && styles.statLabelTablet]}>Pending Review</Text>
               </View>
             </View>
             <View style={styles.statCardDecoration} />
@@ -358,6 +358,9 @@ const styles = StyleSheet.create({
   },
   sidebarWrapper: {
     width: 280,
+  },
+  sidebarWrapperTablet: {
+    width: 240,
   },
   menuButton: {
     position: 'absolute',
@@ -389,6 +392,9 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     paddingTop: spacing.xl + 40,
   },
+  scrollContentTablet: {
+    padding: spacing.md,
+  },
   headerBar: {
     padding: spacing.xl,
     borderRadius: borderRadius.lg,
@@ -403,6 +409,10 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     alignItems: 'flex-start',
     gap: spacing.md,
+  },
+  headerBarTablet: {
+    padding: spacing.lg,
+    marginBottom: spacing.md,
   },
   headerLeft: {
     gap: spacing.xs,
@@ -484,6 +494,11 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     gap: spacing.md,
   },
+  statsContainerTablet: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginBottom: spacing.md,
+  },
   statCard: {
     flex: 1,
     borderRadius: borderRadius.lg,
@@ -493,6 +508,10 @@ const styles = StyleSheet.create({
   statCardMobile: {
     flex: 0,
     width: '100%',
+  },
+  statCardTablet: {
+    flex: 1,
+    minWidth: 0,
   },
   statCardGradient: {
     position: 'relative',
@@ -507,6 +526,10 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     gap: spacing.md,
   },
+  statCardContentTablet: {
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
   statIconContainer: {
     width: 64,
     height: 64,
@@ -517,6 +540,10 @@ const styles = StyleSheet.create({
   statIconContainerMobile: {
     width: 48,
     height: 48,
+  },
+  statIconContainerTablet: {
+    width: 52,
+    height: 52,
   },
   statTextContainer: {
     flex: 1,
@@ -531,6 +558,9 @@ const styles = StyleSheet.create({
   statValueMobile: {
     fontSize: 24,
   },
+  statValueTablet: {
+    fontSize: 26,
+  },
   statLabel: {
     fontSize: 14,
     color: 'rgba(255,255,255,0.9)',
@@ -540,6 +570,9 @@ const styles = StyleSheet.create({
   },
   statLabelMobile: {
     fontSize: 12,
+  },
+  statLabelTablet: {
+    fontSize: 11,
   },
   statCardDecoration: {
     position: 'absolute',

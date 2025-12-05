@@ -20,7 +20,7 @@ import { useResponsive } from '../../utils/responsive';
 
 const EmployerManageResponsesScreen = ({ navigation }) => {
   const responsive = useResponsive();
-  const { isMobile } = responsive;
+  const { isMobile, isTabletDevice } = responsive;
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [jobs, setJobs] = useState([]);
   const [selectedJob, setSelectedJob] = useState(null);
@@ -523,7 +523,7 @@ const EmployerManageResponsesScreen = ({ navigation }) => {
   return (
     <View style={styles.container}>
       {!isMobile && (
-        <View style={styles.sidebarWrapper}>
+        <View style={[styles.sidebarWrapper, isTabletDevice && styles.sidebarWrapperTablet]}>
           <EmployerSidebar permanent navigation={navigation} role="company" activeKey="responses" />
         </View>
       )}
@@ -545,7 +545,7 @@ const EmployerManageResponsesScreen = ({ navigation }) => {
         </TouchableOpacity>
       )}
       
-      <View style={[styles.contentWrapper, isMobile && styles.contentWrapperMobile]}>
+      <View style={[styles.contentWrapper, isMobile && styles.contentWrapperMobile, isTabletDevice && styles.contentWrapperTablet]}>
         <LinearGradient
           colors={['#FFFFFF', '#F8FAFC']}
           start={{ x: 0, y: 0 }}
@@ -678,6 +678,9 @@ const styles = StyleSheet.create({
     width: 280,
     backgroundColor: colors.sidebarBackground,
   },
+  sidebarWrapperTablet: {
+    width: 240,
+  },
   menuButton: {
     position: 'absolute',
     top: spacing.md,
@@ -694,6 +697,9 @@ const styles = StyleSheet.create({
   },
   contentWrapperMobile: {
     paddingTop: spacing.xl + 40,
+  },
+  contentWrapperTablet: {
+    paddingTop: 0,
   },
   loadingContainer: {
     flex: 1,

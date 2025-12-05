@@ -21,11 +21,29 @@ const isWeb = getPlatform().OS === 'web';
 const CompanyCard = ({ company }) => {
   const navigation = useNavigation();
   const responsive = useResponsive();
-  const isPhone = responsive.width <= 480;
-  const isMobile = responsive.isMobile;
-  const isTablet = responsive.isTablet;
-  const isDesktop = responsive.isDesktop;
-  const dynamicStyles = getStyles(isPhone, isMobile, isTablet, isDesktop);
+  
+  // Enhanced device detection
+  const { width } = responsive;
+  const isXsPhone = width <= 320;
+  const isSmallPhone = width > 320 && width <= 375;
+  const isPhone = width > 375 && width <= 414;
+  const isLargePhone = width > 414 && width <= 480;
+  const isMobile = width <= 480;
+  const isSmallTablet = width > 480 && width <= 600;
+  const isTablet = width > 600 && width <= 768;
+  const isLargeTablet = width > 768 && width <= 834;
+  const isTabletDevice = width > 480 && width <= 834;
+  const isSmallLaptop = width > 834 && width <= 1024;
+  const isLaptop = width > 1024 && width <= 1200;
+  const isDesktop = width > 1200 && width <= 1440;
+  const isLargeDesktop = width > 1440;
+  const isDesktopDevice = width > 834;
+  
+  const dynamicStyles = getStyles(
+    isXsPhone, isSmallPhone, isPhone, isLargePhone, isMobile,
+    isSmallTablet, isTablet, isLargeTablet, isTabletDevice,
+    isSmallLaptop, isLaptop, isDesktop, isLargeDesktop, isDesktopDevice, width
+  );
 
   // Get company initials for avatar
   const getInitials = (name) => {
@@ -42,23 +60,24 @@ const CompanyCard = ({ company }) => {
     const stars = [];
     const fullStars = Math.floor(rating);
     const hasHalfStar = rating % 1 !== 0;
+    const starSize = isXsPhone ? 10 : isSmallPhone ? 11 : isMobile ? 12 : 14;
 
     for (let i = 0; i < fullStars; i++) {
       stars.push(
-        <Ionicons key={`star-${i}`} name="star" size={14} color="#FFB800" />
+        <Ionicons key={`star-${i}`} name="star" size={starSize} color="#FFB800" />
       );
     }
     
     if (hasHalfStar) {
       stars.push(
-        <Ionicons key="star-half" name="star-half" size={14} color="#FFB800" />
+        <Ionicons key="star-half" name="star-half" size={starSize} color="#FFB800" />
       );
     }
     
     const remainingStars = 5 - Math.ceil(rating);
     for (let i = 0; i < remainingStars; i++) {
       stars.push(
-        <Ionicons key={`star-empty-${i}`} name="star-outline" size={14} color="#FFB800" />
+        <Ionicons key={`star-empty-${i}`} name="star-outline" size={starSize} color="#FFB800" />
       );
     }
     
@@ -106,6 +125,15 @@ const CompanyCard = ({ company }) => {
 
   const hiringStatus = (company.openPositions || 0) > 0 ? 'Actively hiring' : 'Building talent pool';
 
+  // Get icon size based on device
+  const getIconSize = (base) => {
+    if (isXsPhone) return base - 4;
+    if (isSmallPhone) return base - 2;
+    if (isMobile) return base;
+    if (isTabletDevice) return base + 2;
+    return base + 4;
+  };
+
   return (
     <TouchableOpacity 
       style={dynamicStyles.card}
@@ -113,8 +141,8 @@ const CompanyCard = ({ company }) => {
       activeOpacity={0.9}
     >
       <View style={dynamicStyles.trustBadge}>
-        <Ionicons name="shield-checkmark" size={isPhone ? 12 : 14} color="#4338CA" />
-        <Text style={dynamicStyles.trustBadgeText}>{company.isFeatured ? 'Featured partner' : 'Verified'}</Text>
+        <Ionicons name="shield-checkmark" size={getIconSize(10)} color="#4338CA" />
+        <Text style={dynamicStyles.trustBadgeText}>{company.isFeatured ? 'Featured' : 'Verified'}</Text>
       </View>
 
       <View style={dynamicStyles.header}>
@@ -127,7 +155,7 @@ const CompanyCard = ({ company }) => {
             {company.profile?.company?.name || company.name}
           </Text>
           <View style={dynamicStyles.industryBadge}>
-            <Text style={dynamicStyles.industryText}>
+            <Text style={dynamicStyles.industryText} numberOfLines={1}>
               {company.profile?.company?.industry || company.industry || 'Technology'}
             </Text>
           </View>
@@ -153,17 +181,19 @@ const CompanyCard = ({ company }) => {
 
       <View style={dynamicStyles.metaChips}>
         <View style={dynamicStyles.metaChip}>
-          <Ionicons name="location-outline" size={isPhone ? 12 : 14} color="#4338CA" />
-          <Text style={dynamicStyles.metaChipText}>{location}</Text>
+          <Ionicons name="location-outline" size={getIconSize(10)} color="#4338CA" />
+          <Text style={dynamicStyles.metaChipText} numberOfLines={1}>{location}</Text>
         </View>
         <View style={dynamicStyles.metaChip}>
-          <Ionicons name="briefcase-outline" size={isPhone ? 12 : 14} color="#4338CA" />
-          <Text style={dynamicStyles.metaChipText}>{companyType}</Text>
+          <Ionicons name="briefcase-outline" size={getIconSize(10)} color="#4338CA" />
+          <Text style={dynamicStyles.metaChipText} numberOfLines={1}>{companyType}</Text>
         </View>
-        <View style={dynamicStyles.metaChip}>
-          <Ionicons name="people-outline" size={isPhone ? 12 : 14} color="#4338CA" />
-          <Text style={dynamicStyles.metaChipText}>{employeeCount}</Text>
-        </View>
+        {!isXsPhone && (
+          <View style={dynamicStyles.metaChip}>
+            <Ionicons name="people-outline" size={getIconSize(10)} color="#4338CA" />
+            <Text style={dynamicStyles.metaChipText} numberOfLines={1}>{employeeCount}</Text>
+          </View>
+        )}
       </View>
 
       <Text style={dynamicStyles.description} numberOfLines={2}>
@@ -173,177 +203,193 @@ const CompanyCard = ({ company }) => {
       <View style={dynamicStyles.cardFooter}>
         <View style={dynamicStyles.viewJobsButton}>
           <Text style={dynamicStyles.viewJobsText}>View Jobs</Text>
-          <Ionicons name="arrow-forward" size={isPhone ? 14 : 16} color="#FFFFFF" style={{ marginLeft: 8 }} />
+          <Ionicons name="arrow-forward" size={getIconSize(12)} color="#FFFFFF" style={{ marginLeft: 6 }} />
         </View>
         <View style={dynamicStyles.hiringTag}>
-          <Ionicons name="flash" size={isPhone ? 12 : 14} color="#10B981" />
-          <Text style={dynamicStyles.hiringTagText}>{hiringStatus}</Text>
+          <Ionicons name="flash" size={getIconSize(10)} color="#10B981" />
+          <Text style={dynamicStyles.hiringTagText} numberOfLines={1}>{hiringStatus}</Text>
         </View>
       </View>
     </TouchableOpacity>
   );
 };
 
-const getStyles = (isPhone, isMobile, isTablet, isDesktop) => StyleSheet.create({
-  card: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.xl,
-    padding: isPhone ? spacing.sm : (isMobile ? spacing.md : isTablet ? spacing.md : spacing.lg),
-    ...shadows.lg,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    position: 'relative',
-    ...(isWeb && {
-      cursor: 'pointer',
-      userSelect: 'none',
-      transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-    }),
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: isPhone ? spacing.sm : spacing.md,
-    gap: isPhone ? spacing.sm : spacing.md,
-  },
-  avatar: {
-    width: isPhone ? 44 : (isMobile ? 48 : (isTablet ? 52 : 56)),
-    height: isPhone ? 44 : (isMobile ? 48 : (isTablet ? 52 : 56)),
-    borderRadius: isPhone ? 22 : (isMobile ? 24 : (isTablet ? 26 : 28)),
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarText: {
-    fontSize: isPhone ? 18 : (isMobile ? 20 : (isTablet ? 22 : 24)),
-    fontWeight: '700',
-    color: colors.textWhite,
-  },
-  headerInfo: {
-    flex: 1,
-  },
-  companyName: {
-    fontSize: isPhone ? 14 : (isMobile ? 16 : (isTablet ? 17 : (isDesktop ? 18 : 17))),
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: spacing.xs,
-  },
-  industryBadge: {
-    backgroundColor: '#E0E7FF',
-    paddingHorizontal: isPhone ? spacing.xs : spacing.sm,
-    paddingVertical: 4,
-    borderRadius: borderRadius.sm,
-    alignSelf: 'flex-start',
-  },
-  industryText: {
-    fontSize: isPhone ? 10 : (isMobile ? 11 : (isTablet ? 11 : (isDesktop ? 12 : 11))),
-    fontWeight: '600',
-    color: '#4F46E5',
-  },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-    paddingBottom: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
-  },
-  openPositions: {
-    fontSize: isPhone ? 12 : (isMobile ? 13 : (isTablet ? 13 : (isDesktop ? 14 : 13))),
-    color: colors.text,
-    fontWeight: '500',
-  },
-  ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  stars: {
-    flexDirection: 'row',
-    gap: 2,
-  },
-  ratingText: {
-    fontSize: isPhone ? 11 : (isMobile ? 12 : (isTablet ? 12 : (isDesktop ? 13 : 12))),
-    color: colors.text,
-    fontWeight: '600',
-  },
-  description: {
-    fontSize: isPhone ? 12 : (isMobile ? 13 : (isTablet ? 13 : (isDesktop ? 14 : 13))),
-    color: colors.textSecondary,
-    marginBottom: isPhone ? spacing.sm : spacing.md,
-    lineHeight: isPhone ? 18 : (isMobile ? 18 : (isTablet ? 19 : 20)),
-  },
-  metaChips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.xs,
-    marginBottom: spacing.md,
-  },
-  metaChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs / 1.5,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 6,
-    borderRadius: borderRadius.lg,
-    backgroundColor: '#EEF2FF',
-  },
-  metaChipText: {
-    fontSize: isPhone ? 11 : 12,
-    fontWeight: '600',
-    color: '#4338CA',
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  viewJobsButton: {
-    flex: 1,
-    backgroundColor: '#6366F1',
-    borderRadius: borderRadius.md,
-    paddingVertical: isPhone ? spacing.sm : spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  viewJobsText: {
-    fontSize: isPhone ? 13 : (isMobile ? 14 : (isTablet ? 14 : (isDesktop ? 15 : 14))),
-    fontWeight: '600',
-    color: colors.textWhite,
-  },
-  hiringTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs / 1.5,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.md,
-    backgroundColor: '#ECFDF5',
-  },
-  hiringTagText: {
-    fontSize: isPhone ? 11 : 12,
-    fontWeight: '600',
-    color: '#047857',
-  },
-  trustBadge: {
-    position: 'absolute',
-    top: spacing.sm,
-    right: spacing.sm,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs / 1.5,
-    backgroundColor: '#EEF2FF',
-    borderRadius: borderRadius.lg,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    zIndex: 1,
-  },
-  trustBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#4338CA',
-  },
-});
+const getStyles = (
+  isXsPhone, isSmallPhone, isPhone, isLargePhone, isMobile,
+  isSmallTablet, isTablet, isLargeTablet, isTabletDevice,
+  isSmallLaptop, isLaptop, isDesktop, isLargeDesktop, isDesktopDevice, width
+) => {
+  // Calculate responsive values
+  const cardPadding = isXsPhone ? 10 : isSmallPhone ? 12 : isMobile ? 14 : isTabletDevice ? 16 : 18;
+  const cardWidth = isXsPhone ? 240 : isSmallPhone ? 260 : isMobile ? 280 : isSmallTablet ? 300 : isTabletDevice ? 320 : 340;
+  
+  return StyleSheet.create({
+    card: {
+      backgroundColor: colors.cardBackground,
+      borderRadius: isXsPhone ? borderRadius.md : borderRadius.lg,
+      padding: cardPadding,
+      width: cardWidth,
+      minWidth: cardWidth,
+      ...shadows.card,
+      borderWidth: 1,
+      borderColor: colors.borderLight,
+      position: 'relative',
+      ...(isWeb && {
+        cursor: 'pointer',
+        userSelect: 'none',
+        transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+      }),
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: isXsPhone ? 8 : isMobile ? 10 : 14,
+      gap: isXsPhone ? 8 : isMobile ? 10 : 12,
+      marginTop: isXsPhone ? 16 : 20,
+    },
+    avatar: {
+      width: isXsPhone ? 36 : isSmallPhone ? 40 : isMobile ? 44 : isTabletDevice ? 48 : 52,
+      height: isXsPhone ? 36 : isSmallPhone ? 40 : isMobile ? 44 : isTabletDevice ? 48 : 52,
+      borderRadius: isXsPhone ? 18 : isSmallPhone ? 20 : isMobile ? 22 : isTabletDevice ? 24 : 26,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    avatarText: {
+      fontSize: isXsPhone ? 14 : isSmallPhone ? 16 : isMobile ? 18 : isTabletDevice ? 20 : 22,
+      fontWeight: '700',
+      color: colors.textWhite,
+    },
+    headerInfo: {
+      flex: 1,
+    },
+    companyName: {
+      fontSize: isXsPhone ? 12 : isSmallPhone ? 13 : isMobile ? 14 : isTabletDevice ? 15 : 16,
+      fontWeight: '700',
+      color: colors.text,
+      marginBottom: 4,
+    },
+    industryBadge: {
+      backgroundColor: '#E0E7FF',
+      paddingHorizontal: isXsPhone ? 6 : 8,
+      paddingVertical: 3,
+      borderRadius: borderRadius.sm,
+      alignSelf: 'flex-start',
+      maxWidth: '100%',
+    },
+    industryText: {
+      fontSize: isXsPhone ? 9 : isSmallPhone ? 9 : isMobile ? 10 : isTabletDevice ? 11 : 12,
+      fontWeight: '600',
+      color: '#4F46E5',
+    },
+    statsRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: isXsPhone ? 8 : isMobile ? 10 : 12,
+      paddingBottom: isXsPhone ? 6 : 8,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.borderLight,
+    },
+    openPositions: {
+      fontSize: isXsPhone ? 10 : isSmallPhone ? 11 : isMobile ? 12 : isTabletDevice ? 13 : 14,
+      color: colors.text,
+      fontWeight: '500',
+    },
+    ratingContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    stars: {
+      flexDirection: 'row',
+      gap: 1,
+    },
+    ratingText: {
+      fontSize: isXsPhone ? 9 : isSmallPhone ? 10 : isMobile ? 11 : isTabletDevice ? 12 : 13,
+      color: colors.text,
+      fontWeight: '600',
+    },
+    description: {
+      fontSize: isXsPhone ? 10 : isSmallPhone ? 11 : isMobile ? 12 : isTabletDevice ? 13 : 14,
+      color: colors.textSecondary,
+      marginBottom: isXsPhone ? 8 : isMobile ? 10 : 12,
+      lineHeight: isXsPhone ? 14 : isSmallPhone ? 16 : isMobile ? 18 : 20,
+    },
+    metaChips: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: isXsPhone ? 4 : 6,
+      marginBottom: isXsPhone ? 8 : isMobile ? 10 : 12,
+    },
+    metaChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 3,
+      paddingHorizontal: isXsPhone ? 6 : 8,
+      paddingVertical: isXsPhone ? 3 : 5,
+      borderRadius: borderRadius.lg,
+      backgroundColor: '#EEF2FF',
+      maxWidth: isXsPhone ? 100 : 130,
+    },
+    metaChipText: {
+      fontSize: isXsPhone ? 9 : isSmallPhone ? 10 : isMobile ? 10 : 11,
+      fontWeight: '600',
+      color: '#4338CA',
+    },
+    cardFooter: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: isXsPhone ? 6 : 8,
+      marginTop: 'auto',
+    },
+    viewJobsButton: {
+      flex: 1,
+      backgroundColor: '#6366F1',
+      borderRadius: borderRadius.md,
+      paddingVertical: isXsPhone ? 8 : isMobile ? 10 : 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    viewJobsText: {
+      fontSize: isXsPhone ? 11 : isSmallPhone ? 12 : isMobile ? 13 : isTabletDevice ? 14 : 15,
+      fontWeight: '600',
+      color: colors.textWhite,
+    },
+    hiringTag: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 3,
+      paddingHorizontal: isXsPhone ? 6 : 8,
+      paddingVertical: isXsPhone ? 6 : 8,
+      borderRadius: borderRadius.md,
+      backgroundColor: '#ECFDF5',
+      maxWidth: isXsPhone ? 90 : 110,
+    },
+    hiringTagText: {
+      fontSize: isXsPhone ? 9 : isSmallPhone ? 9 : isMobile ? 10 : 11,
+      fontWeight: '600',
+      color: '#047857',
+    },
+    trustBadge: {
+      position: 'absolute',
+      top: isXsPhone ? 6 : 8,
+      right: isXsPhone ? 6 : 8,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 3,
+      backgroundColor: '#EEF2FF',
+      borderRadius: borderRadius.lg,
+      paddingHorizontal: isXsPhone ? 6 : 8,
+      paddingVertical: 3,
+      zIndex: 1,
+    },
+    trustBadgeText: {
+      fontSize: isXsPhone ? 8 : isSmallPhone ? 9 : 10,
+      fontWeight: '600',
+      color: '#4338CA',
+    },
+  });
+};
 
 export default CompanyCard;
-

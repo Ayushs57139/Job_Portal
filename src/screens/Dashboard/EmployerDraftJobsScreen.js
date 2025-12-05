@@ -10,7 +10,7 @@ const DRAFTS_INDEX_KEY = 'jobDrafts:index';
 
 const EmployerDraftJobsScreen = ({ navigation }) => {
   const responsive = useResponsive();
-  const { isMobile } = responsive;
+  const { isMobile, isTabletDevice } = responsive;
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [drafts, setDrafts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -85,7 +85,7 @@ const EmployerDraftJobsScreen = ({ navigation }) => {
   return (
     <View style={styles.container}>
       {!isMobile && (
-        <View style={styles.sidebarWrapper}>
+        <View style={[styles.sidebarWrapper, isTabletDevice && styles.sidebarWrapperTablet]}>
           <EmployerSidebar permanent navigation={navigation} role="company" activeKey="draftJobs" />
         </View>
       )}
@@ -106,8 +106,8 @@ const EmployerDraftJobsScreen = ({ navigation }) => {
           <Ionicons name="menu" size={24} color={colors.text} />
         </TouchableOpacity>
       )}
-      <View style={[styles.contentWrapper, isMobile && styles.contentWrapperMobile]}>
-        <View style={[styles.headerBar, isMobile && styles.headerBarMobile]}>
+      <View style={[styles.contentWrapper, isMobile && styles.contentWrapperMobile, isTabletDevice && styles.contentWrapperTablet]}>
+        <View style={[styles.headerBar, isMobile && styles.headerBarMobile, isTabletDevice && styles.headerBarTablet]}>
           <Text style={[styles.headerTitle, isMobile && styles.headerTitleMobile]}>Draft Jobs</Text>
           <Text style={[styles.headerSubtitle, isMobile && styles.headerSubtitleMobile]}>Resume your left-over job postings</Text>
         </View>
@@ -131,6 +131,7 @@ const EmployerDraftJobsScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: { flex: 1, flexDirection: 'row', backgroundColor: '#F5F6FA' },
   sidebarWrapper: { width: 280 },
+  sidebarWrapperTablet: { width: 240 },
   menuButton: {
     position: 'absolute',
     top: spacing.md,
@@ -146,6 +147,9 @@ const styles = StyleSheet.create({
     padding: spacing.sm,
     paddingTop: spacing.xl + 40,
   },
+  contentWrapperTablet: {
+    padding: spacing.md,
+  },
   headerBar: {
     backgroundColor: '#FFF',
     padding: spacing.lg,
@@ -156,6 +160,10 @@ const styles = StyleSheet.create({
   },
   headerBarMobile: {
     padding: spacing.md,
+  },
+  headerBarTablet: {
+    padding: spacing.md,
+    marginBottom: spacing.md,
   },
   headerTitle: { fontSize: 20, fontWeight: '700', color: '#333', marginBottom: 4 },
   headerTitleMobile: { fontSize: 18 },

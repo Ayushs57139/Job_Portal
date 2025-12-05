@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, borderRadius, typography } from '../../styles/theme';
+import { colors, spacing, borderRadius, typography, shadows } from '../../styles/theme';
 import Header from '../../components/Header';
+import EmployerSidebar from '../../components/EmployerSidebar';
 import api from '../../config/api';
 import { useResponsive } from '../../utils/responsive';
 
@@ -14,11 +15,12 @@ const TABS = [
 
 const EmployerJobsScreen = ({ navigation, route }) => {
   const responsive = useResponsive();
-  const { isMobile } = responsive;
+  const { isMobile, isTabletDevice } = responsive;
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState(route?.params?.tab || 'all');
   const [jobs, setJobs] = useState([]);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const loadJobs = async (tab = activeTab) => {
     try {
@@ -83,13 +85,40 @@ const EmployerJobsScreen = ({ navigation, route }) => {
 
   return (
     <View style={styles.container}>
-      <Header showBack title="Jobs Management" />
+      {!isMobile && (
+        <View style={[styles.sidebarWrapper, isTabletDevice && styles.sidebarWrapperTablet]}>
+          <EmployerSidebar permanent navigation={navigation} role="company" activeKey="manageJobs" />
+        </View>
+      )}
+      {isMobile && (
+        <EmployerSidebar 
+          visible={sidebarOpen} 
+          onClose={() => setSidebarOpen(false)} 
+          navigation={navigation} 
+          role="company" 
+          activeKey="manageJobs" 
+        />
+      )}
+      {isMobile && (
+        <TouchableOpacity 
+          style={styles.menuButton}
+          onPress={() => setSidebarOpen(true)}
+        >
+          <Ionicons name="menu" size={24} color={colors.text} />
+        </TouchableOpacity>
+      )}
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, isMobile && styles.contentMobile, isTabletDevice && styles.contentTablet]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
       >
+        {/* Header Bar */}
+        <View style={[styles.headerBar, isMobile && styles.headerBarMobile, isTabletDevice && styles.headerBarTablet]}>
+          <Text style={[styles.headerTitle, isMobile && styles.headerTitleMobile]}>Jobs Management</Text>
+          <Text style={[styles.headerSubtitle, isMobile && styles.headerSubtitleMobile]}>Manage all your job postings</Text>
+        </View>
+        
         {/* Tabs */}
-        <View style={[styles.tabs, isMobile && styles.tabsMobile]}>
+        <View style={[styles.tabs, isMobile && styles.tabsMobile, isTabletDevice && styles.tabsTablet]}>
           {TABS.map(tab => (
             <TouchableOpacity
               key={tab.id}
@@ -127,11 +156,39 @@ const EmployerJobsScreen = ({ navigation, route }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.lg },
-  contentMobile: { padding: spacing.md },
+  container: { flex: 1, flexDirection: 'row', backgroundColor: colors.background },
+  sidebarWrapper: { width: 280 },
+  sidebarWrapperTablet: { width: 240 },
+  menuButton: {
+    position: 'absolute',
+    top: spacing.md,
+    left: spacing.md,
+    zIndex: 1000,
+    backgroundColor: '#FFFFFF',
+    padding: spacing.sm,
+    borderRadius: borderRadius.md,
+    ...shadows.sm,
+  },
+  content: { flexGrow: 1, padding: spacing.lg, paddingBottom: spacing.xxl },
+  contentMobile: { padding: spacing.md, paddingTop: spacing.xl + 40 },
+  contentTablet: { padding: spacing.md },
+  headerBar: {
+    backgroundColor: '#FFF',
+    padding: spacing.lg,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    marginBottom: spacing.lg,
+  },
+  headerBarMobile: { padding: spacing.md },
+  headerBarTablet: { padding: spacing.md, marginBottom: spacing.md },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: '#333', marginBottom: 4 },
+  headerTitleMobile: { fontSize: 18 },
+  headerSubtitle: { color: '#666', fontSize: 14 },
+  headerSubtitleMobile: { fontSize: 12 },
   tabs: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },
   tabsMobile: { flexDirection: 'row', gap: spacing.xs, marginBottom: spacing.md, flexWrap: 'wrap' },
+  tabsTablet: { gap: spacing.sm, marginBottom: spacing.md },
   tab: {
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.lg,
@@ -147,7 +204,7 @@ const styles = StyleSheet.create({
     minWidth: '30%',
   },
   tabActive: { backgroundColor: '#4A6CF7', borderColor: '#4A6CF7' },
-  tabText: { ...typography.body2, color: colors.text },
+  tabText: { ...typography.body2, color: colors.text, textAlign: 'center' },
   tabTextActive: { color: colors.textWhite, fontWeight: '700' },
   loadingWrap: { alignItems: 'center', paddingVertical: spacing.xl },
   loadingText: { ...typography.body1, color: colors.textSecondary, marginTop: spacing.sm },

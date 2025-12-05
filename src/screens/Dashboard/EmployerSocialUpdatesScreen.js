@@ -24,7 +24,7 @@ import { useResponsive } from '../../utils/responsive';
 
 const EmployerSocialUpdatesScreen = ({ navigation }) => {
   const responsive = useResponsive();
-  const { isMobile } = responsive;
+  const { isMobile, isTabletDevice } = responsive;
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -254,7 +254,7 @@ const EmployerSocialUpdatesScreen = ({ navigation }) => {
   return (
     <View style={styles.page}>
       {!isMobile && (
-        <View style={styles.sidebar}>
+        <View style={[styles.sidebar, isTabletDevice && styles.sidebarTablet]}>
           <EmployerSidebar permanent navigation={navigation} role="company" activeKey="social" />
         </View>
       )}
@@ -275,7 +275,7 @@ const EmployerSocialUpdatesScreen = ({ navigation }) => {
           <Ionicons name="menu" size={24} color={colors.text} />
         </TouchableOpacity>
       )}
-      <View style={[styles.content, isMobile && styles.contentMobile]}>
+      <View style={[styles.content, isMobile && styles.contentMobile, isTabletDevice && styles.contentTablet]}>
         <LinearGradient
           colors={['#FFFFFF', '#F8FAFC']}
           start={{ x: 0, y: 0 }}
@@ -523,6 +523,7 @@ const EmployerSocialUpdatesScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   page: { flex: 1, flexDirection: 'row', backgroundColor: '#F1F5F9' },
   sidebar: { width: 280, backgroundColor: colors.sidebarBackground },
+  sidebarTablet: { width: 240 },
   menuButton: {
     position: 'absolute',
     top: spacing.md,
@@ -536,6 +537,9 @@ const styles = StyleSheet.create({
   content: { flex: 1 },
   contentMobile: {
     paddingTop: spacing.xl + 40,
+  },
+  contentTablet: {
+    paddingTop: 0,
   },
   headerBar: { 
     padding: spacing.xl, 

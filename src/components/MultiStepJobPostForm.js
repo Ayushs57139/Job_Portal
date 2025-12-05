@@ -8,6 +8,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -46,6 +47,11 @@ const MultiStepJobPostForm = ({ onSubmit, initialData = {}, onCancel, onChange, 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [optionsUpdateKey, setOptionsUpdateKey] = useState(0); // Force re-render when options change
   const scrollViewRef = useRef(null);
+  const { width: viewportWidth } = useWindowDimensions();
+  const isMobile = viewportWidth < 768;
+  const isTablet = viewportWidth >= 768 && viewportWidth < 1180;
+  const isLargeDesktop = viewportWidth >= 1440;
+  const sidebarWidth = isMobile ? '100%' : isLargeDesktop ? 360 : isTablet ? 280 : 320;
 
   const currentStepData = formSteps[currentStep];
   const isLastStep = currentStep === formSteps.length - 1;
@@ -657,10 +663,53 @@ const MultiStepJobPostForm = ({ onSubmit, initialData = {}, onCancel, onChange, 
 
   // Render left sidebar with steps
   const renderSidebar = () => {
+    if (isMobile) {
+      return (
+        <View style={styles.mobileStepsWrapper}>
+          <View style={styles.mobileStepsHeader}>
+            <View style={styles.sidebarTitleContainer}>
+              <Ionicons name="briefcase" size={22} color="#4f46e5" style={styles.sidebarTitleIcon} />
+              <Text style={styles.sidebarTitle}>Post a job</Text>
+            </View>
+            <Text style={styles.mobileStepProgress}>
+              Step {currentStep + 1} of {formSteps.length}
+            </Text>
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.mobileStepChips}
+          >
+            {formSteps.map((step, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[
+                  styles.mobileStepChip,
+                  index === currentStep && styles.mobileStepChipActive,
+                  index < currentStep && styles.mobileStepChipCompleted,
+                ]}
+                onPress={() => jumpToStep(index)}
+                activeOpacity={0.8}
+              >
+                <Text
+                  style={[
+                    styles.mobileStepChipText,
+                    index === currentStep && styles.mobileStepChipTextActive,
+                  ]}
+                >
+                  {step.title}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      );
+    }
+
     return (
       <LinearGradient
         colors={['#ffffff', '#f8fafc', '#f1f5f9']}
-        style={styles.sidebar}
+        style={[styles.sidebar, { width: sidebarWidth }]}
       >
         <View style={styles.sidebarHeader}>
           <View style={styles.sidebarTitleContainer}>
@@ -679,31 +728,39 @@ const MultiStepJobPostForm = ({ onSubmit, initialData = {}, onCancel, onChange, 
               <View style={styles.stepItemContent}>
                 <View style={styles.stepConnector}>
                   {index > 0 && (
-                    <View style={[
-                      styles.stepConnectorLineTop,
-                      index <= currentStep && styles.stepConnectorLineActive
-                    ]} />
+                    <View
+                      style={[
+                        styles.stepConnectorLineTop,
+                        index <= currentStep && styles.stepConnectorLineActive,
+                      ]}
+                    />
                   )}
-                  <View style={[
-                    styles.stepCircle,
-                    index === currentStep && styles.stepCircleActive,
-                    index < currentStep && styles.stepCircleCompleted,
-                  ]}>
+                  <View
+                    style={[
+                      styles.stepCircle,
+                      index === currentStep && styles.stepCircleActive,
+                      index < currentStep && styles.stepCircleCompleted,
+                    ]}
+                  >
                     {index < currentStep && (
                       <Ionicons name="checkmark" size={14} color="#ffffff" />
                     )}
                   </View>
                   {index < formSteps.length - 1 && (
-                    <View style={[
-                      styles.stepConnectorLineBottom,
-                      index < currentStep && styles.stepConnectorLineActive
-                    ]} />
+                    <View
+                      style={[
+                        styles.stepConnectorLineBottom,
+                        index < currentStep && styles.stepConnectorLineActive,
+                      ]}
+                    />
                   )}
                 </View>
-                <Text style={[
-                  styles.stepItemLabel,
-                  index === currentStep && styles.stepItemLabelActive
-                ]}>
+                <Text
+                  style={[
+                    styles.stepItemLabel,
+                    index === currentStep && styles.stepItemLabelActive,
+                  ]}
+                >
                   {step.title}
                 </Text>
               </View>
@@ -721,16 +778,16 @@ const MultiStepJobPostForm = ({ onSubmit, initialData = {}, onCancel, onChange, 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
       >
-        <View style={styles.mainLayout}>
+        <View style={[styles.mainLayout, isMobile && styles.mainLayoutMobile]}>
           {renderSidebar()}
-          <View style={styles.contentArea}>
+          <View style={[styles.contentArea, isMobile && styles.contentAreaMobile]}>
             <ScrollView
               ref={scrollViewRef}
-              style={styles.scrollView}
-              contentContainerStyle={styles.scrollContent}
+              style={[styles.scrollView, isMobile && styles.scrollViewMobile]}
+              contentContainerStyle={[styles.scrollContent, isMobile && styles.scrollContentMobile]}
               showsVerticalScrollIndicator={true}
             >
-              <View style={styles.header}>
+              <View style={[styles.header, isMobile && styles.headerMobile]}>
                 <View style={styles.headerContent}>
                   <Text style={styles.headerTitle}>{currentStepData.title}</Text>
                 </View>
@@ -741,15 +798,21 @@ const MultiStepJobPostForm = ({ onSubmit, initialData = {}, onCancel, onChange, 
                 )}
               </View>
 
-              <View style={styles.formContainer}>
+              <View
+                style={[
+                  styles.formContainer,
+                  isMobile && styles.formContainerMobile,
+                  isTablet && styles.formContainerTablet,
+                ]}
+              >
                 {currentStepData.fields.map((field) => renderField(field))}
               </View>
 
-              <View style={styles.footer}>
-                <View style={styles.buttonRow}>
+              <View style={[styles.footer, isMobile && styles.footerMobile]}>
+                <View style={[styles.buttonRow, isMobile && styles.buttonRowMobile]}>
                   {!isFirstStep && (
                     <TouchableOpacity
-                      style={styles.secondaryButton}
+                      style={[styles.secondaryButton, isMobile && styles.secondaryButtonMobile]}
                       onPress={handlePrevious}
                     >
                       <Ionicons name="arrow-back" size={20} color="#4f46e5" />
@@ -761,7 +824,11 @@ const MultiStepJobPostForm = ({ onSubmit, initialData = {}, onCancel, onChange, 
                     title={isLastStep ? 'Submit Job Post' : 'Next'}
                     onPress={handleNext}
                     loading={isSubmitting}
-                    style={[styles.primaryButton, isFirstStep && styles.fullWidthButton]}
+                    style={[
+                      styles.primaryButton,
+                      isFirstStep && styles.fullWidthButton,
+                      isMobile && styles.primaryButtonMobile,
+                    ]}
                     icon={isLastStep ? 'checkmark-circle-outline' : 'arrow-forward'}
                   />
                 </View>
@@ -786,11 +853,61 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
   },
+  mainLayoutMobile: {
+    flexDirection: 'column',
+  },
   sidebar: {
     width: 300,
     borderRightWidth: 1,
     borderRightColor: '#e2e8f0',
     ...shadows.md,
+  },
+  mobileStepsWrapper: {
+    backgroundColor: '#ffffff',
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+    ...shadows.sm,
+  },
+  mobileStepsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
+  },
+  mobileStepProgress: {
+    color: '#475569',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  mobileStepChips: {
+    paddingRight: spacing.md,
+  },
+  mobileStepChip: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: 999,
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    marginRight: spacing.sm,
+  },
+  mobileStepChipActive: {
+    backgroundColor: 'rgba(79, 70, 229, 0.15)',
+    borderColor: '#4f46e5',
+  },
+  mobileStepChipCompleted: {
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    borderColor: '#10b981',
+  },
+  mobileStepChipText: {
+    color: '#475569',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  mobileStepChipTextActive: {
+    color: '#4f46e5',
   },
   sidebarHeader: {
     padding: spacing.xl + 4,
@@ -899,11 +1016,21 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f1f5f9',
   },
+  contentAreaMobile: {
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.xl,
+  },
   scrollView: {
     flex: 1,
   },
+  scrollViewMobile: {
+    paddingBottom: spacing.xl,
+  },
   scrollContent: {
     flexGrow: 1,
+  },
+  scrollContentMobile: {
+    paddingBottom: spacing.xl * 1.5,
   },
   header: {
     flexDirection: 'row',
@@ -914,6 +1041,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderBottomWidth: 0,
     ...shadows.lg,
+  },
+  headerMobile: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
+    paddingTop: spacing.xl,
+    gap: spacing.md,
+    borderRadius: 0,
+    shadowColor: 'transparent',
+    shadowOpacity: 0,
+    elevation: 0,
   },
   headerContent: {
     flex: 1,
@@ -941,6 +1078,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e2e8f0',
   },
+  formContainerMobile: {
+    marginHorizontal: 0,
+    marginVertical: spacing.md,
+    padding: spacing.lg,
+    borderRadius: 16,
+  },
+  formContainerTablet: {
+    marginHorizontal: spacing.lg,
+  },
   footer: {
     padding: spacing.xl + 8,
     backgroundColor: '#ffffff',
@@ -952,12 +1098,25 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e2e8f0',
   },
+  footerMobile: {
+    marginHorizontal: 0,
+    padding: spacing.lg,
+    borderRadius: 16,
+    shadowColor: 'transparent',
+    shadowOpacity: 0,
+    elevation: 0,
+  },
   buttonRow: {
     flexDirection: 'row',
     gap: spacing.md + 4,
     maxWidth: 800,
     alignSelf: 'center',
     width: '100%',
+  },
+  buttonRowMobile: {
+    flexDirection: 'column',
+    gap: spacing.md,
+    maxWidth: '100%',
   },
   secondaryButton: {
     flex: 1,
@@ -973,6 +1132,9 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     ...shadows.md,
   },
+  secondaryButtonMobile: {
+    width: '100%',
+  },
   secondaryButtonText: {
     ...typography.button,
     color: '#4f46e5',
@@ -984,6 +1146,9 @@ const styles = StyleSheet.create({
   },
   fullWidthButton: {
     flex: 1,
+  },
+  primaryButtonMobile: {
+    width: '100%',
   },
 });
 

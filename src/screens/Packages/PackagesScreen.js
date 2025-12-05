@@ -8,30 +8,17 @@ import {
   Dimensions,
   ActivityIndicator,
   Alert,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, typography, spacing, borderRadius, shadows } from '../../styles/theme';
 import Header from '../../components/Header';
 import api from '../../config/api';
+import { useResponsive } from '../../utils/responsive';
 
 const { width } = Dimensions.get('window');
-// Safely get Platform - lazy evaluation
-const getPlatform = () => {
-  try {
-    const { Platform } = require('react-native');
-    if (Platform && typeof Platform.OS !== 'undefined') {
-      return Platform;
-    }
-  } catch (e) {}
-  return { OS: 'android' };
-};
-
-const isWeb = getPlatform().OS === 'web';
-const isPhone = width <= 480;
-const isMobile = width <= 600;
-const isTablet = width > 600 && width <= 1024;
-const isDesktop = width > 1024;
+const isWebPlatform = Platform.OS === 'web';
 
 // Predefined gradient colors for packages (no blue)
 const gradientColors = [
@@ -50,6 +37,18 @@ const PackagesScreen = () => {
   const [loading, setLoading] = useState(true);
   const [employerPackages, setEmployerPackages] = useState([]);
   const [candidatePackages, setCandidatePackages] = useState([]);
+  
+  // Responsive handling
+  const responsive = useResponsive();
+  const screenWidth = responsive.width;
+  const isPhone = screenWidth <= 480;
+  const isSmallPhone = screenWidth <= 375;
+  const isMobile = screenWidth <= 600;
+  const isTablet = screenWidth > 600 && screenWidth <= 1024;
+  const isDesktop = screenWidth > 1024;
+  
+  // Dynamic styles
+  const dynamicStyles = getDynamicStyles(isPhone, isSmallPhone, isMobile, isTablet, isDesktop, screenWidth);
 
   useEffect(() => {
     fetchPackages();
@@ -141,18 +140,18 @@ const PackagesScreen = () => {
   };
 
   const renderFeatureItem = (feature) => (
-    <View key={feature.label} style={styles.featureItem}>
+    <View key={feature.label} style={dynamicStyles.featureItem}>
       <View style={styles.featureLeft}>
         <Ionicons
           name={feature.icon}
-          size={18}
+          size={isPhone ? 16 : 18}
           color={feature.isNegative ? colors.error : feature.isPositive ? colors.success : colors.success}
         />
-        <Text style={styles.featureLabel}>{feature.label}</Text>
+        <Text style={dynamicStyles.featureLabel}>{feature.label}</Text>
       </View>
       <Text
         style={[
-          styles.featureValue,
+          dynamicStyles.featureValue,
           feature.isNegative && styles.featureValueNegative,
           feature.isPositive && styles.featureValuePositive,
         ]}
@@ -162,67 +161,67 @@ const PackagesScreen = () => {
     </View>
   );
 
-  const renderPackageCard = (pkg, isCandidate = false) => (
-    <View style={styles.packageCard}>
+  const renderPackageCard = (pkg, isCandidatePackage = false) => (
+    <View style={dynamicStyles.packageCard}>
       <LinearGradient
         colors={pkg.gradientColors}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={styles.packageHeader}
+        style={dynamicStyles.packageHeader}
       >
         {pkg.popular && (
-          <View style={styles.popularBadge}>
-            <Ionicons name="star" size={12} color="#fff" />
-            <Text style={styles.popularText}>POPULAR</Text>
+          <View style={dynamicStyles.popularBadge}>
+            <Ionicons name="star" size={isPhone ? 10 : 12} color="#fff" />
+            <Text style={dynamicStyles.popularText}>POPULAR</Text>
           </View>
         )}
-        <Text style={styles.packageTitle}>{pkg.title}</Text>
-        <Text style={styles.packageSubtitle}>{pkg.subtitle}</Text>
+        <Text style={dynamicStyles.packageTitle}>{pkg.title}</Text>
+        <Text style={dynamicStyles.packageSubtitle}>{pkg.subtitle}</Text>
         <View style={styles.priceContainer}>
-          <Text style={styles.packagePrice}>{pkg.price}</Text>
+          <Text style={dynamicStyles.packagePrice}>{pkg.price}</Text>
           {pkg.price !== 'FREE' && pkg.gstApplicable && (
-            <Text style={styles.gstText}>*GST As Applicable</Text>
+            <Text style={dynamicStyles.gstText}>*GST As Applicable</Text>
           )}
         </View>
         {pkg.period && (
           <View style={styles.periodContainer}>
-            <Ionicons name="time-outline" size={14} color="rgba(255,255,255,0.9)" />
-            <Text style={styles.periodText}>Valid for {pkg.period}</Text>
+            <Ionicons name="time-outline" size={isPhone ? 12 : 14} color="rgba(255,255,255,0.9)" />
+            <Text style={dynamicStyles.periodText}>Valid for {pkg.period}</Text>
           </View>
         )}
       </LinearGradient>
 
-      <View style={styles.featuresContainer}>
+      <View style={dynamicStyles.featuresContainer}>
         {pkg.features && pkg.features.map(renderFeatureItem)}
       </View>
 
       {pkg.supportIncluded && pkg.supportDetails && (
-        <View style={styles.supportContainer}>
+        <View style={dynamicStyles.supportContainer}>
           <View style={styles.supportHeader}>
-            <Ionicons name="chatbubble-ellipses" size={20} color={colors.success} />
-            <Text style={styles.supportTitle}>Support Included</Text>
+            <Ionicons name="chatbubble-ellipses" size={isPhone ? 16 : 20} color={colors.success} />
+            <Text style={dynamicStyles.supportTitle}>Support Included</Text>
           </View>
-          <Text style={styles.supportDescription}>{pkg.supportDetails}</Text>
+          <Text style={dynamicStyles.supportDescription}>{pkg.supportDetails}</Text>
         </View>
       )}
 
-      <TouchableOpacity style={styles.selectButton}>
+      <TouchableOpacity style={dynamicStyles.selectButton}>
         <LinearGradient
           colors={pkg.gradientColors}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={styles.selectButtonGradient}
+          style={dynamicStyles.selectButtonGradient}
         >
-          <Text style={styles.selectButtonText}>
-            {isCandidate 
+          <Text style={dynamicStyles.selectButtonText}>
+            {isCandidatePackage 
               ? 'Boost My Profile' 
               : pkg.price === 'FREE' 
                 ? 'Get Started' 
                 : 'Choose Plan'}
           </Text>
           <Ionicons 
-            name={isCandidate ? "rocket" : "arrow-forward"} 
-            size={18} 
+            name={isCandidatePackage ? "rocket" : "arrow-forward"} 
+            size={isPhone ? 16 : 18} 
             color="#fff" 
           />
         </LinearGradient>
@@ -248,68 +247,68 @@ const PackagesScreen = () => {
       
       <ScrollView 
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={dynamicStyles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         {/* Hero Section */}
-        <View style={styles.heroSection}>
-          <Ionicons name="ribbon" size={48} color={colors.success} />
-          <Text style={styles.heroTitle}>Choose Your Perfect Package</Text>
-          <Text style={styles.heroSubtitle}>
+        <View style={dynamicStyles.heroSection}>
+          <Ionicons name="ribbon" size={isPhone ? 36 : 48} color={colors.success} />
+          <Text style={dynamicStyles.heroTitle}>Choose Your Perfect Package</Text>
+          <Text style={dynamicStyles.heroSubtitle}>
             Unlock premium features and grow your career or business
           </Text>
         </View>
 
         {/* Tab Selector */}
-        <View style={styles.tabContainer}>
+        <View style={dynamicStyles.tabContainer}>
           <TouchableOpacity
-            style={[styles.tab, selectedTab === 'employer' && styles.tabActive]}
+            style={[dynamicStyles.tab, selectedTab === 'employer' && styles.tabActive]}
             onPress={() => setSelectedTab('employer')}
           >
             <Ionicons
               name="business"
-              size={20}
+              size={isPhone ? 16 : 20}
               color={selectedTab === 'employer' ? '#fff' : colors.success}
             />
-            <Text style={[styles.tabText, selectedTab === 'employer' && styles.tabTextActive]}>
+            <Text style={[dynamicStyles.tabText, selectedTab === 'employer' && styles.tabTextActive]}>
               For Employers
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.tab, selectedTab === 'candidate' && styles.tabActive]}
+            style={[dynamicStyles.tab, selectedTab === 'candidate' && styles.tabActive]}
             onPress={() => setSelectedTab('candidate')}
           >
             <Ionicons
               name="person"
-              size={20}
+              size={isPhone ? 16 : 20}
               color={selectedTab === 'candidate' ? '#fff' : colors.success}
             />
-            <Text style={[styles.tabText, selectedTab === 'candidate' && styles.tabTextActive]}>
+            <Text style={[dynamicStyles.tabText, selectedTab === 'candidate' && styles.tabTextActive]}>
               For Candidates
             </Text>
           </TouchableOpacity>
         </View>
 
         {/* Packages Section */}
-        <View style={styles.packagesSection}>
+        <View style={dynamicStyles.packagesSection}>
           {selectedTab === 'employer' ? (
             <>
-              <Text style={styles.sectionTitle}>Employer Packages</Text>
-              <Text style={styles.sectionSubtitle}>
+              <Text style={dynamicStyles.sectionTitle}>Employer Packages</Text>
+              <Text style={dynamicStyles.sectionSubtitle}>
                 Choose the perfect plan to find and hire top talent
               </Text>
               {employerPackages.length > 0 ? (
-                <View style={styles.packagesGrid}>
+                <View style={dynamicStyles.packagesGrid}>
                   {employerPackages.map((pkg) => (
-                    <View key={pkg.id} style={styles.packageCardWrapper}>
+                    <View key={pkg.id} style={dynamicStyles.packageCardWrapper}>
                       {renderPackageCard(pkg, false)}
                     </View>
                   ))}
                 </View>
               ) : (
                 <View style={styles.emptyContainer}>
-                  <Ionicons name="cube-outline" size={64} color="#ccc" />
+                  <Ionicons name="cube-outline" size={isPhone ? 48 : 64} color="#ccc" />
                   <Text style={styles.emptyText}>No packages available</Text>
                   <Text style={styles.emptySubtext}>
                     Check back later for employer packages
@@ -319,21 +318,21 @@ const PackagesScreen = () => {
             </>
           ) : (
             <>
-              <Text style={styles.sectionTitle}>Candidate Packages</Text>
-              <Text style={styles.sectionSubtitle}>
+              <Text style={dynamicStyles.sectionTitle}>Candidate Packages</Text>
+              <Text style={dynamicStyles.sectionSubtitle}>
                 Boost your profile visibility and get noticed by recruiters
               </Text>
               {candidatePackages.length > 0 ? (
-                <View style={styles.packagesGrid}>
+                <View style={dynamicStyles.packagesGrid}>
                   {candidatePackages.map((pkg) => (
-                    <View key={pkg.id} style={styles.packageCardWrapper}>
+                    <View key={pkg.id} style={dynamicStyles.packageCardWrapper}>
                       {renderPackageCard(pkg, true)}
                     </View>
                   ))}
                 </View>
               ) : (
                 <View style={styles.emptyContainer}>
-                  <Ionicons name="cube-outline" size={64} color="#ccc" />
+                  <Ionicons name="cube-outline" size={isPhone ? 48 : 64} color="#ccc" />
                   <Text style={styles.emptyText}>No packages available</Text>
                   <Text style={styles.emptySubtext}>
                     Check back later for candidate packages
@@ -346,28 +345,28 @@ const PackagesScreen = () => {
 
         {/* Referral Program Section */}
         {selectedTab === 'candidate' && (
-          <View style={styles.referralSection}>
+          <View style={dynamicStyles.referralSection}>
             <LinearGradient
               colors={['#ff9a56', '#ff6a88']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-              style={styles.referralGradient}
+              style={dynamicStyles.referralGradient}
             >
-              <Ionicons name="gift" size={48} color="#fff" />
-              <Text style={styles.referralTitle}>🎁 Referral Program</Text>
-              <Text style={styles.referralSubtitle}>
+              <Ionicons name="gift" size={isPhone ? 36 : 48} color="#fff" />
+              <Text style={dynamicStyles.referralTitle}>🎁 Referral Program</Text>
+              <Text style={dynamicStyles.referralSubtitle}>
                 Refer 20 Job Seekers & Get Profile Booster Package FREE!
               </Text>
-              <Text style={styles.referralDescription}>
+              <Text style={dynamicStyles.referralDescription}>
                 Share with your friends and network. When 20 of them join our platform and create profiles, you'll receive a FREE Profile Booster Package worth ₹499!
               </Text>
-              <TouchableOpacity style={styles.referralButton}>
+              <TouchableOpacity style={dynamicStyles.referralButton}>
                 <LinearGradient
                   colors={['rgba(255, 255, 255, 0.3)', 'rgba(255, 255, 255, 0.1)']}
-                  style={styles.referralButtonGradient}
+                  style={dynamicStyles.referralButtonGradient}
                 >
-                  <Ionicons name="share-social" size={20} color="#fff" />
-                  <Text style={styles.referralButtonText}>Invite Friends Now</Text>
+                  <Ionicons name="share-social" size={isPhone ? 16 : 20} color="#fff" />
+                  <Text style={dynamicStyles.referralButtonText}>Invite Friends Now</Text>
                 </LinearGradient>
               </TouchableOpacity>
             </LinearGradient>
@@ -375,27 +374,351 @@ const PackagesScreen = () => {
         )}
 
         {/* Footer Info */}
-        <View style={styles.footerInfo}>
-          <View style={styles.infoCard}>
-            <Ionicons name="shield-checkmark" size={32} color={colors.success} />
-            <Text style={styles.infoTitle}>Secure Payment</Text>
-            <Text style={styles.infoText}>All transactions are encrypted and secure</Text>
+        <View style={dynamicStyles.footerInfo}>
+          <View style={dynamicStyles.infoCard}>
+            <Ionicons name="shield-checkmark" size={isPhone ? 24 : 32} color={colors.success} />
+            <Text style={dynamicStyles.infoTitle}>Secure Payment</Text>
+            <Text style={dynamicStyles.infoText}>All transactions are encrypted and secure</Text>
           </View>
-          <View style={styles.infoCard}>
-            <Ionicons name="headset" size={32} color={colors.success} />
-            <Text style={styles.infoTitle}>24/7 Support</Text>
-            <Text style={styles.infoText}>We're here to help you succeed</Text>
+          <View style={dynamicStyles.infoCard}>
+            <Ionicons name="headset" size={isPhone ? 24 : 32} color={colors.success} />
+            <Text style={dynamicStyles.infoTitle}>24/7 Support</Text>
+            <Text style={dynamicStyles.infoText}>We're here to help you succeed</Text>
           </View>
-          <View style={styles.infoCard}>
-            <Ionicons name="refresh" size={32} color={colors.warning} />
-            <Text style={styles.infoTitle}>Flexible Plans</Text>
-            <Text style={styles.infoText}>Upgrade or downgrade anytime</Text>
+          <View style={dynamicStyles.infoCard}>
+            <Ionicons name="refresh" size={isPhone ? 24 : 32} color={colors.warning} />
+            <Text style={dynamicStyles.infoTitle}>Flexible Plans</Text>
+            <Text style={dynamicStyles.infoText}>Upgrade or downgrade anytime</Text>
           </View>
         </View>
       </ScrollView>
     </View>
   );
 };
+
+// Dynamic styles based on screen size
+const getDynamicStyles = (isPhone, isSmallPhone, isMobile, isTablet, isDesktop, screenWidth) => ({
+  scrollContent: {
+    paddingBottom: spacing.xxl,
+    paddingHorizontal: isPhone ? spacing.sm : 0,
+  },
+  heroSection: {
+    padding: isPhone ? spacing.lg : spacing.xxl,
+    paddingTop: isPhone ? spacing.xl : spacing.xxl + spacing.xl,
+    paddingBottom: isPhone ? spacing.xl : spacing.xxl + spacing.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: isPhone ? spacing.md : spacing.xl,
+    backgroundColor: colors.cardBackground,
+    marginHorizontal: isPhone ? spacing.sm : spacing.lg,
+    borderRadius: isPhone ? borderRadius.lg : borderRadius.xl,
+    ...shadows.md,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  heroTitle: {
+    ...typography.h2,
+    color: colors.text,
+    marginTop: spacing.md,
+    textAlign: 'center',
+    fontWeight: '800',
+    fontSize: isSmallPhone ? 20 : isPhone ? 22 : isTablet ? 28 : 32,
+  },
+  heroSubtitle: {
+    ...typography.body1,
+    color: colors.textSecondary,
+    marginTop: spacing.sm,
+    textAlign: 'center',
+    maxWidth: 500,
+    fontSize: isPhone ? 13 : 15,
+    paddingHorizontal: isPhone ? spacing.sm : 0,
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    margin: isPhone ? spacing.sm : spacing.lg,
+    backgroundColor: colors.cardBackground,
+    borderRadius: isPhone ? borderRadius.lg : borderRadius.xl,
+    padding: spacing.xs,
+    ...shadows.md,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: isPhone ? spacing.sm : spacing.md,
+    paddingHorizontal: isPhone ? spacing.sm : spacing.lg,
+    borderRadius: borderRadius.md,
+    gap: isPhone ? spacing.xs : spacing.sm,
+  },
+  tabText: {
+    ...typography.body1,
+    fontWeight: '600',
+    color: colors.success,
+    fontSize: isSmallPhone ? 12 : isPhone ? 13 : 15,
+  },
+  packagesSection: {
+    paddingHorizontal: isPhone ? spacing.sm : spacing.lg,
+    maxWidth: isDesktop ? 1400 : '100%',
+    alignSelf: 'center',
+    width: '100%',
+  },
+  packagesGrid: {
+    flexDirection: isMobile ? 'column' : 'row',
+    flexWrap: 'wrap',
+    gap: isPhone ? spacing.md : spacing.lg,
+    justifyContent: 'center',
+  },
+  packageCardWrapper: {
+    width: isPhone ? '100%' : 
+           isMobile ? '100%' : 
+           isTablet ? (screenWidth > 900 ? '48%' : '100%') : 
+           isDesktop ? '31%' : 
+           '100%',
+    flexBasis: isDesktop ? '31%' : undefined,
+    flexGrow: 0,
+    flexShrink: 0,
+    maxWidth: isDesktop ? 400 : undefined,
+  },
+  sectionTitle: {
+    ...typography.h3,
+    color: colors.text,
+    marginBottom: spacing.sm,
+    marginTop: isPhone ? spacing.md : spacing.xl,
+    textAlign: 'center',
+    fontWeight: '800',
+    fontSize: isSmallPhone ? 22 : isPhone ? 24 : isTablet ? 28 : 32,
+  },
+  sectionSubtitle: {
+    ...typography.body1,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: isPhone ? spacing.md : spacing.xl,
+    fontSize: isPhone ? 13 : 15,
+    lineHeight: isPhone ? 20 : 24,
+    paddingHorizontal: isPhone ? spacing.sm : 0,
+  },
+  packageCard: {
+    backgroundColor: colors.cardBackground,
+    borderRadius: isPhone ? borderRadius.lg : borderRadius.xl,
+    marginBottom: 0,
+    overflow: 'hidden',
+    ...shadows.lg,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    height: '100%',
+    flexDirection: 'column',
+  },
+  packageHeader: {
+    padding: isPhone ? spacing.md : spacing.lg,
+    position: 'relative',
+  },
+  popularBadge: {
+    position: 'absolute',
+    top: isPhone ? spacing.sm : spacing.md,
+    right: isPhone ? spacing.sm : spacing.md,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    paddingHorizontal: isPhone ? spacing.sm : spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.full,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  popularText: {
+    ...typography.caption,
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: isPhone ? 9 : 11,
+  },
+  packageTitle: {
+    ...typography.h3,
+    color: '#fff',
+    marginBottom: spacing.xs,
+    fontSize: isSmallPhone ? 18 : isPhone ? 20 : isTablet ? 24 : 26,
+  },
+  packageSubtitle: {
+    ...typography.body2,
+    color: 'rgba(255, 255, 255, 0.9)',
+    marginBottom: isPhone ? spacing.sm : spacing.md,
+    fontSize: isSmallPhone ? 11 : isPhone ? 12 : 14,
+  },
+  packagePrice: {
+    ...typography.h1,
+    color: '#fff',
+    fontWeight: '800',
+    fontSize: isSmallPhone ? 24 : isPhone ? 28 : isTablet ? 36 : 40,
+  },
+  gstText: {
+    ...typography.caption,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginTop: spacing.xs,
+    fontSize: isPhone ? 10 : 12,
+  },
+  periodText: {
+    ...typography.caption,
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontWeight: '600',
+    fontSize: isPhone ? 11 : 13,
+  },
+  featuresContainer: {
+    padding: isPhone ? spacing.sm : spacing.lg,
+    backgroundColor: colors.background,
+    flex: 1,
+  },
+  featureItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: isPhone ? spacing.xs : spacing.sm,
+    paddingHorizontal: spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderLight,
+  },
+  featureLabel: {
+    ...typography.body2,
+    color: colors.text,
+    flex: 1,
+    fontSize: isPhone ? 12 : 14,
+  },
+  featureValue: {
+    ...typography.body2,
+    fontWeight: '600',
+    color: colors.text,
+    fontSize: isPhone ? 12 : 14,
+  },
+  supportContainer: {
+    margin: isPhone ? spacing.sm : spacing.lg,
+    marginTop: 0,
+    padding: isPhone ? spacing.sm : spacing.md,
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.success,
+  },
+  supportTitle: {
+    ...typography.body1,
+    fontWeight: '600',
+    color: colors.text,
+    fontSize: isPhone ? 13 : 15,
+  },
+  supportDescription: {
+    ...typography.body2,
+    color: colors.textSecondary,
+    lineHeight: isPhone ? 18 : 20,
+    fontSize: isPhone ? 12 : 14,
+  },
+  selectButton: {
+    margin: isPhone ? spacing.sm : spacing.lg,
+    marginTop: 0,
+    borderRadius: isPhone ? borderRadius.lg : borderRadius.xl,
+    overflow: 'hidden',
+    ...shadows.md,
+  },
+  selectButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: isPhone ? spacing.sm : spacing.md,
+    gap: spacing.sm,
+  },
+  selectButtonText: {
+    ...typography.button,
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: isPhone ? 13 : 15,
+  },
+  referralSection: {
+    marginHorizontal: isPhone ? spacing.sm : spacing.lg,
+    marginVertical: isPhone ? spacing.md : spacing.xl,
+    borderRadius: isPhone ? borderRadius.lg : borderRadius.xl,
+    overflow: 'hidden',
+    ...shadows.lg,
+  },
+  referralGradient: {
+    padding: isPhone ? spacing.lg : spacing.xxl,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  referralTitle: {
+    ...typography.h3,
+    color: '#fff',
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+    textAlign: 'center',
+    fontWeight: '700',
+    fontSize: isSmallPhone ? 20 : isPhone ? 22 : 28,
+  },
+  referralSubtitle: {
+    ...typography.h6,
+    color: '#fff',
+    marginBottom: spacing.md,
+    textAlign: 'center',
+    fontWeight: '600',
+    fontSize: isPhone ? 14 : 18,
+  },
+  referralDescription: {
+    ...typography.body1,
+    color: 'rgba(255, 255, 255, 0.95)',
+    textAlign: 'center',
+    marginBottom: isPhone ? spacing.md : spacing.xl,
+    lineHeight: isPhone ? 20 : 24,
+    paddingHorizontal: isPhone ? 0 : spacing.md,
+    fontSize: isPhone ? 13 : 16,
+  },
+  referralButton: {
+    borderRadius: borderRadius.lg,
+    overflow: 'hidden',
+    ...shadows.md,
+  },
+  referralButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: isPhone ? spacing.lg : spacing.xxl,
+    paddingVertical: isPhone ? spacing.sm : spacing.md,
+    gap: spacing.sm,
+  },
+  referralButtonText: {
+    ...typography.button,
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: isPhone ? 14 : 16,
+  },
+  footerInfo: {
+    flexDirection: isMobile ? 'column' : 'row',
+    paddingHorizontal: isPhone ? spacing.sm : spacing.lg,
+    paddingTop: isPhone ? spacing.md : spacing.xl,
+    gap: isPhone ? spacing.md : spacing.lg,
+  },
+  infoCard: {
+    flex: 1,
+    backgroundColor: colors.cardBackground,
+    padding: isPhone ? spacing.md : spacing.xl,
+    borderRadius: isPhone ? borderRadius.lg : borderRadius.xl,
+    alignItems: 'center',
+    ...shadows.md,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  infoTitle: {
+    ...typography.h6,
+    color: colors.text,
+    marginTop: isPhone ? spacing.sm : spacing.md,
+    marginBottom: spacing.xs,
+    fontSize: isPhone ? 14 : 16,
+  },
+  infoText: {
+    ...typography.body2,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    fontSize: isPhone ? 12 : 14,
+  },
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -478,117 +801,9 @@ const styles = StyleSheet.create({
   tabTextActive: {
     color: '#fff',
   },
-  packagesSection: {
-    paddingHorizontal: spacing.lg,
-    maxWidth: isWeb ? 1400 : '100%',
-    alignSelf: 'center',
-    width: '100%',
-  },
-  packagesGrid: {
-    flexDirection: isMobile ? 'column' : 'row',
-    flexWrap: 'wrap',
-    gap: spacing.lg,
-    justifyContent: isDesktop ? 'center' : 'center',
-  },
-  packageCardWrapper: {
-    width: isPhone ? '100%' : 
-           isMobile ? '100%' : 
-           isTablet ? (width > 900 ? '48%' : '100%') : 
-           isDesktop ? '31%' : 
-           '100%',
-    flexBasis: isDesktop ? '31%' : undefined,
-    flexGrow: 0,
-    flexShrink: 0,
-    maxWidth: isDesktop ? 400 : undefined,
-  },
-  sectionTitle: {
-    ...typography.h3,
-    color: colors.text,
-    marginBottom: spacing.sm,
-    marginTop: spacing.xl,
-    textAlign: 'center',
-    fontWeight: '800',
-    fontSize: isWeb ? 32 : 28,
-  },
-  sectionSubtitle: {
-    ...typography.body1,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: spacing.xl,
-    fontSize: 15,
-    lineHeight: 24,
-  },
-  packageCard: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.xl,
-    marginBottom: 0,
-    overflow: 'hidden',
-    ...shadows.lg,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    height: '100%',
-    flexDirection: 'column',
-  },
-  packageHeader: {
-    padding: isPhone ? spacing.md : (isMobile ? spacing.md : spacing.lg),
-    position: 'relative',
-  },
-  popularBadge: {
-    position: 'absolute',
-    top: spacing.md,
-    right: spacing.md,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.full,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  popularText: {
-    ...typography.caption,
-    color: '#fff',
-    fontWeight: '700',
-  },
-  packageTitle: {
-    ...typography.h3,
-    color: '#fff',
-    marginBottom: spacing.xs,
-    fontSize: isPhone ? 20 : (isMobile ? 22 : (isTablet ? 24 : 26)),
-  },
-  packageSubtitle: {
-    ...typography.body2,
-    color: 'rgba(255, 255, 255, 0.9)',
-    marginBottom: spacing.md,
-    fontSize: isPhone ? 12 : (isMobile ? 13 : 14),
-  },
+  // These styles are now handled by dynamicStyles - keeping minimal fallbacks
   priceContainer: {
     marginTop: spacing.xs,
-  },
-  packagePrice: {
-    ...typography.h1,
-    color: '#fff',
-    fontWeight: '800',
-    fontSize: isPhone ? 28 : (isMobile ? 32 : (isTablet ? 36 : 40)),
-  },
-  gstText: {
-    ...typography.caption,
-    color: 'rgba(255, 255, 255, 0.8)',
-    marginTop: spacing.xs,
-  },
-  featuresContainer: {
-    padding: isPhone ? spacing.md : (isMobile ? spacing.md : spacing.lg),
-    backgroundColor: colors.background,
-    flex: 1,
-  },
-  featureItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: isPhone ? spacing.sm : spacing.md,
-    paddingHorizontal: spacing.xs,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
   },
   featureLeft: {
     flexDirection: 'row',
@@ -636,52 +851,8 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     lineHeight: 20,
   },
-  selectButton: {
-    margin: isPhone ? spacing.md : (isMobile ? spacing.md : spacing.lg),
-    marginTop: 0,
-    borderRadius: borderRadius.xl,
-    overflow: 'hidden',
-    ...shadows.md,
-  },
-  selectButtonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.md,
-    gap: spacing.sm,
-  },
-  selectButtonText: {
-    ...typography.button,
-    color: '#fff',
-    fontWeight: '700',
-  },
-  footerInfo: {
-    flexDirection: isWeb ? 'row' : 'column',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
-    gap: spacing.lg,
-  },
-  infoCard: {
-    flex: 1,
-    backgroundColor: colors.cardBackground,
-    padding: spacing.xl,
-    borderRadius: borderRadius.xl,
-    alignItems: 'center',
-    ...shadows.md,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-  },
-  infoTitle: {
-    ...typography.h6,
-    color: colors.text,
-    marginTop: spacing.md,
-    marginBottom: spacing.xs,
-  },
-  infoText: {
-    ...typography.body2,
-    color: colors.textSecondary,
-    textAlign: 'center',
-  },
+  // selectButton, selectButtonGradient, selectButtonText, footerInfo, infoCard, infoTitle, infoText 
+  // are now handled by dynamicStyles
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -711,27 +882,12 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.9)',
     fontWeight: '600',
   },
-  supportContainer: {
-    margin: isPhone ? spacing.md : (isMobile ? spacing.md : spacing.lg),
-    marginTop: 0,
-    padding: isPhone ? spacing.md : spacing.lg,
-    backgroundColor: colors.background,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    borderLeftWidth: 4,
-    borderLeftColor: colors.success,
-  },
+  // supportContainer is now handled by dynamicStyles
   supportHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     marginBottom: spacing.xs,
-  },
-  supportTitle: {
-    ...typography.body1,
-    fontWeight: '600',
-    color: colors.text,
   },
   supportDescription: {
     ...typography.body2,

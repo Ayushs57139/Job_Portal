@@ -6,12 +6,14 @@ import {
   StyleSheet,
   ActivityIndicator,
   TouchableOpacity,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, typography, shadows } from '../../styles/theme';
 import Header from '../../components/Header';
 import Button from '../../components/Button';
 import api from '../../config/api';
+import { useResponsive } from '../../utils/responsive';
 
 // Safely get Platform - lazy evaluation
 const getPlatform = () => {
@@ -24,9 +26,14 @@ const getPlatform = () => {
   return { OS: 'android' };
 };
 
-const isWeb = getPlatform().OS === 'web';
+const isWebPlatform = getPlatform().OS === 'web';
 
 const JobDetailsScreen = ({ route, navigation }) => {
+  const responsive = useResponsive();
+  const { width } = responsive;
+  
+  // Show sidebar layout only on web AND larger screens (not phone-sized)
+  const showSidebarLayout = isWebPlatform && width > 768;
   const { jobId, id } = route.params || {};
   const actualJobId = jobId || id;
   const [job, setJob] = useState(null);
@@ -148,12 +155,7 @@ const JobDetailsScreen = ({ route, navigation }) => {
   };
 
   const handleSimilarJobClick = (similarJobId) => {
-    if (isWeb && typeof window !== 'undefined') {
-      const url = `${window.location.origin}/jobs/${similarJobId}`;
-      window.open(url, '_blank');
-    } else {
-      navigation.navigate('JobDetails', { jobId: similarJobId, id: similarJobId });
-    }
+    navigation.navigate('JobDetails', { jobId: similarJobId, id: similarJobId });
   };
 
   const formatSimilarJobLocation = (location) => {
@@ -178,18 +180,18 @@ const JobDetailsScreen = ({ route, navigation }) => {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={staticStyles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>Loading job details...</Text>
+        <Text style={staticStyles.loadingText}>Loading job details...</Text>
       </View>
     );
   }
 
   if (!job) {
     return (
-      <View style={styles.errorContainer}>
+      <View style={staticStyles.errorContainer}>
         <Ionicons name="alert-circle-outline" size={64} color={colors.error} />
-        <Text style={styles.errorText}>Job not found</Text>
+        <Text style={staticStyles.errorText}>Job not found</Text>
       </View>
     );
   }
@@ -202,66 +204,69 @@ const JobDetailsScreen = ({ route, navigation }) => {
   const jobSkills = job.keySkills || job.skills || [];
   const benefits = job.additionalBenefits || job.benefits;
 
+  // Dynamic styles based on screen size
+  const dynamicStyles = getStyles(showSidebarLayout, width);
+
   return (
-    <View style={styles.container}>
+    <View style={dynamicStyles.container}>
       <Header />
       
-      <View style={styles.contentWrapper}>
+      <View style={dynamicStyles.contentWrapper}>
         <ScrollView 
-          contentContainerStyle={styles.scrollContent}
-          style={styles.leftScrollView}
+          contentContainerStyle={dynamicStyles.scrollContent}
+          style={dynamicStyles.leftScrollView}
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.mainColumn}>
+          <View style={dynamicStyles.mainColumn}>
             {/* Header Section with Gradient */}
-            <View style={styles.headerCard}>
-              <View style={styles.headerTop}>
-                <View style={styles.companyBadge}>
-                  <View style={styles.companyIconContainer}>
+            <View style={dynamicStyles.headerCard}>
+              <View style={dynamicStyles.headerTop}>
+                <View style={dynamicStyles.companyBadge}>
+                  <View style={dynamicStyles.companyIconContainer}>
                     <Ionicons name="business" size={24} color={colors.primary} />
                   </View>
                   {companyName && (
-                    <Text style={styles.company}>{companyName}</Text>
+                    <Text style={dynamicStyles.company}>{companyName}</Text>
                   )}
                 </View>
               </View>
 
-              <Text style={styles.title}>{jobTitle}</Text>
+              <Text style={dynamicStyles.title}>{jobTitle}</Text>
 
-              <View style={styles.details}>
+              <View style={dynamicStyles.details}>
                 {job.location && (
-                  <View style={styles.detailBadge}>
-                    <View style={[styles.detailIconContainer, styles.locationIcon]}>
+                  <View style={dynamicStyles.detailBadge}>
+                    <View style={[dynamicStyles.detailIconContainer, dynamicStyles.locationIcon]}>
                       <Ionicons name="location" size={18} color="#ffffff" />
                     </View>
-                    <Text style={styles.detailText}>{formatLocation(job.location)}</Text>
+                    <Text style={dynamicStyles.detailText}>{formatLocation(job.location)}</Text>
                   </View>
                 )}
                 
                 {experienceText && (
-                  <View style={styles.detailBadge}>
-                    <View style={[styles.detailIconContainer, styles.experienceIcon]}>
+                  <View style={dynamicStyles.detailBadge}>
+                    <View style={[dynamicStyles.detailIconContainer, dynamicStyles.experienceIcon]}>
                       <Ionicons name="briefcase" size={18} color="#ffffff" />
                     </View>
-                    <Text style={styles.detailText}>{experienceText}</Text>
+                    <Text style={dynamicStyles.detailText}>{experienceText}</Text>
                   </View>
                 )}
                 
                 {salaryText && (
-                  <View style={styles.detailBadge}>
-                    <View style={[styles.detailIconContainer, styles.salaryIcon]}>
+                  <View style={dynamicStyles.detailBadge}>
+                    <View style={[dynamicStyles.detailIconContainer, dynamicStyles.salaryIcon]}>
                       <Ionicons name="cash" size={18} color="#ffffff" />
                     </View>
-                    <Text style={styles.detailText}>{salaryText}</Text>
+                    <Text style={dynamicStyles.detailText}>{salaryText}</Text>
                   </View>
                 )}
                 
                 {job.jobType && (
-                  <View style={styles.detailBadge}>
-                    <View style={[styles.detailIconContainer, styles.jobTypeIcon]}>
+                  <View style={dynamicStyles.detailBadge}>
+                    <View style={[dynamicStyles.detailIconContainer, dynamicStyles.jobTypeIcon]}>
                       <Ionicons name="time" size={18} color="#ffffff" />
                     </View>
-                    <Text style={styles.detailText}>{job.jobType}</Text>
+                    <Text style={dynamicStyles.detailText}>{job.jobType}</Text>
                   </View>
                 )}
               </View>
@@ -269,37 +274,37 @@ const JobDetailsScreen = ({ route, navigation }) => {
 
             {/* Job Description Section */}
             {job.description && (
-              <View style={styles.sectionCard}>
-                <View style={styles.sectionHeader}>
+              <View style={dynamicStyles.sectionCard}>
+                <View style={dynamicStyles.sectionHeader}>
                   <Ionicons name="document-text" size={24} color={colors.primary} />
-                  <Text style={styles.sectionTitle}>Job Description</Text>
+                  <Text style={dynamicStyles.sectionTitle}>Job Description</Text>
                 </View>
-                <Text style={styles.sectionText}>{job.description}</Text>
+                <Text style={dynamicStyles.sectionText}>{job.description}</Text>
               </View>
             )}
 
             {/* Requirements Section */}
             {job.requirements && (
-              <View style={styles.sectionCard}>
-                <View style={styles.sectionHeader}>
+              <View style={dynamicStyles.sectionCard}>
+                <View style={dynamicStyles.sectionHeader}>
                   <Ionicons name="checkmark-circle" size={24} color={colors.primary} />
-                  <Text style={styles.sectionTitle}>Requirements</Text>
+                  <Text style={dynamicStyles.sectionTitle}>Requirements</Text>
                 </View>
-                <Text style={styles.sectionText}>{job.requirements}</Text>
+                <Text style={dynamicStyles.sectionText}>{job.requirements}</Text>
               </View>
             )}
 
             {/* Skills Section */}
             {jobSkills && jobSkills.length > 0 && (
-              <View style={styles.sectionCard}>
-                <View style={styles.sectionHeader}>
+              <View style={dynamicStyles.sectionCard}>
+                <View style={dynamicStyles.sectionHeader}>
                   <Ionicons name="code-slash" size={24} color={colors.primary} />
-                  <Text style={styles.sectionTitle}>Required Skills</Text>
+                  <Text style={dynamicStyles.sectionTitle}>Required Skills</Text>
                 </View>
-                <View style={styles.skills}>
+                <View style={dynamicStyles.skills}>
                   {jobSkills.map((skill, index) => (
-                    <View key={index} style={styles.skillBadge}>
-                      <Text style={styles.skillText}>{skill}</Text>
+                    <View key={index} style={dynamicStyles.skillBadge}>
+                      <Text style={dynamicStyles.skillText}>{skill}</Text>
                     </View>
                   ))}
                 </View>
@@ -308,37 +313,37 @@ const JobDetailsScreen = ({ route, navigation }) => {
 
             {/* Benefits Section */}
             {benefits && (
-              <View style={styles.sectionCard}>
-                <View style={styles.sectionHeader}>
+              <View style={dynamicStyles.sectionCard}>
+                <View style={dynamicStyles.sectionHeader}>
                   <Ionicons name="gift" size={24} color={colors.primary} />
-                  <Text style={styles.sectionTitle}>Benefits</Text>
+                  <Text style={dynamicStyles.sectionTitle}>Benefits</Text>
                 </View>
-                <Text style={styles.sectionText}>{benefits}</Text>
+                <Text style={dynamicStyles.sectionText}>{benefits}</Text>
               </View>
             )}
 
             {/* Apply Button Section - Mobile Only */}
-            {!isWeb && (
-              <View style={styles.actionBar}>
-                <View style={styles.actionInfo}>
-                  <Text style={styles.actionTitle}>Ready to apply?</Text>
-                  <Text style={styles.actionSubtitle}>Submit your application now</Text>
+            {!showSidebarLayout && (
+              <View style={dynamicStyles.actionBar}>
+                <View style={dynamicStyles.actionInfo}>
+                  <Text style={dynamicStyles.actionTitle}>Ready to apply?</Text>
+                  <Text style={dynamicStyles.actionSubtitle}>Submit your application now</Text>
                 </View>
-                <TouchableOpacity style={styles.applyButton} onPress={handleApply} activeOpacity={0.8}>
-                  <Text style={styles.applyButtonText}>Apply Now</Text>
+                <TouchableOpacity style={dynamicStyles.applyButton} onPress={handleApply} activeOpacity={0.8}>
+                  <Text style={dynamicStyles.applyButtonText}>Apply Now</Text>
                   <Ionicons name="arrow-forward" size={20} color={colors.textWhite} />
                 </TouchableOpacity>
               </View>
             )}
 
             {/* Similar Jobs - Mobile */}
-            {!isWeb && similarJobs.length > 0 && (
-              <View style={styles.mobileSimilarJobs}>
-                <View style={styles.mobileSimilarJobsHeader}>
+            {!showSidebarLayout && similarJobs.length > 0 && (
+              <View style={dynamicStyles.mobileSimilarJobs}>
+                <View style={dynamicStyles.mobileSimilarJobsHeader}>
                   <Ionicons name="briefcase" size={22} color={colors.primary} />
-                  <Text style={styles.mobileSimilarJobsTitle}>Similar Jobs</Text>
+                  <Text style={dynamicStyles.mobileSimilarJobsTitle}>Similar Jobs</Text>
                 </View>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mobileSimilarJobsScroll}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={dynamicStyles.mobileSimilarJobsScroll}>
                   {similarJobs.map((similarJob) => {
                     const similarJobTitle = similarJob.title || similarJob.jobTitle || 'Untitled Job';
                     const similarCompanyName = similarJob.company?.name || similarJob.companyName;
@@ -348,41 +353,41 @@ const JobDetailsScreen = ({ route, navigation }) => {
                     return (
                       <TouchableOpacity
                         key={similarJob._id}
-                        style={styles.mobileSimilarJobCard}
+                        style={dynamicStyles.mobileSimilarJobCard}
                         onPress={() => handleSimilarJobClick(similarJob._id)}
                         activeOpacity={0.8}
                       >
-                        <View style={styles.similarJobHeader}>
-                          <View style={styles.similarJobIconContainer}>
+                        <View style={dynamicStyles.similarJobHeader}>
+                          <View style={dynamicStyles.similarJobIconContainer}>
                             <Ionicons name="briefcase" size={18} color={colors.primary} />
                           </View>
-                          <View style={styles.similarJobHeaderText}>
-                            <Text style={styles.similarJobTitle} numberOfLines={2}>
+                          <View style={dynamicStyles.similarJobHeaderText}>
+                            <Text style={dynamicStyles.similarJobTitle} numberOfLines={2}>
                               {similarJobTitle}
                             </Text>
                             {similarCompanyName && (
-                              <Text style={styles.similarJobCompany} numberOfLines={1}>
+                              <Text style={dynamicStyles.similarJobCompany} numberOfLines={1}>
                                 {similarCompanyName}
                               </Text>
                             )}
                           </View>
                         </View>
-                        <View style={styles.similarJobDetails}>
-                          <View style={styles.similarJobDetail}>
+                        <View style={dynamicStyles.similarJobDetails}>
+                          <View style={dynamicStyles.similarJobDetail}>
                             <Ionicons name="location" size={14} color={colors.textSecondary} />
-                            <Text style={styles.similarJobDetailText} numberOfLines={1}>
+                            <Text style={dynamicStyles.similarJobDetailText} numberOfLines={1}>
                               {similarLocation}
                             </Text>
                           </View>
-                          <View style={styles.similarJobDetail}>
+                          <View style={dynamicStyles.similarJobDetail}>
                             <Ionicons name="cash" size={14} color={colors.success || '#10B981'} />
-                            <Text style={styles.similarJobDetailText} numberOfLines={1}>
+                            <Text style={dynamicStyles.similarJobDetailText} numberOfLines={1}>
                               {similarSalary}
                             </Text>
                           </View>
                         </View>
-                        <View style={styles.similarJobFooter}>
-                          <Text style={styles.viewJobText}>View Job</Text>
+                        <View style={dynamicStyles.similarJobFooter}>
+                          <Text style={dynamicStyles.viewJobText}>View Job</Text>
                           <Ionicons name="chevron-forward" size={16} color={colors.primary} />
                         </View>
                       </TouchableOpacity>
@@ -395,25 +400,25 @@ const JobDetailsScreen = ({ route, navigation }) => {
         </ScrollView>
 
         {/* Sidebar - Similar Jobs */}
-        {isWeb && (
-          <View style={styles.sidebar}>
+        {showSidebarLayout && (
+          <View style={dynamicStyles.sidebar}>
             {/* Apply Button for Web */}
-            <View style={styles.applyCard}>
-              <Text style={styles.applyCardTitle}>Interested in this role?</Text>
-              <TouchableOpacity style={styles.applyButtonWeb} onPress={handleApply} activeOpacity={0.8}>
-                <Text style={styles.applyButtonText}>Apply Now</Text>
+            <View style={dynamicStyles.applyCard}>
+              <Text style={dynamicStyles.applyCardTitle}>Interested in this role?</Text>
+              <TouchableOpacity style={dynamicStyles.applyButtonWeb} onPress={handleApply} activeOpacity={0.8}>
+                <Text style={dynamicStyles.applyButtonText}>Apply Now</Text>
                 <Ionicons name="arrow-forward" size={20} color={colors.textWhite} />
               </TouchableOpacity>
             </View>
 
             {/* Similar Jobs */}
             {similarJobs.length > 0 && (
-              <View style={styles.similarJobsContainer}>
-                <View style={styles.sidebarHeader}>
+              <View style={dynamicStyles.similarJobsContainer}>
+                <View style={dynamicStyles.sidebarHeader}>
                   <Ionicons name="briefcase" size={22} color={colors.primary} />
-                  <Text style={styles.sidebarTitle}>Similar Jobs</Text>
+                  <Text style={dynamicStyles.sidebarTitle}>Similar Jobs</Text>
                 </View>
-                <ScrollView style={styles.similarJobsScroll} showsVerticalScrollIndicator={false}>
+                <ScrollView style={dynamicStyles.similarJobsScroll} showsVerticalScrollIndicator={false}>
                   {similarJobs.map((similarJob) => {
                     const similarJobTitle = similarJob.title || similarJob.jobTitle || 'Untitled Job';
                     const similarCompanyName = similarJob.company?.name || similarJob.companyName;
@@ -423,41 +428,41 @@ const JobDetailsScreen = ({ route, navigation }) => {
                     return (
                       <TouchableOpacity
                         key={similarJob._id}
-                        style={styles.similarJobCard}
+                        style={dynamicStyles.similarJobCard}
                         onPress={() => handleSimilarJobClick(similarJob._id)}
                         activeOpacity={0.8}
                       >
-                        <View style={styles.similarJobHeader}>
-                          <View style={styles.similarJobIconContainer}>
+                        <View style={dynamicStyles.similarJobHeader}>
+                          <View style={dynamicStyles.similarJobIconContainer}>
                             <Ionicons name="briefcase" size={18} color={colors.primary} />
                           </View>
-                          <View style={styles.similarJobHeaderText}>
-                            <Text style={styles.similarJobTitle} numberOfLines={2}>
+                          <View style={dynamicStyles.similarJobHeaderText}>
+                            <Text style={dynamicStyles.similarJobTitle} numberOfLines={2}>
                               {similarJobTitle}
                             </Text>
                             {similarCompanyName && (
-                              <Text style={styles.similarJobCompany} numberOfLines={1}>
+                              <Text style={dynamicStyles.similarJobCompany} numberOfLines={1}>
                                 {similarCompanyName}
                               </Text>
                             )}
                           </View>
                         </View>
-                        <View style={styles.similarJobDetails}>
-                          <View style={styles.similarJobDetail}>
+                        <View style={dynamicStyles.similarJobDetails}>
+                          <View style={dynamicStyles.similarJobDetail}>
                             <Ionicons name="location" size={14} color={colors.textSecondary} />
-                            <Text style={styles.similarJobDetailText} numberOfLines={1}>
+                            <Text style={dynamicStyles.similarJobDetailText} numberOfLines={1}>
                               {similarLocation}
                             </Text>
                           </View>
-                          <View style={styles.similarJobDetail}>
+                          <View style={dynamicStyles.similarJobDetail}>
                             <Ionicons name="cash" size={14} color={colors.success || '#10B981'} />
-                            <Text style={styles.similarJobDetailText} numberOfLines={1}>
+                            <Text style={dynamicStyles.similarJobDetailText} numberOfLines={1}>
                               {similarSalary}
                             </Text>
                           </View>
                         </View>
-                        <View style={styles.similarJobFooter}>
-                          <Text style={styles.viewJobText}>View Job</Text>
+                        <View style={dynamicStyles.similarJobFooter}>
+                          <Text style={dynamicStyles.viewJobText}>View Job</Text>
                           <Ionicons name="chevron-forward" size={16} color={colors.primary} />
                         </View>
                       </TouchableOpacity>
@@ -473,11 +478,8 @@ const JobDetailsScreen = ({ route, navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
+// Static styles for loading/error states
+const staticStyles = StyleSheet.create({
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -501,33 +503,45 @@ const styles = StyleSheet.create({
     color: colors.error,
     marginTop: spacing.md,
   },
-  contentWrapper: {
-    flex: 1,
-    flexDirection: isWeb ? 'row' : 'column',
-    backgroundColor: colors.background,
-  },
-  leftScrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: isWeb ? spacing.xl : spacing.lg,
-    paddingBottom: spacing.xxl,
-    gap: spacing.lg,
-    ...(isWeb && {
-      alignItems: 'flex-start',
-      maxWidth: 800,
-    }),
-  },
-  mainColumn: {
-    width: '100%',
-    maxWidth: isWeb ? 800 : '100%',
-  },
+});
+
+// Dynamic styles based on screen size
+const getStyles = (showSidebarLayout, width) => {
+  const isMobile = width <= 480;
+  const isSmallScreen = width <= 600;
+  
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    contentWrapper: {
+      flex: 1,
+      flexDirection: showSidebarLayout ? 'row' : 'column',
+      backgroundColor: colors.background,
+    },
+    leftScrollView: {
+      flex: 1,
+    },
+    scrollContent: {
+      padding: isMobile ? spacing.md : isSmallScreen ? spacing.lg : spacing.xl,
+      paddingBottom: spacing.xxl,
+      gap: spacing.lg,
+      ...(showSidebarLayout && {
+        alignItems: 'flex-start',
+        maxWidth: 800,
+      }),
+    },
+    mainColumn: {
+      width: '100%',
+      maxWidth: showSidebarLayout ? 800 : '100%',
+    },
   // Header Card Styles
   headerCard: {
     width: '100%',
     backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.xl,
-    padding: spacing.xl,
+    borderRadius: isMobile ? borderRadius.lg : borderRadius.xl,
+    padding: isMobile ? spacing.md : spacing.xl,
     ...shadows.md,
     borderWidth: 1,
     borderColor: colors.borderLight,
@@ -554,9 +568,9 @@ const styles = StyleSheet.create({
   title: {
     ...typography.h1,
     color: colors.text,
-    marginBottom: spacing.lg,
-    lineHeight: 40,
-    fontSize: isWeb ? 36 : 32,
+    marginBottom: isMobile ? spacing.md : spacing.lg,
+    lineHeight: isMobile ? 28 : 40,
+    fontSize: isMobile ? 22 : isSmallScreen ? 26 : showSidebarLayout ? 36 : 32,
   },
   company: {
     ...typography.h5,
@@ -612,12 +626,12 @@ const styles = StyleSheet.create({
   sectionCard: {
     width: '100%',
     backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.xl,
-    padding: spacing.xl,
+    borderRadius: isMobile ? borderRadius.lg : borderRadius.xl,
+    padding: isMobile ? spacing.md : spacing.xl,
     ...shadows.md,
     borderWidth: 1,
     borderColor: colors.borderLight,
-    marginBottom: spacing.lg,
+    marginBottom: isMobile ? spacing.md : spacing.lg,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -706,12 +720,12 @@ const styles = StyleSheet.create({
   },
   // Sidebar Styles (Web)
   sidebar: {
-    width: isWeb ? 400 : '100%',
+    width: showSidebarLayout ? 400 : '100%',
     backgroundColor: colors.background,
-    borderLeftWidth: isWeb ? 1 : 0,
+    borderLeftWidth: showSidebarLayout ? 1 : 0,
     borderLeftColor: colors.borderLight,
     padding: spacing.lg,
-    ...(isWeb && {
+    ...(showSidebarLayout && {
       position: 'sticky',
       top: 0,
       height: '100vh',
@@ -776,7 +790,7 @@ const styles = StyleSheet.create({
     ...shadows.md,
     borderWidth: 1,
     borderColor: colors.borderLight,
-    ...(isWeb && {
+    ...(isWebPlatform && {
       cursor: 'pointer',
       transition: 'all 0.3s ease',
     }),
@@ -868,15 +882,15 @@ const styles = StyleSheet.create({
   mobileSimilarJobCard: {
     backgroundColor: colors.cardBackground,
     borderRadius: borderRadius.xl,
-    padding: spacing.lg,
+    padding: isMobile ? spacing.md : spacing.lg,
     marginLeft: spacing.md,
     marginRight: spacing.xs,
-    width: 320,
+    width: isMobile ? 280 : 320,
     ...shadows.md,
     borderWidth: 1,
     borderColor: colors.borderLight,
   },
-});
+})};
 
 export default JobDetailsScreen;
 

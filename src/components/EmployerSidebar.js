@@ -33,7 +33,7 @@ const EmployerSidebar = ({ visible, onClose, navigation, role = 'company', perma
     { key: 'social', label: 'Social Updates', icon: 'megaphone-outline', action: () => navigation.navigate('EmployerSocialUpdates') },
     { key: 'liveChat', label: 'Live Chat', icon: 'chatbubbles-outline', action: () => navigation.navigate('LiveChatSupport') },
     { key: 'profile', label: 'Profile', icon: 'person-circle-outline', action: () => navigation.navigate('CompanyProfile') },
-    { key: 'team', label: 'Team Members', icon: 'people-outline', action: () => navigation.navigate('CompanyProfile') },
+    { key: 'team', label: 'Team Members', icon: 'people-outline', action: () => navigation.navigate('EmployerEmployees') },
     { key: 'orgProfile', label: role === 'consultancy' ? 'Consultancy Profile' : 'Company Profile', icon: 'business-outline', action: () => navigation.navigate('CompanyProfile') },
     { key: 'settings', label: 'Settings', icon: 'settings-outline', action: () => navigation.navigate('UserSettings') },
   ];

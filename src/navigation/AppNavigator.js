@@ -1,5 +1,5 @@
 // Main navigation setup
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -131,6 +131,9 @@ const AppNavigator = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [userToken, setUserToken] = useState(null);
   const [currentRoute, setCurrentRoute] = useState('Home');
+  const navigationRef = useRef(null);
+  const [navigationReady, setNavigationReady] = useState(false);
+  const pendingJobIdRef = useRef(null);
 
   useEffect(() => {
     // Check if user is logged in
@@ -147,6 +150,34 @@ const AppNavigator = () => {
 
     checkAuth();
   }, []);
+
+  useEffect(() => {
+    if (getPlatform().OS !== 'web' || typeof window === 'undefined') {
+      return;
+    }
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const jobIdParam = params.get('jobId');
+      if (jobIdParam) {
+        pendingJobIdRef.current = jobIdParam;
+      }
+    } catch (error) {
+      console.warn('Failed to parse jobId from query string:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (navigationReady && pendingJobIdRef.current) {
+      const jobId = pendingJobIdRef.current;
+      pendingJobIdRef.current = null;
+      navigationRef.current?.navigate('JobDetails', { jobId, id: jobId });
+      if (typeof window !== 'undefined' && window.history?.replaceState) {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('jobId');
+        window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+      }
+    }
+  }, [navigationReady]);
 
   // List of routes where chatbot should NOT be shown
   const noChatbotRoutes = [
@@ -229,7 +260,18 @@ const AppNavigator = () => {
 
   return (
     <View style={containerStyle}>
-      <NavigationContainer linking={linking} onStateChange={onNavigationStateChange}>
+      <NavigationContainer
+        ref={navigationRef}
+        linking={linking}
+        onReady={() => {
+          setNavigationReady(true);
+          const route = navigationRef.current?.getCurrentRoute();
+          if (route?.name) {
+            setCurrentRoute(route.name);
+          }
+        }}
+        onStateChange={onNavigationStateChange}
+      >
         <Stack.Navigator
           initialRouteName="Home"
           screenOptions={{

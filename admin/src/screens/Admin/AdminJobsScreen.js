@@ -463,8 +463,8 @@ const getStyles = (isMobile, isTablet) => StyleSheet.create({
   filterSection: {
     backgroundColor: '#FFF',
     borderRadius: 12,
-    padding: 15,
-    marginBottom: 15,
+    padding: isMobile ? 12 : isTablet ? 14 : 15,
+    marginBottom: isMobile ? 12 : isTablet ? 14 : 15,
     ...(Platform.OS === 'web' ? {
       boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
     } : {
@@ -508,7 +508,7 @@ const getStyles = (isMobile, isTablet) => StyleSheet.create({
     backgroundColor: '#4A90E2',
   },
   filterButtonText: {
-    fontSize: 14,
+    fontSize: isMobile ? 12 : isTablet ? 13 : 14,
     fontWeight: '500',
     color: '#666',
   },
@@ -516,10 +516,13 @@ const getStyles = (isMobile, isTablet) => StyleSheet.create({
     color: '#FFF',
   },
   bulkActionsBar: {
-    flexDirection: 'row',
+    flexDirection: isMobile ? 'column' : 'row',
     justifyContent: 'space-between',
-    gap: 10,
-    marginBottom: 15,
+    gap: isMobile ? 8 : 10,
+    marginBottom: isMobile ? 12 : isTablet ? 14 : 15,
+    ...(Platform.OS === 'web' && {
+      flexWrap: isMobile ? 'wrap' : 'nowrap',
+    }),
   },
   bulkActionButton: {
     flex: 1,
@@ -544,7 +547,7 @@ const getStyles = (isMobile, isTablet) => StyleSheet.create({
     }),
   },
   bulkActionButtonText: {
-    fontSize: 13,
+    fontSize: isMobile ? 12 : isTablet ? 12.5 : 13,
     fontWeight: '600',
     color: '#374151',
   },

@@ -9,25 +9,16 @@ import {
   Dimensions,
   Linking,
   RefreshControl,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, typography, spacing, borderRadius, shadows } from '../../styles/theme';
 import Header from '../../components/Header';
 import api from '../../config/api';
+import { useResponsive } from '../../utils/responsive';
 
 const { width } = Dimensions.get('window');
-// Safely get Platform - lazy evaluation
-const getPlatform = () => {
-  try {
-    const { Platform } = require('react-native');
-    if (Platform && typeof Platform.OS !== 'undefined') {
-      return Platform;
-    }
-  } catch (e) {}
-  return { OS: 'android' };
-};
-
-const isWeb = getPlatform().OS === 'web';
+const isWebPlatform = Platform.OS === 'web';
 
 const CompanyDetailsScreen = ({ route, navigation }) => {
   const { companyId } = route.params || {};
@@ -36,6 +27,12 @@ const CompanyDetailsScreen = ({ route, navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [jobs, setJobs] = useState([]);
   const [similarCompanies, setSimilarCompanies] = useState([]);
+  
+  // Responsive handling
+  const responsive = useResponsive();
+  const isDesktop = responsive.width > 900;
+  const isMobile = responsive.width <= 600;
+  const dynamicStyles = getDynamicStyles(isDesktop, isMobile);
 
   useEffect(() => {
     loadCompanyDetails();
@@ -112,12 +109,7 @@ const CompanyDetailsScreen = ({ route, navigation }) => {
   };
 
   const handleSimilarCompanyClick = (similarCompanyId) => {
-    if (isWeb && typeof window !== 'undefined') {
-      const url = `${window.location.origin}/companies/${similarCompanyId}`;
-      window.open(url, '_blank');
-    } else {
-      navigation.navigate('CompanyDetails', { companyId: similarCompanyId });
-    }
+    navigation.navigate('CompanyDetails', { companyId: similarCompanyId });
   };
 
   const formatCompanyLocation = (location) => {
@@ -185,10 +177,10 @@ const CompanyDetailsScreen = ({ route, navigation }) => {
     <View style={styles.container}>
       <Header />
       
-      <View style={styles.contentWrapper}>
+      <View style={dynamicStyles.contentWrapper}>
         <ScrollView
           style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={dynamicStyles.scrollContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -199,7 +191,7 @@ const CompanyDetailsScreen = ({ route, navigation }) => {
             />
           }
         >
-          <View style={styles.mainColumn}>
+          <View style={dynamicStyles.mainColumn}>
             {/* Header Section */}
             <View style={styles.headerCard}>
               <View style={styles.headerTop}>
@@ -472,13 +464,54 @@ const CompanyDetailsScreen = ({ route, navigation }) => {
               </TouchableOpacity>
             )}
           </View>
-        )}
+            )}
+
+            {/* Similar Companies - Mobile */}
+            {!isDesktop && similarCompanies.length > 0 && (
+              <View style={styles.mobileSimilarCompanies}>
+                <View style={styles.mobileSimilarHeader}>
+                  <Ionicons name="business" size={20} color={colors.primary} />
+                  <Text style={styles.mobileSimilarTitle}>Similar Companies</Text>
+                </View>
+                <ScrollView 
+                  horizontal 
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.mobileSimilarScroll}
+                >
+                  {similarCompanies.map((similarCompany) => {
+                    const similarCompanyName = similarCompany.name || similarCompany.profile?.company?.name || 'Company';
+                    const similarCompanyIndustry = similarCompany.industry || similarCompany.profile?.company?.industry;
+                    const openPositions = similarCompany.openPositions || 0;
+                    
+                    return (
+                      <TouchableOpacity
+                        key={similarCompany._id}
+                        style={styles.mobileSimilarCard}
+                        onPress={() => handleSimilarCompanyClick(similarCompany._id)}
+                        activeOpacity={0.8}
+                      >
+                        <View style={[styles.mobileSimilarAvatar, { backgroundColor: getAvatarColor(similarCompanyName) }]}>
+                          <Text style={styles.mobileSimilarInitials}>{getInitials(similarCompanyName)}</Text>
+                        </View>
+                        <Text style={styles.mobileSimilarName} numberOfLines={1}>{similarCompanyName}</Text>
+                        {similarCompanyIndustry && (
+                          <Text style={styles.mobileSimilarIndustry} numberOfLines={1}>{similarCompanyIndustry}</Text>
+                        )}
+                        {openPositions > 0 && (
+                          <Text style={styles.mobileSimilarPositions}>{openPositions} Open Positions</Text>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            )}
           </View>
         </ScrollView>
 
         {/* Sidebar - Similar Companies */}
-        {isWeb && similarCompanies.length > 0 && (
-          <View style={styles.sidebar}>
+        {isDesktop && similarCompanies.length > 0 && (
+          <View style={dynamicStyles.sidebar}>
             <View style={styles.similarCompaniesContainer}>
               <View style={styles.sidebarHeader}>
                 <Ionicons name="business" size={22} color={colors.primary} />
@@ -556,31 +589,49 @@ const CompanyDetailsScreen = ({ route, navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
+// Dynamic styles based on screen size
+const getDynamicStyles = (isDesktop, isMobile) => ({
   contentWrapper: {
     flex: 1,
-    flexDirection: isWeb ? 'row' : 'column',
+    flexDirection: isDesktop ? 'row' : 'column',
     backgroundColor: colors.background,
   },
-  scrollView: {
-    flex: 1,
-  },
   scrollContent: {
-    padding: isWeb ? spacing.xl : spacing.lg,
+    padding: isMobile ? spacing.md : spacing.xl,
     paddingBottom: spacing.xxl,
     gap: spacing.lg,
-    ...(isWeb && {
+    ...(isDesktop && {
       alignItems: 'flex-start',
       maxWidth: 800,
     }),
   },
   mainColumn: {
     width: '100%',
-    maxWidth: isWeb ? 800 : '100%',
+    maxWidth: isDesktop ? 800 : '100%',
+  },
+  sidebar: {
+    width: isDesktop ? 400 : '100%',
+    backgroundColor: colors.background,
+    borderLeftWidth: isDesktop ? 1 : 0,
+    borderLeftColor: colors.borderLight,
+    padding: isDesktop ? spacing.lg : spacing.md,
+    ...(isDesktop && {
+      position: 'sticky',
+      top: 0,
+      height: '100vh',
+      maxHeight: '100vh',
+      overflowY: 'auto',
+    }),
+  },
+});
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  scrollView: {
+    flex: 1,
   },
   loadingContainer: {
     flex: 1,
@@ -659,7 +710,7 @@ const styles = StyleSheet.create({
   companyName: {
     ...typography.h1,
     color: colors.text,
-    fontSize: isWeb ? 36 : 32,
+    fontSize: isWebPlatform ? 36 : 32,
     lineHeight: 44,
   },
   typeBadge: {
@@ -910,21 +961,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 15,
   },
-  // Sidebar Styles (Web)
-  sidebar: {
-    width: isWeb ? 400 : '100%',
-    backgroundColor: colors.background,
-    borderLeftWidth: isWeb ? 1 : 0,
-    borderLeftColor: colors.borderLight,
-    padding: spacing.lg,
-    ...(isWeb && {
-      position: 'sticky',
-      top: 0,
-      height: '100vh',
-      maxHeight: '100vh',
-      overflowY: 'auto',
-    }),
-  },
   // Similar Companies Container
   similarCompaniesContainer: {
     flex: 1,
@@ -953,7 +989,7 @@ const styles = StyleSheet.create({
     ...shadows.md,
     borderWidth: 1,
     borderColor: colors.borderLight,
-    ...(isWeb && {
+    ...(isWebPlatform && {
       cursor: 'pointer',
       transition: 'all 0.3s ease',
     }),
@@ -1025,6 +1061,69 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: '600',
     fontSize: 14,
+  },
+  // Mobile Similar Companies Styles
+  mobileSimilarCompanies: {
+    marginTop: spacing.lg,
+    paddingTop: spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderLight,
+  },
+  mobileSimilarHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  mobileSimilarTitle: {
+    ...typography.h5,
+    color: colors.text,
+    fontWeight: '700',
+  },
+  mobileSimilarScroll: {
+    gap: spacing.md,
+    paddingRight: spacing.md,
+  },
+  mobileSimilarCard: {
+    width: 150,
+    backgroundColor: colors.cardBackground,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    alignItems: 'center',
+    ...shadows.sm,
+  },
+  mobileSimilarAvatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  mobileSimilarInitials: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.textWhite,
+  },
+  mobileSimilarName: {
+    ...typography.body1,
+    fontWeight: '600',
+    color: colors.text,
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  mobileSimilarIndustry: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  mobileSimilarPositions: {
+    ...typography.caption,
+    color: colors.success || '#10B981',
+    fontWeight: '600',
   },
 });
 

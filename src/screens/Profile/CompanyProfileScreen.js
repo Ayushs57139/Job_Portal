@@ -11,12 +11,14 @@ import {
   Platform,
   Modal,
   RefreshControl,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors, typography, spacing, borderRadius } from '../../styles/theme';
+import { colors, typography, spacing, borderRadius, shadows } from '../../styles/theme';
 import EmployerSidebar from '../../components/EmployerSidebar';
 import api from '../../config/api';
+import { useResponsive } from '../../utils/responsive';
 
 const COMPANY_TYPES = ['Indian MNC', 'Foreign MNC', 'Govt/PSU', 'Startup', 'Unicorn', 'Corporate', 'Consultancy'];
 const COMPANY_SIZES = ['0-10', '11-25', '26-50', '51-100', '101-200', '201-500', '500-1000', '1001-2000', '2000-3000', '3000 Above'];
@@ -24,12 +26,15 @@ const GENDER_OPTIONS = ['Male', 'Female', 'Other'];
 const SOCIAL_MEDIA_OPTIONS = ['Facebook', 'Instagram', 'LinkedIn', 'Telegram', 'Arattai Messenger', 'WhatsApp', 'YouTube', 'X / Twitter', 'Grokipedia', 'Wikipedia'];
 
 const CompanyProfileScreen = ({ navigation, route }) => {
+  const responsive = useResponsive();
+  const { isMobile, isTablet, isTabletDevice } = responsive;
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [user, setUser] = useState(null);
   const [userRole, setUserRole] = useState('company');
   const [activeSection, setActiveSection] = useState('basic');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   
   // Master data
   const [industries, setIndustries] = useState([]);
@@ -459,14 +464,17 @@ const CompanyProfileScreen = ({ navigation, route }) => {
   };
 
   const renderFormContent = () => {
+    const rowStyle = [styles.row, isMobile && styles.rowMobile];
+    const halfInputStyle = [styles.halfInput, isMobile && styles.halfInputMobile];
+    
     switch (activeSection) {
       case 'basic':
         return (
-          <View style={styles.formContent}>
-            <Text style={styles.sectionTitle}>HR / Recruiter Information</Text>
+          <View style={[styles.formContent, isMobile && styles.formContentMobile]}>
+            <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile]}>HR / Recruiter Information</Text>
             
-            <View style={styles.row}>
-              <View style={styles.halfInput}>
+            <View style={rowStyle}>
+              <View style={halfInputStyle}>
                 <Text style={styles.label}>Full Name *</Text>
                 <TextInput
                   style={styles.input}
@@ -476,7 +484,7 @@ const CompanyProfileScreen = ({ navigation, route }) => {
                 {errors.firstName && <Text style={styles.errorText}>{errors.firstName}</Text>}
               </View>
               
-              <View style={styles.halfInput}>
+              <View style={halfInputStyle}>
                 <Text style={styles.label}>Mobile Number *</Text>
                 <TextInput
                   style={styles.input}
@@ -489,8 +497,8 @@ const CompanyProfileScreen = ({ navigation, route }) => {
               </View>
             </View>
             
-            <View style={styles.row}>
-              <View style={styles.halfInput}>
+            <View style={rowStyle}>
+              <View style={halfInputStyle}>
                 <Text style={styles.label}>Email ID *</Text>
                 <TextInput
                   style={styles.input}
@@ -502,7 +510,7 @@ const CompanyProfileScreen = ({ navigation, route }) => {
                 {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
               </View>
               
-              <View style={styles.halfInput}>
+              <View style={halfInputStyle}>
                 <Text style={styles.label}>WhatsApp Number</Text>
                 <TextInput
                   style={styles.input}
@@ -514,8 +522,8 @@ const CompanyProfileScreen = ({ navigation, route }) => {
               </View>
             </View>
             
-            <View style={styles.row}>
-              <View style={styles.halfInput}>
+            <View style={rowStyle}>
+              <View style={halfInputStyle}>
                 <Text style={styles.label}>HR Job Title/Designation</Text>
                 <TextInput
                   style={styles.input}
@@ -538,8 +546,8 @@ const CompanyProfileScreen = ({ navigation, route }) => {
         
       case 'company':
         return (
-          <View style={styles.formContent}>
-            <Text style={styles.sectionTitle}>{userRole === 'consultancy' ? 'Consultancy' : 'Company'} Details</Text>
+          <View style={[styles.formContent, isMobile && styles.formContentMobile]}>
+            <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile]}>{userRole === 'consultancy' ? 'Consultancy' : 'Company'} Details</Text>
             
             <View style={styles.fullInput}>
               <Text style={styles.label}>Company/Consultancy Name *</Text>
@@ -560,8 +568,8 @@ const CompanyProfileScreen = ({ navigation, route }) => {
               setShowCompanyType
             )}
             
-            <View style={styles.row}>
-              <View style={styles.halfInput}>
+            <View style={[styles.row, isMobile && styles.rowMobile]}>
+              <View style={[styles.halfInput, isMobile && styles.halfInputMobile]}>
                 <Text style={styles.label}>Company Website</Text>
                 <TextInput
                   style={styles.input}
@@ -571,7 +579,7 @@ const CompanyProfileScreen = ({ navigation, route }) => {
                 />
               </View>
               
-              <View style={styles.halfInput}>
+              <View style={[styles.halfInput, isMobile && styles.halfInputMobile]}>
                 <Text style={styles.label}>Establishment/Founded Date</Text>
                 <TextInput
                   style={styles.input}
@@ -651,11 +659,11 @@ const CompanyProfileScreen = ({ navigation, route }) => {
         
       case 'location':
         return (
-          <View style={styles.formContent}>
-            <Text style={styles.sectionTitle}>Location Details</Text>
+          <View style={[styles.formContent, isMobile && styles.formContentMobile]}>
+            <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile]}>Location Details</Text>
             
-            <View style={styles.row}>
-              <View style={styles.halfInput}>
+            <View style={[styles.row, isMobile && styles.rowMobile]}>
+              <View style={[styles.halfInput, isMobile && styles.halfInputMobile]}>
                 <Text style={styles.label}>Office State</Text>
                 <TextInput
                   style={styles.input}
@@ -667,7 +675,7 @@ const CompanyProfileScreen = ({ navigation, route }) => {
                 />
               </View>
               
-              <View style={styles.halfInput}>
+              <View style={[styles.halfInput, isMobile && styles.halfInputMobile]}>
                 <Text style={styles.label}>Office City/Region</Text>
                 <TextInput
                   style={styles.input}
@@ -680,8 +688,8 @@ const CompanyProfileScreen = ({ navigation, route }) => {
               </View>
             </View>
             
-            <View style={styles.row}>
-              <View style={styles.halfInput}>
+            <View style={[styles.row, isMobile && styles.rowMobile]}>
+              <View style={[styles.halfInput, isMobile && styles.halfInputMobile]}>
                 <Text style={styles.label}>Office Locality/Address</Text>
                 <TextInput
                   style={[styles.input, styles.textArea]}
@@ -695,7 +703,7 @@ const CompanyProfileScreen = ({ navigation, route }) => {
                 />
               </View>
               
-              <View style={styles.halfInput}>
+              <View style={[styles.halfInput, isMobile && styles.halfInputMobile]}>
                 <Text style={styles.label}>Office Area Pincode</Text>
                 <TextInput
                   style={styles.input}
@@ -710,7 +718,7 @@ const CompanyProfileScreen = ({ navigation, route }) => {
               </View>
             </View>
             
-            <View style={styles.row}>
+            <View style={[styles.row, isMobile && styles.rowMobile]}>
               {renderDropdown(
                 'Online Social Profile',
                 formData.profile.company.socialMediaProfile,
@@ -735,13 +743,13 @@ const CompanyProfileScreen = ({ navigation, route }) => {
         
       case 'extra':
         return (
-          <View style={styles.formContent}>
+          <View style={[styles.formContent, isMobile && styles.formContentMobile]}>
             {userRole === 'consultancy' ? (
               <>
-                <Text style={styles.sectionTitle}>Consultancy Additional Information</Text>
+                <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile]}>Consultancy Additional Information</Text>
                 
-                <View style={styles.row}>
-                  <View style={styles.halfInput}>
+                <View style={[styles.row, isMobile && styles.rowMobile]}>
+                  <View style={[styles.halfInput, isMobile && styles.halfInputMobile]}>
                     <Text style={styles.label}>License Number</Text>
                     <TextInput
                       style={styles.input}
@@ -753,7 +761,7 @@ const CompanyProfileScreen = ({ navigation, route }) => {
                     />
                   </View>
                   
-                  <View style={styles.halfInput}>
+                  <View style={[styles.halfInput, isMobile && styles.halfInputMobile]}>
                     <Text style={styles.label}>Registration Number</Text>
                     <TextInput
                       style={styles.input}
@@ -766,8 +774,8 @@ const CompanyProfileScreen = ({ navigation, route }) => {
                   </View>
                 </View>
                 
-                <View style={styles.row}>
-                  <View style={styles.halfInput}>
+                <View style={[styles.row, isMobile && styles.rowMobile]}>
+                  <View style={[styles.halfInput, isMobile && styles.halfInputMobile]}>
                     <Text style={styles.label}>Established Year</Text>
                     <TextInput
                       style={styles.input}
@@ -780,7 +788,7 @@ const CompanyProfileScreen = ({ navigation, route }) => {
                     />
                   </View>
                   
-                  <View style={styles.halfInput}>
+                  <View style={[styles.halfInput, isMobile && styles.halfInputMobile]}>
                     <Text style={styles.label}>Team Size</Text>
                     <TextInput
                       style={styles.input}
@@ -814,10 +822,10 @@ const CompanyProfileScreen = ({ navigation, route }) => {
               </>
             ) : (
               <>
-                <Text style={styles.sectionTitle}>Additional Company Information</Text>
+                <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile]}>Additional Company Information</Text>
                 
-                <View style={styles.row}>
-                  <View style={styles.halfInput}>
+                <View style={[styles.row, isMobile && styles.rowMobile]}>
+                  <View style={[styles.halfInput, isMobile && styles.halfInputMobile]}>
                     <Text style={styles.label}>Founded Year</Text>
                     <TextInput
                       style={styles.input}
@@ -830,7 +838,7 @@ const CompanyProfileScreen = ({ navigation, route }) => {
                     />
                   </View>
                   
-                  <View style={styles.halfInput}>
+                  <View style={[styles.halfInput, isMobile && styles.halfInputMobile]}>
                     <Text style={styles.label}>Revenue</Text>
                     <TextInput
                       style={styles.input}
@@ -916,19 +924,42 @@ const CompanyProfileScreen = ({ navigation, route }) => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.sidebarWrapper}>
+      {!isMobile && (
+        <View style={[styles.sidebarWrapper, isTabletDevice && styles.sidebarWrapperTablet]}>
+          <EmployerSidebar 
+            permanent 
+            navigation={navigation} 
+            role={userRole} 
+            activeKey="orgProfile" 
+          />
+        </View>
+      )}
+      {isMobile && (
         <EmployerSidebar 
-          permanent 
+          visible={sidebarOpen} 
+          onClose={() => setSidebarOpen(false)} 
           navigation={navigation} 
           role={userRole} 
           activeKey="orgProfile" 
         />
-      </View>
+      )}
+      {isMobile && (
+        <TouchableOpacity 
+          style={styles.menuButton}
+          onPress={() => setSidebarOpen(true)}
+        >
+          <Ionicons name="menu" size={24} color={colors.text} />
+        </TouchableOpacity>
+      )}
       
       <View style={styles.mainContentWrapper}>
         <ScrollView
           style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent, 
+            isMobile && styles.scrollContentMobile,
+            isTabletDevice && styles.scrollContentTablet
+          ]}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -939,17 +970,17 @@ const CompanyProfileScreen = ({ navigation, route }) => {
           }
         >
         {/* Header */}
-        <View style={styles.headerBar}>
+        <View style={[styles.headerBar, isMobile && styles.headerBarMobile, isTabletDevice && styles.headerBarTablet]}>
           <View style={styles.headerLeft}>
-            <Text style={styles.headerTitle}>
+            <Text style={[styles.headerTitle, isMobile && styles.headerTitleMobile]}>
               {userRole === 'consultancy' ? 'Consultancy' : 'Company'} Profile
             </Text>
-            <Text style={styles.headerSubtitle}>Manage your organization details</Text>
+            <Text style={[styles.headerSubtitle, isMobile && styles.headerSubtitleMobile]}>Manage your organization details</Text>
           </View>
         </View>
 
         {/* Section Tabs */}
-        <View style={styles.sectionsContainer}>
+        <View style={[styles.sectionsContainer, isMobile && styles.sectionsContainerMobile, isTabletDevice && styles.sectionsContainerTablet]}>
           {renderSection()}
         </View>
 
@@ -958,7 +989,7 @@ const CompanyProfileScreen = ({ navigation, route }) => {
 
         {/* Save Button */}
         <TouchableOpacity
-          style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+          style={[styles.saveButton, saving && styles.saveButtonDisabled, isMobile && styles.saveButtonMobile]}
           onPress={handleSave}
           disabled={saving}
         >
@@ -1055,6 +1086,19 @@ const styles = StyleSheet.create({
   sidebarWrapper: {
     width: 280,
   },
+  sidebarWrapperTablet: {
+    width: 240,
+  },
+  menuButton: {
+    position: 'absolute',
+    top: spacing.md,
+    left: spacing.md,
+    zIndex: 1000,
+    backgroundColor: '#FFFFFF',
+    padding: spacing.sm,
+    borderRadius: borderRadius.md,
+    ...shadows.sm,
+  },
   mainContentWrapper: {
     flex: 1,
     position: 'relative',
@@ -1063,8 +1107,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: spacing.md,
+    padding: spacing.lg,
     paddingBottom: spacing.xxl,
+  },
+  scrollContentMobile: {
+    padding: spacing.md,
+    paddingTop: spacing.xl + 40,
+  },
+  scrollContentTablet: {
+    padding: spacing.lg,
   },
   loadingContainer: {
     flex: 1,
@@ -1084,6 +1135,13 @@ const styles = StyleSheet.create({
     borderColor: '#E0E0E0',
     marginBottom: spacing.lg,
   },
+  headerBarMobile: {
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  headerBarTablet: {
+    padding: spacing.md,
+  },
   headerLeft: {
     gap: 4,
   },
@@ -1092,9 +1150,15 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#333',
   },
+  headerTitleMobile: {
+    fontSize: 18,
+  },
   headerSubtitle: {
     color: '#666',
     fontSize: 14,
+  },
+  headerSubtitleMobile: {
+    fontSize: 12,
   },
   sectionsContainer: {
     flexDirection: 'row',
@@ -1104,6 +1168,14 @@ const styles = StyleSheet.create({
     borderColor: '#E0E0E0',
     marginBottom: spacing.lg,
     padding: spacing.xs,
+  },
+  sectionsContainerMobile: {
+    flexDirection: 'column',
+    marginBottom: spacing.md,
+  },
+  sectionsContainerTablet: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
   },
   section: {
     flex: 1,
@@ -1133,19 +1205,36 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     marginBottom: spacing.lg,
   },
+  formContentMobile: {
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: '#333',
     marginBottom: spacing.lg,
   },
+  sectionTitleMobile: {
+    fontSize: 16,
+    marginBottom: spacing.md,
+  },
   row: {
     flexDirection: 'row',
     gap: spacing.md,
     marginBottom: spacing.md,
   },
+  rowMobile: {
+    flexDirection: 'column',
+    gap: spacing.sm,
+  },
   halfInput: {
     flex: 1,
+  },
+  halfInputMobile: {
+    flex: 0,
+    width: '100%',
+    marginBottom: spacing.sm,
   },
   fullInput: {
     marginBottom: spacing.md,
@@ -1277,6 +1366,9 @@ const styles = StyleSheet.create({
   saveButtonDisabled: {
     opacity: 0.6,
   },
+  saveButtonMobile: {
+    padding: spacing.md,
+  },
   saveButtonText: {
     fontSize: 16,
     fontWeight: '600',
@@ -1302,6 +1394,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
     padding: spacing.xl,
     width: '80%',
+    maxWidth: 500,
     maxHeight: '80%',
   },
   modalTitle: {

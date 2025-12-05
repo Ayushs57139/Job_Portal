@@ -37,7 +37,7 @@ const ALL_PERMISSIONS = [
 
 const EmployerEmployeesScreen = ({ navigation }) => {
   const responsive = useResponsive();
-  const { isMobile } = responsive;
+  const { isMobile, isTabletDevice } = responsive;
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -178,7 +178,7 @@ const EmployerEmployeesScreen = ({ navigation }) => {
   return (
     <View style={styles.container}>
       {!isMobile && (
-        <View style={styles.sidebar}>
+        <View style={[styles.sidebar, isTabletDevice && styles.sidebarTablet]}>
           <EmployerSidebar permanent navigation={navigation} role="company" activeKey="employees" />
         </View>
       )}
@@ -199,7 +199,7 @@ const EmployerEmployeesScreen = ({ navigation }) => {
           <Ionicons name="menu" size={24} color={colors.text} />
         </TouchableOpacity>
       )}
-      <View style={[styles.content, isMobile && styles.contentMobile]}>
+      <View style={[styles.content, isMobile && styles.contentMobile, isTabletDevice && styles.contentTablet]}>
         <View style={[styles.headerBar, isMobile && styles.headerBarMobile]}>
           <Text style={[styles.title, isMobile && styles.titleMobile]}>Employee Management</Text>
           <View style={[styles.headerActions, isMobile && styles.headerActionsMobile]}>
@@ -422,6 +422,7 @@ const EmployerEmployeesScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: { flex: 1, flexDirection: 'row', backgroundColor: colors.background },
   sidebar: { width: 280, backgroundColor: colors.sidebarBackground },
+  sidebarTablet: { width: 240 },
   menuButton: {
     position: 'absolute',
     top: spacing.md,
@@ -435,6 +436,9 @@ const styles = StyleSheet.create({
   content: { flex: 1 },
   contentMobile: {
     paddingTop: spacing.xl + 40,
+  },
+  contentTablet: {
+    paddingTop: 0,
   },
   headerBar: { padding: spacing.xl, borderBottomWidth: 1, borderBottomColor: colors.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   headerBarMobile: {

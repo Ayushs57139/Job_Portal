@@ -33,8 +33,15 @@ const getPlatform = () => {
 
 const isWeb = getPlatform().OS === 'web';
 
-const getStyles = (isPhone, isMobile, isTablet, isDesktop, width) => {
+const getStyles = (
+  isXsPhone, isSmallPhone, isPhone, isLargePhone, isMobile,
+  isSmallTablet, isTablet, isLargeTablet, isTabletDevice,
+  isSmallLaptop, isLaptop, isDesktop, isLargeDesktop, isDesktopDevice, width
+) => {
   const isWeb = getPlatform().OS === 'web';
+  // Calculate responsive values
+  const horizontalPadding = isXsPhone ? 8 : isSmallPhone ? 10 : isMobile ? 12 : isSmallTablet ? 16 : isTablet ? 20 : isLargeTablet ? 24 : isSmallLaptop ? 32 : isLaptop ? 40 : 48;
+  
   return StyleSheet.create({
   container: {
     flex: 1,
@@ -672,14 +679,31 @@ const getStyles = (isPhone, isMobile, isTablet, isDesktop, width) => {
 
 const JobsScreen = ({ route }) => {
   const responsive = useResponsive();
-  const isPhone = responsive.width <= 480;
-  const isMobile = responsive.isMobile;
-  const isTablet = responsive.isTablet;
-  const isDesktop = responsive.isDesktop;
+  
+  // Enhanced device detection
+  const { width } = responsive;
+  const isXsPhone = width <= 320;
+  const isSmallPhone = width > 320 && width <= 375;
+  const isPhone = width > 375 && width <= 414;
+  const isLargePhone = width > 414 && width <= 480;
+  const isMobile = width <= 480;
+  const isSmallTablet = width > 480 && width <= 600;
+  const isTablet = width > 600 && width <= 768;
+  const isLargeTablet = width > 768 && width <= 834;
+  const isTabletDevice = width > 480 && width <= 834;
+  const isSmallLaptop = width > 834 && width <= 1024;
+  const isLaptop = width > 1024 && width <= 1200;
+  const isDesktop = width > 1200 && width <= 1440;
+  const isLargeDesktop = width > 1440;
+  const isDesktopDevice = width > 834;
   
   const mainStyles = useMemo(() => {
-    return getStyles(isPhone, isMobile, isTablet, isDesktop, responsive.width);
-  }, [isPhone, isMobile, isTablet, isDesktop, responsive.width]);
+    return getStyles(
+      isXsPhone, isSmallPhone, isPhone, isLargePhone, isMobile,
+      isSmallTablet, isTablet, isLargeTablet, isTabletDevice,
+      isSmallLaptop, isLaptop, isDesktop, isLargeDesktop, isDesktopDevice, width
+    );
+  }, [isXsPhone, isSmallPhone, isPhone, isLargePhone, isMobile, isSmallTablet, isTablet, isLargeTablet, isTabletDevice, isSmallLaptop, isLaptop, isDesktop, isLargeDesktop, isDesktopDevice, width]);
   
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);

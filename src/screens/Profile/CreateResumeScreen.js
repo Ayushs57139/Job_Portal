@@ -10,6 +10,7 @@ import {
   Alert,
   Dimensions,
   Animated,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -19,20 +20,10 @@ import * as Sharing from 'expo-sharing';
 import { colors, typography, spacing, borderRadius, shadows } from '../../styles/theme';
 import Header from '../../components/Header';
 import { RESUME_TEMPLATES } from '../../components/ResumeTemplates';
+import { useResponsive } from '../../utils/responsive';
 
 const { width } = Dimensions.get('window');
-// Safely get Platform - lazy evaluation
-const getPlatform = () => {
-  try {
-    const { Platform } = require('react-native');
-    if (Platform && typeof Platform.OS !== 'undefined') {
-      return Platform;
-    }
-  } catch (e) {}
-  return { OS: 'android' };
-};
-
-const isWeb = getPlatform().OS === 'web';
+const isWebPlatform = Platform.OS === 'web';
 
 // Resume Themes Configuration
 const RESUME_THEMES = [
@@ -91,6 +82,18 @@ const CreateResumeScreen = ({ navigation }) => {
   const viewShotRef = useRef(null);
   const scrollRef = useRef(null);
   const progressAnim = useRef(new Animated.Value(0)).current;
+  
+  // Responsive handling
+  const responsive = useResponsive();
+  const screenWidth = responsive.width;
+  const isPhone = screenWidth <= 480;
+  const isSmallPhone = screenWidth <= 375;
+  const isTablet = screenWidth > 480 && screenWidth <= 768;
+  const isDesktop = screenWidth > 768;
+  const isMobile = screenWidth <= 768;
+  
+  // Dynamic styles
+  const dynamicStyles = getDynamicStyles(isPhone, isSmallPhone, isTablet, isDesktop, isMobile, screenWidth);
   
   // State for resume data
   const [resumeData, setResumeData] = useState({
@@ -444,21 +447,21 @@ const CreateResumeScreen = ({ navigation }) => {
       transparent={true}
       onRequestClose={() => setShowTemplateModal(false)}
     >
-      <View style={styles.modalOverlay}>
+      <View style={dynamicStyles.modalOverlay}>
         <TouchableOpacity 
           style={styles.modalOverlayTouchable}
           activeOpacity={1}
           onPress={() => setShowTemplateModal(false)}
         />
-        <View style={styles.modalContent}>
-          <View style={styles.modalHeader}>
+        <View style={dynamicStyles.modalContent}>
+          <View style={dynamicStyles.modalHeader}>
             <View style={styles.modalHeaderLeft}>
-              <View style={[styles.modalHeaderIcon, { backgroundColor: selectedTheme.accent + '15' }]}>
-                <Ionicons name="color-palette" size={24} color={selectedTheme.accent} />
+              <View style={[dynamicStyles.modalHeaderIcon, { backgroundColor: selectedTheme.accent + '15' }]}>
+                <Ionicons name="color-palette" size={isPhone ? 20 : 24} color={selectedTheme.accent} />
               </View>
-              <View>
-                <Text style={styles.modalTitle}>Choose Template & Theme</Text>
-                <Text style={styles.modalSubtitle}>Select your preferred style to get started</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={dynamicStyles.modalTitle}>Choose Template & Theme</Text>
+                <Text style={dynamicStyles.modalSubtitle}>Select your preferred style to get started</Text>
               </View>
             </View>
             <TouchableOpacity 
@@ -472,20 +475,20 @@ const CreateResumeScreen = ({ navigation }) => {
           <ScrollView 
             style={styles.templateList} 
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.templateListContent}
+            contentContainerStyle={dynamicStyles.templateListContent}
           >
             {/* Themes Section */}
-            <View style={styles.modalSection}>
+            <View style={dynamicStyles.modalSection}>
               <View style={styles.modalSectionHeader}>
-                <Ionicons name="color-palette" size={22} color={selectedTheme.accent} />
-                <Text style={styles.modalSectionTitle}>Choose Theme Color</Text>
+                <Ionicons name="color-palette" size={isPhone ? 18 : 22} color={selectedTheme.accent} />
+                <Text style={dynamicStyles.modalSectionTitle}>Choose Theme Color</Text>
               </View>
-              <View style={styles.themesGrid}>
+              <View style={dynamicStyles.themesGrid}>
                 {RESUME_THEMES.map((theme) => (
                   <TouchableOpacity
                     key={theme.id}
                     style={[
-                      styles.themeCard,
+                      dynamicStyles.themeCard,
                       selectedTheme.id === theme.id && styles.themeCardSelected,
                       selectedTheme.id === theme.id && { 
                         borderColor: theme.accent,
@@ -503,20 +506,20 @@ const CreateResumeScreen = ({ navigation }) => {
                         colors={theme.gradient}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 1 }}
-                        style={styles.themeGradient}
+                        style={dynamicStyles.themeGradient}
                       >
-                        <Text style={styles.themeIcon}>{theme.icon}</Text>
+                        <Text style={dynamicStyles.themeIcon}>{theme.icon}</Text>
                       </LinearGradient>
-                      <View style={styles.themeCardFooter}>
+                      <View style={dynamicStyles.themeCardFooter}>
                         <Text style={[
-                          styles.themeName, 
+                          dynamicStyles.themeName, 
                           selectedTheme.id === theme.id && { color: theme.accent, fontWeight: '700' }
                         ]} numberOfLines={1}>
                           {theme.name}
                         </Text>
                         {selectedTheme.id === theme.id && (
                           <View style={[styles.checkmarkBadge, { backgroundColor: theme.accent }]}>
-                            <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+                            <Ionicons name="checkmark" size={isPhone ? 12 : 14} color="#FFFFFF" />
                           </View>
                         )}
                       </View>
@@ -527,16 +530,16 @@ const CreateResumeScreen = ({ navigation }) => {
             </View>
 
             {/* Templates Section */}
-            <View style={styles.modalSection}>
+            <View style={dynamicStyles.modalSection}>
               <View style={styles.modalSectionHeader}>
-                <Ionicons name="document-text" size={22} color={selectedTheme.accent} />
-                <Text style={styles.modalSectionTitle}>Choose Resume Template</Text>
+                <Ionicons name="document-text" size={isPhone ? 18 : 22} color={selectedTheme.accent} />
+                <Text style={dynamicStyles.modalSectionTitle}>Choose Resume Template</Text>
               </View>
               {RESUME_TEMPLATES.map((template) => (
                 <TouchableOpacity
                   key={template.id}
                   style={[
-                    styles.templateItem,
+                    dynamicStyles.templateItem,
                     selectedTemplate.id === template.id && styles.templateItemSelected,
                     selectedTemplate.id === template.id && { 
                       borderColor: selectedTheme.accent,
@@ -548,7 +551,7 @@ const CreateResumeScreen = ({ navigation }) => {
                   }}
                 >
                   <View style={[
-                    styles.templateIcon, 
+                    dynamicStyles.templateIcon, 
                     { backgroundColor: selectedTheme.accent + '15' },
                     selectedTemplate.id === template.id && { 
                       backgroundColor: selectedTheme.accent + '25',
@@ -556,26 +559,26 @@ const CreateResumeScreen = ({ navigation }) => {
                   ]}>
                     <Ionicons 
                       name="document-text" 
-                      size={28} 
+                      size={isPhone ? 22 : 28} 
                       color={selectedTemplate.id === template.id ? selectedTheme.accent : colors.textSecondary} 
                     />
                   </View>
                   <View style={styles.templateInfo}>
                     <View style={styles.templateInfoHeader}>
                       <Text style={[
-                        styles.templateName,
+                        dynamicStyles.templateName,
                         selectedTemplate.id === template.id && { color: selectedTheme.accent }
                       ]}>
                         {template.name}
                       </Text>
                       {selectedTemplate.id === template.id && (
                         <View style={[styles.checkmarkBadgeSmall, { backgroundColor: selectedTheme.accent }]}>
-                          <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+                          <Ionicons name="checkmark" size={isPhone ? 12 : 14} color="#FFFFFF" />
                         </View>
                       )}
                     </View>
-                    <Text style={[styles.templateCategory, { color: selectedTheme.accent }]}>{template.category}</Text>
-                    <Text style={styles.templateDescription}>{template.description}</Text>
+                    <Text style={[dynamicStyles.templateCategory, { color: selectedTheme.accent }]}>{template.category}</Text>
+                    <Text style={dynamicStyles.templateDescription}>{template.description}</Text>
                   </View>
                 </TouchableOpacity>
               ))}
@@ -583,25 +586,25 @@ const CreateResumeScreen = ({ navigation }) => {
           </ScrollView>
 
           {/* Modal Footer */}
-          <View style={styles.modalFooter}>
+          <View style={dynamicStyles.modalFooter}>
             <TouchableOpacity
-              style={styles.modalCancelButton}
+              style={dynamicStyles.modalCancelButton}
               onPress={() => setShowTemplateModal(false)}
             >
-              <Text style={styles.modalCancelButtonText}>Cancel</Text>
+              <Text style={dynamicStyles.modalCancelButtonText}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.modalContinueButton, { backgroundColor: selectedTheme.accent }]}
+              style={[dynamicStyles.modalContinueButton, { backgroundColor: selectedTheme.accent }]}
               onPress={() => setShowTemplateModal(false)}
             >
               <LinearGradient
                 colors={selectedTheme.gradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
-                style={styles.modalContinueButtonGradient}
+                style={dynamicStyles.modalContinueButtonGradient}
               >
-                <Text style={styles.modalContinueButtonText}>Continue with Selection</Text>
-                <Ionicons name="arrow-forward" size={20} color={colors.textWhite} />
+                <Text style={dynamicStyles.modalContinueButtonText}>Continue with Selection</Text>
+                <Ionicons name="arrow-forward" size={isPhone ? 16 : 20} color={colors.textWhite} />
               </LinearGradient>
             </TouchableOpacity>
           </View>
@@ -891,65 +894,121 @@ const CreateResumeScreen = ({ navigation }) => {
     });
 
     return (
-      <View style={styles.progressContainer}>
-        <View style={styles.progressBar}>
+      <View style={dynamicStyles.progressContainer}>
+        <View style={dynamicStyles.progressBar}>
           <Animated.View style={[styles.progressFill, { width: progressWidth, backgroundColor: selectedTheme.accent }]} />
         </View>
         
-        <View style={styles.stepsIndicator}>
-          {STEPS.map((step, index) => {
-            const isCompleted = completedSteps.includes(index) || isStepCompleted(index);
-            const isActive = index === currentStep;
-            const isPast = index < currentStep;
-            
-            return (
-              <TouchableOpacity
-                key={step.id}
-                style={[
-                  styles.stepIndicatorWrapper,
-                  isActive && { backgroundColor: selectedTheme.accent + '08' }
-                ]}
-                onPress={() => goToStep(index)}
-                activeOpacity={0.7}
-              >
-                <View
+        {isPhone ? (
+          // Mobile: Horizontal scrollable steps
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={dynamicStyles.stepsIndicatorMobile}
+          >
+            {STEPS.map((step, index) => {
+              const isCompleted = completedSteps.includes(index) || isStepCompleted(index);
+              const isActive = index === currentStep;
+              const isPast = index < currentStep;
+              
+              return (
+                <TouchableOpacity
+                  key={step.id}
                   style={[
-                    styles.stepIndicator,
-                    isActive && { 
-                      backgroundColor: selectedTheme.accent, 
-                      borderColor: selectedTheme.accent, 
-                      ...shadows.lg,
-                      transform: [{ scale: 1.1 }],
-                    },
-                    (isPast || isCompleted) && !isActive && styles.stepIndicatorCompleted,
-                    !isActive && !isPast && !isCompleted && styles.stepIndicatorInactive,
+                    dynamicStyles.stepIndicatorWrapperMobile,
+                    isActive && { backgroundColor: selectedTheme.accent + '08' }
                   ]}
+                  onPress={() => goToStep(index)}
+                  activeOpacity={0.7}
                 >
-                  {isPast || (isCompleted && !isActive) ? (
-                    <Ionicons name="checkmark-circle" size={22} color={colors.textWhite} />
-                  ) : (
-                    <Text
-                      style={[
-                        styles.stepNumber,
-                        isActive && styles.stepNumberActive,
-                      ]}
-                    >
-                      {index + 1}
-                    </Text>
-                  )}
-                </View>
-                <Text style={[
-                  styles.stepLabel,
-                  isActive && { color: selectedTheme.accent, fontWeight: '700' },
-                  (isPast || isCompleted) && !isActive && styles.stepLabelCompleted,
-                  !isActive && !isPast && !isCompleted && styles.stepLabelInactive,
-                ]}>
-                  {step.title}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+                  <View
+                    style={[
+                      dynamicStyles.stepIndicator,
+                      isActive && { 
+                        backgroundColor: selectedTheme.accent, 
+                        borderColor: selectedTheme.accent, 
+                      },
+                      (isPast || isCompleted) && !isActive && styles.stepIndicatorCompleted,
+                      !isActive && !isPast && !isCompleted && styles.stepIndicatorInactive,
+                    ]}
+                  >
+                    {isPast || (isCompleted && !isActive) ? (
+                      <Ionicons name="checkmark-circle" size={16} color={colors.textWhite} />
+                    ) : (
+                      <Text style={[dynamicStyles.stepNumber, isActive && dynamicStyles.stepNumberActive]}>
+                        {index + 1}
+                      </Text>
+                    )}
+                  </View>
+                  <Text style={[
+                    dynamicStyles.stepLabel,
+                    isActive && { color: selectedTheme.accent, fontWeight: '700' },
+                    (isPast || isCompleted) && !isActive && styles.stepLabelCompleted,
+                    !isActive && !isPast && !isCompleted && styles.stepLabelInactive,
+                  ]} numberOfLines={1}>
+                    {step.title}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        ) : (
+          // Desktop: Regular row layout
+          <View style={styles.stepsIndicator}>
+            {STEPS.map((step, index) => {
+              const isCompleted = completedSteps.includes(index) || isStepCompleted(index);
+              const isActive = index === currentStep;
+              const isPast = index < currentStep;
+              
+              return (
+                <TouchableOpacity
+                  key={step.id}
+                  style={[
+                    styles.stepIndicatorWrapper,
+                    isActive && { backgroundColor: selectedTheme.accent + '08' }
+                  ]}
+                  onPress={() => goToStep(index)}
+                  activeOpacity={0.7}
+                >
+                  <View
+                    style={[
+                      styles.stepIndicator,
+                      isActive && { 
+                        backgroundColor: selectedTheme.accent, 
+                        borderColor: selectedTheme.accent, 
+                        ...shadows.lg,
+                        transform: [{ scale: 1.1 }],
+                      },
+                      (isPast || isCompleted) && !isActive && styles.stepIndicatorCompleted,
+                      !isActive && !isPast && !isCompleted && styles.stepIndicatorInactive,
+                    ]}
+                  >
+                    {isPast || (isCompleted && !isActive) ? (
+                      <Ionicons name="checkmark-circle" size={22} color={colors.textWhite} />
+                    ) : (
+                      <Text
+                        style={[
+                          styles.stepNumber,
+                          isActive && styles.stepNumberActive,
+                        ]}
+                      >
+                        {index + 1}
+                      </Text>
+                    )}
+                  </View>
+                  <Text style={[
+                    styles.stepLabel,
+                    isActive && { color: selectedTheme.accent, fontWeight: '700' },
+                    (isPast || isCompleted) && !isActive && styles.stepLabelCompleted,
+                    !isActive && !isPast && !isCompleted && styles.stepLabelInactive,
+                  ]}>
+                    {step.title}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
       </View>
     );
   };
@@ -983,22 +1042,22 @@ const CreateResumeScreen = ({ navigation }) => {
         ref={scrollRef}
         style={styles.mainScrollView}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.mainScrollContent}
+        contentContainerStyle={dynamicStyles.mainScrollContent}
         keyboardShouldPersistTaps="handled"
       >
         {/* Content Wrapper */}
-        <View style={styles.contentWrapper}>
+        <View style={dynamicStyles.contentWrapper}>
           {/* Hero Header */}
-          <View style={styles.heroHeader}>
-            <View style={styles.heroContent}>
+          <View style={dynamicStyles.heroHeader}>
+            <View style={dynamicStyles.heroContent}>
               <View style={styles.heroTextContainer}>
-                <View style={styles.heroTitleRow}>
-                  <View style={styles.heroIconContainer}>
-                    <Ionicons name="document-text" size={28} color={selectedTheme.accent} />
+                <View style={dynamicStyles.heroTitleRow}>
+                  <View style={dynamicStyles.heroIconContainer}>
+                    <Ionicons name="document-text" size={isPhone ? 22 : 28} color={selectedTheme.accent} />
                   </View>
                   <View style={styles.heroTextWrapper}>
-                    <Text style={styles.heroTitle}>Create Resume</Text>
-                    <Text style={styles.heroSubtitle}>
+                    <Text style={dynamicStyles.heroTitle}>Create Resume</Text>
+                    <Text style={dynamicStyles.heroSubtitle}>
                       Step {currentStep + 1} of {STEPS.length} - {STEPS[currentStep].description}
                     </Text>
                   </View>
@@ -1006,24 +1065,24 @@ const CreateResumeScreen = ({ navigation }) => {
               </View>
               
               <TouchableOpacity 
-                style={styles.templateButtonHero}
+                style={dynamicStyles.templateButtonHero}
                 onPress={() => setShowTemplateModal(true)}
               >
-                <View style={styles.themeButtonContainer}>
-                  <Ionicons name="color-palette" size={24} color={selectedTheme.accent} />
+                <View style={dynamicStyles.themeButtonContainer}>
+                  <Ionicons name="color-palette" size={isPhone ? 20 : 24} color={selectedTheme.accent} />
                 </View>
               </TouchableOpacity>
             </View>
 
             {/* Current Template & Theme Badges */}
-            <View style={styles.badgesContainer}>
-              <View style={[styles.templateBadge, { borderColor: selectedTheme.accent }]}>
-                <Ionicons name="document-text" size={14} color={selectedTheme.accent} />
-                <Text style={[styles.templateBadgeText, { color: selectedTheme.accent }]}>{selectedTemplate.name}</Text>
+            <View style={dynamicStyles.badgesContainer}>
+              <View style={[dynamicStyles.templateBadge, { borderColor: selectedTheme.accent }]}>
+                <Ionicons name="document-text" size={isPhone ? 12 : 14} color={selectedTheme.accent} />
+                <Text style={[dynamicStyles.templateBadgeText, { color: selectedTheme.accent }]}>{selectedTemplate.name}</Text>
               </View>
-              <View style={[styles.themeBadge, { backgroundColor: selectedTheme.accent + '20' }]}>
-                <Text style={styles.themeBadgeIcon}>{selectedTheme.icon}</Text>
-                <Text style={[styles.themeBadgeText, { color: selectedTheme.accent }]}>{selectedTheme.name}</Text>
+              <View style={[dynamicStyles.themeBadge, { backgroundColor: selectedTheme.accent + '20' }]}>
+                <Text style={dynamicStyles.themeBadgeIcon}>{selectedTheme.icon}</Text>
+                <Text style={[dynamicStyles.themeBadgeText, { color: selectedTheme.accent }]}>{selectedTheme.name}</Text>
               </View>
             </View>
           </View>
@@ -1032,14 +1091,14 @@ const CreateResumeScreen = ({ navigation }) => {
           {renderStepProgress()}
 
           {/* Form Content */}
-          <View style={styles.stepContentCard}>
-            <View style={styles.stepHeader}>
-              <View style={[styles.stepIconContainer, { backgroundColor: selectedTheme.accent + '15' }]}>
-                <Ionicons name={STEPS[currentStep].icon} size={32} color={selectedTheme.accent} />
+          <View style={dynamicStyles.stepContentCard}>
+            <View style={dynamicStyles.stepHeader}>
+              <View style={[dynamicStyles.stepIconContainer, { backgroundColor: selectedTheme.accent + '15' }]}>
+                <Ionicons name={STEPS[currentStep].icon} size={isPhone ? 24 : 32} color={selectedTheme.accent} />
               </View>
               <View style={styles.stepHeaderText}>
-                <Text style={styles.stepTitle}>{STEPS[currentStep].title}</Text>
-                <Text style={styles.stepDescription}>{STEPS[currentStep].description}</Text>
+                <Text style={dynamicStyles.stepTitle}>{STEPS[currentStep].title}</Text>
+                <Text style={dynamicStyles.stepDescription}>{STEPS[currentStep].description}</Text>
               </View>
             </View>
 
@@ -1047,8 +1106,8 @@ const CreateResumeScreen = ({ navigation }) => {
           </View>
 
           {/* Navigation Buttons */}
-          <View style={styles.navigationContainer}>
-          <View style={styles.navigationButtons}>
+          <View style={dynamicStyles.navigationContainer}>
+          <View style={dynamicStyles.navigationButtons}>
             {currentStep > 0 && (
               <TouchableOpacity
                 style={[styles.navButton, { borderColor: selectedTheme.accent }]}
@@ -1092,6 +1151,418 @@ const CreateResumeScreen = ({ navigation }) => {
   );
 };
 
+// Dynamic styles based on screen size
+const getDynamicStyles = (isPhone, isSmallPhone, isTablet, isDesktop, isMobile, screenWidth) => ({
+  mainScrollContent: {
+    flexGrow: 1,
+    padding: isPhone ? spacing.md : isTablet ? spacing.lg : spacing.xl,
+    paddingBottom: spacing.xxl,
+    ...(isDesktop && {
+      alignItems: 'center',
+    }),
+  },
+  contentWrapper: {
+    width: '100%',
+    maxWidth: isDesktop ? 1000 : '100%',
+  },
+  heroHeader: {
+    backgroundColor: colors.cardBackground,
+    borderRadius: isPhone ? borderRadius.lg : borderRadius.xl,
+    padding: isPhone ? spacing.md : spacing.xl,
+    marginBottom: spacing.md,
+    ...shadows.lg,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  heroContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  heroTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: isPhone ? spacing.sm : spacing.md,
+    flex: 1,
+  },
+  heroIconContainer: {
+    width: isPhone ? 40 : 56,
+    height: isPhone ? 40 : 56,
+    borderRadius: isPhone ? borderRadius.lg : borderRadius.xl,
+    backgroundColor: colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  heroTitle: {
+    ...typography.h1,
+    color: colors.text,
+    fontWeight: '800',
+    fontSize: isSmallPhone ? 20 : isPhone ? 24 : isTablet ? 28 : 36,
+  },
+  heroSubtitle: {
+    ...typography.body2,
+    color: colors.textSecondary,
+    fontWeight: '500',
+    fontSize: isPhone ? 12 : 14,
+  },
+  templateButtonHero: {
+    width: isPhone ? 40 : 48,
+    height: isPhone ? 40 : 48,
+    borderRadius: borderRadius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  themeButtonContainer: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  badgesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+    marginTop: spacing.xs,
+  },
+  templateBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    paddingHorizontal: isPhone ? spacing.sm : spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+    gap: spacing.xs,
+  },
+  templateBadgeText: {
+    ...typography.caption,
+    fontWeight: '600',
+    fontSize: isPhone ? 10 : 12,
+  },
+  themeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: isPhone ? spacing.sm : spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.round,
+    gap: spacing.xs,
+  },
+  themeBadgeIcon: {
+    fontSize: isPhone ? 12 : 16,
+  },
+  themeBadgeText: {
+    ...typography.caption,
+    fontWeight: '600',
+    fontSize: isPhone ? 10 : 12,
+  },
+  // Progress container
+  progressContainer: {
+    backgroundColor: colors.cardBackground,
+    borderRadius: isPhone ? borderRadius.lg : borderRadius.xl,
+    paddingVertical: isPhone ? spacing.md : spacing.xl,
+    paddingHorizontal: isPhone ? spacing.sm : spacing.xl,
+    marginBottom: spacing.md,
+    ...shadows.lg,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  progressBar: {
+    height: isPhone ? 4 : 6,
+    backgroundColor: colors.borderLight,
+    borderRadius: borderRadius.sm,
+    marginBottom: isPhone ? spacing.md : spacing.xl,
+    overflow: 'hidden',
+  },
+  stepsIndicatorMobile: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.xs,
+  },
+  stepIndicatorWrapperMobile: {
+    alignItems: 'center',
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    borderRadius: borderRadius.md,
+    minWidth: 70,
+  },
+  stepIndicator: {
+    width: isPhone ? 36 : 50,
+    height: isPhone ? 36 : 50,
+    borderRadius: borderRadius.round,
+    backgroundColor: colors.background,
+    borderWidth: isPhone ? 2 : 3,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: isPhone ? spacing.xs : spacing.md,
+  },
+  stepNumber: {
+    ...typography.h6,
+    color: colors.textSecondary,
+    fontWeight: '700',
+    fontSize: isPhone ? 12 : 16,
+  },
+  stepNumberActive: {
+    color: colors.textWhite,
+    fontSize: isPhone ? 14 : 18,
+    fontWeight: '800',
+  },
+  stepLabel: {
+    ...typography.body2,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    fontSize: isPhone ? 10 : 13,
+    fontWeight: '500',
+  },
+  // Step content card
+  stepContentCard: {
+    backgroundColor: colors.cardBackground,
+    borderRadius: isPhone ? borderRadius.lg : borderRadius.xl,
+    padding: isPhone ? spacing.md : spacing.xl,
+    marginBottom: spacing.md,
+    ...shadows.lg,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  stepHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: isPhone ? spacing.md : spacing.xl,
+    paddingBottom: isPhone ? spacing.md : spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderLight,
+  },
+  stepIconContainer: {
+    width: isPhone ? 48 : 64,
+    height: isPhone ? 48 : 64,
+    borderRadius: isPhone ? borderRadius.lg : borderRadius.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: isPhone ? spacing.sm : spacing.md,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  stepTitle: {
+    ...typography.h4,
+    color: colors.text,
+    fontWeight: '700',
+    marginBottom: spacing.xs,
+    fontSize: isPhone ? 18 : 22,
+  },
+  stepDescription: {
+    ...typography.body2,
+    color: colors.textSecondary,
+    fontSize: isPhone ? 12 : 14,
+  },
+  // Navigation
+  navigationContainer: {
+    backgroundColor: colors.cardBackground,
+    borderRadius: isPhone ? borderRadius.lg : borderRadius.xl,
+    paddingVertical: isPhone ? spacing.md : spacing.lg,
+    paddingHorizontal: isPhone ? spacing.md : spacing.xl,
+    marginTop: spacing.sm,
+    ...shadows.md,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  navigationButtons: {
+    flexDirection: 'row',
+    gap: isPhone ? spacing.sm : spacing.md,
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: isPhone ? spacing.sm : spacing.md,
+  },
+  modalContent: {
+    backgroundColor: colors.cardBackground,
+    borderRadius: isPhone ? borderRadius.lg : borderRadius.xl,
+    maxHeight: '95%',
+    width: isPhone ? '100%' : isTablet ? '90%' : 700,
+    maxWidth: isPhone ? '100%' : 700,
+    ...shadows.xl,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    overflow: 'hidden',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    padding: isPhone ? spacing.md : spacing.xl,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderLight,
+    backgroundColor: colors.background,
+  },
+  modalHeaderIcon: {
+    width: isPhone ? 36 : 48,
+    height: isPhone ? 36 : 48,
+    borderRadius: borderRadius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  modalTitle: {
+    ...typography.h4,
+    fontWeight: '800',
+    color: colors.text,
+    marginBottom: spacing.xs,
+    fontSize: isSmallPhone ? 16 : isPhone ? 18 : 24,
+  },
+  modalSubtitle: {
+    ...typography.body2,
+    color: colors.textSecondary,
+    fontSize: isPhone ? 11 : 13,
+  },
+  modalSection: {
+    marginBottom: isPhone ? spacing.md : spacing.xl,
+    paddingHorizontal: isPhone ? spacing.md : spacing.xl,
+  },
+  modalSectionTitle: {
+    ...typography.h5,
+    fontWeight: '700',
+    color: colors.text,
+    fontSize: isPhone ? 14 : 18,
+  },
+  templateListContent: {
+    paddingVertical: isPhone ? spacing.sm : spacing.lg,
+  },
+  themesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: isPhone ? spacing.sm : spacing.md,
+    justifyContent: 'space-between',
+  },
+  themeCard: {
+    width: isSmallPhone ? '31%' : isPhone ? '31%' : '30%',
+    minWidth: isPhone ? 90 : 140,
+    borderRadius: isPhone ? borderRadius.lg : borderRadius.xl,
+    overflow: 'hidden',
+    ...shadows.sm,
+    borderWidth: 2,
+    borderColor: colors.borderLight,
+    backgroundColor: colors.background,
+  },
+  themeGradient: {
+    width: '100%',
+    aspectRatio: isPhone ? 1 : 1.2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  themeIcon: {
+    fontSize: isPhone ? 24 : 40,
+  },
+  themeCardFooter: {
+    backgroundColor: colors.background,
+    padding: isPhone ? spacing.sm : spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  themeName: {
+    ...typography.body2,
+    color: colors.text,
+    fontWeight: '600',
+    fontSize: isSmallPhone ? 9 : isPhone ? 10 : 13,
+    flex: 1,
+  },
+  templateItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: isPhone ? spacing.md : spacing.lg,
+    borderRadius: isPhone ? borderRadius.lg : borderRadius.xl,
+    marginBottom: spacing.sm,
+    backgroundColor: colors.background,
+    borderWidth: 2,
+    borderColor: colors.borderLight,
+    marginHorizontal: 0,
+  },
+  templateIcon: {
+    width: isPhone ? 48 : 64,
+    height: isPhone ? 48 : 64,
+    borderRadius: isPhone ? borderRadius.lg : borderRadius.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: isPhone ? spacing.sm : spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  templateName: {
+    ...typography.h6,
+    fontWeight: '700',
+    color: colors.text,
+    fontSize: isPhone ? 14 : 16,
+    flex: 1,
+  },
+  templateCategory: {
+    ...typography.body2,
+    marginTop: spacing.xs,
+    fontWeight: '600',
+    fontSize: isPhone ? 10 : 12,
+  },
+  templateDescription: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+    fontSize: isPhone ? 10 : 12,
+    lineHeight: isPhone ? 14 : 18,
+  },
+  modalFooter: {
+    flexDirection: isPhone ? 'column' : 'row',
+    gap: isPhone ? spacing.sm : spacing.md,
+    padding: isPhone ? spacing.md : spacing.xl,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderLight,
+    backgroundColor: colors.background,
+  },
+  modalCancelButton: {
+    flex: isPhone ? 0 : 1,
+    paddingVertical: isPhone ? spacing.sm : spacing.md,
+    borderRadius: borderRadius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.background,
+    borderWidth: 2,
+    borderColor: colors.borderLight,
+  },
+  modalCancelButtonText: {
+    ...typography.button,
+    color: colors.text,
+    fontWeight: '600',
+    fontSize: isPhone ? 13 : 15,
+  },
+  modalContinueButton: {
+    flex: isPhone ? 0 : 2,
+    borderRadius: borderRadius.lg,
+    overflow: 'hidden',
+    ...shadows.md,
+  },
+  modalContinueButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: isPhone ? spacing.sm : spacing.md,
+  },
+  modalContinueButtonText: {
+    ...typography.button,
+    color: colors.textWhite,
+    fontWeight: '700',
+    fontSize: isPhone ? 13 : 15,
+  },
+});
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -1102,15 +1573,15 @@ const styles = StyleSheet.create({
   },
   mainScrollContent: {
     flexGrow: 1,
-    padding: isWeb ? spacing.xl : spacing.lg,
+    padding: isWebPlatform ? spacing.xl : spacing.lg,
     paddingBottom: spacing.xxl,
-    ...(isWeb && {
+    ...(isWebPlatform && {
       alignItems: 'center',
     }),
   },
   contentWrapper: {
     width: '100%',
-    maxWidth: isWeb ? 1000 : '100%',
+    maxWidth: isWebPlatform ? 1000 : '100%',
   },
   
   // Hero Header Styles
@@ -1157,7 +1628,7 @@ const styles = StyleSheet.create({
     ...typography.h1,
     color: colors.text,
     fontWeight: '800',
-    fontSize: isWeb ? 36 : 32,
+    fontSize: isWebPlatform ? 36 : 32,
   },
   heroSubtitle: {
     ...typography.body1,
@@ -1531,7 +2002,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: isWeb ? 0 : spacing.md,
+    padding: isWebPlatform ? 0 : spacing.md,
   },
   modalOverlayTouchable: {
     ...StyleSheet.absoluteFillObject,
@@ -1539,9 +2010,9 @@ const styles = StyleSheet.create({
   modalContent: {
     backgroundColor: colors.cardBackground,
     borderRadius: borderRadius.xl,
-    maxHeight: isWeb ? '90vh' : '90%',
-    width: isWeb ? 700 : '100%',
-    maxWidth: isWeb ? 700 : '100%',
+    maxHeight: isWebPlatform ? '90vh' : '90%',
+    width: isWebPlatform ? 700 : '100%',
+    maxWidth: isWebPlatform ? 700 : '100%',
     ...shadows.xl,
     borderWidth: 1,
     borderColor: colors.borderLight,
@@ -1576,7 +2047,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: colors.text,
     marginBottom: spacing.xs,
-    fontSize: isWeb ? 24 : 20,
+    fontSize: isWebPlatform ? 24 : 20,
   },
   modalSubtitle: {
     ...typography.body2,
@@ -1613,11 +2084,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.md,
-    justifyContent: isWeb ? 'flex-start' : 'space-between',
+    justifyContent: isWebPlatform ? 'flex-start' : 'space-between',
   },
   themeCard: {
-    width: isWeb ? '30%' : '47%',
-    minWidth: isWeb ? 140 : 'auto',
+    width: isWebPlatform ? '30%' : '47%',
+    minWidth: isWebPlatform ? 140 : 'auto',
     borderRadius: borderRadius.xl,
     overflow: 'hidden',
     ...shadows.sm,
