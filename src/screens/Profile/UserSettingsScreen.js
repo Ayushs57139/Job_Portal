@@ -87,12 +87,24 @@ const UserSettingsScreen = ({ navigation }) => {
 
   const loadAccountSettings = async () => {
     try {
-      // Load user settings if available
-      const user = await api.getCurrentUserFromStorage();
-      // You can fetch settings from API if you have a settings endpoint
-      // For now, using default values
+      const response = await api.getUserPreferences();
+      if (response.success && response.preferences) {
+        const prefs = response.preferences;
+        // Map backend structure to frontend state
+        // emailNotifications is true if either jobAlerts or applicationUpdates email is enabled
+        const emailNotifications = (prefs.email?.jobAlerts && prefs.email?.applicationUpdates) || 
+                                  (prefs.email?.jobAlerts || prefs.email?.applicationUpdates);
+        
+        setAccountSettings({
+          emailNotifications: emailNotifications || false,
+          jobAlerts: prefs.email?.jobAlerts ?? prefs.push?.jobAlerts ?? true,
+          applicationUpdates: prefs.email?.applicationUpdates ?? prefs.push?.applicationUpdates ?? true,
+          marketingEmails: prefs.email?.marketing ?? false
+        });
+      }
     } catch (error) {
       console.error('Error loading account settings:', error);
+      // Keep default values on error
     }
   };
 
@@ -203,12 +215,21 @@ const UserSettingsScreen = ({ navigation }) => {
   const handleSaveAccountSettings = async () => {
     setSaving(true);
     try {
-      // Save account settings - implement API call if you have settings endpoint
-      // await api.updateAccountSettings(accountSettings);
-      Alert.alert('Success', 'Settings saved successfully');
+      const response = await api.updateUserPreferences({
+        emailNotifications: accountSettings.emailNotifications,
+        jobAlerts: accountSettings.jobAlerts,
+        applicationUpdates: accountSettings.applicationUpdates,
+        marketingEmails: accountSettings.marketingEmails
+      });
+
+      if (response.success) {
+        Alert.alert('Success', response.message || 'Settings saved successfully');
+      } else {
+        Alert.alert('Error', response.message || 'Failed to save settings');
+      }
     } catch (error) {
       console.error('Error saving settings:', error);
-      Alert.alert('Error', 'Failed to save settings');
+      Alert.alert('Error', error.message || 'Failed to save settings');
     } finally {
       setSaving(false);
     }

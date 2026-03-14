@@ -30,6 +30,7 @@ const Input = ({
   multiline = false,
   numberOfLines = 1,
   keyboardType = 'default',
+  required = false,
   style,
   ...props
 }) => {
@@ -38,7 +39,12 @@ const Input = ({
 
   return (
     <View style={[styles.container, style]}>
-      {label && <Text style={styles.label}>{label}</Text>}
+      {label && (
+        <Text style={styles.label}>
+          {label}
+          {required && <Text style={styles.required}> *</Text>}
+        </Text>
+      )}
       
       <View style={styles.inputContainer}>
         {icon && (
@@ -151,6 +157,11 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.error,
     fontSize: isWideScreen ? 12 : 11,
+  },
+  required: {
+    color: colors.error,
+    fontSize: isWideScreen ? 15 : 14,
+    fontWeight: 'bold',
   },
 });
 

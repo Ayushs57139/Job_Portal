@@ -8,63 +8,172 @@ const { auth } = require('../middleware/auth');
 const router = express.Router();
 
 // @route   GET /api/company
-// @desc    Get all companies (public)
+// @desc    Get all companies and consultancies (public)
 // @access  Public
 router.get('/', async (req, res) => {
   try {
+    console.log('🔍 GET /api/company - Companies page accessed');
     const { search, industry, page = 1, limit = 20 } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    // Build query for registered companies
+    // Build query for registered companies and consultancies
+    // Handle both old format (userType: 'company'/'consultancy') and new format (userType: 'employer' with employerType)
+    // Use $and to properly combine the conditions
     let query = {
-      userType: 'employer',
-      employerType: 'company',
-      isActive: true
+      $and: [
+        {
+          $or: [
+            // New format: userType: 'employer' with employerType
+            {
+              userType: 'employer',
+              employerType: { $in: ['company', 'consultancy'] }
+            },
+            // Old format: userType: 'company' or 'consultancy'
+            {
+              userType: { $in: ['company', 'consultancy'] }
+            }
+          ]
+        },
+        {
+          // Only exclude companies where isActive is explicitly set to false
+          // Include all others (true, null, undefined, not set)
+          $or: [
+            { isActive: { $ne: false } },
+            { isActive: { $exists: false } }
+          ]
+        }
+      ]
     };
+
+    // Build additional filters
+    const additionalFilters = [];
 
     // Add search filter
     if (search) {
-      query.$or = [
-        { 'profile.company.name': { $regex: search, $options: 'i' } },
-        { 'profile.company.description': { $regex: search, $options: 'i' } }
-      ];
+      additionalFilters.push({
+        $or: [
+          { 'profile.company.name': { $regex: search, $options: 'i' } },
+          { 'profile.company.description': { $regex: search, $options: 'i' } },
+          { 'company.name': { $regex: search, $options: 'i' } }, // Fallback for old data structure
+          { firstName: { $regex: search, $options: 'i' } }, // Search by user name
+          { lastName: { $regex: search, $options: 'i' } } // Search by user name
+        ]
+      });
     }
 
     // Add industry filter
     if (industry && industry !== 'all') {
-      query['profile.company.industry'] = { $regex: industry, $options: 'i' };
+      additionalFilters.push({
+        $or: [
+          { 'profile.company.industry': { $regex: industry, $options: 'i' } },
+          { 'company.industry': { $regex: industry, $options: 'i' } } // Fallback
+        ]
+      });
     }
 
-    // Get registered companies
+    // Combine all filters - merge with existing $and array, don't replace it
+    if (additionalFilters.length > 0) {
+      query.$and = [...query.$and, ...additionalFilters];
+    }
+
+    // Debug: Log the query to see what we're searching for
+    console.log('📋 Companies query:', JSON.stringify(query, null, 2));
+
+    // Get registered companies and consultancies
     const companies = await User.find(query)
-      .select('profile.company firstName lastName isEmployerVerified verificationStatus createdAt')
+      .select('profile.company company employerType userType firstName lastName companyName consultancyName isEmployerVerified verificationStatus createdAt isActive')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit))
       .lean();
 
+    // Debug: Log how many companies were found
+    console.log(`✅ Found ${companies.length} companies (showing page ${page}, limit ${limit})`);
+
     // Get total count
     const totalCompanies = await User.countDocuments(query);
+    
+    // Debug: Log total count
+    console.log(`📊 Total companies in database matching query: ${totalCompanies}`);
+    
+    // Also log a sample of company IDs and names for debugging
+    if (companies.length > 0) {
+      console.log('📝 Sample companies found:', companies.slice(0, 3).map(c => ({
+        id: c._id,
+        name: c.profile?.company?.name || c.company?.name || `${c.firstName} ${c.lastName}`,
+        userType: c.userType,
+        employerType: c.employerType,
+        isActive: c.isActive
+      })));
+    } else {
+      console.log('⚠️  No companies found! Checking database...');
+      // Quick check: count all employers
+      const allEmployers = await User.countDocuments({ 
+        $or: [
+          { userType: 'employer', employerType: { $in: ['company', 'consultancy'] } },
+          { userType: { $in: ['company', 'consultancy'] } }
+        ]
+      });
+      console.log(`📊 Total employers in database (all): ${allEmployers}`);
+    }
 
     // Format companies data
     const formattedCompanies = await Promise.all(companies.map(async (company) => {
-      // Get job count for this company
+      // Determine employer type - handle both old and new formats
+      const employerType = company.employerType || 
+                         (company.userType === 'company' ? 'company' : 
+                          company.userType === 'consultancy' ? 'consultancy' : null);
+      
+      // Get company data from profile.company or fallback to company field
+      const companyData = company.profile?.company || company.company || {};
+      
+      // Get job count for this company/consultancy
       const jobCount = await Job.countDocuments({ 
         postedBy: company._id,
         status: 'active'
       });
 
+      // Format location
+      let location = '';
+      if (companyData.location) {
+        if (typeof companyData.location === 'object') {
+          location = [
+            companyData.location.city,
+            companyData.location.state,
+            companyData.location.country
+          ].filter(Boolean).join(', ') || companyData.location.locality || '';
+        } else {
+          location = companyData.location;
+        }
+      }
+
+      // Get company name - try multiple sources
+      const companyName = companyData.name || 
+                         company.companyName || 
+                         company.consultancyName ||
+                         `${company.firstName} ${company.lastName}`;
+
       return {
         _id: company._id,
-        name: company.profile?.company?.name || `${company.firstName} ${company.lastName}`,
-        industry: company.profile?.company?.industry || 'Technology',
-        website: company.profile?.company?.website || '',
-        size: company.profile?.company?.size || 'Not specified',
-        description: company.profile?.company?.description || 'Leading company in the industry',
-        location: company.profile?.company?.location || '',
+        name: companyName,
+        industry: companyData.industry || 'Technology',
+        website: companyData.website || '',
+        size: companyData.size || 'Not specified',
+        description: companyData.description || 'Leading company in the industry',
+        location: location || 'Multiple locations',
+        companyType: companyData.companyType || (employerType === 'consultancy' ? 'Consultancy' : 'Company'),
+        employeeCount: companyData.company?.employeeCount || companyData.consultancy?.teamSize || companyData.size || 'Not specified',
+        establishedYear: companyData.establishedYear || companyData.consultancy?.establishedYear || companyData.company?.foundedYear || '',
+        logo: companyData.logo || '',
+        socialMediaProfile: companyData.socialMediaProfile || '',
+        socialMediaLink: companyData.socialMediaLink || '',
         openPositions: jobCount,
         isEmployerVerified: company.isEmployerVerified,
-        verificationStatus: company.verificationStatus
+        verificationStatus: company.verificationStatus,
+        employerType: employerType,
+        profile: {
+          company: companyData
+        }
       };
     }));
 
@@ -78,8 +187,13 @@ router.get('/', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Get companies error:', error);
-    res.status(500).json({ message: 'Server error while fetching companies' });
+    console.error('❌ Error fetching companies:', error);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ 
+      success: false,
+      message: 'Server error while fetching companies',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 
@@ -299,13 +413,34 @@ router.get('/applications', auth, async (req, res) => {
     }
 
     const applications = await Application.find({ employer: req.user._id })
-      .populate('applicant', 'firstName lastName email profile')
-      .populate('job', 'title department')
+      .populate('user', 'firstName lastName email phone userId')
+      .populate('job', 'title company location salary type employmentType jobType createdAt')
       .sort({ appliedAt: -1 });
 
     res.json({
       success: true,
-      applications
+      applications: applications.map(app => ({
+        id: app._id,
+        _id: app._id,
+        user: app.user,
+        job: app.job,
+        status: app.status || 'pending',
+        appliedAt: app.appliedAt,
+        updatedAt: app.updatedAt,
+        fullName: app.fullName,
+        email: app.email,
+        mobileNumber: app.mobileNumber,
+        currentJobTitle: app.currentJobTitle,
+        experienceLevel: app.experienceLevel,
+        keySkills: app.keySkills,
+        jobProfileDescription: app.jobProfileDescription,
+        educationLevel: app.educationLevel,
+        course: app.course,
+        currentLocation: app.currentLocation,
+        noticePeriod: app.noticePeriod,
+        yearsOfExperience: app.yearsOfExperience,
+        currentSalary: app.currentSalary
+      }))
     });
   } catch (error) {
     console.error('Get applications error:', error);

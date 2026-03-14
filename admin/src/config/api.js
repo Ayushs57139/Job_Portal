@@ -253,6 +253,43 @@ class JobWalaAPI {
               };
             }
 
+            // Handle rate limiting (429 Too Many Requests)
+            if (response.status === 429) {
+              // Extract retry-after header if available
+              const retryAfter = response.headers.get('Retry-After');
+              const retryAfterSeconds = retryAfter ? parseInt(retryAfter, 10) : null;
+              
+              // Calculate wait time (default to 60 seconds if no header, or use header value)
+              const waitTime = retryAfterSeconds ? retryAfterSeconds * 1000 : 60000;
+              
+              // Format wait time for user message
+              const waitTimeMinutes = Math.ceil(waitTime / 60000);
+              const waitTimeMessage = retryAfterSeconds 
+                ? `${retryAfterSeconds} seconds` 
+                : `${waitTimeMinutes} minute${waitTimeMinutes > 1 ? 's' : ''}`;
+              
+              // Create user-friendly error message
+              const rateLimitMessage = `Too many requests. Please wait ${waitTimeMessage} before trying again.`;
+              
+              // If not last attempt and we have a retry-after time, wait and retry
+              if (attempt < maxRetries && retryAfterSeconds && retryAfterSeconds < 300) {
+                // Only retry if wait time is less than 5 minutes
+                console.warn(`Rate limit hit (attempt ${attempt}/${maxRetries}), waiting ${waitTimeMessage} before retry...`, {
+                  endpoint,
+                  retryAfter: retryAfterSeconds
+                });
+                await new Promise(resolve => setTimeout(resolve, waitTime));
+                continue;
+              }
+              
+              // Create enhanced error with rate limit info
+              const rateLimitError = new Error(rateLimitMessage);
+              rateLimitError.status = 429;
+              rateLimitError.retryAfter = retryAfterSeconds;
+              rateLimitError.isRateLimit = true;
+              throw rateLimitError;
+            }
+
             // Handle authentication errors
             if (response.status === 401 || response.status === 403) {
               // Clear token and redirect to login
@@ -333,7 +370,10 @@ class JobWalaAPI {
           // Provide user-friendly error messages
           let userMessage = 'An error occurred. Please try again.';
           
-          if (error.message.includes('timeout')) {
+          if (error.isRateLimit || error.status === 429) {
+            // Rate limit error - use the message from the error
+            userMessage = error.message || 'Too many requests. Please wait a few minutes before trying again.';
+          } else if (error.message.includes('timeout')) {
             userMessage = 'Request timed out. Please check your internet connection and try again.';
           } else if (error.message.includes('Network request failed') || error.message.includes('Failed to fetch')) {
             userMessage = 'Network error. Please check your internet connection and try again.';
@@ -524,6 +564,42 @@ class JobWalaAPI {
     return await this.request(`/jobs/${id}`, {
       method: 'DELETE',
     });
+  }
+
+  async updateJobLabels(id, labels) {
+    return await this.request(`/jobs/${id}/labels`, {
+      method: 'PATCH',
+      body: JSON.stringify(labels),
+    });
+  }
+
+  async bulkUpdateJobLabels(jobIds, labels) {
+    return await this.request(`/jobs/bulk/labels`, {
+      method: 'PATCH',
+      body: JSON.stringify({ jobIds, labels }),
+    });
+  }
+
+  async assignApplicantsToJob(jobId, applicantIds) {
+    return await this.request(`/jobs/${jobId}/assign-applicants`, {
+      method: 'POST',
+      body: JSON.stringify({ applicantIds }),
+    });
+  }
+
+  async inviteCandidatesToJob(jobId, candidateIds, message) {
+    return await this.request(`/jobs/${jobId}/invite-candidates`, {
+      method: 'POST',
+      body: JSON.stringify({ candidateIds, message }),
+    });
+  }
+
+  async getJobInvitations(jobId) {
+    return await this.request(`/jobs/${jobId}/invitations`);
+  }
+
+  async getUninvitedCandidates(jobId, limit = 10000) {
+    return await this.request(`/jobs/${jobId}/uninvited-candidates?limit=${limit}`);
   }
 
   async getMyJobs() {
@@ -768,6 +844,18 @@ class JobWalaAPI {
     return await this.request('/auth/change-password', {
       method: 'POST',
       body: JSON.stringify(passwordData),
+    });
+  }
+
+  // User Preferences APIs
+  async getUserPreferences() {
+    return await this.request('/users/preferences');
+  }
+
+  async updateUserPreferences(preferences) {
+    return await this.request('/users/preferences', {
+      method: 'PUT',
+      body: JSON.stringify(preferences),
     });
   }
 
@@ -1355,23 +1443,28 @@ class JobWalaAPI {
   // ==================== SOCIAL UPDATES ADMIN APIs ====================
   
   async getAdminSocialUpdates(filters = {}) {
-    const params = new URLSearchParams(filters);
-    return await this.request(`/social-updates/public/all?${params}`);
+    const params = new URLSearchParams();
+    Object.keys(filters).forEach(key => {
+      if (filters[key] !== null && filters[key] !== undefined && filters[key] !== '') {
+        params.append(key, filters[key]);
+      }
+    });
+    return await this.request(`/social-updates/admin/all?${params}`);
   }
 
   async getSocialUpdateStats() {
-    // Calculate stats from recent data
     try {
-      const response = await this.request('/social-updates/public/all?limit=1000');
+      // Get all social updates for stats calculation
+      const response = await this.request('/social-updates/admin/all?limit=1000');
       const updates = response.socialUpdates || [];
       
       return {
-        total: response.pagination?.totalItems || 0,
-        published: updates.filter(u => u.status === 'published').length,
-        draft: updates.filter(u => u.status === 'draft').length,
-        totalLikes: updates.reduce((sum, u) => sum + (u.engagement?.likes || 0), 0),
-        totalComments: updates.reduce((sum, u) => sum + (u.engagement?.comments || 0), 0),
-        totalShares: updates.reduce((sum, u) => sum + (u.engagement?.shares || 0), 0),
+        total: response.pagination?.totalItems || updates.length,
+        published: updates.filter(u => u.status === 'published' || u.isPublished).length,
+        draft: updates.filter(u => u.status === 'draft' || (!u.isPublished && u.status !== 'archived')).length,
+        totalLikes: updates.reduce((sum, u) => sum + (u.engagement?.likes || u.likes?.length || 0), 0),
+        totalComments: updates.reduce((sum, u) => sum + (u.engagement?.comments || u.comments?.length || 0), 0),
+        totalShares: updates.reduce((sum, u) => sum + (u.engagement?.shares || u.shares?.length || 0), 0),
       };
     } catch (error) {
       console.error('Error getting stats:', error);
@@ -1395,6 +1488,175 @@ class JobWalaAPI {
 
   async deleteSocialUpdate(id) {
     return await this.request(`/social-updates/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async createSocialUpdate(formData) {
+    const url = `${this.baseURL}/social-updates`;
+    const headers = {};
+    if (this.token) {
+      headers['Authorization'] = `Bearer ${this.token}`;
+    }
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+    
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to create social update');
+    }
+    
+    return data;
+  }
+
+  async updateSocialUpdate(id, formData) {
+    const url = `${this.baseURL}/social-updates/${id}`;
+    const headers = {};
+    if (this.token) {
+      headers['Authorization'] = `Bearer ${this.token}`;
+    }
+    
+    const response = await fetch(url, {
+      method: 'PUT',
+      headers,
+      body: formData,
+    });
+    
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to update social update');
+    }
+    
+    return data;
+  }
+
+  async likeSocialUpdate(id, likeType = 'thumb') {
+    return await this.request(`/social-updates/${id}/like`, {
+      method: 'POST',
+      body: JSON.stringify({ likeType }),
+    });
+  }
+
+  async getLikeCounts(id) {
+    return await this.request(`/social-updates/${id}/like-counts`);
+  }
+
+  async commentOnSocialUpdate(id, content, isSuggested = false, suggestionId = null) {
+    return await this.request(`/social-updates/${id}/comment`, {
+      method: 'POST',
+      body: JSON.stringify({ content, isSuggested, suggestionId }),
+    });
+  }
+
+  async likeComment(postId, commentId, likeType = 'thumb') {
+    return await this.request(`/social-updates/${postId}/comment/${commentId}/like`, {
+      method: 'POST',
+      body: JSON.stringify({ likeType }),
+    });
+  }
+
+  async replyToComment(postId, commentId, content) {
+    return await this.request(`/social-updates/${postId}/comment/${commentId}/reply`, {
+      method: 'POST',
+      body: JSON.stringify({ content }),
+    });
+  }
+
+  async shareSocialUpdate(id, platform) {
+    return await this.request(`/social-updates/${id}/share`, {
+      method: 'POST',
+      body: JSON.stringify({ platform }),
+    });
+  }
+
+  async repostSocialUpdate(id, repostType = 'simple', thoughts = '') {
+    return await this.request(`/social-updates/${id}/repost`, {
+      method: 'POST',
+      body: JSON.stringify({ repostType, thoughts }),
+    });
+  }
+
+  // ==================== CONNECTION APIs ====================
+  
+  async sendConnectionRequest(recipientId, message = '', connectionType = 'professional') {
+    return await this.request('/connections/send', {
+      method: 'POST',
+      body: JSON.stringify({ recipientId, message, connectionType }),
+    });
+  }
+
+  async getReceivedConnectionRequests(status = 'pending', page = 1, limit = 20) {
+    return await this.request(`/connections/requests/received?status=${status}&page=${page}&limit=${limit}`);
+  }
+
+  async respondToConnectionRequest(connectionId, action, suggestedReply = null, replyMessage = '') {
+    return await this.request(`/connections/respond/${connectionId}`, {
+      method: 'POST',
+      body: JSON.stringify({ action, suggestedReply, replyMessage }),
+    });
+  }
+
+  async getMyConnections(page = 1, limit = 50, search = '') {
+    return await this.request(`/connections/my-connections?page=${page}&limit=${limit}&search=${search}`);
+  }
+
+  // ==================== FOLLOW APIs ====================
+  
+  async followUser(userId, notifications = null) {
+    return await this.request(`/follows/follow/${userId}`, {
+      method: 'POST',
+      body: JSON.stringify({ notifications }),
+    });
+  }
+
+  async unfollowUser(userId) {
+    return await this.request(`/follows/unfollow/${userId}`, {
+      method: 'POST',
+    });
+  }
+
+  async isFollowing(userId) {
+    return await this.request(`/follows/is-following/${userId}`);
+  }
+
+  async getFollowCounts(userId = null) {
+    const userParam = userId ? `/${userId}` : '';
+    return await this.request(`/follows/counts${userParam}`);
+  }
+
+  // ==================== COMMENT SUGGESTION APIs ====================
+  
+  async getCommentSuggestionsForUser(postType = 'all', limit = 10) {
+    return await this.request(`/comment-suggestions/for-user?postType=${postType}&limit=${limit}`);
+  }
+
+  async getAllCommentSuggestions(filters = {}) {
+    const params = new URLSearchParams(filters);
+    return await this.request(`/comment-suggestions/admin/all?${params}`);
+  }
+
+  async createCommentSuggestion(data) {
+    return await this.request('/comment-suggestions/admin/create', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateCommentSuggestion(id, data) {
+    return await this.request(`/comment-suggestions/admin/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteCommentSuggestion(id) {
+    return await this.request(`/comment-suggestions/admin/${id}`, {
       method: 'DELETE',
     });
   }
@@ -1535,6 +1797,208 @@ class JobWalaAPI {
 
   async getPopularJobRoles(limit = 12) {
     return await this.request(`/job-roles/popular?limit=${limit}`);
+  }
+
+  // ==================== LOGIN SECURITY APIs ====================
+  
+  async getLoginStatistics(filters = {}) {
+    const params = new URLSearchParams(filters);
+    return await this.request(`/admin/login-security/statistics?${params}`);
+  }
+
+  async getLoginLogs(filters = {}) {
+    const params = new URLSearchParams(filters);
+    return await this.request(`/admin/login-security/logs?${params}`);
+  }
+
+  async getLoginIpsList(filters = {}) {
+    const params = new URLSearchParams(filters);
+    return await this.request(`/admin/login-security/ips?${params}`);
+  }
+
+  async getLoginCountriesList(filters = {}) {
+    const params = new URLSearchParams(filters);
+    return await this.request(`/admin/login-security/countries?${params}`);
+  }
+
+  async getWrongUsernamesList(filters = {}) {
+    const params = new URLSearchParams(filters);
+    return await this.request(`/admin/login-security/wrong-usernames?${params}`);
+  }
+
+  async getBlockedIpsList() {
+    return await this.request('/admin/login-security/blocked-ips');
+  }
+
+  async getBlockedUsernamesList() {
+    return await this.request('/admin/login-security/blocked-usernames');
+  }
+
+  async blockIpAddress(ip, reason = '') {
+    return await this.request('/admin/login-security/block-ip', {
+      method: 'POST',
+      body: JSON.stringify({ ip, reason }),
+    });
+  }
+
+  async unblockIpAddress(ip) {
+    return await this.request('/admin/login-security/unblock-ip', {
+      method: 'POST',
+      body: JSON.stringify({ ip }),
+    });
+  }
+
+  async blockUsername(username, reason = '') {
+    return await this.request('/admin/login-security/block-username', {
+      method: 'POST',
+      body: JSON.stringify({ username, reason }),
+    });
+  }
+
+  async unblockUsername(username) {
+    return await this.request('/admin/login-security/unblock-username', {
+      method: 'POST',
+      body: JSON.stringify({ username }),
+    });
+  }
+
+  async getLoginSecuritySettings() {
+    return await this.request('/admin/login-security/settings');
+  }
+
+  async updateLoginSecuritySettings(settings) {
+    return await this.request('/admin/login-security/settings', {
+      method: 'PUT',
+      body: JSON.stringify(settings),
+    });
+  }
+
+  // ==================== JOB EVENTS APIs ====================
+  
+  async getJobEvents(filters = {}) {
+    const params = new URLSearchParams(filters);
+    return await this.request(`/job-events?${params}`);
+  }
+
+  async getJobEvent(id) {
+    return await this.request(`/job-events/${id}`);
+  }
+
+  async createJobEvent(eventData) {
+    return await this.request('/job-events', {
+      method: 'POST',
+      body: JSON.stringify(eventData),
+    });
+  }
+
+  async updateJobEvent(id, eventData) {
+    return await this.request(`/job-events/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(eventData),
+    });
+  }
+
+  async deleteJobEvent(id) {
+    return await this.request(`/job-events/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getJobEventStats() {
+    return await this.request('/job-events/stats');
+  }
+
+  async registerForJobEvent(eventId, registrationData) {
+    return await this.request(`/job-events/${eventId}/register`, {
+      method: 'POST',
+      body: JSON.stringify(registrationData),
+    });
+  }
+
+  async getJobEventRegistrations(eventId, filters = {}) {
+    const params = new URLSearchParams(filters);
+    return await this.request(`/job-events/${eventId}/registrations?${params}`);
+  }
+
+  async updateEventRegistrationStatus(eventId, registrationId, status) {
+    return await this.request(`/job-events/${eventId}/registrations/${registrationId}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status }),
+    });
+  }
+
+  async deleteEventRegistration(eventId, registrationId) {
+    return await this.request(`/job-events/${eventId}/registrations/${registrationId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async updateEventStatus(id, status) {
+    return await this.request(`/job-events/${id}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status }),
+    });
+  }
+
+  async getUpcomingJobEvents(limit = 10) {
+    return await this.request(`/job-events/upcoming?limit=${limit}`);
+  }
+
+  async getFeaturedJobEvents() {
+    return await this.request('/job-events/featured');
+  }
+
+  // Candidate Labels
+  async getCandidateLabels(candidateId) {
+    return await this.request(`/candidates/${candidateId}/labels`);
+  }
+
+  async updateCandidateLabels(candidateId, labels) {
+    return await this.request(`/candidates/${candidateId}/labels`, {
+      method: 'PUT',
+      body: JSON.stringify({ labels })
+    });
+  }
+
+  async getCandidatesByLabel(label, filters = {}) {
+    const queryParams = new URLSearchParams(filters).toString();
+    return await this.request(`/candidates/by-label/${label}${queryParams ? `?${queryParams}` : ''}`);
+  }
+
+  // Admin Candidate Management
+  async adminUpdateCandidate(candidateId, data) {
+    return await this.request(`/admin/candidates/${candidateId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  }
+
+  async adminUploadCandidateProfileImage(candidateId, formData) {
+    return await this.request(`/admin/candidates/${candidateId}/profile-image`, {
+      method: 'POST',
+      body: formData,
+      headers: {
+        ...this.getHeaders(),
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+  }
+
+  async adminUploadCandidateResume(candidateId, formData) {
+    return await this.request(`/admin/candidates/${candidateId}/resume`, {
+      method: 'POST',
+      body: formData,
+      headers: {
+        ...this.getHeaders(),
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+  }
+
+  async adminLoginAsUser(userId) {
+    return await this.request(`/admin/login-as-user/${userId}`, {
+      method: 'POST'
+    });
   }
 }
 

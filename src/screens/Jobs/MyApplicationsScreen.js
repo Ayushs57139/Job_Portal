@@ -248,6 +248,21 @@ const MyApplicationsScreen = ({ navigation, route }) => {
     return `₹${parseInt(salary).toLocaleString('en-IN')}`;
   };
 
+  const formatLocation = (location) => {
+    if (!location) return '';
+    if (typeof location === 'string') {
+      return location;
+    }
+    if (typeof location === 'object') {
+      const parts = [];
+      if (location.city) parts.push(location.city);
+      if (location.state) parts.push(location.state);
+      if (location.locality) parts.push(location.locality);
+      return parts.length > 0 ? parts.join(', ') : 'Location not specified';
+    }
+    return '';
+  };
+
   const getStatusCounts = () => {
     const counts = {
       all: applications.length,
@@ -511,11 +526,15 @@ const MyApplicationsScreen = ({ navigation, route }) => {
                     <View style={dynamicStyles.cardHeader}>
                       <View style={dynamicStyles.jobInfo}>
                         <Text style={dynamicStyles.jobTitle}>{job.title || 'Job Title'}</Text>
-                        <Text style={dynamicStyles.companyName}>{job.company || 'Company Name'}</Text>
+                        <Text style={dynamicStyles.companyName}>
+                          {typeof job.company === 'string' 
+                            ? job.company 
+                            : (job.company?.name || 'Company Name')}
+                        </Text>
                         {job.location && (
                           <View style={dynamicStyles.locationRow}>
                             <Ionicons name="location-outline" size={14} color={colors.textSecondary} />
-                            <Text style={dynamicStyles.jobLocation}>{job.location}</Text>
+                            <Text style={dynamicStyles.jobLocation}>{formatLocation(job.location)}</Text>
                           </View>
                         )}
                       </View>

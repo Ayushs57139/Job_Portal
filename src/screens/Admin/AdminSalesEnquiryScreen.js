@@ -7,12 +7,15 @@ const AdminSalesEnquiryScreen = ({ navigation }) => {
       navigation={navigation}
       title="Sales Enquiries"
       subtitle="Manage sales enquiries and leads"
-      apiEndpoint="/api/admin/sales-enquiries"
+      apiEndpoint="/sales-enquiry"
+      fetchEndpoint="/sales-enquiry"
       screenName="AdminSalesEnquiry"
-      fieldName="name"
+      fieldName="firstName"
       additionalFields={[
+        { key: 'lastName', label: 'Last Name', type: 'text', placeholder: 'Enter last name', displayInList: true },
         { key: 'email', label: 'Email', type: 'text', placeholder: 'Enter email', displayInList: true },
         { key: 'phone', label: 'Phone', type: 'text', placeholder: 'Enter phone', displayInList: true },
+        { key: 'company', label: 'Company', type: 'text', placeholder: 'Enter company', displayInList: true },
         { key: 'message', label: 'Message', type: 'text', multiline: true, numberOfLines: 3 }
       ]}
     />

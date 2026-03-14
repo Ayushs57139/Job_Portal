@@ -127,11 +127,18 @@ const MultiSelectField = ({
       <Modal
         visible={modalVisible}
         transparent
-        animationType="slide"
+        animationType="fade"
+        statusBarTranslucent={true}
         onRequestClose={() => setModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <TouchableOpacity 
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={() => setModalVisible(false)}
+          />
+          <View style={styles.modalContentWrapper}>
+            <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <View>
                 <Text style={styles.modalTitle}>{label || 'Select options'}</Text>
@@ -141,13 +148,16 @@ const MultiSelectField = ({
                   </Text>
                 )}
               </View>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Ionicons name="close" size={24} color={colors.text} />
+              <TouchableOpacity 
+                onPress={() => setModalVisible(false)}
+                style={styles.closeButton}
+              >
+                <Ionicons name="close" size={22} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
 
             <View style={styles.searchContainer}>
-              <Ionicons name="search" size={20} color={colors.textSecondary} style={styles.searchIcon} />
+              <Ionicons name="search" size={18} color={colors.textSecondary} style={styles.searchIcon} />
               <TextInput
                 style={styles.searchInput}
                 placeholder="Search options..."
@@ -204,7 +214,11 @@ const MultiSelectField = ({
               </View>
             )}
 
-            <ScrollView style={styles.optionsList}>
+            <ScrollView 
+              style={styles.optionsList}
+              showsVerticalScrollIndicator={true}
+              nestedScrollEnabled={true}
+            >
               {isSearching && (
                 <View style={styles.searchingContainer}>
                   <Text style={styles.searchingText}>Searching...</Text>
@@ -244,7 +258,10 @@ const MultiSelectField = ({
                 );
               })}
               {filteredOptions.length === 0 && (
-                <Text style={styles.noResultsText}>No results found</Text>
+                <View style={styles.noResultsContainer}>
+                  <Ionicons name="search-outline" size={48} color={colors.textLight} />
+                  <Text style={styles.noResultsText}>No results found</Text>
+                </View>
               )}
             </ScrollView>
 
@@ -255,6 +272,7 @@ const MultiSelectField = ({
               >
                 <Text style={styles.doneButtonText}>Done</Text>
               </TouchableOpacity>
+            </View>
             </View>
           </View>
         </View>
@@ -333,49 +351,83 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xl,
+  },
+  modalContentWrapper: {
+    width: '100%',
+    maxWidth: 420,
   },
   modalContent: {
-    backgroundColor: colors.cardBackground,
-    borderTopLeftRadius: borderRadius.lg,
-    borderTopRightRadius: borderRadius.lg,
-    maxHeight: '80%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    maxHeight: '85%',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 8,
+    },
+    shadowOpacity: 0.12,
+    shadowRadius: 24,
+    elevation: 8,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: '#F5F5F5',
   },
   modalTitle: {
-    ...typography.h5,
-    color: colors.text,
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#212121',
+    letterSpacing: -0.2,
   },
   modalSubtitle: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginTop: 2,
+    fontSize: 13,
+    color: '#757575',
+    marginTop: 4,
+    fontWeight: '400',
+  },
+  closeButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#F8F9FA',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    margin: spacing.lg,
-    marginBottom: spacing.md,
-    backgroundColor: colors.background,
-    borderRadius: borderRadius.md,
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.sm,
+    marginBottom: spacing.xs,
+    backgroundColor: '#FAFBFC',
+    borderRadius: 10,
     paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
+    borderWidth: 1,
+    borderColor: '#E8EBED',
   },
   searchIcon: {
     marginRight: spacing.sm,
+    opacity: 0.5,
   },
   searchInput: {
     flex: 1,
-    paddingVertical: spacing.md,
-    fontSize: 16,
-    color: colors.text,
+    paddingVertical: 2,
+    fontSize: 14,
+    color: '#2C2C2C',
+    fontWeight: '400',
   },
   addNewButton: {
     flexDirection: 'row',
@@ -417,12 +469,16 @@ const styles = StyleSheet.create({
   },
   optionsList: {
     paddingHorizontal: spacing.lg,
-    maxHeight: 400,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.xs,
+    maxHeight: 320,
   },
   option: {
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
+    paddingVertical: spacing.md + 2,
+    paddingHorizontal: spacing.md,
+    borderRadius: 10,
+    marginVertical: 2,
+    backgroundColor: 'transparent',
   },
   optionDisabled: {
     opacity: 0.5,
@@ -432,46 +488,67 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
+    width: 22,
+    height: 22,
+    borderRadius: 5,
     borderWidth: 2,
-    borderColor: colors.border,
+    borderColor: '#D1D5DB',
     marginRight: spacing.md,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#FFFFFF',
   },
   checkboxSelected: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+    backgroundColor: '#1976D2',
+    borderColor: '#1976D2',
   },
   optionText: {
-    fontSize: 16,
-    color: colors.text,
+    fontSize: 15,
+    color: '#323232',
+    fontWeight: '400',
+    letterSpacing: -0.15,
   },
   optionTextDisabled: {
-    color: colors.textLight,
+    color: '#9E9E9E',
+  },
+  noResultsContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.xl * 2,
+    paddingHorizontal: spacing.lg,
   },
   noResultsText: {
     textAlign: 'center',
-    color: colors.textSecondary,
-    paddingVertical: spacing.xl,
+    color: '#9E9E9E',
+    fontSize: 15,
+    marginTop: spacing.md,
+    fontWeight: '400',
   },
   modalFooter: {
     padding: spacing.lg,
+    paddingTop: spacing.md,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
+    borderTopColor: '#F5F5F5',
   },
   doneButton: {
-    backgroundColor: colors.primary,
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
+    backgroundColor: '#1976D2',
+    paddingVertical: spacing.md,
+    borderRadius: 12,
     alignItems: 'center',
+    shadowColor: '#1976D2',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   doneButtonText: {
-    color: colors.textWhite,
+    color: '#FFFFFF',
     fontWeight: '600',
     fontSize: 16,
+    letterSpacing: 0.2,
   },
   searchingContainer: {
     padding: spacing.md,

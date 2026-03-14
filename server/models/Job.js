@@ -86,7 +86,6 @@ const jobSchema = new mongoose.Schema({
     },
     city: {
       type: String,
-      required: [true, 'City is required'],
       trim: true
     },
     locality: {
@@ -393,6 +392,18 @@ const jobSchema = new mongoose.Schema({
     default: false
   },
   urgent: {
+    type: Boolean,
+    default: false
+  },
+  premium: {
+    type: Boolean,
+    default: false
+  },
+  starred: {
+    type: Boolean,
+    default: false
+  },
+  activelyHiring: {
     type: Boolean,
     default: false
   },

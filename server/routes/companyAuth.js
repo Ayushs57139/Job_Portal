@@ -24,6 +24,28 @@ router.post('/register', async (req, res) => {
         }
 
         // Create new company
+        const companyData = {
+            name: company.name || '',
+            companyType: company.companyType || 'Corporate',
+            website: company.website || '',
+            industry: company.industry || '',
+            description: company.description || '',
+            location: company.location || {},
+            logo: company.logo || '',
+            establishedYear: company.establishedYear || '',
+            socialMediaLink: company.socialMediaLink || ''
+        };
+        
+        // Only set size if it's provided and valid
+        if (company.size) {
+            companyData.size = company.size;
+        }
+        
+        // Only set socialMediaProfile if it's provided and valid
+        if (company.socialMediaProfile) {
+            companyData.socialMediaProfile = company.socialMediaProfile;
+        }
+        
         const newCompany = new User({
             firstName,
             lastName,
@@ -32,7 +54,9 @@ router.post('/register', async (req, res) => {
             phone,
             userType: 'employer',
             employerType: 'company',
-            company: company,
+            profile: {
+                company: companyData
+            },
             verificationStatus: 'pending',
             isEmployerVerified: false
         });
@@ -67,7 +91,7 @@ router.post('/register', async (req, res) => {
                 lastName: newCompany.lastName,
                 email: newCompany.email,
                 userType: 'company',
-                companyName: newCompany.company?.name || ''
+                companyName: newCompany.profile?.company?.name || newCompany.company?.name || ''
             }
         });
     } catch (error) {
@@ -202,93 +226,287 @@ router.get('/me', employerAuth, async (req, res) => {
     }
 });
 
-// Get Companies List
+// Get Companies List - Updated to show all companies and consultancies
 router.get('/', async (req, res) => {
     try {
-        const limit = parseInt(req.query.limit) || 10;
-        const skip = parseInt(req.query.skip) || 0;
+        console.log('🔍 GET /api/company - Companies page accessed');
+        const { search, industry, page = 1, limit = 20 } = req.query;
+        const skip = (parseInt(page) - 1) * parseInt(limit);
         const Job = require('../models/Job');
 
-        const companies = await User.find({ 
-            userType: 'employer',
-            employerType: 'company',
-            isEmployerVerified: true
-        })
-        .select('firstName lastName email profile verificationStatus createdAt')
-        .sort({ createdAt: -1 })
-        .limit(limit)
-        .skip(skip);
+        // Build query for registered companies and consultancies
+        // Handle both old format (userType: 'company'/'consultancy') and new format (userType: 'employer' with employerType)
+        let query = {
+            $and: [
+                {
+                    $or: [
+                        // New format: userType: 'employer' with employerType
+                        {
+                            userType: 'employer',
+                            employerType: { $in: ['company', 'consultancy'] }
+                        },
+                        // Old format: userType: 'company' or 'consultancy'
+                        {
+                            userType: { $in: ['company', 'consultancy'] }
+                        }
+                    ]
+                },
+                {
+                    // Only exclude companies where isActive is explicitly set to false
+                    // Include all others (true, null, undefined, not set)
+                    $or: [
+                        { isActive: { $ne: false } },
+                        { isActive: { $exists: false } }
+                    ]
+                }
+            ]
+        };
 
-        const total = await User.countDocuments({ 
-            userType: 'employer',
-            employerType: 'company',
-            isEmployerVerified: true
-        });
+        // Build additional filters
+        const additionalFilters = [];
 
-        // Transform companies to include profile.company data at root for easy access
-        // and add job counts
-        const transformedCompanies = await Promise.all(companies.map(async (company) => {
-            const profile = company.profile || {};
-            const companyData = profile.company || {};
+        // Add search filter
+        if (search) {
+            additionalFilters.push({
+                $or: [
+                    { 'profile.company.name': { $regex: search, $options: 'i' } },
+                    { 'profile.company.description': { $regex: search, $options: 'i' } },
+                    { 'company.name': { $regex: search, $options: 'i' } }, // Fallback for old data structure
+                    { firstName: { $regex: search, $options: 'i' } }, // Search by user name
+                    { lastName: { $regex: search, $options: 'i' } } // Search by user name
+                ]
+            });
+        }
+
+        // Add industry filter
+        if (industry && industry !== 'all') {
+            additionalFilters.push({
+                $or: [
+                    { 'profile.company.industry': { $regex: industry, $options: 'i' } },
+                    { 'company.industry': { $regex: industry, $options: 'i' } } // Fallback
+                ]
+            });
+        }
+
+        // Combine all filters - merge with existing $and array, don't replace it
+        if (additionalFilters.length > 0) {
+            query.$and = [...query.$and, ...additionalFilters];
+        }
+
+        console.log('📋 Companies query:', JSON.stringify(query, null, 2));
+
+        const companies = await User.find(query)
+            .select('profile.company company employerType userType firstName lastName companyName consultancyName isEmployerVerified verificationStatus createdAt isActive')
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(parseInt(limit))
+            .lean();
+
+        console.log(`✅ Found ${companies.length} companies (showing page ${page}, limit ${limit})`);
+
+        const total = await User.countDocuments(query);
+        
+        console.log(`📊 Total companies in database matching query: ${total}`);
+        
+        // Also log a sample of company IDs and names for debugging
+        if (companies.length > 0) {
+            console.log('📝 Sample companies found:', companies.slice(0, 3).map(c => ({
+                id: c._id,
+                name: c.profile?.company?.name || c.company?.name || `${c.firstName} ${c.lastName}`,
+                userType: c.userType,
+                employerType: c.employerType,
+                isActive: c.isActive,
+                isEmployerVerified: c.isEmployerVerified
+            })));
+        } else {
+            console.log('⚠️  No companies found! Checking database...');
+            // Quick check: count all employers
+            const allEmployers = await User.countDocuments({ 
+                $or: [
+                    { userType: 'employer', employerType: { $in: ['company', 'consultancy'] } },
+                    { userType: { $in: ['company', 'consultancy'] } }
+                ]
+            });
+            console.log(`📊 Total employers in database (all): ${allEmployers}`);
+        }
+
+        // Format companies data
+        const formattedCompanies = await Promise.all(companies.map(async (company) => {
+            // Determine employer type - handle both old and new formats
+            const employerType = company.employerType || 
+                               (company.userType === 'company' ? 'company' : 
+                                company.userType === 'consultancy' ? 'consultancy' : null);
             
-            // Count active jobs for this company
-            const jobCount = await Job.countDocuments({
-                'company.name': companyData.name,
+            // Get company data from profile.company or fallback to company field
+            const companyData = company.profile?.company || company.company || {};
+            
+            // Get job count for this company/consultancy
+            const jobCount = await Job.countDocuments({ 
+                postedBy: company._id,
                 status: 'active'
             });
-            
+
+            // Format location
+            let location = '';
+            if (companyData.location) {
+                if (typeof companyData.location === 'object') {
+                    location = [
+                        companyData.location.city,
+                        companyData.location.state,
+                        companyData.location.country
+                    ].filter(Boolean).join(', ') || companyData.location.locality || '';
+                } else {
+                    location = companyData.location;
+                }
+            }
+
+            // Get company name - try multiple sources
+            const companyName = companyData.name || 
+                               company.companyName || 
+                               company.consultancyName ||
+                               `${company.firstName} ${company.lastName}`;
+
             return {
                 _id: company._id,
-                firstName: company.firstName,
-                lastName: company.lastName,
-                email: company.email,
-                verificationStatus: company.verificationStatus,
-                createdAt: company.createdAt,
-                // Include company data both ways for compatibility
-                name: companyData.name,
-                website: companyData.website,
-                industry: companyData.industry,
-                size: companyData.size,
-                description: companyData.description,
-                location: companyData.location,
-                // Add job count
+                name: companyName,
+                industry: companyData.industry || 'Technology',
+                website: companyData.website || '',
+                size: companyData.size || 'Not specified',
+                description: companyData.description || 'Leading company in the industry',
+                location: location || 'Multiple locations',
+                companyType: companyData.companyType || (employerType === 'consultancy' ? 'Consultancy' : 'Company'),
+                employeeCount: companyData.company?.employeeCount || companyData.consultancy?.teamSize || companyData.size || 'Not specified',
+                establishedYear: companyData.establishedYear || companyData.consultancy?.establishedYear || companyData.company?.foundedYear || '',
+                logo: companyData.logo || '',
+                socialMediaProfile: companyData.socialMediaProfile || '',
+                socialMediaLink: companyData.socialMediaLink || '',
                 openPositions: jobCount,
-                // Also include full structure
-                profile: profile
+                isEmployerVerified: company.isEmployerVerified,
+                verificationStatus: company.verificationStatus,
+                employerType: employerType,
+                profile: {
+                    company: companyData
+                }
             };
         }));
 
         res.json({
-            companies: transformedCompanies,
-            total,
-            limit,
-            skip
+            success: true,
+            companies: formattedCompanies,
+            pagination: {
+                currentPage: parseInt(page),
+                totalPages: Math.ceil(total / parseInt(limit)),
+                total: total
+            }
         });
     } catch (error) {
-        console.error('Get companies error:', error);
-        res.status(500).json({ message: 'Server error' });
+        console.error('❌ Error fetching companies:', error);
+        console.error('Error stack:', error.stack);
+        res.status(500).json({ 
+            success: false,
+            message: 'Server error while fetching companies',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
     }
 });
 
 // Get Company by ID (Public) - Must be last
 router.get('/:id', async (req, res) => {
     try {
+        console.log('🔍 GET /api/company/:id - Fetching company details for ID:', req.params.id);
+        
         const company = await User.findById(req.params.id)
             .select('-password -verificationToken -verificationTokenExpires');
         
         if (!company) {
+            console.log('❌ Company not found with ID:', req.params.id);
             return res.status(404).json({ message: 'Company not found' });
         }
 
-        // Only return verified companies publicly
-        if (!company.isEmployerVerified) {
-            return res.status(403).json({ message: 'Company profile not available' });
+        // Check if it's actually a company or consultancy
+        const isCompanyOrConsultancy = 
+            (company.userType === 'employer' && (company.employerType === 'company' || company.employerType === 'consultancy')) ||
+            (company.userType === 'company' || company.userType === 'consultancy');
+
+        if (!isCompanyOrConsultancy) {
+            console.log('❌ User is not a company/consultancy. userType:', company.userType, 'employerType:', company.employerType);
+            return res.status(404).json({ message: 'Company not found' });
         }
 
-        res.json(company);
+        // Determine employer type
+        const employerType = company.employerType || 
+                           (company.userType === 'company' ? 'company' : 
+                            company.userType === 'consultancy' ? 'consultancy' : null);
+
+        // Get company data from profile.company or fallback to company field
+        const companyData = company.profile?.company || company.company || {};
+
+        // Format location
+        let location = '';
+        if (companyData.location) {
+            if (typeof companyData.location === 'object') {
+                location = [
+                    companyData.location.city,
+                    companyData.location.state,
+                    companyData.location.country
+                ].filter(Boolean).join(', ') || companyData.location.locality || '';
+            } else {
+                location = companyData.location;
+            }
+        }
+
+        // Get company name
+        const companyName = companyData.name || 
+                           company.companyName || 
+                           company.consultancyName ||
+                           `${company.firstName} ${company.lastName}`;
+
+        // Format response to match frontend expectations
+        const formattedCompany = {
+            _id: company._id,
+            firstName: company.firstName,
+            lastName: company.lastName,
+            email: company.email,
+            phone: company.phone,
+            name: companyName,
+            industry: companyData.industry || 'Technology',
+            website: companyData.website || '',
+            size: companyData.size || 'Not specified',
+            description: companyData.description || 'Leading company in the industry',
+            location: location || companyData.location || 'Multiple locations',
+            companyType: companyData.companyType || (employerType === 'consultancy' ? 'Consultancy' : 'Company'),
+            employeeCount: companyData.company?.employeeCount || companyData.consultancy?.teamSize || companyData.size || 'Not specified',
+            establishedYear: companyData.establishedYear || companyData.consultancy?.establishedYear || companyData.company?.foundedYear || '',
+            logo: companyData.logo || '',
+            socialMediaProfile: companyData.socialMediaProfile || '',
+            socialMediaLink: companyData.socialMediaLink || '',
+            isEmployerVerified: company.isEmployerVerified,
+            verificationStatus: company.verificationStatus,
+            employerType: employerType,
+            userType: company.userType,
+            profile: {
+                company: companyData
+            },
+            // Include nested company/consultancy data
+            company: companyData.company || {},
+            consultancy: companyData.consultancy || {}
+        };
+
+        console.log('✅ Company found:', {
+            id: formattedCompany._id,
+            name: formattedCompany.name,
+            employerType: formattedCompany.employerType,
+            isVerified: formattedCompany.isEmployerVerified
+        });
+
+        res.json(formattedCompany);
     } catch (error) {
-        console.error('Get company by ID error:', error);
-        res.status(500).json({ message: 'Server error' });
+        console.error('❌ Error fetching company by ID:', error);
+        console.error('Error stack:', error.stack);
+        res.status(500).json({ 
+            message: 'Server error while fetching company details',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
     }
 });
 

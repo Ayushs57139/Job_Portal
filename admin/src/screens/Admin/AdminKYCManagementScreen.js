@@ -158,7 +158,13 @@ const AdminKYCManagementScreen = ({ navigation }) => {
   };
 
   const renderDocument = (docName, doc) => {
-    if (!doc || (!doc.idNumber && !doc.documentUrl)) {
+    if (!doc) {
+      return null;
+    }
+
+    // Show document if it has either documentUrl or idNumber
+    const hasContent = doc.documentUrl || doc.idNumber;
+    if (!hasContent) {
       return null;
     }
 
@@ -169,7 +175,7 @@ const AdminKYCManagementScreen = ({ navigation }) => {
           <Text style={dynamicStyles.documentName}>{docName}</Text>
         </View>
         {doc.idNumber && (
-          <Text style={dynamicStyles.documentId}>ID: {doc.idNumber}</Text>
+          <Text style={dynamicStyles.documentId}>ID Number: {doc.idNumber}</Text>
         )}
         {doc.documentUrl ? (
           <TouchableOpacity
@@ -180,11 +186,11 @@ const AdminKYCManagementScreen = ({ navigation }) => {
             <Text style={dynamicStyles.viewDocButtonText}>View Document</Text>
           </TouchableOpacity>
         ) : (
-          <Text style={dynamicStyles.noDocText}>No document uploaded</Text>
+          <Text style={dynamicStyles.noDocText}>Document file not uploaded (ID number only)</Text>
         )}
         {doc.uploadedAt && (
           <Text style={dynamicStyles.uploadDate}>
-            Uploaded: {new Date(doc.uploadedAt).toLocaleDateString()}
+            Uploaded: {new Date(doc.uploadedAt).toLocaleDateString()} {new Date(doc.uploadedAt).toLocaleTimeString()}
           </Text>
         )}
       </View>
@@ -428,16 +434,32 @@ const AdminKYCManagementScreen = ({ navigation }) => {
                   {/* Documents */}
                   <View style={dynamicStyles.modalSection}>
                     <Text style={dynamicStyles.sectionTitle}>Submitted Documents</Text>
-                    {selectedKyc.documents?.gstCertificate && renderDocument('GST Certificate', selectedKyc.documents.gstCertificate)}
-                    {selectedKyc.documents?.certificateOfIncorporation && renderDocument('Certificate Of Incorporation', selectedKyc.documents.certificateOfIncorporation)}
-                    {selectedKyc.documents?.udyamMsmeCertificate && renderDocument('UDYAM / MSME Certificate', selectedKyc.documents.udyamMsmeCertificate)}
-                    {selectedKyc.documents?.companyPanCard && renderDocument('Company PAN Card', selectedKyc.documents.companyPanCard)}
-                    {selectedKyc.documents?.companyIdCard && renderDocument('Company ID Card', selectedKyc.documents.companyIdCard)}
-                    {selectedKyc.documents?.aadharCard && renderDocument('Aadhar Card', selectedKyc.documents.aadharCard)}
-                    {selectedKyc.documents?.panCard && renderDocument('PAN Card', selectedKyc.documents.panCard)}
-                    {selectedKyc.documents?.voterId && renderDocument('Voter ID', selectedKyc.documents.voterId)}
-                    {selectedKyc.documents?.otherDocument && renderDocument('Other Document', selectedKyc.documents.otherDocument)}
-                    {selectedKyc.documents?.otherIdDocument && renderDocument('Other ID Document', selectedKyc.documents.otherIdDocument)}
+                    {selectedKyc.documents && Object.keys(selectedKyc.documents).length > 0 ? (
+                      Object.keys(selectedKyc.documents).map((docKey) => {
+                        const doc = selectedKyc.documents[docKey];
+                        // Only render if document has been uploaded (has documentUrl or idNumber)
+                        if (doc && (doc.documentUrl || doc.idNumber)) {
+                          // Format document name for display
+                          const docNameMap = {
+                            'gstCertificate': 'GST Certificate',
+                            'certificateOfIncorporation': 'Certificate Of Incorporation',
+                            'udyamMsmeCertificate': 'UDYAM / MSME Certificate',
+                            'companyPanCard': 'Company PAN Card',
+                            'companyIdCard': 'Company ID Card',
+                            'otherDocument': 'Other Document',
+                            'aadharCard': 'Aadhar Card',
+                            'panCard': 'PAN Card',
+                            'voterId': 'Voter ID',
+                            'otherIdDocument': 'Other ID Document'
+                          };
+                          const docName = docNameMap[docKey] || docKey.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()).trim();
+                          return renderDocument(docName, doc);
+                        }
+                        return null;
+                      })
+                    ) : (
+                      <Text style={dynamicStyles.noDocText}>No documents uploaded yet</Text>
+                    )}
                   </View>
 
                   {/* Admin Notes */}

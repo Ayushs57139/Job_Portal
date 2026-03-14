@@ -11,6 +11,11 @@ const applicationSchema = new mongoose.Schema({
     ref: 'Job',
     required: true
   },
+  employer: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
   
   // Personal Information
   fullName: {
@@ -213,8 +218,8 @@ const applicationSchema = new mongoose.Schema({
   // Application Status
   status: {
     type: String,
-    enum: ['pending', 'reviewed', 'shortlisted', 'rejected', 'hired'],
-    default: 'pending'
+    enum: ['applied', 'pending', 'reviewed', 'shortlisted', 'rejected', 'hired', 'viewed', 'interviewed', 'assigned'],
+    default: 'applied'
   },
   appliedAt: {
     type: Date,
@@ -223,6 +228,15 @@ const applicationSchema = new mongoose.Schema({
   updatedAt: {
     type: Date,
     default: Date.now
+  },
+
+  // Admin assignment tracking
+  assignedByAdmin: {
+    type: Boolean,
+    default: false
+  },
+  assignedAt: {
+    type: Date
   },
 
   // Additional fields for tracking
@@ -250,6 +264,7 @@ const applicationSchema = new mongoose.Schema({
 applicationSchema.index({ user: 1, job: 1 }, { unique: true });
 applicationSchema.index({ job: 1, status: 1 });
 applicationSchema.index({ user: 1, status: 1 });
+applicationSchema.index({ employer: 1, status: 1 });
 
 // Virtual for application age
 applicationSchema.virtual('ageInDays').get(function() {

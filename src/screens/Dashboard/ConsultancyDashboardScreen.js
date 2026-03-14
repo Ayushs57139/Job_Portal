@@ -10,7 +10,7 @@ import { useResponsive } from '../../utils/responsive';
 
 const ConsultancyDashboardScreen = ({ navigation }) => {
   const responsive = useResponsive();
-  const { isMobile, isTablet, isTabletDevice } = responsive;
+  const { isMobile, isTablet, isTabletDevice, isLaptopDevice, isDesktopDevice, width } = responsive;
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -26,11 +26,51 @@ const ConsultancyDashboardScreen = ({ navigation }) => {
     loadDashboardData();
   }, []);
 
+  // Refresh user data when screen comes into focus to get latest verification status
+  useEffect(() => {
+    const refreshUserData = async () => {
+      try {
+        const currentUser = await api.getCurrentUser();
+        if (currentUser) {
+          setUser(prevUser => ({
+            ...prevUser,
+            ...currentUser,
+            isVerified: currentUser.isVerified || currentUser.isEmployerVerified || false,
+            isEmployerVerified: currentUser.isEmployerVerified || false,
+            verifiedAt: currentUser.verifiedAt || null
+          }));
+        }
+      } catch (error) {
+        console.log('Could not refresh user data:', error.message);
+      }
+    };
+    
+    // Refresh every 30 seconds to get latest verification status
+    const interval = setInterval(refreshUserData, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   const loadDashboardData = async () => {
     try {
-      // Get current user
-      const userData = await api.getCurrentUserFromStorage();
-      setUser(userData);
+      // Get current user - fetch from API to get latest verification status
+      try {
+        const currentUser = await api.getCurrentUser();
+        setUser({
+          ...currentUser,
+          isVerified: currentUser.isVerified || currentUser.isEmployerVerified || false,
+          isEmployerVerified: currentUser.isEmployerVerified || false,
+          verifiedAt: currentUser.verifiedAt || null
+        });
+      } catch (apiError) {
+        // Fallback to stored data
+        const userData = await api.getCurrentUserFromStorage();
+        setUser({
+          ...userData,
+          isVerified: userData?.isVerified || userData?.isEmployerVerified || false,
+          isEmployerVerified: userData?.isEmployerVerified || false,
+          verifiedAt: userData?.verifiedAt || null
+        });
+      }
 
       // Fetch employer dashboard (dynamic)
       try {
@@ -134,7 +174,12 @@ const ConsultancyDashboardScreen = ({ navigation }) => {
   return (
     <View style={styles.container}>
       {!isMobile && (
-        <View style={[styles.sidebarWrapper, isTabletDevice && styles.sidebarWrapperTablet]}>
+        <View style={[
+          styles.sidebarWrapper, 
+          isTabletDevice && styles.sidebarWrapperTablet,
+          isLaptopDevice && styles.sidebarWrapperLaptop,
+          isDesktopDevice && styles.sidebarWrapperDesktop
+        ]}>
           <EmployerSidebar permanent navigation={navigation} role="consultancy" activeKey="overview" />
         </View>
       )}
@@ -156,7 +201,13 @@ const ConsultancyDashboardScreen = ({ navigation }) => {
         </TouchableOpacity>
       )}
       <ScrollView 
-        contentContainerStyle={[styles.scrollContent, isMobile && styles.scrollContentMobile, isTabletDevice && styles.scrollContentTablet]}
+        contentContainerStyle={[
+          styles.scrollContent, 
+          isMobile && styles.scrollContentMobile, 
+          isTabletDevice && styles.scrollContentTablet,
+          isLaptopDevice && styles.scrollContentLaptop,
+          isDesktopDevice && styles.scrollContentDesktop
+        ]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -171,7 +222,13 @@ const ConsultancyDashboardScreen = ({ navigation }) => {
           colors={['#FFFFFF', '#F8FAFC']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={[styles.headerBar, isMobile && styles.headerBarMobile, isTabletDevice && styles.headerBarTablet]}
+          style={[
+            styles.headerBar, 
+            isMobile && styles.headerBarMobile, 
+            isTabletDevice && styles.headerBarTablet,
+            isLaptopDevice && styles.headerBarLaptop,
+            isDesktopDevice && styles.headerBarDesktop
+          ]}
         >
           <View style={styles.headerLeft}>
             <View style={[styles.headerTitleContainer, isMobile && styles.headerTitleContainerMobile]}>
@@ -179,6 +236,25 @@ const ConsultancyDashboardScreen = ({ navigation }) => {
               <View style={styles.headerBadge}>
                 <Ionicons name="checkmark-circle" size={14} color="#10B981" />
                 <Text style={styles.headerBadgeText}>Active</Text>
+              </View>
+              <View style={[
+                styles.headerBadge, 
+                { 
+                  backgroundColor: (user?.isVerified || user?.isEmployerVerified) ? '#D1FAE5' : '#FEF3C7',
+                  marginLeft: 8
+                }
+              ]}>
+                <Ionicons 
+                  name={(user?.isVerified || user?.isEmployerVerified) ? "shield-checkmark" : "shield-outline"} 
+                  size={14} 
+                  color={(user?.isVerified || user?.isEmployerVerified) ? "#059669" : "#D97706"} 
+                />
+                <Text style={[
+                  styles.headerBadgeText,
+                  { color: (user?.isVerified || user?.isEmployerVerified) ? "#059669" : "#D97706" }
+                ]}>
+                  {(user?.isVerified || user?.isEmployerVerified) ? 'Verified' : 'Unverified'}
+                </Text>
               </View>
             </View>
             <Text style={[styles.headerSubtitle, isMobile && styles.headerSubtitleMobile]}>
@@ -200,20 +276,26 @@ const ConsultancyDashboardScreen = ({ navigation }) => {
         </LinearGradient>
 
         {/* Stats Cards - Modern Design */}
-        <View style={[styles.statsContainer, isMobile && styles.statsContainerMobile, isTabletDevice && styles.statsContainerTablet]}>
+        <View style={[
+          styles.statsContainer, 
+          isMobile && styles.statsContainerMobile, 
+          isTabletDevice && styles.statsContainerTablet,
+          isLaptopDevice && styles.statsContainerLaptop,
+          isDesktopDevice && styles.statsContainerDesktop
+        ]}>
           <LinearGradient
             colors={['#3B82F6', '#2563EB']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={[styles.statCard, styles.statCardGradient, isMobile && styles.statCardMobile, isTabletDevice && styles.statCardTablet]}
+            style={[styles.statCard, styles.statCardGradient, isMobile && styles.statCardMobile, isTabletDevice && styles.statCardTablet, isLaptopDevice && styles.statCardLaptop, isDesktopDevice && styles.statCardDesktop]}
           >
-            <View style={[styles.statCardContent, isMobile && styles.statCardContentMobile, isTabletDevice && styles.statCardContentTablet]}>
-              <View style={[styles.statIconContainer, { backgroundColor: 'rgba(255,255,255,0.2)' }, isMobile && styles.statIconContainerMobile, isTabletDevice && styles.statIconContainerTablet]}>
-                <Ionicons name="briefcase" size={isMobile ? 24 : isTabletDevice ? 26 : 28} color="#FFFFFF" />
+            <View style={[styles.statCardContent, isMobile && styles.statCardContentMobile, isTabletDevice && styles.statCardContentTablet, isLaptopDevice && styles.statCardContentLaptop, isDesktopDevice && styles.statCardContentDesktop]}>
+              <View style={[styles.statIconContainer, { backgroundColor: 'rgba(255,255,255,0.2)' }, isMobile && styles.statIconContainerMobile, isTabletDevice && styles.statIconContainerTablet, isLaptopDevice && styles.statIconContainerLaptop, isDesktopDevice && styles.statIconContainerDesktop]}>
+                <Ionicons name="briefcase" size={isMobile ? 24 : isTabletDevice ? 26 : isLaptopDevice ? 27 : 28} color="#FFFFFF" />
               </View>
               <View style={styles.statTextContainer}>
-                <Text style={[styles.statValue, isMobile && styles.statValueMobile, isTabletDevice && styles.statValueTablet]}>{stats.activeJobs}</Text>
-                <Text style={[styles.statLabel, isMobile && styles.statLabelMobile, isTabletDevice && styles.statLabelTablet]}>Active Jobs</Text>
+                <Text style={[styles.statValue, isMobile && styles.statValueMobile, isTabletDevice && styles.statValueTablet, isLaptopDevice && styles.statValueLaptop, isDesktopDevice && styles.statValueDesktop]}>{stats.activeJobs}</Text>
+                <Text style={[styles.statLabel, isMobile && styles.statLabelMobile, isTabletDevice && styles.statLabelTablet, isLaptopDevice && styles.statLabelLaptop, isDesktopDevice && styles.statLabelDesktop]}>Active Jobs</Text>
               </View>
             </View>
             <View style={styles.statCardDecoration} />
@@ -223,35 +305,35 @@ const ConsultancyDashboardScreen = ({ navigation }) => {
             colors={['#10B981', '#059669']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={[styles.statCard, styles.statCardGradient, isMobile && styles.statCardMobile, isTabletDevice && styles.statCardTablet]}
+            style={[styles.statCard, styles.statCardGradient, isMobile && styles.statCardMobile, isTabletDevice && styles.statCardTablet, isLaptopDevice && styles.statCardLaptop, isDesktopDevice && styles.statCardDesktop]}
           >
-            <View style={[styles.statCardContent, isMobile && styles.statCardContentMobile, isTabletDevice && styles.statCardContentTablet]}>
-              <View style={[styles.statIconContainer, { backgroundColor: 'rgba(255,255,255,0.2)' }, isMobile && styles.statIconContainerMobile, isTabletDevice && styles.statIconContainerTablet]}>
-                <Ionicons name="people" size={isMobile ? 24 : isTabletDevice ? 26 : 28} color="#FFFFFF" />
+            <View style={[styles.statCardContent, isMobile && styles.statCardContentMobile, isTabletDevice && styles.statCardContentTablet, isLaptopDevice && styles.statCardContentLaptop, isDesktopDevice && styles.statCardContentDesktop]}>
+              <View style={[styles.statIconContainer, { backgroundColor: 'rgba(255,255,255,0.2)' }, isMobile && styles.statIconContainerMobile, isTabletDevice && styles.statIconContainerTablet, isLaptopDevice && styles.statIconContainerLaptop, isDesktopDevice && styles.statIconContainerDesktop]}>
+                <Ionicons name="people" size={isMobile ? 24 : isTabletDevice ? 26 : isLaptopDevice ? 27 : 28} color="#FFFFFF" />
               </View>
               <View style={styles.statTextContainer}>
-                <Text style={[styles.statValue, isMobile && styles.statValueMobile, isTabletDevice && styles.statValueTablet]}>{stats.totalApplications}</Text>
-                <Text style={[styles.statLabel, isMobile && styles.statLabelMobile, isTabletDevice && styles.statLabelTablet]}>Applications</Text>
+                <Text style={[styles.statValue, isMobile && styles.statValueMobile, isTabletDevice && styles.statValueTablet, isLaptopDevice && styles.statValueLaptop, isDesktopDevice && styles.statValueDesktop]}>{stats.totalApplications}</Text>
+                <Text style={[styles.statLabel, isMobile && styles.statLabelMobile, isTabletDevice && styles.statLabelTablet, isLaptopDevice && styles.statLabelLaptop, isDesktopDevice && styles.statLabelDesktop]}>Applications</Text>
               </View>
             </View>
             <View style={styles.statCardDecoration} />
           </LinearGradient>
         </View>
 
-        <View style={[styles.statsContainer, isMobile && styles.statsContainerMobile, isTabletDevice && styles.statsContainerTablet]}>
+        <View style={[styles.statsContainer, isMobile && styles.statsContainerMobile, isTabletDevice && styles.statsContainerTablet, isLaptopDevice && styles.statsContainerLaptop, isDesktopDevice && styles.statsContainerDesktop]}>
           <LinearGradient
             colors={['#EC4899', '#DB2777']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={[styles.statCard, styles.statCardGradient, isMobile && styles.statCardMobile, isTabletDevice && styles.statCardTablet]}
+            style={[styles.statCard, styles.statCardGradient, isMobile && styles.statCardMobile, isTabletDevice && styles.statCardTablet, isLaptopDevice && styles.statCardLaptop, isDesktopDevice && styles.statCardDesktop]}
           >
-            <View style={[styles.statCardContent, isMobile && styles.statCardContentMobile, isTabletDevice && styles.statCardContentTablet]}>
-              <View style={[styles.statIconContainer, { backgroundColor: 'rgba(255,255,255,0.2)' }, isMobile && styles.statIconContainerMobile, isTabletDevice && styles.statIconContainerTablet]}>
-                <Ionicons name="business" size={isMobile ? 24 : isTabletDevice ? 26 : 28} color="#FFFFFF" />
+            <View style={[styles.statCardContent, isMobile && styles.statCardContentMobile, isTabletDevice && styles.statCardContentTablet, isLaptopDevice && styles.statCardContentLaptop, isDesktopDevice && styles.statCardContentDesktop]}>
+              <View style={[styles.statIconContainer, { backgroundColor: 'rgba(255,255,255,0.2)' }, isMobile && styles.statIconContainerMobile, isTabletDevice && styles.statIconContainerTablet, isLaptopDevice && styles.statIconContainerLaptop, isDesktopDevice && styles.statIconContainerDesktop]}>
+                <Ionicons name="business" size={isMobile ? 24 : isTabletDevice ? 26 : isLaptopDevice ? 27 : 28} color="#FFFFFF" />
               </View>
               <View style={styles.statTextContainer}>
-                <Text style={[styles.statValue, isMobile && styles.statValueMobile, isTabletDevice && styles.statValueTablet]}>{stats.clientsServed}</Text>
-                <Text style={[styles.statLabel, isMobile && styles.statLabelMobile, isTabletDevice && styles.statLabelTablet]}>Clients Served</Text>
+                <Text style={[styles.statValue, isMobile && styles.statValueMobile, isTabletDevice && styles.statValueTablet, isLaptopDevice && styles.statValueLaptop, isDesktopDevice && styles.statValueDesktop]}>{stats.clientsServed}</Text>
+                <Text style={[styles.statLabel, isMobile && styles.statLabelMobile, isTabletDevice && styles.statLabelTablet, isLaptopDevice && styles.statLabelLaptop, isDesktopDevice && styles.statLabelDesktop]}>Clients Served</Text>
               </View>
             </View>
             <View style={styles.statCardDecoration} />
@@ -261,18 +343,67 @@ const ConsultancyDashboardScreen = ({ navigation }) => {
             colors={['#F59E0B', '#D97706']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={[styles.statCard, styles.statCardGradient, isMobile && styles.statCardMobile, isTabletDevice && styles.statCardTablet]}
+            style={[styles.statCard, styles.statCardGradient, isMobile && styles.statCardMobile, isTabletDevice && styles.statCardTablet, isLaptopDevice && styles.statCardLaptop, isDesktopDevice && styles.statCardDesktop]}
           >
-            <View style={[styles.statCardContent, isMobile && styles.statCardContentMobile, isTabletDevice && styles.statCardContentTablet]}>
-              <View style={[styles.statIconContainer, { backgroundColor: 'rgba(255,255,255,0.2)' }, isMobile && styles.statIconContainerMobile, isTabletDevice && styles.statIconContainerTablet]}>
-                <Ionicons name="time" size={isMobile ? 24 : isTabletDevice ? 26 : 28} color="#FFFFFF" />
+            <View style={[styles.statCardContent, isMobile && styles.statCardContentMobile, isTabletDevice && styles.statCardContentTablet, isLaptopDevice && styles.statCardContentLaptop, isDesktopDevice && styles.statCardContentDesktop]}>
+              <View style={[styles.statIconContainer, { backgroundColor: 'rgba(255,255,255,0.2)' }, isMobile && styles.statIconContainerMobile, isTabletDevice && styles.statIconContainerTablet, isLaptopDevice && styles.statIconContainerLaptop, isDesktopDevice && styles.statIconContainerDesktop]}>
+                <Ionicons name="time" size={isMobile ? 24 : isTabletDevice ? 26 : isLaptopDevice ? 27 : 28} color="#FFFFFF" />
               </View>
               <View style={styles.statTextContainer}>
-                <Text style={[styles.statValue, isMobile && styles.statValueMobile, isTabletDevice && styles.statValueTablet]}>{stats.pendingReviews}</Text>
-                <Text style={[styles.statLabel, isMobile && styles.statLabelMobile, isTabletDevice && styles.statLabelTablet]}>Pending Review</Text>
+                <Text style={[styles.statValue, isMobile && styles.statValueMobile, isTabletDevice && styles.statValueTablet, isLaptopDevice && styles.statValueLaptop, isDesktopDevice && styles.statValueDesktop]}>{stats.pendingReviews}</Text>
+                <Text style={[styles.statLabel, isMobile && styles.statLabelMobile, isTabletDevice && styles.statLabelTablet, isLaptopDevice && styles.statLabelLaptop, isDesktopDevice && styles.statLabelDesktop]}>Pending Review</Text>
               </View>
             </View>
             <View style={styles.statCardDecoration} />
+          </LinearGradient>
+        </View>
+
+        {/* Verification Status Card */}
+        <View style={[
+          styles.verificationCard, 
+          isMobile && styles.verificationCardMobile, 
+          isTabletDevice && styles.verificationCardTablet,
+          isLaptopDevice && styles.verificationCardLaptop,
+          isDesktopDevice && styles.verificationCardDesktop
+        ]}>
+          <LinearGradient
+            colors={(user?.isVerified || user?.isEmployerVerified) ? ['#10B981', '#059669'] : ['#F59E0B', '#D97706']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.verificationCardGradient}
+          >
+            <View style={[
+              styles.verificationCardContent,
+              isMobile && styles.verificationCardContentMobile,
+              isTabletDevice && styles.verificationCardContentTablet
+            ]}>
+              <View style={[
+                styles.verificationIconContainer,
+                isMobile && styles.verificationIconContainerMobile,
+                isTabletDevice && styles.verificationIconContainerTablet
+              ]}>
+                <Ionicons 
+                  name={(user?.isVerified || user?.isEmployerVerified) ? "shield-checkmark" : "shield-outline"} 
+                  size={isMobile ? 32 : isTabletDevice ? 36 : isLaptopDevice ? 38 : 40} 
+                  color="#FFFFFF" 
+                />
+              </View>
+              <View style={styles.verificationTextContainer}>
+                <Text style={[styles.verificationTitle, isMobile && styles.verificationTitleMobile]}>
+                  {(user?.isVerified || user?.isEmployerVerified) ? 'Account Verified' : 'Account Not Verified'}
+                </Text>
+                <Text style={[styles.verificationSubtitle, isMobile && styles.verificationSubtitleMobile]}>
+                  {(user?.isVerified || user?.isEmployerVerified) 
+                    ? 'Your consultancy account has been verified by our admin team. You have full access to all features.' 
+                    : 'Your account is pending verification. Please wait for admin approval to access all features.'}
+                </Text>
+                {user?.verifiedAt && (
+                  <Text style={[styles.verificationDate, isMobile && styles.verificationDateMobile]}>
+                    Verified on: {new Date(user.verifiedAt).toLocaleDateString()}
+                  </Text>
+                )}
+              </View>
+            </View>
           </LinearGradient>
         </View>
 
@@ -292,6 +423,12 @@ const styles = StyleSheet.create({
   },
   sidebarWrapperTablet: {
     width: 240,
+  },
+  sidebarWrapperLaptop: {
+    width: 260,
+  },
+  sidebarWrapperDesktop: {
+    width: 280,
   },
   menuButton: {
     position: 'absolute',
@@ -326,6 +463,18 @@ const styles = StyleSheet.create({
   scrollContentTablet: {
     padding: spacing.md,
   },
+  scrollContentLaptop: {
+    padding: spacing.lg,
+    maxWidth: 1400,
+    alignSelf: 'center',
+    width: '100%',
+  },
+  scrollContentDesktop: {
+    padding: spacing.xl,
+    maxWidth: 1600,
+    alignSelf: 'center',
+    width: '100%',
+  },
   headerBar: {
     padding: spacing.xl,
     borderRadius: borderRadius.lg,
@@ -344,6 +493,14 @@ const styles = StyleSheet.create({
   headerBarTablet: {
     padding: spacing.lg,
     marginBottom: spacing.md,
+  },
+  headerBarLaptop: {
+    padding: spacing.xl,
+    marginBottom: spacing.lg,
+  },
+  headerBarDesktop: {
+    padding: spacing.xl,
+    marginBottom: spacing.lg,
   },
   headerLeft: {
     gap: spacing.xs,
@@ -433,6 +590,16 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     marginBottom: spacing.md,
   },
+  statsContainerLaptop: {
+    flexDirection: 'row',
+    gap: spacing.lg,
+    marginBottom: spacing.lg,
+  },
+  statsContainerDesktop: {
+    flexDirection: 'row',
+    gap: spacing.lg,
+    marginBottom: spacing.lg,
+  },
   statCard: {
     flex: 1,
     borderRadius: borderRadius.lg,
@@ -444,6 +611,14 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   statCardTablet: {
+    flex: 1,
+    minWidth: 0,
+  },
+  statCardLaptop: {
+    flex: 1,
+    minWidth: 0,
+  },
+  statCardDesktop: {
     flex: 1,
     minWidth: 0,
   },
@@ -464,6 +639,14 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     gap: spacing.sm,
   },
+  statCardContentLaptop: {
+    padding: spacing.lg,
+    gap: spacing.md,
+  },
+  statCardContentDesktop: {
+    padding: spacing.xl,
+    gap: spacing.lg,
+  },
   statIconContainer: {
     width: 64,
     height: 64,
@@ -478,6 +661,14 @@ const styles = StyleSheet.create({
   statIconContainerTablet: {
     width: 52,
     height: 52,
+  },
+  statIconContainerLaptop: {
+    width: 56,
+    height: 56,
+  },
+  statIconContainerDesktop: {
+    width: 64,
+    height: 64,
   },
   statTextContainer: {
     flex: 1,
@@ -495,6 +686,12 @@ const styles = StyleSheet.create({
   statValueTablet: {
     fontSize: 26,
   },
+  statValueLaptop: {
+    fontSize: 28,
+  },
+  statValueDesktop: {
+    fontSize: 32,
+  },
   statLabel: {
     fontSize: 14,
     color: 'rgba(255,255,255,0.9)',
@@ -508,6 +705,12 @@ const styles = StyleSheet.create({
   statLabelTablet: {
     fontSize: 11,
   },
+  statLabelLaptop: {
+    fontSize: 12,
+  },
+  statLabelDesktop: {
+    fontSize: 14,
+  },
   statCardDecoration: {
     position: 'absolute',
     top: -20,
@@ -516,6 +719,92 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: 50,
     backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  verificationCard: {
+    marginTop: spacing.lg,
+    borderRadius: borderRadius.lg,
+    overflow: 'hidden',
+    ...shadows.lg,
+  },
+  verificationCardMobile: {
+    marginTop: spacing.md,
+  },
+  verificationCardTablet: {
+    marginTop: spacing.md,
+  },
+  verificationCardLaptop: {
+    marginTop: spacing.lg,
+  },
+  verificationCardDesktop: {
+    marginTop: spacing.lg,
+  },
+  verificationCardGradient: {
+    position: 'relative',
+  },
+  verificationCardContent: {
+    padding: spacing.xl,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.lg,
+  },
+  verificationCardContentMobile: {
+    padding: spacing.md,
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+  },
+  verificationCardContentTablet: {
+    padding: spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  verificationIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: borderRadius.md,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  verificationIconContainerMobile: {
+    width: 60,
+    height: 60,
+  },
+  verificationIconContainerTablet: {
+    width: 70,
+    height: 70,
+  },
+  verificationTextContainer: {
+    flex: 1,
+    gap: spacing.xs,
+  },
+  verificationTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginBottom: spacing.xs,
+  },
+  verificationTitleMobile: {
+    fontSize: 18,
+  },
+  verificationSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.9)',
+    lineHeight: 20,
+  },
+  verificationSubtitleMobile: {
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  verificationDate: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: spacing.xs,
+    fontStyle: 'italic',
+  },
+  verificationDateMobile: {
+    fontSize: 11,
   },
 });
 

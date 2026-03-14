@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -8,352 +8,21 @@ import {
   Alert,
   TextInput,
   Platform,
-  useWindowDimensions
+  Modal,
+  Animated,
+  Dimensions
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, borderRadius, typography, shadows } from '../../styles/theme';
 import api from '../../config/api';
-import { useResponsive } from '../../utils/responsive';
 
-const getStyles = (
-  isXsPhone, isSmallPhone, isPhone, isLargePhone, isMobile,
-  isSmallTablet, isTablet, isLargeTablet, isTabletDevice,
-  isSmallLaptop, isLaptop, isDesktop, isLargeDesktop, isDesktopDevice, width
-) => {
-  const isWeb = Platform.OS === 'web';
-  // Calculate responsive values
-  const leftPadding = isXsPhone ? 12 : isSmallPhone ? 16 : isMobile ? 20 : isSmallTablet ? 24 : isTabletDevice ? 32 : 48;
-  const topPadding = isXsPhone ? 60 : isSmallPhone ? 70 : isMobile ? 80 : isTabletDevice ? 90 : 100;
-  
-  return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: '#ffffff',
-    },
-    mainContainer: {
-      flex: 1,
-      flexDirection: 'row',
-    },
-    mainContainerPhone: {
-      flexDirection: 'column',
-    },
-    mainContainerTablet: {
-      flexDirection: 'row',
-    },
-    mainContainerLaptop: {
-      flexDirection: 'row',
-    },
-    leftSide: {
-      flex: 1,
-    },
-    leftSidePhone: {
-      flex: 1,
-      width: '100%',
-    },
-    leftSideTablet: {
-      flex: 1.2,
-    },
-    leftContent: {
-      flex: 1,
-      padding: leftPadding,
-      paddingTop: topPadding,
-      justifyContent: 'center',
-    },
-    leftContentPhone: {
-      padding: leftPadding,
-      paddingTop: topPadding,
-    },
-    leftContentTablet: {
-      padding: leftPadding,
-      paddingTop: topPadding,
-    },
-    leftContentLaptop: {
-      padding: 48,
-      paddingTop: 100,
-    },
-    logoContainer: {
-      position: 'absolute',
-      top: isXsPhone ? 16 : isSmallPhone ? 20 : isMobile ? 24 : 32,
-      left: isXsPhone ? 12 : isSmallPhone ? 14 : isMobile ? 16 : 20,
-      zIndex: 10,
-      paddingTop: 8,
-      paddingHorizontal: isXsPhone ? 4 : 8,
-    },
-    logoText: {
-      fontSize: isXsPhone ? 20 : isSmallPhone ? 22 : isMobile ? 24 : isTabletDevice ? 26 : 28,
-      fontWeight: '800',
-      letterSpacing: -0.5,
-    },
-    logoPrimary: {
-      color: '#3b82f6',
-    },
-    logoJob: {
-      color: '#FF6B35',
-    },
-    logoWala: {
-      color: '#1e293b',
-    },
-    headerSection: {
-      alignItems: 'center',
-      marginBottom: isXsPhone ? 16 : isSmallPhone ? 18 : isMobile ? 20 : 24,
-    },
-    iconCircle: {
-      width: isXsPhone ? 50 : isSmallPhone ? 56 : isMobile ? 60 : isTabletDevice ? 65 : 70,
-      height: isXsPhone ? 50 : isSmallPhone ? 56 : isMobile ? 60 : isTabletDevice ? 65 : 70,
-      borderRadius: isXsPhone ? 25 : isSmallPhone ? 28 : isMobile ? 30 : isTabletDevice ? 32 : 35,
-      backgroundColor: '#ffffff',
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginBottom: isXsPhone ? 10 : isSmallPhone ? 12 : 16,
-      ...shadows.lg,
-      borderWidth: isXsPhone ? 2 : 3,
-      borderColor: '#e0e7ff',
-    },
-    welcomeTitle: {
-      fontSize: isXsPhone ? 20 : isSmallPhone ? 22 : isMobile ? 24 : isTabletDevice ? 26 : 28,
-      fontWeight: '700',
-      color: '#1e293b',
-      marginBottom: isXsPhone ? 4 : 6,
-      textAlign: 'center',
-      letterSpacing: -0.5,
-    },
-    welcomeSubtitle: {
-      fontSize: isXsPhone ? 12 : isSmallPhone ? 13 : isMobile ? 14 : 15,
-      color: '#64748b',
-      textAlign: 'center',
-      lineHeight: isXsPhone ? 16 : isSmallPhone ? 18 : 20,
-    },
-    loginFormCard: {
-      backgroundColor: '#ffffff',
-      borderRadius: isXsPhone ? 14 : isSmallPhone ? 16 : 20,
-      padding: isXsPhone ? 14 : isSmallPhone ? 18 : isMobile ? 20 : 24,
-      ...shadows.lg,
-      borderWidth: 1,
-      borderColor: '#e2e8f0',
-    },
-    inputGroup: {
-      marginBottom: isXsPhone ? 12 : isSmallPhone ? 14 : 16,
-    },
-    labelContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: isXsPhone ? 6 : isSmallPhone ? 8 : 10,
-    },
-    labelIcon: {
-      marginRight: isXsPhone ? 6 : 8,
-    },
-    inputLabel: {
-      fontSize: isXsPhone ? 12 : isSmallPhone ? 13 : 14,
-      fontWeight: '600',
-      color: '#1e293b',
-    },
-    inputWrapper: {
-      borderWidth: isXsPhone ? 1.5 : 2,
-      borderColor: '#e2e8f0',
-      borderRadius: isXsPhone ? 8 : isSmallPhone ? 10 : 12,
-      backgroundColor: '#ffffff',
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: isXsPhone ? 2 : 4,
-    },
-    inputWrapperError: {
-      borderColor: '#ef4444',
-      backgroundColor: '#fef2f2',
-    },
-    input: {
-      flex: 1,
-      paddingHorizontal: isXsPhone ? 10 : isSmallPhone ? 12 : 16,
-      paddingVertical: isXsPhone ? 10 : isSmallPhone ? 12 : 14,
-      fontSize: isXsPhone ? 13 : isSmallPhone ? 14 : 15,
-      color: '#1e293b',
-    },
-    eyeIcon: {
-      padding: 12,
-      paddingRight: 16,
-    },
-    errorContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-      marginTop: 8,
-    },
-    errorText: {
-      fontSize: 13,
-      color: '#ef4444',
-      fontWeight: '500',
-    },
-    generalErrorContainer: {
-      backgroundColor: '#fee2e2',
-      borderWidth: 1,
-      borderColor: '#ef4444',
-      borderRadius: 12,
-      padding: 12,
-      marginBottom: 16,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-    },
-    generalErrorText: {
-      fontSize: 14,
-      color: '#dc2626',
-      flex: 1,
-      fontWeight: '500',
-    },
-    signInButtonWrapper: {
-      marginTop: 4,
-      marginBottom: 16,
-      borderRadius: 12,
-      overflow: 'hidden',
-      ...shadows.md,
-    },
-    signInButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 10,
-      paddingVertical: 16,
-      borderRadius: 12,
-    },
-    signInButtonDisabled: {
-      opacity: 0.6,
-    },
-    signInButtonText: {
-      color: '#ffffff',
-      fontSize: 16,
-      fontWeight: '700',
-      letterSpacing: 0.3,
-    },
-    divider: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: 12,
-      gap: 12,
-    },
-    dividerLine: {
-      flex: 1,
-      height: 1,
-      backgroundColor: '#e2e8f0',
-    },
-    dividerText: {
-      fontSize: 13,
-      color: '#94a3b8',
-      fontWeight: '500',
-    },
-    createAccountContainer: {
-      flexDirection: 'row',
-      justifyContent: 'center',
-      alignItems: 'center',
-      gap: 6,
-      flexWrap: 'wrap',
-    },
-    createAccountText: {
-      fontSize: 14,
-      color: '#64748b',
-    },
-    createAccountLink: {
-      fontSize: 14,
-      color: '#4f46e5',
-      fontWeight: '700',
-      textDecorationLine: 'underline',
-    },
-    rightSide: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      padding: 48,
-    },
-    rightSideTablet: {
-      flex: 0.8,
-      padding: 32,
-    },
-    rightSideLaptop: {
-      flex: 1,
-      padding: 48,
-    },
-    rightContent: {
-      maxWidth: 500,
-    },
-    rightContentTablet: {
-      maxWidth: 400,
-    },
-    rightTitle: {
-      fontSize: 36,
-      fontWeight: '700',
-      color: '#ffffff',
-      marginBottom: 16,
-    },
-    rightTitleTablet: {
-      fontSize: 30,
-      marginBottom: 14,
-    },
-    rightSubtitle: {
-      fontSize: 16,
-      color: '#ffffff',
-      opacity: 0.9,
-      marginBottom: 32,
-      lineHeight: 24,
-    },
-    rightSubtitleTablet: {
-      fontSize: 15,
-      marginBottom: 28,
-      lineHeight: 22,
-    },
-    featuresList: {
-      gap: 20,
-    },
-    featureItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-    },
-    checkIcon: {
-      width: 28,
-      height: 28,
-      borderRadius: 14,
-      backgroundColor: '#ffffff',
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    featureText: {
-      fontSize: 16,
-      color: '#ffffff',
-      flex: 1,
-    },
-    featureTextTablet: {
-      fontSize: 15,
-    },
-  });
-};
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const SIDEBAR_WIDTH = Platform.OS === 'web' ? Math.min(450, SCREEN_WIDTH * 0.9) : SCREEN_WIDTH * 0.85;
 
-const LoginScreen = ({ navigation }) => {
-  const responsive = useResponsive();
+const LoginScreen = ({ navigation, route }) => {
+  const slideAnim = useRef(new Animated.Value(SIDEBAR_WIDTH)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
   
-  // Enhanced device detection
-  const { width } = responsive;
-  const isXsPhone = width <= 320;
-  const isSmallPhone = width > 320 && width <= 375;
-  const isPhone = width > 375 && width <= 414;
-  const isLargePhone = width > 414 && width <= 480;
-  const isMobile = width <= 480;
-  const isSmallTablet = width > 480 && width <= 600;
-  const isTablet = width > 600 && width <= 768;
-  const isLargeTablet = width > 768 && width <= 834;
-  const isTabletDevice = width > 480 && width <= 834;
-  const isSmallLaptop = width > 834 && width <= 1024;
-  const isLaptop = width > 1024 && width <= 1200;
-  const isDesktop = width > 1200 && width <= 1440;
-  const isLargeDesktop = width > 1440;
-  const isDesktopDevice = width > 834;
-  const isWideScreen = width > 768;
-  
-  const dynamicStyles = getStyles(
-    isXsPhone, isSmallPhone, isPhone, isLargePhone, isMobile,
-    isSmallTablet, isTablet, isLargeTablet, isTabletDevice,
-    isSmallLaptop, isLaptop, isDesktop, isLargeDesktop, isDesktopDevice, width
-  );
-  
-  const [userType] = useState('jobseeker');
+  const [userType] = useState(route?.params?.userType || 'jobseeker');
   const [loginId, setLoginId] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -361,16 +30,44 @@ const LoginScreen = ({ navigation }) => {
   const [generalError, setGeneralError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  const userTypeConfig = {
-    jobseeker: {
-      title: 'Job Seeker Login',
-      subtitle: 'Sign in to your job seeker account',
-      icon: 'person',
-    },
+  // Animate sidebar on mount
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  const handleClose = () => {
+    Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: SIDEBAR_WIDTH,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+      } else {
+        navigation.navigate('Home');
+      }
+    });
   };
 
   const handleLogin = async () => {
-    // Validate inputs
     const newErrors = {};
     if (!loginId.trim()) newErrors.loginId = 'Please enter your login ID';
     if (!password) newErrors.password = 'Please enter your password';
@@ -394,17 +91,16 @@ const LoginScreen = ({ navigation }) => {
       const response = await api.login(loginData);
 
       if (response.token) {
-        // STRICT VALIDATION: Only allow jobseeker accounts to proceed
         if (response.user && response.user.userType === 'jobseeker') {
           Alert.alert('Success', 'Login successful!');
-          
-          // Navigate to job seeker dashboard
-          navigation.reset({
-            index: 0,
-            routes: [{ name: 'UserDashboard' }],
-          });
+          handleClose();
+          setTimeout(() => {
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'UserDashboard' }],
+            });
+          }, 300);
         } else {
-          // Invalid user type - logout and show error
           await api.logout();
           Alert.alert(
             'Access Denied', 
@@ -413,11 +109,9 @@ const LoginScreen = ({ navigation }) => {
         }
       }
     } catch (error) {
-      // Parse error message from response
       let errorMessage = error.message || 'Please check your credentials and try again';
       const newErrors = {};
       
-      // Check for specific error types
       if (errorMessage.toLowerCase().includes('no account found') || 
           errorMessage.toLowerCase().includes('login id') ||
           errorMessage.toLowerCase().includes('user id') ||
@@ -429,79 +123,78 @@ const LoginScreen = ({ navigation }) => {
                  errorMessage.toLowerCase().includes('incorrect password')) {
         newErrors.password = errorMessage;
         setGeneralError('');
-      } else if (errorMessage.toLowerCase().includes('deactivated')) {
-        setGeneralError(errorMessage);
-        setErrors({});
-      } else if (errorMessage.toLowerCase().includes('access denied') ||
-                 errorMessage.toLowerCase().includes('not authorized') ||
-                 errorMessage.toLowerCase().includes('cannot login')) {
-        setGeneralError(errorMessage);
-        setErrors({});
       } else {
         setGeneralError(errorMessage);
         setErrors({});
       }
       
-      if (Object.keys(newErrors).length > 0) {
-        setErrors(newErrors);
-      }
-      
-      // Also show in alert for visibility
       Alert.alert('Login Failed', errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
-  const renderLeftSide = () => (
-    <LinearGradient
-      colors={['#ffffff', '#f8fafc', '#f1f5f9']}
-      style={[dynamicStyles.leftSide, isPhone && dynamicStyles.leftSidePhone, isTablet && dynamicStyles.leftSideTablet]}
+  return (
+    <Modal
+      visible={true}
+      transparent
+      animationType="none"
+      onRequestClose={handleClose}
     >
-      <View 
+      {/* Backdrop */}
+      <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]}>
+        <TouchableOpacity 
+          style={styles.backdropTouchable} 
+          activeOpacity={1} 
+          onPress={handleClose}
+        />
+      </Animated.View>
+
+      {/* Sidebar */}
+      <Animated.View 
         style={[
-          dynamicStyles.leftContent,
-          isPhone && dynamicStyles.leftContentPhone,
-          isTablet && dynamicStyles.leftContentTablet,
-          isDesktop && dynamicStyles.leftContentLaptop
+          styles.sidebar,
+          {
+            transform: [{ translateX: slideAnim }],
+          },
         ]}
       >
-        {/* Logo */}
-        <TouchableOpacity 
-          style={dynamicStyles.logoContainer}
-          onPress={() => navigation.navigate('Home')}
-          activeOpacity={0.7}
-        >
-          <Text style={dynamicStyles.logoText}>
-            <Text style={dynamicStyles.logoPrimary}>Free</Text>
-            <Text style={dynamicStyles.logoJob}>job</Text>
-            <Text style={dynamicStyles.logoWala}>wala</Text>
-          </Text>
-        </TouchableOpacity>
-
-        {/* Header Section */}
-        <View style={dynamicStyles.headerSection}>
-          <View style={dynamicStyles.iconCircle}>
-            <Ionicons name="person" size={isPhone ? 24 : 28} color="#4f46e5" />
-          </View>
-          <Text style={dynamicStyles.welcomeTitle}>Welcome Back!</Text>
-          <Text style={dynamicStyles.welcomeSubtitle}>{userTypeConfig[userType].subtitle}</Text>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
+            <Ionicons name="close" size={28} color="#1F2937" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Login</Text>
+          <TouchableOpacity onPress={() => {
+            handleClose();
+            setTimeout(() => navigation.navigate('Register'), 300);
+          }}>
+            <Text style={styles.registerLink}>Register for free</Text>
+          </TouchableOpacity>
         </View>
 
-
-        {/* Login Form Card */}
-        <View style={dynamicStyles.loginFormCard}>
-          {/* Login ID Input */}
-          <View style={dynamicStyles.inputGroup}>
-            <View style={dynamicStyles.labelContainer}>
-              <Ionicons name="person-outline" size={isPhone ? 16 : 18} color="#64748b" style={dynamicStyles.labelIcon} />
-              <Text style={dynamicStyles.inputLabel}>Login ID</Text>
+        {/* Content */}
+        <ScrollView 
+          style={styles.content}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* General Error */}
+          {generalError && (
+            <View style={styles.errorBanner}>
+              <Ionicons name="alert-circle" size={20} color="#EF4444" />
+              <Text style={styles.errorBannerText}>{generalError}</Text>
             </View>
-            <View style={[dynamicStyles.inputWrapper, errors.loginId && dynamicStyles.inputWrapperError]}>
+          )}
+
+          {/* Email/Username Input */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Email ID / Username</Text>
+            <View style={[styles.inputWrapper, errors.loginId && styles.inputWrapperError]}>
               <TextInput
-                style={dynamicStyles.input}
-                placeholder="Enter User ID, Email, or Phone Number"
-                placeholderTextColor="#94a3b8"
+                style={styles.input}
+                placeholder="Enter your active Email ID / Username"
+                placeholderTextColor="#9CA3AF"
                 value={loginId}
                 onChangeText={(text) => {
                   setLoginId(text);
@@ -513,24 +206,18 @@ const LoginScreen = ({ navigation }) => {
               />
             </View>
             {errors.loginId && (
-              <View style={dynamicStyles.errorContainer}>
-                <Ionicons name="alert-circle" size={isPhone ? 12 : 14} color="#ef4444" />
-                <Text style={dynamicStyles.errorText}>{errors.loginId}</Text>
-              </View>
+              <Text style={styles.errorText}>{errors.loginId}</Text>
             )}
           </View>
 
           {/* Password Input */}
-          <View style={dynamicStyles.inputGroup}>
-            <View style={dynamicStyles.labelContainer}>
-              <Ionicons name="lock-closed-outline" size={isPhone ? 16 : 18} color="#64748b" style={dynamicStyles.labelIcon} />
-              <Text style={dynamicStyles.inputLabel}>Password</Text>
-            </View>
-            <View style={[dynamicStyles.inputWrapper, errors.password && dynamicStyles.inputWrapperError]}>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Password</Text>
+            <View style={[styles.inputWrapper, errors.password && styles.inputWrapperError]}>
               <TextInput
-                style={dynamicStyles.input}
+                style={styles.input}
                 placeholder="Enter your password"
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor="#9CA3AF"
                 value={password}
                 onChangeText={(text) => {
                   setPassword(text);
@@ -539,166 +226,237 @@ const LoginScreen = ({ navigation }) => {
                 }}
                 secureTextEntry={!showPassword}
               />
-              <TouchableOpacity
-                style={dynamicStyles.eyeIcon}
-                onPress={() => setShowPassword(!showPassword)}
-                activeOpacity={0.7}
-              >
-                <Ionicons
-                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                  size={isPhone ? 20 : 22}
-                  color="#64748b"
-                />
+              <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
+                <Text style={styles.showText}>{showPassword ? 'Hide' : 'Show'}</Text>
               </TouchableOpacity>
             </View>
             {errors.password && (
-              <View style={dynamicStyles.errorContainer}>
-                <Ionicons name="alert-circle" size={isPhone ? 12 : 14} color="#ef4444" />
-                <Text style={dynamicStyles.errorText}>{errors.password}</Text>
-              </View>
+              <Text style={styles.errorText}>{errors.password}</Text>
             )}
+            <TouchableOpacity style={styles.forgotPassword}>
+              <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+            </TouchableOpacity>
           </View>
 
-          {/* General Error Message */}
-          {generalError && (
-            <View style={dynamicStyles.generalErrorContainer}>
-              <Ionicons name="alert-circle" size={isPhone ? 16 : 18} color="#ef4444" />
-              <Text style={dynamicStyles.generalErrorText}>{generalError}</Text>
-            </View>
-          )}
-
-          {/* Sign In Button */}
+          {/* Login Button */}
           <TouchableOpacity 
+            style={[styles.loginButton, loading && styles.loginButtonDisabled]}
             onPress={handleLogin}
             disabled={loading}
-            activeOpacity={0.9}
-            style={dynamicStyles.signInButtonWrapper}
           >
-            <LinearGradient
-              colors={['#4f46e5', '#6366f1']}
-              style={[dynamicStyles.signInButton, loading && dynamicStyles.signInButtonDisabled]}
-            >
-              <Ionicons name="log-in-outline" size={isPhone ? 18 : 20} color="#fff" />
-              <Text style={dynamicStyles.signInButtonText}>
-                {loading ? 'Signing In...' : 'Sign In'}
-              </Text>
-            </LinearGradient>
+            <Text style={styles.loginButtonText}>
+              {loading ? 'Logging in...' : 'Login'}
+            </Text>
           </TouchableOpacity>
 
           {/* Divider */}
-          <View style={dynamicStyles.divider}>
-            <View style={dynamicStyles.dividerLine} />
-            <Text style={dynamicStyles.dividerText}>or</Text>
-            <View style={dynamicStyles.dividerLine} />
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>Or</Text>
+            <View style={styles.dividerLine} />
           </View>
 
-          {/* Create Account */}
-          <View style={dynamicStyles.createAccountContainer}>
-            <Text style={dynamicStyles.createAccountText}>Don't have an account? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Register')} activeOpacity={0.7}>
-              <Text style={dynamicStyles.createAccountLink}>Create Account</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    </LinearGradient>
-  );
+          {/* Google Sign In */}
+          <TouchableOpacity style={styles.googleButton}>
+            <Ionicons name="logo-google" size={20} color="#4285F4" />
+            <Text style={styles.googleButtonText}>Sign in with Google</Text>
+          </TouchableOpacity>
 
-  const renderRightSide = () => (
-    <LinearGradient
-      colors={['#4f46e5', '#6366f1', '#7c3aed']}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={[
-        dynamicStyles.rightSide,
-        isTablet && dynamicStyles.rightSideTablet,
-        isDesktop && dynamicStyles.rightSideLaptop
-      ]}
-    >
-      <View style={[
-        dynamicStyles.rightContent,
-        isTablet && dynamicStyles.rightContentTablet
-      ]}>
-        <Text style={[
-          dynamicStyles.rightTitle,
-          isTablet && dynamicStyles.rightTitleTablet
-        ]}>Find Your Dream Job</Text>
-        <Text style={[
-          dynamicStyles.rightSubtitle,
-          isTablet && dynamicStyles.rightSubtitleTablet
-        ]}>
-          Connect with top employers and discover opportunities that match your skills and aspirations
-        </Text>
-
-        <View style={dynamicStyles.featuresList}>
-          <View style={dynamicStyles.featureItem}>
-            <View style={dynamicStyles.checkIcon}>
-              <Ionicons name="checkmark" size={isPhone ? 14 : 16} color="#6366f1" />
-            </View>
-            <Text style={[
-              dynamicStyles.featureText,
-              isTablet && dynamicStyles.featureTextTablet
-            ]}>Browse thousands of job listings</Text>
-          </View>
-
-          <View style={dynamicStyles.featureItem}>
-            <View style={dynamicStyles.checkIcon}>
-              <Ionicons name="checkmark" size={isPhone ? 14 : 16} color="#6366f1" />
-            </View>
-            <Text style={[
-              dynamicStyles.featureText,
-              isTablet && dynamicStyles.featureTextTablet
-            ]}>Create professional profiles</Text>
-          </View>
-
-          <View style={dynamicStyles.featureItem}>
-            <View style={dynamicStyles.checkIcon}>
-              <Ionicons name="checkmark" size={isPhone ? 14 : 16} color="#6366f1" />
-            </View>
-            <Text style={[
-              dynamicStyles.featureText,
-              isTablet && dynamicStyles.featureTextTablet
-            ]}>Get matched with relevant jobs</Text>
-          </View>
-
-          <View style={dynamicStyles.featureItem}>
-            <View style={dynamicStyles.checkIcon}>
-              <Ionicons name="checkmark" size={isPhone ? 14 : 16} color="#6366f1" />
-            </View>
-            <Text style={[
-              dynamicStyles.featureText,
-              isTablet && dynamicStyles.featureTextTablet
-            ]}>Track application status</Text>
-          </View>
-
-          <View style={dynamicStyles.featureItem}>
-            <View style={dynamicStyles.checkIcon}>
-              <Ionicons name="checkmark" size={isPhone ? 14 : 16} color="#6366f1" />
-            </View>
-            <Text style={[
-              dynamicStyles.featureText,
-              isTablet && dynamicStyles.featureTextTablet
-            ]}>Receive job recommendations</Text>
-          </View>
-        </View>
-      </View>
-    </LinearGradient>
-  );
-
-  return (
-    <View style={dynamicStyles.container}>
-      <View style={[
-        dynamicStyles.mainContainer,
-        isPhone && dynamicStyles.mainContainerPhone,
-        isTablet && dynamicStyles.mainContainerTablet,
-        isDesktop && dynamicStyles.mainContainerLaptop
-      ]}>
-        {renderLeftSide()}
-        {isWideScreen && renderRightSide()}
-      </View>
-    </View>
+          {/* OTP Login */}
+          <TouchableOpacity style={styles.otpButton}>
+            <Text style={styles.otpButtonText}>Use OTP to Login</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </Animated.View>
+    </Modal>
   );
 };
+
+const styles = StyleSheet.create({
+  backdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  backdropTouchable: {
+    flex: 1,
+  },
+  sidebar: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    width: SIDEBAR_WIDTH,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: -2, height: 0 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+  },
+  closeButton: {
+    padding: 4,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  registerLink: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#4F46E5',
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingTop: 24,
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEE2E2',
+    borderWidth: 1,
+    borderColor: '#EF4444',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 20,
+    gap: 10,
+  },
+  errorBannerText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#DC2626',
+    fontWeight: '500',
+  },
+  inputGroup: {
+    marginBottom: 20,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 14,
+  },
+  inputWrapperError: {
+    borderColor: '#EF4444',
+    backgroundColor: '#FEF2F2',
+  },
+  input: {
+    flex: 1,
+    paddingVertical: 12,
+    fontSize: 15,
+    color: '#1F2937',
+  },
+  eyeIcon: {
+    padding: 8,
+  },
+  showText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#4F46E5',
+  },
+  errorText: {
+    fontSize: 13,
+    color: '#EF4444',
+    marginTop: 6,
+    fontWeight: '500',
+  },
+  forgotPassword: {
+    alignSelf: 'flex-end',
+    marginTop: 8,
+  },
+  forgotPasswordText: {
+    fontSize: 14,
+    color: '#4F46E5',
+    fontWeight: '500',
+  },
+  loginButton: {
+    backgroundColor: '#4F46E5',
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 8,
+    shadowColor: '#4F46E5',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  loginButtonDisabled: {
+    opacity: 0.6,
+  },
+  loginButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 24,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E5E7EB',
+  },
+  dividerText: {
+    marginHorizontal: 16,
+    fontSize: 13,
+    color: '#9CA3AF',
+    fontWeight: '500',
+  },
+  googleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    backgroundColor: '#FFFFFF',
+    marginBottom: 12,
+  },
+  googleButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  otpButton: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    marginBottom: 24,
+  },
+  otpButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#4F46E5',
+  },
+});
 
 export default LoginScreen;
 

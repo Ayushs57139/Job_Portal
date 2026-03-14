@@ -2,32 +2,59 @@ const express = require('express');
 const router = express.Router();
 const ChatbotConversation = require('../models/ChatbotConversation');
 const { v4: uuidv4 } = require('uuid');
+const { auth } = require('../middleware/auth');
 
 // @route   POST /api/chatbot/start
 // @desc    Start a new chatbot conversation
-// @access  Public
+// @access  Public (with optional auth)
 router.post('/start', async (req, res) => {
   try {
     const { guestName, guestEmail, guestPhone, userAgent, platform } = req.body;
     
-    const sessionId = uuidv4();
+    // Try to get user from token if provided
+    let userId = null;
+    try {
+      const token = req.headers.authorization?.replace('Bearer ', '');
+      if (token) {
+        const jwt = require('jsonwebtoken');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+        userId = decoded.userId;
+      }
+    } catch (err) {
+      // Token invalid or not provided, continue as guest
+    }
     
-    const conversation = new ChatbotConversation({
-      sessionId,
-      guestName: guestName || 'Guest',
-      guestEmail,
-      guestPhone,
-      userAgent,
-      platform: platform || 'web',
-      ipAddress: req.ip || req.connection.remoteAddress,
-      messages: []
-    });
+    // Check if user already has an active conversation
+    let conversation = null;
+    if (userId) {
+      conversation = await ChatbotConversation.findOne({
+        userId,
+        status: 'active'
+      }).sort({ lastActivity: -1 });
+    }
     
-    await conversation.save();
+    // If no active conversation, create new one
+    if (!conversation) {
+      const sessionId = uuidv4();
+      
+      conversation = new ChatbotConversation({
+        sessionId,
+        userId: userId || null,
+        guestName: guestName || 'Guest',
+        guestEmail: guestEmail || null,
+        guestPhone: guestPhone || null,
+        userAgent,
+        platform: platform || 'web',
+        ipAddress: req.ip || req.connection.remoteAddress,
+        messages: []
+      });
+      
+      await conversation.save();
+    }
     
     res.status(201).json({
       success: true,
-      sessionId,
+      sessionId: conversation.sessionId,
       message: 'Conversation started'
     });
   } catch (error) {
@@ -38,7 +65,7 @@ router.post('/start', async (req, res) => {
 
 // @route   POST /api/chatbot/message
 // @desc    Send a message in the conversation
-// @access  Public
+// @access  Public (with optional auth)
 router.post('/message', async (req, res) => {
   try {
     const { sessionId, message, sender = 'user' } = req.body;
@@ -53,11 +80,25 @@ router.post('/message', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Conversation not found' });
     }
     
+    // Try to link with authenticated user if not already linked
+    try {
+      const token = req.headers.authorization?.replace('Bearer ', '');
+      if (token && !conversation.userId) {
+        const jwt = require('jsonwebtoken');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+        conversation.userId = decoded.userId;
+        await conversation.save();
+      }
+    } catch (err) {
+      // Token invalid or not provided, continue
+    }
+    
     // Add user message
     await conversation.addMessage(sender, message);
     
-    // Generate bot response
-    const botResponse = generateBotResponse(message);
+    // Generate dynamic bot response based on conversation context
+    const conversationContext = conversation.messages.slice(-5).map(m => m.message).join(' ');
+    const botResponse = generateBotResponse(message, conversationContext, conversation.messages.length);
     await conversation.addMessage('bot', botResponse);
     
     // Reload conversation to get updated messages
@@ -76,15 +117,28 @@ router.post('/message', async (req, res) => {
 
 // @route   GET /api/chatbot/conversation/:sessionId
 // @desc    Get conversation by session ID
-// @access  Public
+// @access  Public (with optional auth)
 router.get('/conversation/:sessionId', async (req, res) => {
   try {
     const conversation = await ChatbotConversation.findOne({ 
       sessionId: req.params.sessionId 
-    });
+    }).populate('userId', 'firstName lastName email');
     
     if (!conversation) {
       return res.status(404).json({ success: false, message: 'Conversation not found' });
+    }
+    
+    // Try to link with authenticated user if not already linked
+    try {
+      const token = req.headers.authorization?.replace('Bearer ', '');
+      if (token && !conversation.userId) {
+        const jwt = require('jsonwebtoken');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+        conversation.userId = decoded.userId;
+        await conversation.save();
+      }
+    } catch (err) {
+      // Token invalid or not provided, continue
     }
     
     res.json({
@@ -98,8 +152,9 @@ router.get('/conversation/:sessionId', async (req, res) => {
 });
 
 // Enhanced dynamic bot response generator
-function generateBotResponse(userMessage) {
+function generateBotResponse(userMessage, conversationContext = '', messageCount = 0) {
   const message = userMessage.toLowerCase().trim();
+  const context = conversationContext.toLowerCase();
   
   // Greetings
   if (message.match(/\b(hi|hello|hey|good morning|good afternoon|good evening|namaste|namaskar)\b/)) {
@@ -201,12 +256,31 @@ function generateBotResponse(userMessage) {
     return "Great question! 🤔\n\nI can help you understand:\n\n• How to use our platform\n• Job search features\n• Application process\n• Profile setup\n• Job alerts\n• Company information\n\nCould you be more specific about what you'd like to know? I'm here to help!";
   }
   
+  // Context-aware responses based on conversation history
+  if (context.includes('job') || context.includes('apply') || context.includes('application')) {
+    return "I see you're interested in jobs! 🎯\n\nLet me help you further:\n\n• Search for jobs by location, skills, or industry\n• Learn about the application process\n• Get tips for successful applications\n• Set up job alerts for new opportunities\n\nWhat specific aspect would you like to know more about?";
+  }
+  
+  if (context.includes('resume') || context.includes('cv') || context.includes('profile')) {
+    return "Great! Let's work on your profile! 📄\n\nI can help you with:\n\n• Resume writing tips\n• Profile optimization\n• Highlighting your skills\n• Making your profile stand out\n• Formatting and presentation\n\nWhat would you like to improve in your resume or profile?";
+  }
+  
+  if (context.includes('company') || context.includes('employer')) {
+    return "Company information is important! 🏢\n\nI can help you:\n\n• Find company profiles\n• Research employers\n• Understand company culture\n• Check active job postings\n• Connect with recruiters\n\nWhich company are you interested in?";
+  }
+  
   // Default response with suggestions
   const suggestions = [
     "I understand! 🤖\n\nI'm here to help you with:\n\n• Job search and applications\n• Company information\n• Resume tips and profile help\n• Job alerts setup\n• Platform navigation\n• Interview preparation\n\nCould you please provide more details about what you're looking for? Or try one of our quick actions!",
     "Thank you for your message! 🤖\n\nLet me help you better. I can assist with:\n\n• Finding the right jobs\n• Improving your resume\n• Setting up job alerts\n• Understanding the application process\n• Company research\n• Profile optimization\n\nWhat specific help do you need?",
     "I'm here to help! 🤖\n\nI can guide you on:\n\n• Job searching strategies\n• Application best practices\n• Resume writing tips\n• Interview preparation\n• Profile completion\n• Using platform features\n\nFeel free to ask me anything, or use the quick action buttons below!"
   ];
+  
+  // Vary response based on message count to keep conversation engaging
+  if (messageCount > 10) {
+    return "I appreciate your continued engagement! 🤖\n\nYou've asked several questions. To help you better, could you tell me:\n\n• What's your main goal? (Finding a job, improving profile, etc.)\n• What industry or role interests you?\n• Do you have any specific concerns?\n\nThis will help me provide more targeted assistance!";
+  }
+  
   return suggestions[Math.floor(Math.random() * suggestions.length)];
 }
 

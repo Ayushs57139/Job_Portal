@@ -24,6 +24,12 @@ const SecuritySettingsScreen = ({ navigation }) => {
   const dynamicStyles = getStyles(isMobile, isTablet);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
   const [settings, setSettings] = useState({
     enableTwoFactorAuth: false,
     sessionTimeout: 30,
@@ -92,6 +98,64 @@ const SecuritySettingsScreen = ({ navigation }) => {
     });
   };
 
+  const handleChangePassword = async () => {
+    // Validation
+    if (!passwordForm.currentPassword) {
+      Alert.alert('Error', 'Please enter your current password');
+      return;
+    }
+
+    if (!passwordForm.newPassword) {
+      Alert.alert('Error', 'Please enter a new password');
+      return;
+    }
+
+    if (passwordForm.newPassword.length < 6) {
+      Alert.alert('Error', 'New password must be at least 6 characters long');
+      return;
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      Alert.alert('Error', 'New password and confirm password do not match');
+      return;
+    }
+
+    if (passwordForm.currentPassword === passwordForm.newPassword) {
+      Alert.alert('Error', 'New password must be different from current password');
+      return;
+    }
+
+    setChangingPassword(true);
+    try {
+      const response = await api.changePassword({
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword
+      });
+
+      if (response.message || response.success) {
+        Alert.alert('Success', 'Password changed successfully', [
+          {
+            text: 'OK',
+            onPress: () => {
+              setPasswordForm({
+                currentPassword: '',
+                newPassword: '',
+                confirmPassword: ''
+              });
+            }
+          }
+        ]);
+      } else {
+        Alert.alert('Error', response.message || 'Failed to change password');
+      }
+    } catch (error) {
+      console.error('Error changing password:', error);
+      Alert.alert('Error', error.message || 'Failed to change password');
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
   const handleLogout = () => navigation.replace('AdminLogin');
   const handleNavigate = (screen) => navigation.navigate(screen);
 
@@ -117,6 +181,63 @@ const SecuritySettingsScreen = ({ navigation }) => {
             <Text style={dynamicStyles.pageTitle}>Security Settings</Text>
             <Text style={dynamicStyles.pageSubtitle}>Configure security and authentication</Text>
           </View>
+        </View>
+
+        {/* Change Password Section */}
+        <View style={dynamicStyles.section}>
+          <Text style={dynamicStyles.sectionTitle}>Change Admin Password</Text>
+          <Text style={dynamicStyles.sectionSubtitle}>Update your admin account password</Text>
+          
+          <View style={dynamicStyles.inputGroup}>
+            <Text style={dynamicStyles.label}>Current Password</Text>
+            <TextInput
+              style={dynamicStyles.input}
+              value={passwordForm.currentPassword}
+              onChangeText={(text) => setPasswordForm(prev => ({ ...prev, currentPassword: text }))}
+              placeholder="Enter current password"
+              placeholderTextColor={colors.textSecondary}
+              secureTextEntry
+            />
+          </View>
+
+          <View style={dynamicStyles.inputGroup}>
+            <Text style={dynamicStyles.label}>New Password</Text>
+            <TextInput
+              style={dynamicStyles.input}
+              value={passwordForm.newPassword}
+              onChangeText={(text) => setPasswordForm(prev => ({ ...prev, newPassword: text }))}
+              placeholder="Enter new password (min 6 characters)"
+              placeholderTextColor={colors.textSecondary}
+              secureTextEntry
+            />
+          </View>
+
+          <View style={dynamicStyles.inputGroup}>
+            <Text style={dynamicStyles.label}>Confirm New Password</Text>
+            <TextInput
+              style={dynamicStyles.input}
+              value={passwordForm.confirmPassword}
+              onChangeText={(text) => setPasswordForm(prev => ({ ...prev, confirmPassword: text }))}
+              placeholder="Confirm new password"
+              placeholderTextColor={colors.textSecondary}
+              secureTextEntry
+            />
+          </View>
+
+          <TouchableOpacity
+            style={[dynamicStyles.passwordChangeButton, changingPassword && dynamicStyles.saveButtonDisabled]}
+            onPress={handleChangePassword}
+            disabled={changingPassword}
+          >
+            {changingPassword ? (
+              <ActivityIndicator size="small" color={colors.white} />
+            ) : (
+              <>
+                <Ionicons name="lock-closed" size={20} color={colors.white} />
+                <Text style={dynamicStyles.passwordChangeButtonText}>Change Password</Text>
+              </>
+            )}
+          </TouchableOpacity>
         </View>
 
         {/* Authentication */}
@@ -496,6 +617,20 @@ const getStyles = (isMobile, isTablet) => StyleSheet.create({
   },
   bottomSpacing: {
     height: spacing.xxl,
+  },
+  passwordChangeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+    marginTop: spacing.md,
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    gap: spacing.sm,
+  },
+  passwordChangeButtonText: {
+    ...typography.button,
+    color: colors.white,
   },
 });
 

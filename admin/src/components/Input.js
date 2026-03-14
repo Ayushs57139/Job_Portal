@@ -15,6 +15,7 @@ const Input = ({
   numberOfLines = 1,
   keyboardType = 'default',
   style,
+  required = false,
   ...props
 }) => {
   const [isFocused, setIsFocused] = useState(false);
@@ -22,7 +23,12 @@ const Input = ({
 
   return (
     <View style={[styles.container, style]}>
-      {label && <Text style={styles.label}>{label}</Text>}
+      {label && (
+        <Text style={styles.label}>
+          {label}
+          {required && <Text style={styles.required}> *</Text>}
+        </Text>
+      )}
       
       <View style={styles.inputContainer}>
         {icon && (
@@ -135,6 +141,11 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.error,
     marginTop: spacing.xs,
+  },
+  required: {
+    color: colors.error,
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 

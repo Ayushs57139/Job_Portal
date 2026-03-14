@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -21,7 +21,9 @@ const { width } = Dimensions.get('window');
 const isWebPlatform = Platform.OS === 'web';
 
 const CompanyDetailsScreen = ({ route, navigation }) => {
-  const { companyId } = route.params || {};
+  const { companyId, id } = route.params || {};
+  // Use companyId first, fallback to id (for route param)
+  const actualCompanyId = companyId || id;
   const [company, setCompany] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -30,18 +32,37 @@ const CompanyDetailsScreen = ({ route, navigation }) => {
   
   // Responsive handling
   const responsive = useResponsive();
-  const isDesktop = responsive.width > 900;
-  const isMobile = responsive.width <= 600;
-  const dynamicStyles = getDynamicStyles(isDesktop, isMobile);
+  const { width } = responsive;
+  const isXsPhone = width <= 320;
+  const isSmallPhone = width > 320 && width <= 375;
+  const isPhone = width > 375 && width <= 414;
+  const isMobile = width <= 480;
+  const isTablet = width > 480 && width <= 834;
+  const isDesktop = width > 1024;
+  const dynamicStyles = useMemo(
+    () => getDynamicStyles({ isXsPhone, isSmallPhone, isPhone, isMobile, isTablet, isDesktop, width }),
+    [isXsPhone, isSmallPhone, isPhone, isMobile, isTablet, isDesktop, width]
+  );
 
   useEffect(() => {
-    loadCompanyDetails();
-  }, [companyId]);
+    if (actualCompanyId) {
+      loadCompanyDetails();
+    } else {
+      console.error('No company ID provided');
+      setLoading(false);
+    }
+  }, [actualCompanyId]);
 
   const loadCompanyDetails = async () => {
+    if (!actualCompanyId) {
+      console.error('Cannot load company details: no company ID');
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
-      const data = await api.getCompany(companyId);
+      const data = await api.getCompany(actualCompanyId);
       console.log('Company details loaded:', data);
       setCompany(data);
       
@@ -67,7 +88,7 @@ const CompanyDetailsScreen = ({ route, navigation }) => {
 
         const similarCompaniesData = await api.getCompanies(filters);
         let similarCompaniesList = (similarCompaniesData.companies || [])
-          .filter((item) => item._id !== companyId && item._id !== data._id)
+          .filter((item) => item._id !== actualCompanyId && item._id !== data._id)
           .slice(0, 4);
 
         // If we don't have enough similar companies, get more recent companies
@@ -75,7 +96,7 @@ const CompanyDetailsScreen = ({ route, navigation }) => {
           const recentCompanies = await api.getCompanies({ limit: 10 });
           const additionalCompanies = (recentCompanies.companies || [])
             .filter((item) => 
-              item._id !== companyId && 
+              item._id !== actualCompanyId && 
               item._id !== data._id && 
               !similarCompaniesList.some(sc => sc._id === item._id)
             )
@@ -193,14 +214,18 @@ const CompanyDetailsScreen = ({ route, navigation }) => {
         >
           <View style={dynamicStyles.mainColumn}>
             {/* Header Section */}
-            <View style={styles.headerCard}>
+            <View style={[styles.headerCard, dynamicStyles.card]}>
               <View style={styles.headerTop}>
                 <View style={styles.companyBadge}>
-                  <View style={[styles.avatarContainer, { backgroundColor: getAvatarColor(companyData.name) }]}>
-                    <Text style={styles.avatarText}>{getInitials(companyData.name)}</Text>
+                  <View style={[
+                    styles.avatarContainer,
+                    dynamicStyles.avatar,
+                    { backgroundColor: getAvatarColor(companyData.name) }
+                  ]}>
+                    <Text style={[styles.avatarText, dynamicStyles.avatarText]}>{getInitials(companyData.name)}</Text>
                   </View>
                   <View style={styles.companyInfo}>
-                    <Text style={styles.companyName}>{companyData.name}</Text>
+                    <Text style={[styles.companyName, dynamicStyles.companyName]}>{companyData.name}</Text>
                     {companyData.companyType && (
                       <View style={styles.typeBadge}>
                         <Text style={styles.typeText}>{companyData.companyType}</Text>
@@ -211,33 +236,33 @@ const CompanyDetailsScreen = ({ route, navigation }) => {
               </View>
 
               {/* Quick Info */}
-              <View style={styles.quickInfo}>
+              <View style={[styles.quickInfo, dynamicStyles.quickInfo]}>
                 {companyData.industry && (
-                  <View style={styles.detailBadge}>
+                  <View style={[styles.detailBadge, dynamicStyles.detailBadge]}>
                     <View style={[styles.detailIconContainer, styles.industryIcon]}>
                       <Ionicons name="briefcase" size={18} color="#ffffff" />
                     </View>
-                    <Text style={styles.detailText}>
+                    <Text style={[styles.detailText, dynamicStyles.detailText]}>
                       {companyData.industry}
                     </Text>
                   </View>
                 )}
                 {companyData.size && (
-                  <View style={styles.detailBadge}>
+                  <View style={[styles.detailBadge, dynamicStyles.detailBadge]}>
                     <View style={[styles.detailIconContainer, styles.sizeIcon]}>
                       <Ionicons name="people" size={18} color="#ffffff" />
                     </View>
-                    <Text style={styles.detailText}>
+                    <Text style={[styles.detailText, dynamicStyles.detailText]}>
                       {companyData.size}
                     </Text>
                   </View>
                 )}
                 {(companyData.establishedYear || company.profile?.company?.company?.foundedYear) && (
-                  <View style={styles.detailBadge}>
+                  <View style={[styles.detailBadge, dynamicStyles.detailBadge]}>
                     <View style={[styles.detailIconContainer, styles.establishedIcon]}>
                       <Ionicons name="calendar" size={18} color="#ffffff" />
                     </View>
-                    <Text style={styles.detailText}>
+                    <Text style={[styles.detailText, dynamicStyles.detailText]}>
                       {companyData.establishedYear || company.profile?.company?.company?.foundedYear}
                     </Text>
                   </View>
@@ -247,21 +272,21 @@ const CompanyDetailsScreen = ({ route, navigation }) => {
 
             {/* Description */}
             {companyData.description && (
-              <View style={styles.sectionCard}>
+              <View style={[styles.sectionCard, dynamicStyles.card]}>
                 <View style={styles.sectionHeader}>
                   <Ionicons name="information-circle" size={24} color={colors.primary} />
-                  <Text style={styles.sectionTitle}>About Company</Text>
+                  <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>About Company</Text>
                 </View>
-                <Text style={styles.sectionText}>{companyData.description}</Text>
+                <Text style={[styles.sectionText, dynamicStyles.bodyText]}>{companyData.description}</Text>
               </View>
             )}
 
             {/* Location */}
             {(companyData.location?.city || companyData.location?.state) && (
-              <View style={styles.sectionCard}>
+              <View style={[styles.sectionCard, dynamicStyles.card]}>
                 <View style={styles.sectionHeader}>
                   <Ionicons name="location" size={24} color={colors.primary} />
-                  <Text style={styles.sectionTitle}>Location</Text>
+                  <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Location</Text>
                 </View>
             <View style={styles.locationDetails}>
               {companyData.location?.locality && (
@@ -290,21 +315,21 @@ const CompanyDetailsScreen = ({ route, navigation }) => {
 
             {/* Contact & Website */}
             {(company.phone || companyData.website || (socialProfile && socialLink)) && (
-              <View style={styles.sectionCard}>
+              <View style={[styles.sectionCard, dynamicStyles.card]}>
                 <View style={styles.sectionHeader}>
                   <Ionicons name="call" size={24} color={colors.primary} />
-                  <Text style={styles.sectionTitle}>Contact & Website</Text>
+                  <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Contact & Website</Text>
                 </View>
-          <View style={styles.contactRow}>
+          <View style={[styles.contactRow, dynamicStyles.contactRow]}>
             {company.phone && (
-              <TouchableOpacity style={styles.contactItem}>
+              <TouchableOpacity style={[styles.contactItem, dynamicStyles.contactItem]}>
                 <Ionicons name="call-outline" size={20} color={colors.primary} />
                 <Text style={styles.contactText}>{company.phone}</Text>
               </TouchableOpacity>
             )}
             {companyData.website && (
               <TouchableOpacity 
-                style={styles.contactItem}
+                style={[styles.contactItem, dynamicStyles.contactItem]}
                 onPress={() => handleSocialMediaClick(companyData.website)}
               >
                 <Ionicons name="globe-outline" size={20} color={colors.primary} />
@@ -314,7 +339,7 @@ const CompanyDetailsScreen = ({ route, navigation }) => {
           </View>
           {socialProfile && socialLink && (
             <TouchableOpacity 
-              style={styles.socialButton}
+              style={[styles.socialButton, dynamicStyles.socialButton]}
               onPress={() => handleSocialMediaClick(socialLink)}
             >
               <Ionicons name="share-social" size={20} color={colors.primary} />
@@ -326,15 +351,15 @@ const CompanyDetailsScreen = ({ route, navigation }) => {
 
             {/* Industries & Departments */}
             {companyData.industrySubcategories && companyData.industrySubcategories.length > 0 && (
-              <View style={styles.sectionCard}>
+              <View style={[styles.sectionCard, dynamicStyles.card]}>
                 <View style={styles.sectionHeader}>
                   <Ionicons name="business" size={24} color={colors.primary} />
-                  <Text style={styles.sectionTitle}>Industries</Text>
+                  <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Industries</Text>
                 </View>
                 <View style={styles.tagsContainer}>
                   {companyData.industrySubcategories.map((item, index) => (
-                    <View key={index} style={styles.tag}>
-                      <Text style={styles.tagText}>{item}</Text>
+                    <View key={index} style={[styles.tag, dynamicStyles.tag]}>
+                      <Text style={[styles.tagText, dynamicStyles.tagText]}>{item}</Text>
                     </View>
                   ))}
                 </View>
@@ -342,15 +367,15 @@ const CompanyDetailsScreen = ({ route, navigation }) => {
             )}
 
             {companyData.departmentSubcategories && companyData.departmentSubcategories.length > 0 && (
-              <View style={styles.sectionCard}>
+              <View style={[styles.sectionCard, dynamicStyles.card]}>
                 <View style={styles.sectionHeader}>
                   <Ionicons name="layers" size={24} color={colors.primary} />
-                  <Text style={styles.sectionTitle}>Departments</Text>
+                  <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Departments</Text>
                 </View>
                 <View style={styles.tagsContainer}>
                   {companyData.departmentSubcategories.map((item, index) => (
-                    <View key={index} style={styles.tag}>
-                      <Text style={styles.tagText}>{item}</Text>
+                    <View key={index} style={[styles.tag, dynamicStyles.tag]}>
+                      <Text style={[styles.tagText, dynamicStyles.tagText]}>{item}</Text>
                     </View>
                   ))}
                 </View>
@@ -359,21 +384,21 @@ const CompanyDetailsScreen = ({ route, navigation }) => {
 
             {/* Additional Info for Companies */}
             {company.profile?.company?.company && (
-              <View style={styles.sectionCard}>
+              <View style={[styles.sectionCard, dynamicStyles.card]}>
                 <View style={styles.sectionHeader}>
                   <Ionicons name="stats-chart" size={24} color={colors.primary} />
-                  <Text style={styles.sectionTitle}>Company Information</Text>
+                  <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Company Information</Text>
                 </View>
                 {(company.profile.company.company.revenue || company.profile.company.company.employeeCount) && (
-                  <View style={styles.infoGrid}>
+                  <View style={[styles.infoGrid, dynamicStyles.infoGrid]}>
                     {company.profile.company.company.revenue && (
-                      <View style={styles.infoItem}>
+                      <View style={[styles.infoItem, dynamicStyles.infoItem]}>
                         <Text style={styles.infoLabel}>Revenue</Text>
                         <Text style={styles.infoValue}>{company.profile.company.company.revenue}</Text>
                       </View>
                     )}
                     {company.profile.company.company.employeeCount && (
-                      <View style={styles.infoItem}>
+                      <View style={[styles.infoItem, dynamicStyles.infoItem]}>
                         <Text style={styles.infoLabel}>Employees</Text>
                         <Text style={styles.infoValue}>{company.profile.company.company.employeeCount}</Text>
                       </View>
@@ -385,8 +410,8 @@ const CompanyDetailsScreen = ({ route, navigation }) => {
                     <Text style={styles.subsectionTitle}>Departments</Text>
                     <View style={styles.tagsContainer}>
                       {company.profile.company.company.departments.map((item, index) => (
-                        <View key={index} style={styles.tag}>
-                          <Text style={styles.tagText}>{item}</Text>
+                        <View key={index} style={[styles.tag, dynamicStyles.tag]}>
+                          <Text style={[styles.tagText, dynamicStyles.tagText]}>{item}</Text>
                         </View>
                       ))}
                     </View>
@@ -397,8 +422,8 @@ const CompanyDetailsScreen = ({ route, navigation }) => {
                     <Text style={styles.subsectionTitle}>Benefits</Text>
                     <View style={styles.tagsContainer}>
                       {company.profile.company.company.benefits.map((item, index) => (
-                        <View key={index} style={styles.tag}>
-                          <Text style={styles.tagText}>{item}</Text>
+                        <View key={index} style={[styles.tag, dynamicStyles.tag]}>
+                          <Text style={[styles.tagText, dynamicStyles.tagText]}>{item}</Text>
                         </View>
                       ))}
                     </View>
@@ -407,13 +432,13 @@ const CompanyDetailsScreen = ({ route, navigation }) => {
                 {company.profile.company.company.culture && (
                   <View style={styles.textSection}>
                     <Text style={styles.subsectionTitle}>Company Culture</Text>
-                    <Text style={styles.sectionText}>{company.profile.company.company.culture}</Text>
+                    <Text style={[styles.sectionText, dynamicStyles.bodyText]}>{company.profile.company.company.culture}</Text>
                   </View>
                 )}
                 {company.profile.company.company.workEnvironment && (
                   <View style={styles.textSection}>
                     <Text style={styles.subsectionTitle}>Work Environment</Text>
-                    <Text style={styles.sectionText}>{company.profile.company.company.workEnvironment}</Text>
+                    <Text style={[styles.sectionText, dynamicStyles.bodyText]}>{company.profile.company.company.workEnvironment}</Text>
                   </View>
                 )}
               </View>
@@ -421,19 +446,19 @@ const CompanyDetailsScreen = ({ route, navigation }) => {
 
             {/* Jobs Section */}
             {jobs.length > 0 && (
-              <View style={styles.sectionCard}>
+              <View style={[styles.sectionCard, dynamicStyles.card]}>
                 <View style={styles.sectionHeader}>
                   <Ionicons name="briefcase" size={24} color={colors.primary} />
-                  <Text style={styles.sectionTitle}>Open Positions ({jobs.length})</Text>
+                  <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Open Positions ({jobs.length})</Text>
                 </View>
             {jobs.slice(0, 5).map((job, index) => (
               <TouchableOpacity
                 key={index}
-                style={styles.jobItem}
+                style={[styles.jobItem, dynamicStyles.jobItem]}
                 onPress={() => navigation.navigate('JobDetails', { jobId: job._id })}
               >
                 <View style={styles.jobItemHeader}>
-                  <Text style={styles.jobTitle}>{job.title}</Text>
+                  <Text style={[styles.jobTitle, dynamicStyles.jobTitle]}>{job.title}</Text>
                   <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
                 </View>
                 <View style={styles.jobMeta}>
@@ -590,40 +615,119 @@ const CompanyDetailsScreen = ({ route, navigation }) => {
 };
 
 // Dynamic styles based on screen size
-const getDynamicStyles = (isDesktop, isMobile) => ({
-  contentWrapper: {
-    flex: 1,
-    flexDirection: isDesktop ? 'row' : 'column',
-    backgroundColor: colors.background,
-  },
-  scrollContent: {
-    padding: isMobile ? spacing.md : spacing.xl,
-    paddingBottom: spacing.xxl,
-    gap: spacing.lg,
-    ...(isDesktop && {
-      alignItems: 'flex-start',
-      maxWidth: 800,
-    }),
-  },
-  mainColumn: {
-    width: '100%',
-    maxWidth: isDesktop ? 800 : '100%',
-  },
-  sidebar: {
-    width: isDesktop ? 400 : '100%',
-    backgroundColor: colors.background,
-    borderLeftWidth: isDesktop ? 1 : 0,
-    borderLeftColor: colors.borderLight,
-    padding: isDesktop ? spacing.lg : spacing.md,
-    ...(isDesktop && {
-      position: 'sticky',
-      top: 0,
-      height: '100vh',
-      maxHeight: '100vh',
-      overflowY: 'auto',
-    }),
-  },
-});
+const getDynamicStyles = ({ isXsPhone, isSmallPhone, isPhone, isMobile, isTablet, isDesktop, width }) => {
+  const horizontalPadding = isXsPhone ? spacing.md : isSmallPhone ? spacing.md : isPhone ? spacing.lg : isMobile ? spacing.lg : isTablet ? spacing.xl : spacing.xl * 1.1;
+  const cardPadding = isMobile ? spacing.lg : spacing.xl;
+  const cardRadius = isMobile ? borderRadius.lg : borderRadius.xl;
+  const gap = isMobile ? spacing.md : spacing.lg;
+  const avatarSize = isMobile ? 64 : 80;
+  const avatarRadius = isMobile ? borderRadius.lg : borderRadius.xl;
+  const companyNameSize = isMobile ? 26 : isTablet ? 30 : 34;
+  const sectionTitleSize = isMobile ? 18 : 20;
+  const bodyFontSize = isMobile ? 14 : 16;
+
+  return {
+    contentWrapper: {
+      flex: 1,
+      flexDirection: isDesktop ? 'row' : 'column',
+      backgroundColor: colors.background,
+      paddingHorizontal: isDesktop ? 0 : horizontalPadding,
+      justifyContent: 'center',
+    },
+    scrollContent: {
+      paddingHorizontal: isDesktop ? 0 : horizontalPadding,
+      paddingTop: isMobile ? spacing.lg : spacing.xl,
+      paddingBottom: spacing.xxl * 1.2,
+      gap,
+      alignItems: 'center',
+    },
+    mainColumn: {
+      width: '100%',
+      maxWidth: isDesktop ? 920 : '100%',
+      alignSelf: 'center',
+      gap,
+    },
+    sidebar: {
+      width: isDesktop ? 360 : '100%',
+      backgroundColor: colors.background,
+      borderLeftWidth: isDesktop ? 1 : 0,
+      borderLeftColor: colors.borderLight,
+      padding: isDesktop ? spacing.lg : spacing.md,
+      ...(isDesktop && {
+        position: 'sticky',
+        top: spacing.xl,
+        height: '100vh',
+        maxHeight: '100vh',
+        overflowY: 'auto',
+      }),
+    },
+    card: {
+      padding: cardPadding,
+      borderRadius: cardRadius,
+    },
+    avatar: {
+      width: avatarSize,
+      height: avatarSize,
+      borderRadius: avatarRadius,
+    },
+    avatarText: {
+      fontSize: isMobile ? 26 : 32,
+    },
+    companyName: {
+      fontSize: companyNameSize,
+      lineHeight: companyNameSize + 8,
+    },
+    sectionTitle: {
+      fontSize: sectionTitleSize,
+    },
+    bodyText: {
+      fontSize: bodyFontSize,
+      lineHeight: bodyFontSize + 10,
+    },
+    detailBadge: {
+      paddingHorizontal: isMobile ? spacing.sm : spacing.md,
+      paddingVertical: isMobile ? spacing.sm : spacing.sm,
+      borderRadius: borderRadius.md,
+    },
+    detailText: {
+      fontSize: isMobile ? 14 : 15,
+    },
+    quickInfo: {
+      gap,
+    },
+    contactRow: {
+      flexDirection: isMobile ? 'column' : 'row',
+    },
+    contactItem: {
+      padding: isMobile ? spacing.md : spacing.lg,
+      width: isMobile ? '100%' : 'auto',
+    },
+    socialButton: {
+      padding: isMobile ? spacing.md : spacing.lg,
+      borderRadius: borderRadius.lg,
+    },
+    infoGrid: {
+      flexDirection: isMobile ? 'column' : 'row',
+      gap,
+    },
+    infoItem: {
+      width: isMobile ? '100%' : '48%',
+    },
+    tag: {
+      paddingHorizontal: isMobile ? spacing.sm : spacing.md,
+      paddingVertical: isMobile ? spacing.sm : spacing.sm,
+    },
+    tagText: {
+      fontSize: isMobile ? 13 : 14,
+    },
+    jobItem: {
+      paddingVertical: spacing.md,
+    },
+    jobTitle: {
+      fontSize: isMobile ? 15 : 16,
+    },
+  };
+};
 
 const styles = StyleSheet.create({
   container: {

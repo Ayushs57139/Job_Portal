@@ -49,13 +49,13 @@ const EmployerManageResponsesScreen = ({ navigation }) => {
   const loadJobs = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/jobs/my-jobs');
-      setJobs(response.data.jobs || []);
+      const response = await api.getMyJobs();
+      setJobs(response.jobs || []);
       
       // Auto-select first job if available
-      if (response.data.jobs && response.data.jobs.length > 0) {
-        setSelectedJob(response.data.jobs[0]);
-        loadApplications(response.data.jobs[0]._id);
+      if (response.jobs && response.jobs.length > 0) {
+        setSelectedJob(response.jobs[0]);
+        loadApplications(response.jobs[0]._id);
       }
     } catch (error) {
       console.error('Error loading jobs:', error);
@@ -67,8 +67,8 @@ const EmployerManageResponsesScreen = ({ navigation }) => {
 
   const loadApplications = async (jobId) => {
     try {
-      const response = await api.get(`/applications/job/${jobId}`);
-      setApplications(response.data.applications || []);
+      const response = await api.getJobApplications(jobId);
+      setApplications(response.applications || []);
     } catch (error) {
       console.error('Error loading applications:', error);
       Alert.alert('Error', 'Failed to load applications. Please try again.');
@@ -100,9 +100,7 @@ const EmployerManageResponsesScreen = ({ navigation }) => {
 
     try {
       setUpdatingStatus(true);
-      await api.put(`/applications/${selectedApplication.id}/status`, {
-        status: newStatus
-      });
+      await api.updateApplicationStatus(selectedApplication.id, newStatus);
 
       // Update local state
       setApplications(prev => 
@@ -149,15 +147,28 @@ const EmployerManageResponsesScreen = ({ navigation }) => {
       key={application.id}
       style={styles.applicationCard}
       onPress={() => handleApplicationSelect(application)}
+      activeOpacity={0.7}
     >
       <View style={styles.applicationHeader}>
+        <View style={styles.applicantAvatar}>
+          <Text style={styles.applicantAvatarText}>
+            {application.fullName?.charAt(0)?.toUpperCase() || 'A'}
+          </Text>
+        </View>
         <View style={styles.applicantInfo}>
           <Text style={styles.applicantName}>{application.fullName}</Text>
-          <Text style={styles.applicantEmail}>{application.email}</Text>
-          <Text style={styles.applicantPhone}>{application.mobileNumber}</Text>
+          <View style={styles.applicantContact}>
+            <Ionicons name="mail-outline" size={14} color={colors.textSecondary} />
+            <Text style={styles.applicantEmail}>{application.email}</Text>
+          </View>
+          <View style={styles.applicantContact}>
+            <Ionicons name="call-outline" size={14} color={colors.textSecondary} />
+            <Text style={styles.applicantPhone}>{application.mobileNumber}</Text>
+          </View>
         </View>
         <View style={styles.statusContainer}>
-          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(application.status) + '20' }]}>
+          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(application.status) + '15', borderColor: getStatusColor(application.status) + '40' }]}>
+            <View style={[styles.statusDot, { backgroundColor: getStatusColor(application.status) }]} />
             <Text style={[styles.statusText, { color: getStatusColor(application.status) }]}>
               {getStatusLabel(application.status)}
             </Text>
@@ -167,34 +178,44 @@ const EmployerManageResponsesScreen = ({ navigation }) => {
       
       <View style={styles.applicationDetails}>
         <View style={styles.detailRow}>
-          <Ionicons name="briefcase-outline" size={16} color={colors.textSecondary} />
+          <View style={styles.detailIconContainer}>
+            <Ionicons name="briefcase-outline" size={18} color="#6366F1" />
+          </View>
           <Text style={styles.detailText}>{application.currentJobTitle || 'Not specified'}</Text>
         </View>
         <View style={styles.detailRow}>
-          <Ionicons name="school-outline" size={16} color={colors.textSecondary} />
+          <View style={styles.detailIconContainer}>
+            <Ionicons name="school-outline" size={18} color="#8B5CF6" />
+          </View>
           <Text style={styles.detailText}>{application.educationLevel} - {application.course}</Text>
         </View>
         <View style={styles.detailRow}>
-          <Ionicons name="location-outline" size={16} color={colors.textSecondary} />
+          <View style={styles.detailIconContainer}>
+            <Ionicons name="location-outline" size={18} color="#EC4899" />
+          </View>
           <Text style={styles.detailText}>{application.currentLocation}</Text>
         </View>
         <View style={styles.detailRow}>
-          <Ionicons name="time-outline" size={16} color={colors.textSecondary} />
+          <View style={styles.detailIconContainer}>
+            <Ionicons name="time-outline" size={18} color="#10B981" />
+          </View>
           <Text style={styles.detailText}>Applied {formatDate(application.appliedAt)}</Text>
         </View>
       </View>
 
       {application.keySkills && application.keySkills.length > 0 && (
         <View style={styles.skillsContainer}>
-          <Text style={styles.skillsLabel}>Skills:</Text>
+          <Text style={styles.skillsLabel}>Key Skills</Text>
           <View style={styles.skillsList}>
-            {application.keySkills.slice(0, 3).map((skill, index) => (
+            {application.keySkills.slice(0, 4).map((skill, index) => (
               <View key={index} style={styles.skillTag}>
                 <Text style={styles.skillText}>{skill}</Text>
               </View>
             ))}
-            {application.keySkills.length > 3 && (
-              <Text style={styles.moreSkillsText}>+{application.keySkills.length - 3} more</Text>
+            {application.keySkills.length > 4 && (
+              <View style={styles.moreSkillsTag}>
+                <Text style={styles.moreSkillsText}>+{application.keySkills.length - 4}</Text>
+              </View>
             )}
           </View>
         </View>
@@ -213,99 +234,161 @@ const EmployerManageResponsesScreen = ({ navigation }) => {
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Application Details</Text>
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => setShowApplicationDetails(false)}
-            >
-              <Ionicons name="close" size={24} color={colors.text} />
-            </TouchableOpacity>
+            <View style={styles.modalHeaderContent}>
+              <View style={styles.modalTitleContainer}>
+                <View style={styles.modalTitleIcon}>
+                  <Ionicons name="document-text-outline" size={24} color="#3B82F6" />
+                </View>
+                <View>
+                  <Text style={styles.modalTitle}>Application Details</Text>
+                  <Text style={styles.modalSubtitle}>{selectedApplication.fullName}</Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setShowApplicationDetails(false)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="close-circle" size={28} color="#9CA3AF" />
+              </TouchableOpacity>
+            </View>
           </View>
 
           <ScrollView style={styles.modalContent}>
             {/* Personal Information */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Personal Information</Text>
+              <View style={styles.sectionHeader}>
+                <View style={styles.sectionIconContainer}>
+                  <Ionicons name="person-outline" size={20} color="#3B82F6" />
+                </View>
+                <Text style={styles.sectionTitle}>Personal Information</Text>
+              </View>
               <View style={styles.detailGrid}>
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>Full Name</Text>
-                  <Text style={styles.detailValue}>{selectedApplication.fullName}</Text>
+                <View style={styles.modernDetailItem}>
+                  <View style={styles.modernDetailLabelContainer}>
+                    <Ionicons name="person" size={16} color="#6B7280" />
+                    <Text style={styles.modernDetailLabel}>Full Name</Text>
+                  </View>
+                  <Text style={styles.modernDetailValue}>{selectedApplication.fullName}</Text>
                 </View>
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>Email</Text>
-                  <Text style={styles.detailValue}>{selectedApplication.email}</Text>
+                <View style={styles.modernDetailItem}>
+                  <View style={styles.modernDetailLabelContainer}>
+                    <Ionicons name="mail" size={16} color="#6B7280" />
+                    <Text style={styles.modernDetailLabel}>Email</Text>
+                  </View>
+                  <Text style={styles.modernDetailValue}>{selectedApplication.email}</Text>
                 </View>
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>Mobile</Text>
-                  <Text style={styles.detailValue}>{selectedApplication.mobileNumber}</Text>
+                <View style={styles.modernDetailItem}>
+                  <View style={styles.modernDetailLabelContainer}>
+                    <Ionicons name="call" size={16} color="#6B7280" />
+                    <Text style={styles.modernDetailLabel}>Mobile</Text>
+                  </View>
+                  <Text style={styles.modernDetailValue}>{selectedApplication.mobileNumber}</Text>
                 </View>
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>WhatsApp</Text>
-                  <Text style={styles.detailValue}>{selectedApplication.whatsappNumber || 'Not provided'}</Text>
+                <View style={styles.modernDetailItem}>
+                  <View style={styles.modernDetailLabelContainer}>
+                    <Ionicons name="logo-whatsapp" size={16} color="#25D366" />
+                    <Text style={styles.modernDetailLabel}>WhatsApp</Text>
+                  </View>
+                  <Text style={styles.modernDetailValue}>{selectedApplication.whatsappNumber || 'Not provided'}</Text>
                 </View>
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>Date of Birth</Text>
-                  <Text style={styles.detailValue}>
+                <View style={styles.modernDetailItem}>
+                  <View style={styles.modernDetailLabelContainer}>
+                    <Ionicons name="calendar" size={16} color="#6B7280" />
+                    <Text style={styles.modernDetailLabel}>Date of Birth</Text>
+                  </View>
+                  <Text style={styles.modernDetailValue}>
                     {selectedApplication.dateOfBirth ? formatDate(selectedApplication.dateOfBirth) : 'Not provided'}
                   </Text>
                 </View>
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>Gender</Text>
-                  <Text style={styles.detailValue}>{selectedApplication.gender}</Text>
+                <View style={styles.modernDetailItem}>
+                  <View style={styles.modernDetailLabelContainer}>
+                    <Ionicons name="people" size={16} color="#6B7280" />
+                    <Text style={styles.modernDetailLabel}>Gender</Text>
+                  </View>
+                  <Text style={styles.modernDetailValue}>{selectedApplication.gender}</Text>
                 </View>
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>Marital Status</Text>
-                  <Text style={styles.detailValue}>{selectedApplication.maritalStatus}</Text>
+                <View style={styles.modernDetailItem}>
+                  <View style={styles.modernDetailLabelContainer}>
+                    <Ionicons name="heart" size={16} color="#6B7280" />
+                    <Text style={styles.modernDetailLabel}>Marital Status</Text>
+                  </View>
+                  <Text style={styles.modernDetailValue}>{selectedApplication.maritalStatus}</Text>
                 </View>
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>Current Location</Text>
-                  <Text style={styles.detailValue}>{selectedApplication.currentLocation}</Text>
+                <View style={styles.modernDetailItem}>
+                  <View style={styles.modernDetailLabelContainer}>
+                    <Ionicons name="location" size={16} color="#6B7280" />
+                    <Text style={styles.modernDetailLabel}>Current Location</Text>
+                  </View>
+                  <Text style={styles.modernDetailValue}>{selectedApplication.currentLocation}</Text>
                 </View>
               </View>
             </View>
 
             {/* Professional Information */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Professional Information</Text>
-              <View style={styles.detailGrid}>
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>Current Job Title</Text>
-                  <Text style={styles.detailValue}>{selectedApplication.currentJobTitle || 'Not specified'}</Text>
+              <View style={styles.sectionHeader}>
+                <View style={styles.sectionIconContainer}>
+                  <Ionicons name="briefcase-outline" size={20} color="#10B981" />
                 </View>
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>Current Salary</Text>
-                  <Text style={styles.detailValue}>
+                <Text style={styles.sectionTitle}>Professional Information</Text>
+              </View>
+              <View style={styles.detailGrid}>
+                <View style={styles.modernDetailItem}>
+                  <View style={styles.modernDetailLabelContainer}>
+                    <Ionicons name="briefcase" size={16} color="#6B7280" />
+                    <Text style={styles.modernDetailLabel}>Current Job Title</Text>
+                  </View>
+                  <Text style={styles.modernDetailValue}>{selectedApplication.currentJobTitle || 'Not specified'}</Text>
+                </View>
+                <View style={styles.modernDetailItem}>
+                  <View style={styles.modernDetailLabelContainer}>
+                    <Ionicons name="cash" size={16} color="#6B7280" />
+                    <Text style={styles.modernDetailLabel}>Current Salary</Text>
+                  </View>
+                  <Text style={styles.modernDetailValue}>
                     {selectedApplication.currentSalary ? `₹${selectedApplication.currentSalary.toLocaleString()}` : 'Not specified'}
                   </Text>
                 </View>
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>Experience Level</Text>
-                  <Text style={styles.detailValue}>{selectedApplication.experienceLevel}</Text>
+                <View style={styles.modernDetailItem}>
+                  <View style={styles.modernDetailLabelContainer}>
+                    <Ionicons name="trending-up" size={16} color="#6B7280" />
+                    <Text style={styles.modernDetailLabel}>Experience Level</Text>
+                  </View>
+                  <Text style={styles.modernDetailValue}>{selectedApplication.experienceLevel}</Text>
                 </View>
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>Job Status</Text>
-                  <Text style={styles.detailValue}>{selectedApplication.jobStatus}</Text>
+                <View style={styles.modernDetailItem}>
+                  <View style={styles.modernDetailLabelContainer}>
+                    <Ionicons name="checkmark-circle" size={16} color="#6B7280" />
+                    <Text style={styles.modernDetailLabel}>Job Status</Text>
+                  </View>
+                  <Text style={styles.modernDetailValue}>{selectedApplication.jobStatus}</Text>
                 </View>
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>Notice Period</Text>
-                  <Text style={styles.detailValue}>{selectedApplication.noticePeriod || 'Not specified'}</Text>
+                <View style={styles.modernDetailItem}>
+                  <View style={styles.modernDetailLabelContainer}>
+                    <Ionicons name="time" size={16} color="#6B7280" />
+                    <Text style={styles.modernDetailLabel}>Notice Period</Text>
+                  </View>
+                  <Text style={styles.modernDetailValue}>{selectedApplication.noticePeriod || 'Not specified'}</Text>
                 </View>
               </View>
               
               {selectedApplication.jobProfileDescription && (
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>Profile Description</Text>
-                  <Text style={styles.detailValue}>{selectedApplication.jobProfileDescription}</Text>
+                <View style={styles.descriptionContainer}>
+                  <Text style={styles.descriptionLabel}>Profile Description</Text>
+                  <View style={styles.descriptionBox}>
+                    <Text style={styles.descriptionText}>{selectedApplication.jobProfileDescription}</Text>
+                  </View>
                 </View>
               )}
 
               {selectedApplication.keySkills && selectedApplication.keySkills.length > 0 && (
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>Key Skills</Text>
+                <View style={styles.skillsSection}>
+                  <Text style={styles.skillsSectionLabel}>Key Skills</Text>
                   <View style={styles.skillsList}>
                     {selectedApplication.keySkills.map((skill, index) => (
-                      <View key={index} style={styles.skillTag}>
-                        <Text style={styles.skillText}>{skill}</Text>
+                      <View key={index} style={styles.modalSkillTag}>
+                        <Text style={styles.modalSkillText}>{skill}</Text>
                       </View>
                     ))}
                   </View>
@@ -315,121 +398,207 @@ const EmployerManageResponsesScreen = ({ navigation }) => {
 
             {/* Education Information */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Education Information</Text>
+              <View style={styles.sectionHeader}>
+                <View style={styles.sectionIconContainer}>
+                  <Ionicons name="school-outline" size={20} color="#8B5CF6" />
+                </View>
+                <Text style={styles.sectionTitle}>Education Information</Text>
+              </View>
               <View style={styles.detailGrid}>
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>Education Level</Text>
-                  <Text style={styles.detailValue}>{selectedApplication.educationLevel}</Text>
+                <View style={styles.modernDetailItem}>
+                  <View style={styles.modernDetailLabelContainer}>
+                    <Ionicons name="school" size={16} color="#6B7280" />
+                    <Text style={styles.modernDetailLabel}>Education Level</Text>
+                  </View>
+                  <Text style={styles.modernDetailValue}>{selectedApplication.educationLevel}</Text>
                 </View>
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>Course</Text>
-                  <Text style={styles.detailValue}>{selectedApplication.course}</Text>
+                <View style={styles.modernDetailItem}>
+                  <View style={styles.modernDetailLabelContainer}>
+                    <Ionicons name="book" size={16} color="#6B7280" />
+                    <Text style={styles.modernDetailLabel}>Course</Text>
+                  </View>
+                  <Text style={styles.modernDetailValue}>{selectedApplication.course}</Text>
                 </View>
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>Institution</Text>
-                  <Text style={styles.detailValue}>{selectedApplication.institution || 'Not specified'}</Text>
+                <View style={styles.modernDetailItem}>
+                  <View style={styles.modernDetailLabelContainer}>
+                    <Ionicons name="business" size={16} color="#6B7280" />
+                    <Text style={styles.modernDetailLabel}>Institution</Text>
+                  </View>
+                  <Text style={styles.modernDetailValue}>{selectedApplication.institution || 'Not specified'}</Text>
                 </View>
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>Passing Year</Text>
-                  <Text style={styles.detailValue}>{selectedApplication.passingYear || 'Not specified'}</Text>
+                <View style={styles.modernDetailItem}>
+                  <View style={styles.modernDetailLabelContainer}>
+                    <Ionicons name="calendar" size={16} color="#6B7280" />
+                    <Text style={styles.modernDetailLabel}>Passing Year</Text>
+                  </View>
+                  <Text style={styles.modernDetailValue}>{selectedApplication.passingYear || 'Not specified'}</Text>
                 </View>
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>Percentage</Text>
-                  <Text style={styles.detailValue}>{selectedApplication.percentage || 'Not specified'}</Text>
+                <View style={styles.modernDetailItem}>
+                  <View style={styles.modernDetailLabelContainer}>
+                    <Ionicons name="trophy" size={16} color="#6B7280" />
+                    <Text style={styles.modernDetailLabel}>Percentage</Text>
+                  </View>
+                  <Text style={styles.modernDetailValue}>{selectedApplication.percentage || 'Not specified'}</Text>
                 </View>
               </View>
             </View>
 
             {/* Work Experience */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Work Experience</Text>
-              <View style={styles.detailGrid}>
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>Current Company</Text>
-                  <Text style={styles.detailValue}>{selectedApplication.currentCompany || 'Not specified'}</Text>
+              <View style={styles.sectionHeader}>
+                <View style={styles.sectionIconContainer}>
+                  <Ionicons name="briefcase-outline" size={20} color="#F59E0B" />
                 </View>
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>Industry</Text>
-                  <Text style={styles.detailValue}>
+                <Text style={styles.sectionTitle}>Work Experience</Text>
+              </View>
+              <View style={styles.detailGrid}>
+                <View style={styles.modernDetailItem}>
+                  <View style={styles.modernDetailLabelContainer}>
+                    <Ionicons name="business" size={16} color="#6B7280" />
+                    <Text style={styles.modernDetailLabel}>Current Company</Text>
+                  </View>
+                  <Text style={styles.modernDetailValue}>{selectedApplication.currentCompany || 'Not specified'}</Text>
+                </View>
+                <View style={styles.modernDetailItem}>
+                  <View style={styles.modernDetailLabelContainer}>
+                    <Ionicons name="layers" size={16} color="#6B7280" />
+                    <Text style={styles.modernDetailLabel}>Industry</Text>
+                  </View>
+                  <Text style={styles.modernDetailValue}>
                     {selectedApplication.industry && selectedApplication.industry.length > 0 
                       ? selectedApplication.industry.join(', ') 
                       : 'Not specified'}
                   </Text>
                 </View>
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>Company Type</Text>
-                  <Text style={styles.detailValue}>{selectedApplication.companyType || 'Not specified'}</Text>
+                <View style={styles.modernDetailItem}>
+                  <View style={styles.modernDetailLabelContainer}>
+                    <Ionicons name="cube" size={16} color="#6B7280" />
+                    <Text style={styles.modernDetailLabel}>Company Type</Text>
+                  </View>
+                  <Text style={styles.modernDetailValue}>{selectedApplication.companyType || 'Not specified'}</Text>
                 </View>
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>Employment Type</Text>
-                  <Text style={styles.detailValue}>{selectedApplication.employmentType || 'Not specified'}</Text>
+                <View style={styles.modernDetailItem}>
+                  <View style={styles.modernDetailLabelContainer}>
+                    <Ionicons name="contract" size={16} color="#6B7280" />
+                    <Text style={styles.modernDetailLabel}>Employment Type</Text>
+                  </View>
+                  <Text style={styles.modernDetailValue}>{selectedApplication.employmentType || 'Not specified'}</Text>
                 </View>
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>Currently Working</Text>
-                  <Text style={styles.detailValue}>{selectedApplication.currentlyWorking || 'Not specified'}</Text>
+                <View style={styles.modernDetailItem}>
+                  <View style={styles.modernDetailLabelContainer}>
+                    <Ionicons name="checkmark-circle" size={16} color="#6B7280" />
+                    <Text style={styles.modernDetailLabel}>Currently Working</Text>
+                  </View>
+                  <Text style={styles.modernDetailValue}>{selectedApplication.currentlyWorking || 'Not specified'}</Text>
                 </View>
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>Work Location</Text>
-                  <Text style={styles.detailValue}>{selectedApplication.workLocation || 'Not specified'}</Text>
+                <View style={styles.modernDetailItem}>
+                  <View style={styles.modernDetailLabelContainer}>
+                    <Ionicons name="location" size={16} color="#6B7280" />
+                    <Text style={styles.modernDetailLabel}>Work Location</Text>
+                  </View>
+                  <Text style={styles.modernDetailValue}>{selectedApplication.workLocation || 'Not specified'}</Text>
                 </View>
               </View>
             </View>
 
             {/* Additional Information */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Additional Information</Text>
+              <View style={styles.sectionHeader}>
+                <View style={styles.sectionIconContainer}>
+                  <Ionicons name="information-circle-outline" size={20} color="#EC4899" />
+                </View>
+                <Text style={styles.sectionTitle}>Additional Information</Text>
+              </View>
               <View style={styles.detailGrid}>
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>Disability Status</Text>
-                  <Text style={styles.detailValue}>{selectedApplication.disabilityStatus || 'Not specified'}</Text>
+                <View style={styles.modernDetailItem}>
+                  <View style={styles.modernDetailLabelContainer}>
+                    <Ionicons name="accessibility" size={16} color="#6B7280" />
+                    <Text style={styles.modernDetailLabel}>Disability Status</Text>
+                  </View>
+                  <Text style={styles.modernDetailValue}>{selectedApplication.disabilityStatus || 'Not specified'}</Text>
                 </View>
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>Military Experience</Text>
-                  <Text style={styles.detailValue}>{selectedApplication.militaryExperience || 'Not specified'}</Text>
+                <View style={styles.modernDetailItem}>
+                  <View style={styles.modernDetailLabelContainer}>
+                    <Ionicons name="shield" size={16} color="#6B7280" />
+                    <Text style={styles.modernDetailLabel}>Military Experience</Text>
+                  </View>
+                  <Text style={styles.modernDetailValue}>{selectedApplication.militaryExperience || 'Not specified'}</Text>
                 </View>
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>Bike Available</Text>
-                  <Text style={styles.detailValue}>{selectedApplication.bikeAvailable || 'Not specified'}</Text>
+                <View style={styles.modernDetailItem}>
+                  <View style={styles.modernDetailLabelContainer}>
+                    <Ionicons name="bicycle" size={16} color="#6B7280" />
+                    <Text style={styles.modernDetailLabel}>Bike Available</Text>
+                  </View>
+                  <Text style={styles.modernDetailValue}>{selectedApplication.bikeAvailable || 'Not specified'}</Text>
                 </View>
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>Driving License</Text>
-                  <Text style={styles.detailValue}>{selectedApplication.drivingLicense || 'Not specified'}</Text>
+                <View style={styles.modernDetailItem}>
+                  <View style={styles.modernDetailLabelContainer}>
+                    <Ionicons name="card" size={16} color="#6B7280" />
+                    <Text style={styles.modernDetailLabel}>Driving License</Text>
+                  </View>
+                  <Text style={styles.modernDetailValue}>{selectedApplication.drivingLicense || 'Not specified'}</Text>
                 </View>
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>English Fluency</Text>
-                  <Text style={styles.detailValue}>{selectedApplication.englishFluency || 'Not specified'}</Text>
+                <View style={styles.modernDetailItem}>
+                  <View style={styles.modernDetailLabelContainer}>
+                    <Ionicons name="chatbubbles" size={16} color="#6B7280" />
+                    <Text style={styles.modernDetailLabel}>English Fluency</Text>
+                  </View>
+                  <Text style={styles.modernDetailValue}>{selectedApplication.englishFluency || 'Not specified'}</Text>
                 </View>
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>Source of Visit</Text>
-                  <Text style={styles.detailValue}>{selectedApplication.sourceOfVisit || 'Not specified'}</Text>
+                <View style={styles.modernDetailItem}>
+                  <View style={styles.modernDetailLabelContainer}>
+                    <Ionicons name="globe" size={16} color="#6B7280" />
+                    <Text style={styles.modernDetailLabel}>Source of Visit</Text>
+                  </View>
+                  <Text style={styles.modernDetailValue}>{selectedApplication.sourceOfVisit || 'Not specified'}</Text>
                 </View>
               </View>
             </View>
 
             {/* Location Information */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Location Information</Text>
+              <View style={styles.sectionHeader}>
+                <View style={styles.sectionIconContainer}>
+                  <Ionicons name="location-outline" size={20} color="#10B981" />
+                </View>
+                <Text style={styles.sectionTitle}>Location Information</Text>
+              </View>
               <View style={styles.detailGrid}>
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>Current State</Text>
-                  <Text style={styles.detailValue}>{selectedApplication.currentState || 'Not specified'}</Text>
+                <View style={styles.modernDetailItem}>
+                  <View style={styles.modernDetailLabelContainer}>
+                    <Ionicons name="map" size={16} color="#6B7280" />
+                    <Text style={styles.modernDetailLabel}>Current State</Text>
+                  </View>
+                  <Text style={styles.modernDetailValue}>{selectedApplication.currentState || 'Not specified'}</Text>
                 </View>
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>Current City</Text>
-                  <Text style={styles.detailValue}>{selectedApplication.currentCity || 'Not specified'}</Text>
+                <View style={styles.modernDetailItem}>
+                  <View style={styles.modernDetailLabelContainer}>
+                    <Ionicons name="location" size={16} color="#6B7280" />
+                    <Text style={styles.modernDetailLabel}>Current City</Text>
+                  </View>
+                  <Text style={styles.modernDetailValue}>{selectedApplication.currentCity || 'Not specified'}</Text>
                 </View>
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>Pincode</Text>
-                  <Text style={styles.detailValue}>{selectedApplication.pincode || 'Not specified'}</Text>
+                <View style={styles.modernDetailItem}>
+                  <View style={styles.modernDetailLabelContainer}>
+                    <Ionicons name="pin" size={16} color="#6B7280" />
+                    <Text style={styles.modernDetailLabel}>Pincode</Text>
+                  </View>
+                  <Text style={styles.modernDetailValue}>{selectedApplication.pincode || 'Not specified'}</Text>
                 </View>
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>Home Town</Text>
-                  <Text style={styles.detailValue}>{selectedApplication.homeTown || 'Not specified'}</Text>
+                <View style={styles.modernDetailItem}>
+                  <View style={styles.modernDetailLabelContainer}>
+                    <Ionicons name="home" size={16} color="#6B7280" />
+                    <Text style={styles.modernDetailLabel}>Home Town</Text>
+                  </View>
+                  <Text style={styles.modernDetailValue}>{selectedApplication.homeTown || 'Not specified'}</Text>
                 </View>
                 {selectedApplication.preferredLocations && selectedApplication.preferredLocations.length > 0 && (
-                  <View style={styles.detailItem}>
-                    <Text style={styles.detailLabel}>Preferred Locations</Text>
-                    <Text style={styles.detailValue}>{selectedApplication.preferredLocations.join(', ')}</Text>
+                  <View style={styles.modernDetailItem}>
+                    <View style={styles.modernDetailLabelContainer}>
+                      <Ionicons name="star" size={16} color="#6B7280" />
+                      <Text style={styles.modernDetailLabel}>Preferred Locations</Text>
+                    </View>
+                    <Text style={styles.modernDetailValue}>{selectedApplication.preferredLocations.join(', ')}</Text>
                   </View>
                 )}
               </View>
@@ -443,9 +612,17 @@ const EmployerManageResponsesScreen = ({ navigation }) => {
                 setNewStatus(selectedApplication.status);
                 setStatusModalVisible(true);
               }}
+              activeOpacity={0.8}
             >
-              <Ionicons name="create-outline" size={20} color={colors.white} />
-              <Text style={styles.actionButtonText}>Update Status</Text>
+              <LinearGradient
+                colors={['#3B82F6', '#2563EB']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.actionButtonGradient}
+              >
+                <Ionicons name="create-outline" size={20} color="#FFFFFF" />
+                <Text style={styles.actionButtonText}>Update Status</Text>
+              </LinearGradient>
             </TouchableOpacity>
           </View>
         </View>
@@ -837,126 +1014,261 @@ const styles = StyleSheet.create({
   },
   applicationCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: borderRadius.lg,
-    padding: spacing.xl,
-    marginBottom: spacing.lg,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
     ...shadows.md,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#F3F4F6',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   applicationHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: spacing.md,
+    marginBottom: 16,
+    gap: 12,
+  },
+  applicantAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#EEF2FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  applicantAvatarText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#3B82F6',
   },
   applicantInfo: {
     flex: 1,
+    gap: 6,
   },
   applicantName: {
-    ...typography.h5,
-    color: colors.text,
-    fontWeight: '600',
-    marginBottom: spacing.xs,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+    letterSpacing: -0.3,
+  },
+  applicantContact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   applicantEmail: {
-    ...typography.body2,
-    color: colors.textSecondary,
-    marginBottom: spacing.xs,
+    fontSize: 14,
+    color: '#6B7280',
+    flex: 1,
   },
   applicantPhone: {
-    ...typography.body2,
-    color: colors.textSecondary,
+    fontSize: 14,
+    color: '#6B7280',
+    flex: 1,
   },
   statusContainer: {
-    marginLeft: spacing.md,
+    alignItems: 'flex-end',
   },
   statusBadge: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    gap: 6,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   statusText: {
-    ...typography.caption,
+    fontSize: 12,
     fontWeight: '600',
+    letterSpacing: 0.3,
   },
   applicationDetails: {
-    marginBottom: spacing.md,
+    marginBottom: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+    gap: 12,
   },
   detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.xs,
+    gap: 12,
+  },
+  detailIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: '#F9FAFB',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   detailText: {
-    ...typography.body2,
-    color: colors.textSecondary,
-    marginLeft: spacing.sm,
+    fontSize: 14,
+    color: '#374151',
+    flex: 1,
+    fontWeight: '500',
   },
   skillsContainer: {
-    marginTop: spacing.sm,
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
   },
   skillsLabel: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginBottom: spacing.xs,
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginBottom: 10,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   skillsList: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.xs,
+    gap: 8,
   },
   skillTag: {
-    backgroundColor: colors.primary + '15',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.sm,
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E0E7FF',
   },
   skillText: {
-    ...typography.caption,
-    color: colors.primary,
-    fontWeight: '500',
+    fontSize: 13,
+    color: '#3B82F6',
+    fontWeight: '600',
+  },
+  moreSkillsTag: {
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
   },
   moreSkillsText: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    fontStyle: 'italic',
+    fontSize: 13,
+    color: '#6B7280',
+    fontWeight: '600',
   },
   modalContainer: {
     flex: 1,
     backgroundColor: colors.background,
   },
   modalHeader: {
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    paddingBottom: 0,
+  },
+  modalHeaderContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    padding: 20,
+  },
+  modalTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  modalTitleIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#EEF2FF',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   modalTitle: {
-    ...typography.h4,
-    color: colors.text,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#111827',
+    letterSpacing: -0.3,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginTop: 2,
   },
   closeButton: {
-    padding: spacing.sm,
+    padding: 4,
   },
   modalContent: {
     flex: 1,
-    padding: spacing.lg,
+    backgroundColor: '#F9FAFB',
+    padding: 20,
   },
   section: {
-    marginBottom: spacing.xl,
+    marginBottom: 32,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  sectionIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: '#F9FAFB',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   sectionTitle: {
-    ...typography.h5,
-    color: colors.text,
-    fontWeight: '600',
-    marginBottom: spacing.md,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+    letterSpacing: -0.3,
   },
   detailGrid: {
-    gap: spacing.md,
+    gap: 16,
+  },
+  modernDetailItem: {
+    padding: 16,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+  },
+  modernDetailLabelContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  modernDetailLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6B7280',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  modernDetailValue: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#111827',
+    lineHeight: 22,
   },
   detailItem: {
     marginBottom: spacing.sm,
@@ -971,6 +1283,59 @@ const styles = StyleSheet.create({
     ...typography.body2,
     color: colors.text,
   },
+  descriptionContainer: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+  },
+  descriptionLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginBottom: 10,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  descriptionBox: {
+    backgroundColor: '#F9FAFB',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+  },
+  descriptionText: {
+    fontSize: 14,
+    color: '#374151',
+    lineHeight: 22,
+  },
+  skillsSection: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+  },
+  skillsSectionLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginBottom: 10,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  modalSkillTag: {
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E0E7FF',
+  },
+  modalSkillText: {
+    fontSize: 13,
+    color: '#3B82F6',
+    fontWeight: '600',
+  },
   modalActions: {
     flexDirection: 'row',
     padding: spacing.lg,
@@ -980,20 +1345,24 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     flex: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  actionButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.md,
-    gap: spacing.sm,
+    paddingVertical: 16,
+    gap: 8,
   },
   statusButton: {
     backgroundColor: colors.primary,
   },
   actionButtonText: {
-    ...typography.button,
-    color: colors.white,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.3,
   },
   jobSelectorOverlay: {
     flex: 1,

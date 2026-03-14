@@ -14,6 +14,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import AdminLayout from '../../components/Admin/AdminLayout';
+import CandidateLabels from '../../components/CandidateLabels';
 import { API_URL } from '../../config/api';
 import { useResponsive } from '../../utils/responsive';
 import { 
@@ -672,6 +673,13 @@ const AdminCandidateSearchScreen = ({ navigation }) => {
               <Text style={dynamicStyles.skillText}>+{candidate.keySkills.length - 5}</Text>
             </View>
           )}
+        </View>
+      )}
+
+      {/* Candidate Labels */}
+      {candidate.labels && candidate.labels.length > 0 && (
+        <View style={dynamicStyles.labelsContainer}>
+          <CandidateLabels labels={candidate.labels} compact={true} />
         </View>
       )}
       
@@ -2230,6 +2238,10 @@ const getStyles = (isMobile, isTablet) => StyleSheet.create({
   skillText: {
     fontSize: 12,
     color: '#495057'
+  },
+  labelsContainer: {
+    marginTop: 12,
+    marginBottom: 8,
   },
   candidateFooter: {
     flexDirection: 'row',

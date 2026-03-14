@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, TextInput, Alert, Modal, Switch } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, TextInput, Alert, Modal, Switch, RefreshControl } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import AdminLayout from './AdminLayout';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -22,10 +23,18 @@ const MasterDataScreen = ({
   const [editMode, setEditMode] = useState(false);
   const [currentItem, setCurrentItem] = useState({ id: null });
   const [user, setUser] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     fetchItems();
   }, []);
+
+  // Refresh data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchItems();
+    }, [])
+  );
 
   const fetchItems = async () => {
     try {
@@ -58,7 +67,7 @@ const MasterDataScreen = ({
       }
       
       const data = await response.json();
-      console.log(`[MasterDataScreen] Response data for ${title}:`, data);
+      console.log(`[MasterDataScreen] Response data for ${title}:`, JSON.stringify(data, null, 2));
 
       // Try to find the data array in the response
       let fetchedItems = null;
@@ -66,12 +75,16 @@ const MasterDataScreen = ({
       // First, check if the response itself is an array
       if (Array.isArray(data)) {
         fetchedItems = data;
+        console.log(`[MasterDataScreen] Found array directly in response`);
       } else if (data.success && data.data && Array.isArray(data.data)) {
         // Handle standard API response format: { success: true, data: [...] }
         fetchedItems = data.data;
+        console.log(`[MasterDataScreen] Found data in data.data`);
       } else {
         // Common key names for data arrays
         const possibleKeys = [
+          'enquiries', // For sales enquiries - check this first
+          'enquiry', // Singular form
           title.toLowerCase(),
           title.toLowerCase() + 's',
           'data',
@@ -83,6 +96,7 @@ const MasterDataScreen = ({
         for (const key of possibleKeys) {
           if (data[key] && Array.isArray(data[key])) {
             fetchedItems = data[key];
+            console.log(`[MasterDataScreen] Found array in key: ${key}, count: ${data[key].length}`);
             break;
           }
         }
@@ -93,6 +107,7 @@ const MasterDataScreen = ({
           for (const key of keys) {
             if (Array.isArray(data[key])) {
               fetchedItems = data[key];
+              console.log(`[MasterDataScreen] Found array in any key: ${key}, count: ${data[key].length}`);
               break;
             }
           }
@@ -109,7 +124,7 @@ const MasterDataScreen = ({
         }));
         setItems(normalizedItems);
       } else {
-        console.warn(`Expected array for ${title}, got:`, typeof fetchedItems); 
+        console.warn(`[MasterDataScreen] Expected array for ${title}, got:`, typeof fetchedItems, 'Response keys:', Object.keys(data || {})); 
         setItems([]);
       }
     } catch (error) {
@@ -303,7 +318,20 @@ const MasterDataScreen = ({
             <ActivityIndicator size="large" color="#4A90E2" />
           </View>
         ) : (
-          <ScrollView style={styles.listContainer} showsVerticalScrollIndicator={false}>
+          <ScrollView 
+            style={styles.listContainer} 
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={async () => {
+                  setRefreshing(true);
+                  await fetchItems();
+                  setRefreshing(false);
+                }}
+              />
+            }
+          >
             <View style={styles.listWrapper}>
               {filteredItems.length > 0 ? (
                 filteredItems.map((item, index) => {
@@ -311,11 +339,15 @@ const MasterDataScreen = ({
                   return (
                     <View key={itemId || index} style={styles.listItem}>        
                       <View style={styles.itemContent}>
-                        <Text style={styles.itemName}>{item[fieldName] || item.name}</Text>    
+                        <Text style={styles.itemName}>
+                          {fieldName === 'firstName' && item.lastName 
+                            ? `${item[fieldName] || ''} ${item.lastName || ''}`.trim() 
+                            : (item[fieldName] || item.name || 'N/A')}
+                        </Text>    
                         {additionalFields.map(field => (
-                          field.displayInList && (
+                          field.displayInList && field.key !== 'lastName' && (
                             <Text key={field.key} style={styles.itemSubtext}>     
-                              {field.label}: {item[field.key]}
+                              {field.label}: {item[field.key] || 'N/A'}
                             </Text>
                           )
                         ))}

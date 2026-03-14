@@ -2,6 +2,7 @@ const express = require('express');
 const { body, validationResult, query } = require('express-validator');
 const UserProfile = require('../models/UserProfile');
 const User = require('../models/User');
+const CandidateSearchHistory = require('../models/CandidateSearchHistory');
 const { auth, employerAuth } = require('../middleware/auth');
 const { adminAuth } = require('../middleware/adminAuth');
 
@@ -97,6 +98,25 @@ router.post('/admin-search', adminAuth, async (req, res) => {
         // Sort by match score if no specific sort is provided
         if (sortBy === 'updatedAt' && filters.searchKeywords) {
             formattedCandidates.sort((a, b) => b.matchScore - a.matchScore);
+        }
+
+        // Save search history (only for first page to avoid duplicates)
+        if (page === 1 && formattedCandidates.length > 0) {
+            try {
+                const candidateIds = formattedCandidates.map(c => c._id);
+                await CandidateSearchHistory.create({
+                    searcherId: req.user._id,
+                    searcherType: 'admin',
+                    candidateIds: candidateIds,
+                    searchFilters: filters,
+                    searchKeywords: filters.searchKeywords || '',
+                    totalResults: totalCandidates,
+                    searchedAt: new Date()
+                });
+            } catch (historyError) {
+                console.error('Error saving search history:', historyError);
+                // Don't fail the search if history save fails
+            }
         }
 
         res.json({
@@ -202,6 +222,27 @@ router.post('/advanced-search', employerAuth, async (req, res) => {
         // Sort by match score if no specific sort is provided
         if (sortBy === 'updatedAt' && filters.searchKeywords) {
             formattedCandidates.sort((a, b) => b.matchScore - a.matchScore);
+        }
+
+        // Save search history (only for first page to avoid duplicates)
+        if (page === 1 && formattedCandidates.length > 0) {
+            try {
+                const candidateIds = formattedCandidates.map(c => c._id);
+                // Determine searcher type from user
+                const searcherType = req.user.employerType === 'consultancy' ? 'consultancy' : 'company';
+                await CandidateSearchHistory.create({
+                    searcherId: req.user._id,
+                    searcherType: searcherType,
+                    candidateIds: candidateIds,
+                    searchFilters: filters,
+                    searchKeywords: filters.searchKeywords || '',
+                    totalResults: totalCandidates,
+                    searchedAt: new Date()
+                });
+            } catch (historyError) {
+                console.error('Error saving search history:', historyError);
+                // Don't fail the search if history save fails
+            }
         }
 
         res.json({
@@ -1269,5 +1310,115 @@ async function getCandidatesContactInfo(candidateIds) {
         phone: candidate.userId.phone
     }));
 }
+
+// @route   GET /api/candidates/last-searched
+// @desc    Get last searched candidates for admin, company, or consultancy
+// @access  Private (Admin/Employer)
+router.get('/last-searched', auth, async (req, res) => {
+    try {
+        // Determine searcher type
+        let searcherType;
+        if (req.user.userType === 'admin' || req.user.userType === 'superadmin') {
+            searcherType = 'admin';
+        } else if (req.user.userType === 'employer') {
+            searcherType = req.user.employerType === 'consultancy' ? 'consultancy' : 'company';
+        } else {
+            return res.status(403).json({
+                success: false,
+                message: 'Access denied. Admin or employer accounts only.'
+            });
+        }
+
+        // Get the most recent search history
+        const lastSearch = await CandidateSearchHistory.findOne({
+            searcherId: req.user._id,
+            searcherType: searcherType
+        })
+        .sort({ searchedAt: -1 })
+        .lean();
+
+        if (!lastSearch || !lastSearch.candidateIds || lastSearch.candidateIds.length === 0) {
+            return res.json({
+                success: true,
+                candidates: [],
+                message: 'No previous search history found'
+            });
+        }
+
+        // Get candidate details from UserProfile
+        const candidates = await UserProfile.find({
+            _id: { $in: lastSearch.candidateIds }
+        })
+        .populate('userId', 'firstName lastName email phone userType isActive lastLogin')
+        .lean();
+
+        // Format candidates with all details
+        const formattedCandidates = candidates.map(candidate => ({
+            _id: candidate._id,
+            userId: candidate.userId._id,
+            name: `${candidate.userId.firstName} ${candidate.userId.lastName}`,
+            email: candidate.userId.email,
+            phone: candidate.userId.phone,
+            userType: candidate.userId.userType,
+            isActive: candidate.userId.isActive,
+            lastLogin: candidate.userId.lastLogin,
+            profileImage: candidate.personalInfo?.profilePicture || '/images/default-avatar.png',
+            currentJobTitle: candidate.professional?.currentJobTitle,
+            currentCompany: candidate.professional?.currentCompany,
+            experience: candidate.professional?.experience,
+            totalExperience: candidate.professional?.totalExperience,
+            location: candidate.personalInfo?.currentCity,
+            skills: candidate.professional?.skills || [],
+            keySkills: candidate.professional?.keySkills || [],
+            expectedSalary: candidate.preferences?.expectedSalary,
+            currentSalary: candidate.professional?.currentSalary,
+            availability: candidate.preferences?.noticePeriod,
+            workMode: candidate.preferences?.workMode,
+            status: candidate.profileStatus?.isActive ? 'active' : 'inactive',
+            profileCompletion: candidate.profileStatus?.completionPercentage || 0,
+            isComplete: candidate.profileStatus?.isComplete || false,
+            lastActive: candidate.updatedAt,
+            createdAt: candidate.createdAt,
+            education: candidate.education,
+            personalInfo: candidate.personalInfo,
+            professional: candidate.professional,
+            preferences: candidate.preferences,
+            additionalInfo: candidate.additionalInfo,
+            isVerified: candidate.profileStatus?.isVerified || false,
+            adminRating: candidate.adminRating,
+            adminTags: candidate.adminTags || [],
+            hasResume: candidate.profileStatus?.hasResume || false,
+            hasProfilePicture: candidate.profileStatus?.hasProfilePicture || false,
+            mobileVerified: candidate.profileStatus?.mobileVerified || false,
+            emailVerified: candidate.profileStatus?.emailVerified || false,
+            whatsappAvailable: candidate.profileStatus?.whatsappAvailable || false
+        }));
+
+        // Maintain the order from search history
+        const orderedCandidates = lastSearch.candidateIds
+            .map(id => formattedCandidates.find(c => c._id.toString() === id.toString()))
+            .filter(Boolean);
+
+        res.json({
+            success: true,
+            candidates: orderedCandidates,
+            total: orderedCandidates.length,
+            searchInfo: {
+                searchedAt: lastSearch.searchedAt,
+                searchKeywords: lastSearch.searchKeywords,
+                totalResults: lastSearch.totalResults,
+                filters: lastSearch.searchFilters
+            }
+        });
+
+    } catch (error) {
+        console.error('Get last searched candidates error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error while fetching last searched candidates',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+});
 
 module.exports = router;

@@ -52,6 +52,13 @@ const PackagesScreen = () => {
 
   useEffect(() => {
     fetchPackages();
+    
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(() => {
+      fetchPackages();
+    }, 30000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   const fetchPackages = async () => {

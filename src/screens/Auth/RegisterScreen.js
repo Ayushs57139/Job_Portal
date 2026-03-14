@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,9 +11,11 @@ import {
   Platform,
   TextInput,
   ActivityIndicator,
+  Animated,
+  Dimensions,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as DocumentPicker from 'expo-document-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { colors, spacing, borderRadius, typography, shadows } from '../../styles/theme';
@@ -21,6 +23,9 @@ import Header from '../../components/Header';
 import Input from '../../components/Input';
 import Button from '../../components/Button';
 import api, { API_URL } from '../../config/api';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const SIDEBAR_WIDTH = Platform.OS === 'web' ? Math.min(480, SCREEN_WIDTH * 0.9) : SCREEN_WIDTH * 0.9;
 
 const REFERRAL_SOURCES = [
   'Freejobwala YouTube Channel',
@@ -51,6 +56,9 @@ const REFERRAL_SOURCES = [
 const GENDERS = ['Male', 'Female', 'Other'];
 
 const RegisterScreen = ({ navigation }) => {
+  const slideAnim = useRef(new Animated.Value(SIDEBAR_WIDTH)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -71,8 +79,46 @@ const RegisterScreen = ({ navigation }) => {
   const [showReferralModal, setShowReferralModal] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [dateInputFocused, setDateInputFocused] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const dateInputRef = useRef(null);
   const dateButtonRef = useRef(null);
+
+  // Animate sidebar on mount
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  const handleClose = () => {
+    Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: SIDEBAR_WIDTH,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+      } else {
+        navigation.navigate('Home');
+      }
+    });
+  };
 
   const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -333,24 +379,36 @@ const RegisterScreen = ({ navigation }) => {
               });
             }
             
-            await fetch(`${API_URL}/users/upload-resume`, {
+            const uploadResponse = await fetch(`${API_URL}/users/upload-resume`, {
               method: 'POST',
               headers: {
                 'Authorization': `Bearer ${response.token}`,
+                // Don't set Content-Type for FormData - let browser set it with boundary
               },
               body: formDataToSend,
             });
+
+            if (!uploadResponse.ok) {
+              const errorData = await uploadResponse.json().catch(() => ({}));
+              throw new Error(errorData.message || 'Failed to upload resume');
+            }
+
+            const uploadData = await uploadResponse.json();
+            console.log('Resume uploaded successfully:', uploadData);
           } catch (resumeError) {
             console.error('Resume upload error:', resumeError);
             // Don't fail registration if resume upload fails
           }
         }
 
-        // Redirect immediately without alert
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'UserDashboard' }],
-        });
+        // Close sidebar with animation then redirect
+        handleClose();
+        setTimeout(() => {
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'UserDashboard' }],
+          });
+        }, 300);
       }
     } catch (error) {
       Alert.alert(
@@ -363,20 +421,50 @@ const RegisterScreen = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
-      <Header />
-      
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+    <Modal
+      visible={true}
+      transparent
+      animationType="none"
+      onRequestClose={handleClose}
+    >
+      {/* Backdrop */}
+      <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]}>
+        <TouchableOpacity 
+          style={styles.backdropTouchable} 
+          activeOpacity={1} 
+          onPress={handleClose}
+        />
+      </Animated.View>
+
+      {/* Sidebar */}
+      <Animated.View 
+        style={[
+          styles.sidebar,
+          {
+            transform: [{ translateX: slideAnim }],
+          },
+        ]}
+      >
+        {/* Header */}
         <View style={styles.header}>
-          <View style={styles.headerIconContainer}>
-            <Ionicons name="person-add" size={40} color={colors.primary} />
-          </View>
-          <Text style={styles.headerTitle}>Candidate Registration Form</Text>
-          <Text style={styles.headerSubtitle}>Let's Get Started, Tell us about Yourself.</Text>
+          <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
+            <Ionicons name="close" size={28} color="#1F2937" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Register</Text>
+          <TouchableOpacity onPress={() => {
+            handleClose();
+            setTimeout(() => navigation.navigate('Login'), 300);
+          }}>
+            <Text style={styles.loginLink}>Already have account?</Text>
+          </TouchableOpacity>
         </View>
 
-        <View style={styles.formCard}>
-          <View style={styles.formContainer}>
+        {/* Content */}
+        <ScrollView 
+          style={styles.content}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
           {/* Upload Resume Section */}
           <View style={styles.uploadContainer}>
             <View style={styles.uploadLabelContainer}>
@@ -607,12 +695,15 @@ const RegisterScreen = ({ navigation }) => {
             <TouchableOpacity
               style={styles.pickerButton}
               onPress={() => setShowGenderModal(true)}
+              activeOpacity={0.7}
             >
-              <Ionicons name="person-outline" size={20} color={colors.primary} />
+              <View style={styles.pickerIconContainer}>
+                <Ionicons name="person-outline" size={22} color="#3B82F6" />
+              </View>
               <Text style={[styles.pickerText, !formData.gender && styles.placeholderText]}>
                 {formData.gender || 'Select Gender'}
               </Text>
-              <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
+              <Ionicons name="chevron-down" size={20} color="#9CA3AF" />
             </TouchableOpacity>
             {errors.gender && <Text style={styles.errorText}>{errors.gender}</Text>}
           </View>
@@ -622,12 +713,15 @@ const RegisterScreen = ({ navigation }) => {
             <TouchableOpacity
               style={styles.pickerButton}
               onPress={() => setShowReferralModal(true)}
+              activeOpacity={0.7}
             >
-              <Ionicons name="share-social-outline" size={20} color={colors.primary} />
+              <View style={styles.pickerIconContainer}>
+                <Ionicons name="share-social-outline" size={22} color="#3B82F6" />
+              </View>
               <Text style={[styles.pickerText, !formData.referralSource && styles.placeholderText]}>
                 {formData.referralSource || 'Select Source'}
               </Text>
-              <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
+              <Ionicons name="chevron-down" size={20} color="#9CA3AF" />
             </TouchableOpacity>
           </View>
 
@@ -672,15 +766,14 @@ const RegisterScreen = ({ navigation }) => {
             </TouchableOpacity>
           </LinearGradient>
 
-          <View style={styles.loginContainer}>
-            <Text style={styles.loginText}>Already have an account?</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-              <Text style={styles.loginLink}>Login here</Text>
-            </TouchableOpacity>
-          </View>
-          </View>
-        </View>
-      </ScrollView>
+          <TouchableOpacity onPress={() => {
+            handleClose();
+            setTimeout(() => navigation.navigate('Login'), 300);
+          }}>
+            <Text style={styles.loginLink}>Already have account?</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </Animated.View>
 
       {/* Gender Modal */}
       <Modal
@@ -689,39 +782,94 @@ const RegisterScreen = ({ navigation }) => {
         animationType="slide"
         onRequestClose={() => setShowGenderModal(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowGenderModal(false)}
+        >
+          <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Gender</Text>
-              <TouchableOpacity onPress={() => setShowGenderModal(false)}>
-                <Ionicons name="close" size={24} color={colors.text} />
+              <View style={styles.modalHeaderLeft}>
+                <View style={styles.modalIconContainer}>
+                  <Ionicons name="person-outline" size={24} color="#3B82F6" />
+                </View>
+                <View>
+                  <Text style={styles.modalTitle}>Select Gender</Text>
+                  <Text style={styles.modalSubtitle}>Choose your gender</Text>
+                </View>
+              </View>
+              <TouchableOpacity 
+                style={styles.modalCloseButton}
+                onPress={() => setShowGenderModal(false)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="close-circle" size={28} color="#9CA3AF" />
               </TouchableOpacity>
             </View>
-            <FlatList
-              data={GENDERS}
-              keyExtractor={(item) => item}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.modalOption}
-                  onPress={() => {
-                    updateFormData('gender', item);
-                    setShowGenderModal(false);
-                  }}
-                >
-                  <Text style={[
-                    styles.modalOptionText,
-                    formData.gender === item && styles.modalOptionTextSelected
-                  ]}>
-                    {item}
-                  </Text>
-                  {formData.gender === item && (
-                    <Ionicons name="checkmark" size={20} color={colors.primary} />
-                  )}
-                </TouchableOpacity>
-              )}
-            />
+            <View style={styles.modalOptionsContainer}>
+              <FlatList
+                data={GENDERS}
+                keyExtractor={(item) => item}
+                renderItem={({ item }) => {
+                  const isSelected = formData.gender === item;
+                  const getGenderIcon = (gender) => {
+                    switch(gender.toLowerCase()) {
+                      case 'male': return 'male';
+                      case 'female': return 'female';
+                      case 'other': return 'person';
+                      default: return 'person-outline';
+                    }
+                  };
+                  const getGenderColor = (gender) => {
+                    switch(gender.toLowerCase()) {
+                      case 'male': return '#3B82F6';
+                      case 'female': return '#EC4899';
+                      case 'other': return '#8B5CF6';
+                      default: return '#6B7280';
+                    }
+                  };
+                  return (
+                    <TouchableOpacity
+                      style={[
+                        styles.modalOption,
+                        isSelected && styles.modalOptionSelected
+                      ]}
+                      onPress={() => {
+                        updateFormData('gender', item);
+                        setShowGenderModal(false);
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.modalOptionLeft}>
+                        <View style={[
+                          styles.modalOptionIconContainer,
+                          { backgroundColor: isSelected ? getGenderColor(item) + '15' : '#F9FAFB' }
+                        ]}>
+                          <Ionicons 
+                            name={getGenderIcon(item)} 
+                            size={22} 
+                            color={isSelected ? getGenderColor(item) : '#6B7280'} 
+                          />
+                        </View>
+                        <Text style={[
+                          styles.modalOptionText,
+                          isSelected && styles.modalOptionTextSelected
+                        ]}>
+                          {item}
+                        </Text>
+                      </View>
+                      {isSelected && (
+                        <View style={[styles.checkmarkContainer, { backgroundColor: getGenderColor(item) }]}>
+                          <Ionicons name="checkmark" size={18} color="#FFFFFF" />
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  );
+                }}
+              />
+            </View>
           </View>
-        </View>
+        </TouchableOpacity>
       </Modal>
 
       {/* Referral Source Modal */}
@@ -731,128 +879,155 @@ const RegisterScreen = ({ navigation }) => {
         animationType="slide"
         onRequestClose={() => setShowReferralModal(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowReferralModal(false)}
+        >
+          <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>From Where You Heard About Us</Text>
-              <TouchableOpacity onPress={() => setShowReferralModal(false)}>
-                <Ionicons name="close" size={24} color={colors.text} />
+              <View style={styles.modalHeaderLeft}>
+                <View style={styles.modalIconContainer}>
+                  <Ionicons name="share-social-outline" size={24} color="#3B82F6" />
+                </View>
+                <View>
+                  <Text style={styles.modalTitle}>From Where You Heard About Us</Text>
+                  <Text style={styles.modalSubtitle}>Select a referral source</Text>
+                </View>
+              </View>
+              <TouchableOpacity 
+                style={styles.modalCloseButton}
+                onPress={() => setShowReferralModal(false)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="close-circle" size={28} color="#9CA3AF" />
               </TouchableOpacity>
             </View>
-            <FlatList
-              data={REFERRAL_SOURCES}
-              keyExtractor={(item) => item}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.modalOption}
-                  onPress={() => {
-                    updateFormData('referralSource', item);
-                    setShowReferralModal(false);
-                  }}
-                >
-                  <Text style={[
-                    styles.modalOptionText,
-                    formData.referralSource === item && styles.modalOptionTextSelected
-                  ]}>
-                    {item}
-                  </Text>
-                  {formData.referralSource === item && (
-                    <Ionicons name="checkmark" size={20} color={colors.primary} />
-                  )}
-                </TouchableOpacity>
-              )}
-            />
+            <View style={styles.modalOptionsContainer}>
+              <FlatList
+                data={REFERRAL_SOURCES}
+                keyExtractor={(item) => item}
+                renderItem={({ item }) => {
+                  const isSelected = formData.referralSource === item;
+                  return (
+                    <TouchableOpacity
+                      style={[
+                        styles.modalOption,
+                        isSelected && styles.modalOptionSelected
+                      ]}
+                      onPress={() => {
+                        updateFormData('referralSource', item);
+                        setShowReferralModal(false);
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.modalOptionLeft}>
+                        <View style={[
+                          styles.modalOptionIconContainer,
+                          { backgroundColor: isSelected ? '#3B82F6' + '15' : '#F9FAFB' }
+                        ]}>
+                          <Ionicons 
+                            name="radio-button-on" 
+                            size={20} 
+                            color={isSelected ? '#3B82F6' : '#9CA3AF'} 
+                          />
+                        </View>
+                        <Text style={[
+                          styles.modalOptionText,
+                          isSelected && styles.modalOptionTextSelected
+                        ]}>
+                          {item}
+                        </Text>
+                      </View>
+                      {isSelected && (
+                        <View style={styles.checkmarkContainer}>
+                          <Ionicons name="checkmark" size={18} color="#FFFFFF" />
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  );
+                }}
+              />
+            </View>
           </View>
-        </View>
+        </TouchableOpacity>
       </Modal>
-    </View>
+    </Modal>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
+  backdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
-  scrollView: {
+  backdropTouchable: {
     flex: 1,
   },
-  scrollContent: {
-    flexGrow: 1,
-    paddingBottom: spacing.xl,
+  sidebar: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    width: SIDEBAR_WIDTH,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: -2, height: 0 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 10,
   },
   header: {
-    padding: spacing.xl + 12,
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingBottom: spacing.xl + 8,
-    paddingTop: spacing.xl + 16,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
     backgroundColor: '#FFFFFF',
   },
-  headerIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#EEF2FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.lg,
-    borderWidth: 2,
-    borderColor: '#E0E7FF',
+  closeButton: {
+    padding: 4,
   },
   headerTitle: {
-    ...typography.h2,
+    fontSize: 20,
+    fontWeight: '700',
     color: '#1F2937',
-    textAlign: 'center',
-    marginBottom: spacing.sm,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-    fontSize: 28,
   },
-  headerSubtitle: {
-    ...typography.body1,
-    color: '#6B7280',
-    textAlign: 'center',
-    fontSize: 16,
-    fontWeight: '400',
-    letterSpacing: 0.3,
+  loginLink: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#4F46E5',
   },
-  formContainer: {
-    padding: spacing.lg,
-    maxWidth: 600,
-    width: '100%',
-    alignSelf: 'center',
-  },
-  formCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: borderRadius.xl + 4,
-    padding: spacing.xl + 4,
-    marginHorizontal: spacing.md,
-    ...shadows.lg,
-    marginTop: -spacing.xl,
-    marginBottom: spacing.xl,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.05)',
+  content: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingTop: 24,
   },
   uploadContainer: {
-    marginBottom: spacing.xl,
+    marginBottom: 20,
   },
   uploadLabelContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
-    marginBottom: spacing.md,
+    gap: 8,
+    marginBottom: 12,
   },
   uploadButton: {
-    borderWidth: 2.5,
-    borderColor: '#E0E7FF',
+    borderWidth: 2,
+    borderColor: '#D1D5DB',
     borderStyle: 'dashed',
-    borderRadius: borderRadius.xl,
-    padding: spacing.xl + 8,
+    borderRadius: 12,
+    padding: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F5F7FF',
-    minHeight: 140,
-    transition: 'all 0.3s ease',
+    backgroundColor: '#F9FAFB',
+    minHeight: 120,
   },
   uploadButtonSelected: {
     borderColor: '#10B981',
@@ -860,69 +1035,63 @@ const styles = StyleSheet.create({
     borderStyle: 'solid',
   },
   uploadIconContainer: {
-    marginBottom: spacing.md,
+    marginBottom: 12,
   },
   uploadButtonText: {
-    ...typography.body1,
-    color: colors.primary,
-    marginTop: spacing.sm,
-    fontWeight: '700',
-    fontSize: 16,
+    color: '#4F46E5',
+    marginTop: 8,
+    fontWeight: '600',
+    fontSize: 15,
     textAlign: 'center',
   },
   uploadSuccessText: {
-    ...typography.caption,
     color: '#10B981',
-    marginTop: spacing.xs,
-    fontWeight: '600',
-    fontSize: 12,
+    marginTop: 6,
+    fontWeight: '500',
+    fontSize: 13,
   },
   separatorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: spacing.lg,
-    position: 'relative',
+    marginVertical: 20,
   },
   separatorLine: {
     flex: 1,
-    height: 1.5,
+    height: 1,
     backgroundColor: '#E5E7EB',
   },
   separatorTextContainer: {
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: 12,
   },
   separatorText: {
-    ...typography.body2,
-    color: colors.textSecondary,
-    fontWeight: '600',
+    color: '#9CA3AF',
+    fontWeight: '500',
     fontSize: 14,
-    letterSpacing: 0.5,
   },
   checkboxContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.lg,
+    gap: 10,
+    marginBottom: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 8,
     backgroundColor: '#F9FAFB',
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: '#E5E7EB',
-    transition: 'all 0.2s ease',
   },
   checkboxContainerSelected: {
     backgroundColor: '#EEF2FF',
-    borderColor: colors.primary,
+    borderColor: '#4F46E5',
   },
   checkboxContainerError: {
-    borderColor: colors.error,
+    borderColor: '#EF4444',
   },
   checkboxIconContainer: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
+    width: 20,
+    height: 20,
+    borderRadius: 5,
     borderWidth: 2,
     borderColor: '#D1D5DB',
     alignItems: 'center',
@@ -930,169 +1099,225 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   checkboxIconContainerSelected: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+    backgroundColor: '#4F46E5',
+    borderColor: '#4F46E5',
   },
   checkboxLabel: {
-    ...typography.body2,
-    color: colors.text,
+    color: '#374151',
     flex: 1,
     fontSize: 14,
     lineHeight: 20,
   },
   checkboxLabelSelected: {
-    color: colors.primary,
+    color: '#4F46E5',
     fontWeight: '600',
   },
   privacyLink: {
-    color: colors.primary,
+    color: '#4F46E5',
     fontWeight: '700',
     textDecorationLine: 'underline',
   },
   dobContainer: {
-    marginBottom: spacing.lg,
+    marginBottom: 20,
   },
   webDatePickerContainer: {
     position: 'relative',
     width: '100%',
-    cursor: 'pointer',
-    zIndex: 1,
   },
   genderContainer: {
-    marginBottom: spacing.lg,
+    marginBottom: 20,
   },
   referralContainer: {
-    marginBottom: spacing.lg,
+    marginBottom: 20,
   },
   label: {
-    ...typography.body2,
-    fontWeight: '700',
-    color: '#1F2937',
-    marginBottom: spacing.sm,
-    fontSize: 15,
-    letterSpacing: 0.2,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
+    fontSize: 14,
   },
   pickerButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
-    borderRadius: borderRadius.lg,
-    padding: spacing.md + 4,
-    gap: spacing.sm,
-    minHeight: 56,
-    ...shadows.sm,
-    transition: 'all 0.2s ease',
-    ...(Platform.OS === 'web' && {
-      cursor: 'pointer',
-    }),
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    padding: 12,
+    gap: 10,
+    minHeight: 48,
   },
   pickerButtonFocused: {
-    borderColor: colors.primary,
+    borderColor: '#4F46E5',
     backgroundColor: '#F9FAFB',
-    ...shadows.md,
-    ...(Platform.OS === 'web' && {
-      boxShadow: `0 0 0 3px rgba(99, 102, 241, 0.1), 0 4px 8px rgba(0, 0, 0, 0.15)`,
-    }),
+  },
+  pickerIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: '#EEF2FF',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   pickerText: {
     flex: 1,
-    ...typography.body2,
-    color: colors.text,
+    fontSize: 15,
+    color: '#111827',
+    fontWeight: '500',
   },
   placeholderText: {
-    color: colors.textLight,
+    color: '#9CA3AF',
+    fontWeight: '400',
   },
   errorText: {
-    ...typography.caption,
-    color: colors.error,
-    marginTop: spacing.xs,
+    color: '#EF4444',
+    marginTop: 6,
+    fontSize: 13,
   },
   gradientButton: {
-    borderRadius: borderRadius.xl,
-    marginTop: spacing.xl,
-    ...shadows.lg,
+    borderRadius: 8,
+    marginTop: 24,
     overflow: 'hidden',
   },
   registerButton: {
-    paddingVertical: spacing.lg,
+    paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 58,
+    minHeight: 52,
     flexDirection: 'row',
   },
   registerButtonText: {
-    ...typography.button,
     color: '#FFFFFF',
     fontWeight: '700',
-    fontSize: 17,
-    letterSpacing: 0.5,
+    fontSize: 16,
   },
   loginContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: spacing.xl,
-    gap: spacing.xs,
-    paddingTop: spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    marginTop: 20,
+    gap: 6,
   },
   loginText: {
-    ...typography.body2,
-    color: colors.textSecondary,
-    fontSize: 15,
-  },
-  loginLink: {
-    ...typography.body2,
-    color: colors.primary,
-    fontWeight: '700',
-    fontSize: 15,
-    textDecorationLine: 'underline',
+    color: '#6B7280',
+    fontSize: 14,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   modalContent: {
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: borderRadius.xl,
-    borderTopRightRadius: borderRadius.xl,
-    maxHeight: '70%',
-    ...shadows.lg,
+    borderRadius: 24,
+    maxHeight: '75%',
+    width: '90%',
+    maxWidth: 500,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: spacing.lg + 4,
-    borderBottomWidth: 1.5,
-    borderBottomColor: '#E5E7EB',
-    backgroundColor: '#F9FAFB',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+  },
+  modalHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  modalIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#EEF2FF',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   modalTitle: {
-    ...typography.h4,
-    color: colors.text,
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#111827',
+    letterSpacing: -0.3,
+  },
+  modalSubtitle: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  modalCloseButton: {
+    padding: 4,
+  },
+  modalOptionsContainer: {
+    maxHeight: 400,
   },
   modalOption: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: spacing.md + 4,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    padding: 18,
+    marginHorizontal: 16,
+    marginVertical: 4,
+    borderRadius: 12,
     backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: '#F3F4F6',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  modalOptionSelected: {
+    backgroundColor: '#F0F9FF',
+    borderColor: '#3B82F6',
+    shadowColor: '#3B82F6',
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  modalOptionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    flex: 1,
+  },
+  modalOptionIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   modalOptionText: {
-    ...typography.body2,
+    fontSize: 16,
     color: '#374151',
-    fontSize: 15,
+    fontWeight: '500',
+    letterSpacing: 0.2,
   },
   modalOptionTextSelected: {
-    color: colors.primary,
+    color: '#3B82F6',
     fontWeight: '700',
+  },
+  checkmarkContainer: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#3B82F6',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 

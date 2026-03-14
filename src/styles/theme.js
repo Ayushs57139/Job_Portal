@@ -61,68 +61,76 @@ const scaleFontSize = (baseSize) => {
   return Math.round(PixelRatio.roundToNearestPixel(newSize));
 };
 
-// Color Palette
+// Modern Minimal Color Palette
 export const colors = {
-  // Primary Colors
+  // Primary Colors - Modern Blue
   primary: '#2563EB',
   primaryDark: '#1E40AF',
   primaryLight: '#DBEAFE',
   primaryHover: '#1D4ED8',
+  primarySubtle: '#EFF6FF',
   
-  // Secondary Colors
+  // Secondary Colors - Modern Orange
   secondary: '#FF6B35',
   secondaryDark: '#E55A28',
   secondaryLight: '#FFE8E0',
+  secondarySubtle: '#FFF5F0',
   
   // Accent Colors
-  accent: '#1E88E5',
-  accentLight: '#E3F2FD',
+  accent: '#6366F1',
+  accentLight: '#EEF2FF',
   
-  // Backgrounds
-  background: '#F9FAFB',
-  backgroundSecondary: '#F3F4F6',
-  cardBackground: '#ffffff',
-  white: '#ffffff',
+  // Backgrounds - Clean Minimal Grays
+  background: '#FFFFFF',
+  backgroundSecondary: '#F8FAFC',
+  backgroundTertiary: '#F1F5F9',
+  cardBackground: '#FFFFFF',
+  white: '#FFFFFF',
   
-  // Text Colors
-  text: '#2D3748',
-  textDark: '#1A202C',
-  textSecondary: '#718096',
-  textLight: '#A0AEC0',
+  // Text Colors - High Contrast for Readability
+  text: '#0F172A',
+  textDark: '#020617',
+  textSecondary: '#64748B',
+  textLight: '#94A3B8',
   textMuted: '#CBD5E0',
-  textWhite: '#ffffff',
+  textWhite: '#FFFFFF',
   
-  // UI Elements
+  // UI Elements - Subtle Borders
   border: '#E2E8F0',
   borderLight: '#F1F5F9',
   borderDark: '#CBD5E0',
   divider: '#E5E7EB',
   
-  // Status Colors
+  // Status Colors - Modern Minimal
   success: '#10B981',
   successLight: '#D1FAE5',
   successDark: '#059669',
+  successSubtle: '#ECFDF5',
   error: '#EF4444',
   errorLight: '#FEE2E2',
   errorDark: '#DC2626',
+  errorSubtle: '#FEF2F2',
   warning: '#F59E0B',
   warningLight: '#FEF3C7',
   warningDark: '#D97706',
+  warningSubtle: '#FFFBEB',
   info: '#3B82F6',
   infoLight: '#DBEAFE',
   infoDark: '#2563EB',
+  infoSubtle: '#EFF6FF',
   
   // Overlay Colors
-  overlay: 'rgba(0, 0, 0, 0.5)',
-  overlayLight: 'rgba(0, 0, 0, 0.3)',
-  overlayDark: 'rgba(0, 0, 0, 0.7)',
+  overlay: 'rgba(15, 23, 42, 0.5)',
+  overlayLight: 'rgba(15, 23, 42, 0.3)',
+  overlayDark: 'rgba(15, 23, 42, 0.7)',
   
-  // Gradients
+  // Gradients - Modern Minimal
   gradientStart: '#667eea',
   gradientEnd: '#764ba2',
   gradientPrimary: ['#2563EB', '#3B82F6'],
   gradientSecondary: ['#FF6B35', '#FF8F65'],
   gradientSuccess: ['#10B981', '#34D399'],
+  gradientMinimal: ['#F8FAFC', '#FFFFFF'],
 };
 
 // Dynamic Spacing based on screen size
@@ -366,13 +374,13 @@ export const borderRadius = {
   full: 999,
 };
 
-// Shadows with platform-specific handling
+// Modern Minimal Shadows with platform-specific handling
 export const shadows = {
   xs: {
     ...(isWeb ? {
-      boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
+      boxShadow: '0 1px 2px 0 rgba(15, 23, 42, 0.05)',
     } : {
-      shadowColor: '#000',
+      shadowColor: '#0F172A',
       shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.05,
       shadowRadius: 2,
@@ -381,68 +389,79 @@ export const shadows = {
   },
   sm: {
     ...(isWeb ? {
-      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+      boxShadow: '0 1px 3px 0 rgba(15, 23, 42, 0.1), 0 1px 2px -1px rgba(15, 23, 42, 0.1)',
     } : {
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
+      shadowColor: '#0F172A',
+      shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.1,
-      shadowRadius: 4,
+      shadowRadius: 3,
       elevation: 2,
     }),
   },
   md: {
     ...(isWeb ? {
-      boxShadow: '0 4px 8px rgba(0, 0, 0, 0.12)',
+      boxShadow: '0 4px 6px -1px rgba(15, 23, 42, 0.1), 0 2px 4px -2px rgba(15, 23, 42, 0.1)',
     } : {
-      shadowColor: '#000',
+      shadowColor: '#0F172A',
       shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.12,
-      shadowRadius: 8,
+      shadowOpacity: 0.1,
+      shadowRadius: 6,
       elevation: 4,
     }),
   },
   lg: {
     ...(isWeb ? {
-      boxShadow: '0 8px 16px rgba(0, 0, 0, 0.15)',
+      boxShadow: '0 10px 15px -3px rgba(15, 23, 42, 0.1), 0 4px 6px -4px rgba(15, 23, 42, 0.1)',
     } : {
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.15,
-      shadowRadius: 16,
+      shadowColor: '#0F172A',
+      shadowOffset: { width: 0, height: 10 },
+      shadowOpacity: 0.1,
+      shadowRadius: 15,
       elevation: 8,
     }),
   },
   xl: {
     ...(isWeb ? {
-      boxShadow: '0 12px 24px rgba(0, 0, 0, 0.18)',
+      boxShadow: '0 20px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.1)',
     } : {
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 12 },
-      shadowOpacity: 0.18,
-      shadowRadius: 24,
+      shadowColor: '#0F172A',
+      shadowOffset: { width: 0, height: 20 },
+      shadowOpacity: 0.1,
+      shadowRadius: 25,
       elevation: 12,
     }),
   },
   card: {
     ...(isWeb ? {
-      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+      boxShadow: '0 1px 3px 0 rgba(15, 23, 42, 0.1), 0 1px 2px -1px rgba(15, 23, 42, 0.1)',
     } : {
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.08,
-      shadowRadius: 20,
-      elevation: 5,
+      shadowColor: '#0F172A',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.1,
+      shadowRadius: 3,
+      elevation: 3,
     }),
   },
   dropdown: {
     ...(isWeb ? {
-      boxShadow: '0 10px 25px rgba(0, 0, 0, 0.15)',
+      boxShadow: '0 10px 15px -3px rgba(15, 23, 42, 0.1), 0 4px 6px -4px rgba(15, 23, 42, 0.1)',
     } : {
-      shadowColor: '#000',
+      shadowColor: '#0F172A',
       shadowOffset: { width: 0, height: 10 },
-      shadowOpacity: 0.15,
-      shadowRadius: 25,
+      shadowOpacity: 0.1,
+      shadowRadius: 15,
       elevation: 10,
+    }),
+  },
+  minimal: {
+    ...(isWeb ? {
+      boxShadow: '0 1px 2px 0 rgba(15, 23, 42, 0.05)',
+    } : {
+      shadowColor: '#0F172A',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 2,
+      elevation: 1,
     }),
   },
 };

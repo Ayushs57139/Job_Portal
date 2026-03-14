@@ -16,6 +16,22 @@ const AdminPostJobScreen = ({ navigation }) => {
 
   const handleSubmit = async (formData) => {
     try {
+      // Validate required HR contact fields
+      if (!formData.contactPersonName || !formData.contactPersonName.trim()) {
+        throw new Error('HR/Contact Person Name is required');
+      }
+      if (!formData.contactPersonNumber || !formData.contactPersonNumber.trim()) {
+        throw new Error('HR/Contact Person Number is required');
+      }
+      if (!formData.contactPersonEmail || !formData.contactPersonEmail.trim()) {
+        throw new Error('HR/Contact Person Email is required');
+      }
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.contactPersonEmail.trim())) {
+        throw new Error('Please enter a valid email address');
+      }
+
       // Transform MultiStepJobPostForm data to server /api/jobs schema
       const firstOr = (arr) => Array.isArray(arr) && arr.length > 0 ? (arr[0].label || arr[0]) : '';
       const labels = (arr) => Array.isArray(arr) ? arr.map(v => v.label || v).filter(Boolean) : [];
@@ -57,8 +73,8 @@ const AdminPostJobScreen = ({ navigation }) => {
         experienceLevel: formData.experienceLevel?.label || formData.experienceLevel?.value || '',
         experienceType: formData.experienceLevel?.label || formData.experienceLevel?.value || '',
         totalExperience: {
-          min: formData.experienceMin?.label || formData.experienceMin?.value || '',
-          max: formData.experienceMax?.label || formData.experienceMax?.value || '',
+          min: formData.experienceMin?.label || formData.experienceMin?.value || formData.experienceMin || 'Fresher',
+          max: formData.experienceMax?.label || formData.experienceMax?.value || formData.experienceMax || 'Fresher',
         },
 
         // Salary
@@ -102,7 +118,7 @@ const AdminPostJobScreen = ({ navigation }) => {
           max: formData.ageMax?.label || formData.ageMax?.value || '',
         },
         preferredLanguage: labels(formData.preferredLanguage),
-        joiningPeriod: formData.joiningPeriod?.label || formData.joiningPeriod?.value || '',
+        joiningPeriod: formData.joiningPeriod?.label || formData.joiningPeriod?.value || formData.joiningPeriod || 'Immediate Joining',
 
         diversityHiring: formData.diversityHiring?.label || formData.diversityHiring?.value || '',
         disabilityStatus: formData.disabilityStatus?.label || formData.disabilityStatus?.value || '',
@@ -144,12 +160,36 @@ const AdminPostJobScreen = ({ navigation }) => {
         throw new Error(data.message || 'Failed to post job');
       }
 
-      Alert.alert('Success', 'Job posted successfully!', [
-        {
-          text: 'OK',
-          onPress: () => navigation.navigate('AdminJobs'),
-        },
-      ]);
+      // Show success popup with job details
+      // Show immediately for web using browser alert
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        // For web, use browser's confirm dialog for immediate feedback
+        const confirmed = window.confirm(
+          `✅ Job Posted Successfully!\n\nYour job "${jobData.title}" has been posted successfully and is now live on the platform.\n\nClick OK to view all jobs.`
+        );
+        if (confirmed) {
+          navigation.navigate('AdminJobs');
+        }
+      } else {
+        // For mobile, use React Native Alert
+        Alert.alert(
+          '✅ Job Posted Successfully!',
+          `Your job "${jobData.title}" has been posted successfully and is now live on the platform.\n\nYou will be redirected to the Jobs page.`,
+          [
+            {
+              text: 'View Jobs',
+              onPress: () => {
+                navigation.navigate('AdminJobs');
+              },
+              style: 'default',
+            },
+          ],
+          { cancelable: false }
+        );
+      }
+      
+      // Return success to prevent form from showing error
+      return { success: true, data };
     } catch (error) {
       console.error('Error posting job:', error);
       Alert.alert('Error', error.message || 'Failed to post job');

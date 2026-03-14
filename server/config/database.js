@@ -23,7 +23,7 @@ const connectDB = async () => {
   connectionState = 'connecting';
 
   try {
-    const mongoUri = process.env.MONGODB_URI || 'mongodb+srv://ayushs57139_db_user:6atpoj3C0h4VRvGJ@cluster0.vy1jecc.mongodb.net/jobwala?retryWrites=true&w=majority&appName=Cluster0';
+    const mongoUri = process.env.MONGODB_URI || 'mongodb://ayushs57139_db_user:7nWvVOGm9hkXupwv@ac-r75tb3w-shard-00-00.vy1jecc.mongodb.net:27017,ac-r75tb3w-shard-00-01.vy1jecc.mongodb.net:27017,ac-r75tb3w-shard-00-02.vy1jecc.mongodb.net:27017/jobwala?ssl=true&replicaSet=atlas-p9a5jz-shard-0&authSource=admin&appName=Cluster0';
     
     // Set connection options
     const options = {
@@ -65,12 +65,21 @@ const connectDB = async () => {
     mongoose.connection.on('error', (err) => {
       logger.error('MongoDB connection error', err, {
         readyState: mongoose.connection.readyState,
-        errorCode: err.code
+        errorCode: err.code,
+        errorName: err.name,
+        timestamp: new Date().toISOString()
       });
       
       // Don't exit on connection errors - let reconnection handle it
       connectionState = 'disconnected';
       isConnecting = false;
+      
+      // Attempt reconnection if not already connecting
+      if (!isConnecting && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+        setTimeout(() => {
+          attemptReconnect();
+        }, RECONNECT_DELAY);
+      }
     });
 
     mongoose.connection.on('reconnected', () => {

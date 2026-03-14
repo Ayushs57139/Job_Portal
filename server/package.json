@@ -12,7 +12,14 @@
     "pm2:restart": "pm2 restart jobwala-server",
     "pm2:delete": "pm2 delete jobwala-server",
     "pm2:logs": "pm2 logs jobwala-server",
-    "pm2:status": "pm2 status"
+    "pm2:status": "pm2 status",
+    "test": "jest --coverage --verbose",
+    "test:watch": "jest --watch",
+    "test:applications": "jest tests/applications.test.js --verbose",
+    "test:jobs": "jest tests/jobs.test.js --verbose",
+    "test:auth": "jest tests/auth.test.js --verbose",
+    "test:admin": "jest tests/admin.test.js --verbose",
+    "test:all": "jest --coverage --verbose --detectOpenHandles"
   },
   "dependencies": {
     "archiver": "^6.0.2",
@@ -37,10 +44,14 @@
     "nodemailer": "^7.0.10",
     "pdf-parse": "^2.4.0",
     "socket.io": "^4.8.1",
-    "uuid": "^13.0.0"
+    "uuid": "^13.0.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
-    "nodemon": "^3.0.2"
+    "@types/jest": "^29.5.14",
+    "jest": "^29.7.0",
+    "nodemon": "^3.0.2",
+    "supertest": "^6.3.4"
   },
   "optionalDependencies": {
     "pm2": "^6.0.13"

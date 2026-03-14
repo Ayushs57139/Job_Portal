@@ -62,19 +62,20 @@ export const isWeb = () => {
 const baseWidth = 390;
 const baseHeight = 844;
 
-// Get scale factor based on screen width
+// Get scale factor based on screen width - Optimized for all devices
 export const getScaleFactor = (width) => {
-  if (width <= breakpoints.xsPhone) return 0.85;
-  if (width <= breakpoints.smallPhone) return 0.9;
-  if (width <= breakpoints.phone) return 0.95;
-  if (width <= breakpoints.largePhone) return 1;
-  if (width <= breakpoints.smallTablet) return 1.05;
-  if (width <= breakpoints.tablet) return 1.1;
-  if (width <= breakpoints.largeTablet) return 1.15;
-  if (width <= breakpoints.smallLaptop) return 1.2;
-  if (width <= breakpoints.laptop) return 1.25;
-  if (width <= breakpoints.desktop) return 1.3;
-  if (width <= breakpoints.largeDesktop) return 1.35;
+  if (width <= breakpoints.xsPhone) return 0.8;
+  if (width <= breakpoints.smallPhone) return 0.85;
+  if (width <= breakpoints.phone) return 0.9;
+  if (width <= breakpoints.largePhone) return 0.95;
+  if (width <= breakpoints.smallTablet) return 1.0;
+  if (width <= breakpoints.tablet) return 1.05;
+  if (width <= breakpoints.largeTablet) return 1.1;
+  if (width <= breakpoints.smallLaptop) return 1.15;
+  if (width <= breakpoints.laptop) return 1.2;
+  if (width <= breakpoints.desktop) return 1.25;
+  if (width <= breakpoints.largeDesktop) return 1.3;
+  if (width <= breakpoints.ultraWide) return 1.35;
   return 1.4;
 };
 
@@ -162,28 +163,32 @@ export const useResponsive = () => {
     return Math.max(1, Math.min(cols, 6)); // Between 1 and 6 columns
   }, [width]);
   
-  // Get container max width based on screen size
+  // Get container max width based on screen size - Modern responsive containers
   const getContainerMaxWidth = useCallback(() => {
     if (width <= breakpoints.largePhone) return '100%';
     if (width <= breakpoints.tablet) return '100%';
     if (width <= breakpoints.smallLaptop) return 960;
     if (width <= breakpoints.laptop) return 1140;
     if (width <= breakpoints.desktop) return 1320;
-    return 1400;
+    if (width <= breakpoints.largeDesktop) return 1400;
+    if (width <= breakpoints.ultraWide) return 1600;
+    return 1800;
   }, [width]);
   
-  // Get padding based on screen size
+  // Get padding based on screen size - Modern minimal spacing
   const getHorizontalPadding = useCallback(() => {
-    if (width <= breakpoints.xsPhone) return 8;
-    if (width <= breakpoints.smallPhone) return 12;
-    if (width <= breakpoints.phone) return 16;
-    if (width <= breakpoints.largePhone) return 16;
-    if (width <= breakpoints.smallTablet) return 20;
-    if (width <= breakpoints.tablet) return 24;
-    if (width <= breakpoints.largeTablet) return 32;
-    if (width <= breakpoints.smallLaptop) return 40;
-    if (width <= breakpoints.laptop) return 48;
-    return 64;
+    if (width <= breakpoints.xsPhone) return 12;
+    if (width <= breakpoints.smallPhone) return 16;
+    if (width <= breakpoints.phone) return 20;
+    if (width <= breakpoints.largePhone) return 24;
+    if (width <= breakpoints.smallTablet) return 28;
+    if (width <= breakpoints.tablet) return 32;
+    if (width <= breakpoints.largeTablet) return 40;
+    if (width <= breakpoints.smallLaptop) return 48;
+    if (width <= breakpoints.laptop) return 56;
+    if (width <= breakpoints.desktop) return 64;
+    if (width <= breakpoints.largeDesktop) return 80;
+    return 96;
   }, [width]);
   
   return {

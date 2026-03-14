@@ -131,8 +131,19 @@ router.get('/users/recent', async (req, res) => {
     const users = await User.find()
       .sort({ createdAt: -1 })
       .limit(10)
-      .select('name email role isActive createdAt');
-    res.json({ users });
+      .select('firstName lastName email userType role isActive createdAt');
+    
+    // Transform users to match frontend expectations
+    const transformedUsers = users.map(user => {
+      const userObj = user.toObject();
+      return {
+        ...userObj,
+        name: `${userObj.firstName || ''} ${userObj.lastName || ''}`.trim() || 'N/A',
+        role: userObj.role || (userObj.userType ? userObj.userType.toUpperCase() : 'N/A'),
+      };
+    });
+    
+    res.json({ users: transformedUsers });
   } catch (error) {
     console.error('Recent users error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -140,21 +151,66 @@ router.get('/users/recent', async (req, res) => {
 });
 
 // @route   PATCH /api/admin/users/:id/verify
-// @desc    Verify user
+// @desc    Verify user (supports jobseekers, company, and consultancy)
 // @access  Private (Admin)
 router.patch('/users/:id/verify', requirePermission('canManageUsers'), async (req, res) => {
   try {
-    const user = await User.findByIdAndUpdate(
-      req.params.id,
-      { isVerified: true, verifiedAt: new Date() },
-      { new: true }
-    ).select('-password');
+    // Find the user to check their type and update
+    const user = await User.findById(req.params.id);
     
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    res.json({ user, message: 'User verified successfully' });
+    // Update verification fields based on user type
+    user.isVerified = true;
+    user.verifiedAt = new Date();
+
+    // For employers (company/consultancy), also update employer-specific verification fields
+    if (user.userType === 'employer') {
+      user.isEmployerVerified = true;
+      user.verificationStatus = 'verified';
+      // Set kycStatus to verified if not already set (required for canPostJobs)
+      if (!user.kycStatus || user.kycStatus !== 'verified') {
+        user.kycStatus = 'verified';
+      }
+      // Update nested verificationDetails
+      if (!user.verificationDetails) {
+        user.verificationDetails = {};
+      }
+      user.verificationDetails.verifiedAt = new Date();
+      user.verificationDetails.verifiedBy = req.user.id || req.user._id;
+    }
+
+    // Save the updated user
+    await user.save();
+
+    // Fetch fresh user data from database to ensure we return the latest state
+    const userResponse = await User.findById(user._id)
+      .select('-password')
+      .lean();
+    
+    if (!userResponse) {
+      return res.status(404).json({ message: 'User not found after verification' });
+    }
+    
+    // Ensure verification fields are properly set in response
+    userResponse.isVerified = true;
+    userResponse.verifiedAt = user.verifiedAt;
+    if (user.userType === 'employer') {
+      userResponse.isEmployerVerified = true;
+      userResponse.verificationStatus = 'verified';
+    }
+    
+    console.log('User verified successfully:', {
+      userId: userResponse._id,
+      email: userResponse.email,
+      isVerified: userResponse.isVerified,
+      isEmployerVerified: userResponse.isEmployerVerified,
+      verificationStatus: userResponse.verificationStatus
+    });
+    
+    res.json({ user: userResponse, message: 'User verified successfully' });
   } catch (error) {
     console.error('Verify user error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -162,24 +218,53 @@ router.patch('/users/:id/verify', requirePermission('canManageUsers'), async (re
 });
 
 // @route   PATCH /api/admin/users/:id/unverify
-// @desc    Unverify user
+// @desc    Unverify user (supports jobseekers, company, and consultancy)
 // @access  Private (Admin)
 router.patch('/users/:id/unverify', async (req, res) => {
   try {
-    const user = await User.findByIdAndUpdate(
-      req.params.id,
-      { isVerified: false, verifiedAt: null },
-      { new: true }
-    ).select('-password');
+    // Find the user to check their type and update
+    const user = await User.findById(req.params.id);
     
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    res.json({ user, message: 'User unverified successfully' });
+    // Update verification fields based on user type
+    user.isVerified = false;
+    user.verifiedAt = null;
+
+    // For employers (company/consultancy), also update employer-specific verification fields
+    if (user.userType === 'employer') {
+      user.isEmployerVerified = false;
+      user.verificationStatus = 'pending';
+      // Update nested verificationDetails
+      if (!user.verificationDetails) {
+        user.verificationDetails = {};
+      }
+      user.verificationDetails.verifiedAt = null;
+      user.verificationDetails.verifiedBy = null;
+    }
+
+    // Save the updated user
+    await user.save();
+
+    // Return user without password, ensuring all verification fields are included
+    const userResponse = await User.findById(user._id)
+      .select('-password')
+      .lean();
+    
+    // Ensure verification fields are properly set in response
+    userResponse.isVerified = false;
+    userResponse.verifiedAt = null;
+    if (user.userType === 'employer') {
+      userResponse.isEmployerVerified = false;
+      userResponse.verificationStatus = 'pending';
+    }
+    
+    res.json({ user: userResponse, message: 'User unverified successfully' });
   } catch (error) {
     console.error('Unverify user error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
@@ -400,7 +485,8 @@ router.get('/users', requirePermission('canManageUsers'), async (req, res) => {
         lastModified: userObj.userProfile?.profileStatus?.lastModified || userObj.updatedAt,
         teamLimit: userObj.teamMemberLimits?.maxTeamMembers || 0,
         currentTeamMembers: userObj.teamMemberLimits?.currentTeamMembers || 0,
-        companyName: userObj.profile?.company?.name || userObj.companyName || null
+        companyName: userObj.profile?.company?.name || userObj.companyName || null,
+        resume: userObj.profile?.resume || null
       };
     });
 
@@ -1093,6 +1179,174 @@ router.delete('/jobs/:id', requirePermission('canManageJobs'), async (req, res) 
   }
 });
 
+// @route   PATCH /api/admin/jobs/:id/labels
+// @desc    Update job labels (premium, featured, starred, urgent, activelyHiring)
+// @access  Private (Admin)
+router.patch('/jobs/:id/labels', requirePermission('canManageJobs'), async (req, res) => {
+  try {
+    const { premium, featured, starred, urgent, activelyHiring } = req.body;
+    
+    const job = await Job.findById(req.params.id);
+    if (!job) {
+      return res.status(404).json({ message: 'Job not found' });
+    }
+
+    // Update only provided labels
+    const updates = {};
+    if (premium !== undefined) updates.premium = premium;
+    if (featured !== undefined) updates.featured = featured;
+    if (starred !== undefined) updates.starred = starred;
+    if (urgent !== undefined) updates.urgent = urgent;
+    if (activelyHiring !== undefined) updates.activelyHiring = activelyHiring;
+
+    const updatedJob = await Job.findByIdAndUpdate(
+      req.params.id,
+      { $set: updates },
+      { new: true }
+    ).populate('postedBy', 'firstName lastName email');
+
+    res.json({
+      message: 'Job labels updated successfully',
+      job: updatedJob
+    });
+  } catch (error) {
+    console.error('Update job labels error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   PATCH /api/admin/jobs/bulk/labels
+// @desc    Bulk update job labels
+// @access  Private (Admin)
+router.patch('/jobs/bulk/labels', requirePermission('canManageJobs'), async (req, res) => {
+  try {
+    const { jobIds, labels } = req.body;
+
+    if (!jobIds || !Array.isArray(jobIds) || jobIds.length === 0) {
+      return res.status(400).json({ message: 'Job IDs array is required' });
+    }
+
+    if (!labels || typeof labels !== 'object') {
+      return res.status(400).json({ message: 'Labels object is required' });
+    }
+
+    // Update only provided labels
+    const updates = {};
+    if (labels.premium !== undefined) updates.premium = labels.premium;
+    if (labels.featured !== undefined) updates.featured = labels.featured;
+    if (labels.starred !== undefined) updates.starred = labels.starred;
+    if (labels.urgent !== undefined) updates.urgent = labels.urgent;
+    if (labels.activelyHiring !== undefined) updates.activelyHiring = labels.activelyHiring;
+
+    const result = await Job.updateMany(
+      { _id: { $in: jobIds } },
+      { $set: updates }
+    );
+
+    res.json({
+      message: `Successfully updated labels for ${result.modifiedCount} jobs`,
+      modifiedCount: result.modifiedCount
+    });
+  } catch (error) {
+    console.error('Bulk update job labels error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   POST /api/admin/jobs/:jobId/assign-applicants
+// @desc    Assign multiple applicants to a job
+// @access  Private (Admin)
+router.post('/jobs/:jobId/assign-applicants', requirePermission('canManageApplications'), async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    const { applicantIds } = req.body;
+
+    // Validate input
+    if (!applicantIds || !Array.isArray(applicantIds) || applicantIds.length === 0) {
+      return res.status(400).json({ message: 'Applicant IDs array is required' });
+    }
+
+    if (applicantIds.length > 500) {
+      return res.status(400).json({ message: 'Cannot assign more than 500 applicants at once' });
+    }
+
+    // Check if job exists and get employer
+    const job = await Job.findById(jobId);
+    if (!job) {
+      return res.status(404).json({ message: 'Job not found' });
+    }
+
+    // Get existing applications for this job to avoid duplicates
+    const existingApplications = await Application.find({
+      job: jobId,
+      user: { $in: applicantIds }
+    }).select('user');
+
+    const existingUserIds = existingApplications.map(app => app.user.toString());
+    const newApplicantIds = applicantIds.filter(id => !existingUserIds.includes(id));
+
+    if (newApplicantIds.length === 0) {
+      return res.status(400).json({ 
+        message: 'All selected applicants have already applied to this job',
+        skipped: applicantIds.length
+      });
+    }
+
+    // Fetch user data for new applicants
+    const User = require('../models/User');
+    const users = await User.find({ _id: { $in: newApplicantIds } });
+
+    if (users.length === 0) {
+      return res.status(404).json({ message: 'No valid users found' });
+    }
+
+    // Create applications with user data
+    const applications = users.map(user => ({
+      job: jobId,
+      user: user._id,
+      employer: job.postedBy,
+      // Personal Information from user profile
+      fullName: user.name || 'N/A',
+      email: user.email || 'N/A',
+      mobileNumber: user.phone || 'N/A',
+      whatsappNumber: user.phone || '',
+      dateOfBirth: user.dateOfBirth || new Date('2000-01-01'),
+      gender: user.gender || 'Other',
+      maritalStatus: user.maritalStatus || 'Single',
+      currentLocation: user.location || 'N/A',
+      // Professional Information
+      currentJobTitle: user.currentJobTitle || '',
+      currentSalary: user.currentSalary || 0,
+      experienceLevel: user.experience || '0',
+      jobStatus: user.jobStatus || 'Not Working',
+      keySkills: user.skills || [],
+      jobProfileDescription: user.bio || 'Assigned by admin',
+      // Education Information
+      educationLevel: user.education || 'Graduate',
+      course: user.course || 'N/A',
+      institution: user.institution || 'N/A',
+      graduationYear: user.graduationYear || new Date().getFullYear(),
+      // Status and tracking
+      status: 'assigned',
+      assignedByAdmin: true,
+      assignedAt: new Date(),
+      appliedAt: new Date()
+    }));
+
+    const createdApplications = await Application.insertMany(applications);
+
+    res.json({
+      message: `Successfully assigned ${createdApplications.length} applicants to the job`,
+      assigned: createdApplications.length,
+      skipped: existingUserIds.length,
+      applications: createdApplications
+    });
+  } catch (error) {
+    console.error('Assign applicants error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 // @route   GET /api/admin/applications/count
 // @desc    Get application count
 // @access  Private (Admin)
@@ -1570,7 +1824,6 @@ router.post('/jobs', [
   body('title').notEmpty().withMessage('Job title is required'),
   body('description').notEmpty().withMessage('Job description is required'),
   body('company.name').notEmpty().withMessage('Company name is required'),
-  body('location.city').notEmpty().withMessage('City is required'),
   body('location.state').notEmpty().withMessage('State is required'),
   body('salary.min').isNumeric().withMessage('Minimum salary must be a number'),
   body('salary.max').isNumeric().withMessage('Maximum salary must be a number'),
@@ -1712,9 +1965,8 @@ router.post('/jobs', [
 // @access  Private (Admin)
 router.get('/packages', requirePermission('canManageSettings'), async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const skip = (page - 1) * limit;
+    const page = req.query.page;
+    const limit = req.query.limit;
     const search = req.query.search || '';
     const packageType = req.query.packageType || '';
     const isActive = req.query.isActive;
@@ -1736,27 +1988,53 @@ router.get('/packages', requirePermission('canManageSettings'), async (req, res)
       query.isActive = isActive === 'true';
     }
 
-    const packages = await Package.find(query)
-      .populate('createdBy', 'firstName lastName email')
-      .populate('updatedBy', 'firstName lastName email')
-      .sort({ displayOrder: 1, createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
+    // For admin, fetch all packages by default (no pagination unless explicitly requested)
+    const pageNum = page ? parseInt(page) : null;
+    const limitNum = limit ? parseInt(limit) : null;
+    const hasPagination = pageNum !== null && limitNum !== null && !isNaN(pageNum) && !isNaN(limitNum) && pageNum > 0 && limitNum > 0;
+    
+    let packages;
+    let total = await Package.countDocuments(query);
+    
+    if (hasPagination) {
+      // Pagination requested
+      const skip = (pageNum - 1) * limitNum;
+      packages = await Package.find(query)
+        .populate('createdBy', 'firstName lastName email')
+        .populate('updatedBy', 'firstName lastName email')
+        .sort({ displayOrder: 1, createdAt: -1 })
+        .skip(skip)
+        .limit(limitNum);
+      
+      console.log(`Admin packages fetch (paginated) - Page: ${pageNum}, Limit: ${limitNum}, Total: ${total}, Returning: ${packages.length}`);
+      
+      res.json({
+        success: true,
+        packages,
+        pagination: {
+          current: pageNum,
+          pages: Math.ceil(total / limitNum),
+          total
+        }
+      });
+    } else {
+      // No pagination - return ALL packages
+      packages = await Package.find(query)
+        .populate('createdBy', 'firstName lastName email')
+        .populate('updatedBy', 'firstName lastName email')
+        .sort({ displayOrder: 1, createdAt: -1 });
 
-    const total = await Package.countDocuments(query);
-
-    res.json({
-      success: true,
-      packages,
-      pagination: {
-        current: page,
-        pages: Math.ceil(total / limit),
-        total
-      }
-    });
+      console.log(`Admin packages fetch (all) - Total packages in DB: ${total}, Returning: ${packages.length}, Query:`, JSON.stringify(query));
+      
+      res.json({
+        success: true,
+        packages,
+        total: total
+      });
+    }
   } catch (error) {
     console.error('Get packages error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
   }
 });
 
@@ -1765,15 +2043,15 @@ router.get('/packages', requirePermission('canManageSettings'), async (req, res)
 // @access  Private (Admin)
 router.get('/packages/:id', requirePermission('canManageSettings'), async (req, res) => {
   try {
-    const package = await Package.findById(req.params.id)
+    const pkg = await Package.findById(req.params.id)
       .populate('createdBy', 'firstName lastName email')
       .populate('updatedBy', 'firstName lastName email');
     
-    if (!package) {
+    if (!pkg) {
       return res.status(404).json({ message: 'Package not found' });
     }
 
-    res.json({ success: true, package });
+    res.json({ success: true, package: pkg });
   } catch (error) {
     console.error('Get package error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -1837,9 +2115,9 @@ router.put('/packages/:id', requirePermission('canManageSettings'), [
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const package = await Package.findById(req.params.id);
+    const pkg = await Package.findById(req.params.id);
     
-    if (!package) {
+    if (!pkg) {
       return res.status(404).json({ message: 'Package not found' });
     }
 
@@ -1882,9 +2160,9 @@ router.put('/packages/:id', requirePermission('canManageSettings'), [
 // @access  Private (Admin)
 router.delete('/packages/:id', requirePermission('canManageSettings'), async (req, res) => {
   try {
-    const package = await Package.findById(req.params.id);
+    const pkg = await Package.findById(req.params.id);
     
-    if (!package) {
+    if (!pkg) {
       return res.status(404).json({ message: 'Package not found' });
     }
 
@@ -1902,18 +2180,18 @@ router.delete('/packages/:id', requirePermission('canManageSettings'), async (re
 // @access  Private (Admin)
 router.put('/packages/:id/toggle-active', requirePermission('canManageSettings'), async (req, res) => {
   try {
-    const package = await Package.findById(req.params.id);
+    const pkg = await Package.findById(req.params.id);
     
-    if (!package) {
+    if (!pkg) {
       return res.status(404).json({ message: 'Package not found' });
     }
 
-    await package.toggleActive();
+    await pkg.toggleActive();
 
     res.json({
       success: true,
-      message: `Package ${package.isActive ? 'activated' : 'deactivated'} successfully`,
-      package
+      message: `Package ${pkg.isActive ? 'activated' : 'deactivated'} successfully`,
+      package: pkg
     });
   } catch (error) {
     console.error('Toggle package active status error:', error);
@@ -1926,18 +2204,18 @@ router.put('/packages/:id/toggle-active', requirePermission('canManageSettings')
 // @access  Private (Admin)
 router.put('/packages/:id/toggle-featured', requirePermission('canManageSettings'), async (req, res) => {
   try {
-    const package = await Package.findById(req.params.id);
+    const pkg = await Package.findById(req.params.id);
     
-    if (!package) {
+    if (!pkg) {
       return res.status(404).json({ message: 'Package not found' });
     }
 
-    await package.toggleFeatured();
+    await pkg.toggleFeatured();
 
     res.json({
       success: true,
-      message: `Package ${package.isFeatured ? 'featured' : 'unfeatured'} successfully`,
-      package
+      message: `Package ${pkg.isFeatured ? 'featured' : 'unfeatured'} successfully`,
+      package: pkg
     });
   } catch (error) {
     console.error('Toggle package featured status error:', error);
@@ -4361,7 +4639,7 @@ router.patch('/verifications/:id/reject', async (req, res) => {
 // @route   GET /api/admin/analytics
 // @desc    Get comprehensive analytics data
 // @access  Private (Admin)
-router.get('/analytics', requirePermission('canManageUsers'), async (req, res) => {
+router.get('/analytics', requirePermission('canViewAnalytics'), async (req, res) => {
   try {
     const User = require('../models/User');
     const Job = require('../models/Job');
@@ -4383,8 +4661,8 @@ router.get('/analytics', requirePermission('canManageUsers'), async (req, res) =
     const totalUsers = await User.countDocuments();
     const verifiedUsers = await User.countDocuments({ isVerified: true });
     const jobseekers = await User.countDocuments({ userType: 'jobseeker' });
-    const companies = await User.countDocuments({ userType: 'company' });
-    const consultancies = await User.countDocuments({ userType: 'consultancy' });
+    const companies = await User.countDocuments({ userType: 'employer', employerType: 'company' });
+    const consultancies = await User.countDocuments({ userType: 'employer', employerType: 'consultancy' });
     const newUsersToday = await User.countDocuments({ createdAt: { $gte: today } });
     const newUsersThisWeek = await User.countDocuments({ createdAt: { $gte: lastWeek } });
     const newUsersThisMonth = await User.countDocuments({ createdAt: { $gte: lastMonth } });
@@ -4840,18 +5118,31 @@ router.get('/kyc', requirePermission('canManageUsers'), async (req, res) => {
     }
 
     const kycs = await KYC.find(query)
-      .populate('userId', 'firstName lastName email companyName phone userType')
+      .populate('userId', 'firstName lastName email phone userType employerType profile')
       .populate('reviewedBy', 'firstName lastName')
       .sort({ submittedAt: -1, createdAt: -1 })
       .skip(skip)
       .limit(limit)
       .lean();
 
-    // Transform to include user info at root level
-    const transformedKycs = kycs.map(kyc => ({
-      ...kyc,
-      user: kyc.userId
-    }));
+    // Transform to include user info at root level with company name
+    const transformedKycs = kycs.map(kyc => {
+      const user = kyc.userId || {};
+      const companyData = user.profile?.company || user.company || {};
+      const companyName = companyData.name || 
+                          user.companyName || 
+                          user.consultancyName ||
+                          `${user.firstName || ''} ${user.lastName || ''}`.trim() ||
+                          'N/A';
+      
+      return {
+        ...kyc,
+        user: {
+          ...user,
+          companyName: companyName
+        }
+      };
+    });
 
     const total = await KYC.countDocuments(query);
 
@@ -4875,16 +5166,27 @@ router.get('/kyc', requirePermission('canManageUsers'), async (req, res) => {
 router.get('/kyc/:id', requirePermission('canManageUsers'), async (req, res) => {
   try {
     const kyc = await KYC.findById(req.params.id)
-      .populate('userId', 'firstName lastName email companyName phone userType')
+      .populate('userId', 'firstName lastName email phone userType employerType profile')
       .populate('reviewedBy', 'firstName lastName');
     
     if (!kyc) {
       return res.status(404).json({ message: 'KYC submission not found' });
     }
 
+    const user = kyc.userId || {};
+    const companyData = user.profile?.company || user.company || {};
+    const companyName = companyData.name || 
+                        user.companyName || 
+                        user.consultancyName ||
+                        `${user.firstName || ''} ${user.lastName || ''}`.trim() ||
+                        'N/A';
+
     const transformedKyc = {
       ...kyc.toObject(),
-      user: kyc.userId
+      user: {
+        ...user.toObject ? user.toObject() : user,
+        companyName: companyName
+      }
     };
 
     res.json({ kyc: transformedKyc });
@@ -5601,6 +5903,177 @@ router.get('/razorpay/transactions', requirePermission('canManageSettings'), asy
   } catch (error) {
     console.error('Get Razorpay transactions error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// @route   POST /api/admin/jobs/:jobId/invite-candidates
+// @desc    Invite candidates to apply for a job
+// @access  Private (Admin)
+router.post('/jobs/:jobId/invite-candidates', requirePermission('canManageJobs'), async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    const { candidateIds, message } = req.body;
+
+    // Validate input
+    if (!candidateIds || !Array.isArray(candidateIds) || candidateIds.length === 0) {
+      return res.status(400).json({ message: 'Candidate IDs array is required' });
+    }
+
+    // Check if job exists
+    const job = await Job.findById(jobId);
+    if (!job) {
+      return res.status(404).json({ message: 'Job not found' });
+    }
+
+    const JobInvitation = require('../models/JobInvitation');
+    const User = require('../models/User');
+
+    // Check which candidates have already been invited
+    const existingInvitations = await JobInvitation.find({
+      job: jobId,
+      candidate: { $in: candidateIds }
+    }).select('candidate');
+
+    const alreadyInvitedIds = existingInvitations.map(inv => inv.candidate.toString());
+    const newCandidateIds = candidateIds.filter(id => !alreadyInvitedIds.includes(id));
+
+    if (newCandidateIds.length === 0) {
+      return res.status(400).json({
+        message: 'All selected candidates have already been invited to this job',
+        skipped: candidateIds.length
+      });
+    }
+
+    // Verify candidates exist
+    const candidates = await User.find({
+      _id: { $in: newCandidateIds },
+      userType: 'jobseeker'
+    });
+
+    if (candidates.length === 0) {
+      return res.status(404).json({ message: 'No valid candidates found' });
+    }
+
+    // Create invitations
+    const invitations = candidates.map(candidate => ({
+      job: jobId,
+      candidate: candidate._id,
+      invitedBy: req.user._id,
+      message: message || `You have been invited to apply for ${job.title}`,
+      status: 'pending'
+    }));
+
+    const createdInvitations = await JobInvitation.insertMany(invitations);
+
+    res.json({
+      message: `Successfully invited ${createdInvitations.length} candidates`,
+      invited: createdInvitations.length,
+      skipped: alreadyInvitedIds.length,
+      invitations: createdInvitations
+    });
+  } catch (error) {
+    console.error('Invite candidates error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// @route   GET /api/admin/jobs/:jobId/invitations
+// @desc    Get all invitations for a job
+// @access  Private (Admin)
+router.get('/jobs/:jobId/invitations', requirePermission('canManageJobs'), async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    const JobInvitation = require('../models/JobInvitation');
+
+    const invitations = await JobInvitation.find({ job: jobId })
+      .populate('candidate', 'firstName lastName email phone')
+      .populate('invitedBy', 'firstName lastName email')
+      .sort({ createdAt: -1 });
+
+    const stats = await JobInvitation.getInvitationStats(jobId);
+
+    res.json({
+      invitations,
+      stats
+    });
+  } catch (error) {
+    console.error('Get invitations error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   GET /api/admin/jobs/:jobId/uninvited-candidates
+// @desc    Get candidates who haven't been invited to this job
+// @access  Private (Admin)
+router.get('/jobs/:jobId/uninvited-candidates', requirePermission('canManageJobs'), async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    const { limit = 10000 } = req.query;
+
+    const JobInvitation = require('../models/JobInvitation');
+    const User = require('../models/User');
+
+    console.log('=== FETCHING UNINVITED CANDIDATES ===');
+    console.log('Job ID:', jobId);
+    console.log('Limit:', limit);
+    console.log('Admin User:', req.user?.email);
+
+    // Get all job seekers first to debug
+    const allJobSeekers = await User.find({ userType: 'jobseeker' }).countDocuments();
+    console.log('Total job seekers in database:', allJobSeekers);
+
+    // Get sample job seeker for debugging
+    if (allJobSeekers > 0) {
+      const sampleJobSeeker = await User.findOne({ userType: 'jobseeker' })
+        .select('firstName lastName email phone userType')
+        .lean();
+      console.log('Sample job seeker:', sampleJobSeeker);
+    } else {
+      console.warn('⚠️ NO JOB SEEKERS FOUND IN DATABASE!');
+      console.warn('To fix: Run "node seed-jobseekers.js" in server directory');
+    }
+
+    // Get already invited candidate IDs
+    const invitedCandidates = await JobInvitation.find({ job: jobId }).distinct('candidate');
+    console.log('Already invited candidates:', invitedCandidates.length);
+
+    // Get candidates who haven't been invited
+    const uninvitedCandidates = await User.find({
+      userType: 'jobseeker',
+      _id: { $nin: invitedCandidates }
+    })
+      .select('firstName lastName email phone')
+      .limit(parseInt(limit))
+      .lean();
+
+    console.log('Uninvited candidates found:', uninvitedCandidates.length);
+    
+    if (uninvitedCandidates.length > 0) {
+      console.log('Sample uninvited candidate:', uninvitedCandidates[0]);
+    }
+
+    console.log('=== RESPONSE SUMMARY ===');
+    console.log('Returning:', {
+      candidates: uninvitedCandidates.length,
+      totalJobSeekers: allJobSeekers,
+      alreadyInvited: invitedCandidates.length,
+      available: uninvitedCandidates.length
+    });
+
+    res.json({
+      candidates: uninvitedCandidates,
+      count: uninvitedCandidates.length,
+      totalJobSeekers: allJobSeekers,
+      alreadyInvited: invitedCandidates.length
+    });
+  } catch (error) {
+    console.error('=== ERROR IN UNINVITED CANDIDATES ===');
+    console.error('Error:', error.message);
+    console.error('Stack:', error.stack);
+    res.status(500).json({ 
+      message: 'Server error',
+      error: error.message 
+    });
   }
 });
 

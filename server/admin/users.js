@@ -26,8 +26,19 @@ router.get('/recent', async (req, res) => {
     const users = await User.find()
       .sort({ createdAt: -1 })
       .limit(10)
-      .select('name email role isActive createdAt');
-    res.json({ users });
+      .select('firstName lastName email userType role isActive createdAt');
+    
+    // Transform users to match frontend expectations
+    const transformedUsers = users.map(user => {
+      const userObj = user.toObject();
+      return {
+        ...userObj,
+        name: `${userObj.firstName || ''} ${userObj.lastName || ''}`.trim() || 'N/A',
+        role: userObj.role || (userObj.userType ? userObj.userType.toUpperCase() : 'N/A'),
+      };
+    });
+    
+    res.json({ users: transformedUsers });
   } catch (error) {
     console.error('Recent users error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -284,7 +295,8 @@ router.get('/', requirePermission('canManageUsers'), async (req, res) => {
         lastModified: userObj.userProfile?.profileStatus?.lastModified || userObj.updatedAt,
         teamLimit: userObj.teamMemberLimits?.maxTeamMembers || 0,
         currentTeamMembers: userObj.teamMemberLimits?.currentTeamMembers || 0,
-        companyName: userObj.profile?.company?.name || userObj.companyName || null
+        companyName: userObj.profile?.company?.name || userObj.companyName || null,
+        resume: userObj.profile?.resume || null
       };
     });
 
@@ -492,6 +504,80 @@ router.delete('/:id', requirePermission('canManageUsers'), async (req, res) => {
   } catch (error) {
     console.error('Delete user error:', error);
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   POST /api/admin/login-as-user/:userId
+// @desc    Admin login as user (impersonation)
+// @access  Private (Admin)
+router.post('/login-as-user/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    console.log('🔵 Admin login-as-user request for userId:', userId);
+    
+    // Find the user
+    const user = await User.findById(userId);
+    
+    if (!user) {
+      console.log('❌ User not found:', userId);
+      return res.status(404).json({ 
+        success: false, 
+        message: 'User not found' 
+      });
+    }
+    
+    console.log('✅ User found:', user.email, 'Role:', user.role);
+    
+    // Generate JWT token for the user
+    const jwt = require('jsonwebtoken');
+    const token = jwt.sign(
+      { 
+        userId: user._id,
+        email: user.email,
+        role: user.role,
+        userType: user.userType,
+        employerType: user.employerType,
+        impersonatedBy: req.user?._id || 'admin' // Track who impersonated
+      },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '24h' }
+    );
+    
+    // Log the admin action for audit trail
+    console.log('🟢 Admin impersonation:', {
+      adminId: req.user?._id || 'unknown',
+      targetUserId: user._id,
+      targetEmail: user.email,
+      timestamp: new Date()
+    });
+    
+    // Return user data and token
+    res.json({
+      success: true,
+      message: 'Logged in as user successfully',
+      token,
+      user: {
+        _id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email,
+        email: user.email,
+        role: user.role,
+        userType: user.userType,
+        employerType: user.employerType,
+        isVerified: user.isVerified,
+        isActive: user.isActive
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Login as user error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Server error',
+      error: error.message 
+    });
   }
 });
 

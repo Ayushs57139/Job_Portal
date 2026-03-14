@@ -77,6 +77,11 @@ router.post('/direct', [
             return res.status(404).json({ message: 'Job not found' });
         }
 
+        // Validate job has postedBy (employer)
+        if (!job.postedBy) {
+            return res.status(400).json({ message: 'Job does not have a valid employer' });
+        }
+
         // Check if user already exists with this email
         let user = await User.findOne({ email: email.toLowerCase() });
         let isNewUser = false;
@@ -100,24 +105,25 @@ router.post('/direct', [
             }
 
             // Generate a temporary password (user can change it later)
-            const tempPassword = Math.random().toString(36).slice(-8);
-            const salt = await bcrypt.genSalt(10);
-            const hashedPassword = await bcrypt.hash(tempPassword, salt);
+            const tempPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-4).toUpperCase();
 
             // Split full name into first and last name
-            const nameParts = fullName.trim().split(' ');
-            const firstName = nameParts[0] || '';
-            const lastName = nameParts.slice(1).join(' ') || '';
+            const nameParts = fullName.trim().split(' ').filter(part => part.length > 0);
+            const firstName = nameParts[0] || fullName || 'User';
+            // If no last name provided, use a default value (User model requires lastName)
+            const lastName = nameParts.slice(1).join(' ') || 'User';
 
             // Create user data with simplified structure
+            // Note: Pass plain text password - the User model's pre-save hook will hash it
             const userData = {
                 firstName,
                 lastName,
                 email: email.toLowerCase(),
-                password: hashedPassword,
+                password: tempPassword, // Plain text - will be hashed by pre-save hook
                 phone: mobileNumber,
                 userType: 'jobseeker',
                 userId,
+                tempPassword: tempPassword, // Store temporary password for display
                 profile: {
                     bio: jobProfileDescription,
                     skills: Array.isArray(keySkills) ? keySkills : (keySkills ? keySkills.split(',').map(s => s.trim()) : []),
@@ -146,24 +152,90 @@ router.post('/direct', [
             return res.status(400).json({ message: 'You have already applied for this job' });
         }
 
+        // Helper function to map bikeAvailable values to enum
+        const mapBikeAvailable = (value) => {
+            if (!value) return 'No';
+            const lower = value.toLowerCase();
+            if (lower.includes('yes') || lower.includes('have')) return 'Yes';
+            if (lower.includes('no') || lower.includes("don't") || lower.includes("do not")) return 'No';
+            if (lower.includes('arrange') || lower.includes('can')) return 'I Can Arrange';
+            return 'No';
+        };
+
+        // Helper function to map drivingLicense values to enum
+        const mapDrivingLicense = (value) => {
+            if (!value) return 'No License';
+            const lower = value.toLowerCase();
+            if (lower.includes('no') || lower.includes("don't") || lower.includes("do not")) return 'No License';
+            if (lower.includes('learning')) return 'Learning License';
+            if (lower.includes('lmv') || lower.includes('light motor')) return 'LMV License';
+            if (lower.includes('heavy') || lower.includes('hdt')) return 'Heavy Driver License';
+            if (lower.includes('crane')) return 'Crane Operator License';
+            if (lower.includes('electrical')) return 'Electrical License';
+            // Default to LMV if they say they have a license
+            if (lower.includes('yes') || lower.includes('have') || lower.includes('valid')) return 'LMV License';
+            return 'No License';
+        };
+
+        // Helper function to map maritalStatus to enum
+        const mapMaritalStatus = (value) => {
+            if (!value) return 'Single';
+            const lower = value.toLowerCase();
+            if (lower.includes('single')) return 'Single';
+            if (lower.includes('married')) return 'Married';
+            if (lower.includes('divorced')) return 'Divorced';
+            if (lower.includes('widow')) return 'Widowed';
+            return 'Single';
+        };
+
+        // Helper function to map jobStatus to enum
+        const mapJobStatus = (value) => {
+            if (!value) return 'Not Working';
+            const lower = value.toLowerCase();
+            if (lower.includes('working') || lower.includes('employed')) return 'Working';
+            if (lower.includes('not working') || lower.includes('unemployed') || lower.includes('not employed')) return 'Not Working';
+            if (lower.includes('internship')) return 'Internship';
+            if (lower.includes('apprenticeship')) return 'Apprenticeship';
+            return 'Not Working';
+        };
+
+        // Helper function to map noticePeriod to enum
+        const mapNoticePeriod = (value) => {
+            if (!value) return 'Immediate Joining';
+            const lower = value.toLowerCase();
+            if (lower.includes('immediate') || lower.includes('now')) return 'Immediate Joining';
+            if (lower.includes('7') || lower.includes('seven')) return '7 Days';
+            if (lower.includes('15') || lower.includes('fifteen')) return '15 Days';
+            if (lower.includes('30') || lower.includes('thirty') || lower.includes('1 month')) return '30 Days';
+            if (lower.includes('45') || lower.includes('forty')) return '45 Days';
+            if (lower.includes('60') || lower.includes('sixty') || lower.includes('2 month')) return '60 Days';
+            if (lower.includes('90') || lower.includes('ninety') || lower.includes('3 month')) {
+                if (lower.includes('plus') || lower.includes('more')) return '90 Days Plus';
+                return '90 Days';
+            }
+            if (lower.includes('serving') || lower.includes('notice')) return 'Serving Notice Period';
+            return 'Immediate Joining';
+        };
+
         // Create application with default values for required fields
         const applicationData = {
             user: user._id,
             job: jobId,
+            employer: job.postedBy, // Set employer from job's postedBy field
             // Personal Information (required fields with defaults)
             fullName,
             email,
             mobileNumber,
             whatsappNumber: whatsappNumber || mobileNumber,
-            dateOfBirth: dateOfBirth || new Date('1990-01-01'), // Default date
+            dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : new Date('1990-01-01'), // Default date
             gender: gender || 'Other',
-            maritalStatus: maritalStatus || 'Single',
+            maritalStatus: mapMaritalStatus(maritalStatus),
             currentLocation: currentLocation || 'Not specified',
             // Professional Information
             currentJobTitle: currentJobTitle || 'Not specified',
             currentSalary: currentSalary ? parseInt(currentSalary) : undefined,
             experienceLevel: experienceLevel || 'Fresher',
-            jobStatus: jobStatus || 'Not Working',
+            jobStatus: mapJobStatus(jobStatus),
             keySkills: Array.isArray(keySkills) ? keySkills : [],
             jobProfileDescription: jobProfileDescription || 'No description provided',
             // Education Information (required fields with defaults)
@@ -181,13 +253,13 @@ router.post('/direct', [
             workStartDate,
             workEndDate,
             workLocation: workLocation || 'Not specified',
-            noticePeriod: noticePeriod || 'Immediate Joining',
+            noticePeriod: mapNoticePeriod(noticePeriod),
             // Additional Information
             disabilityStatus: disabilityStatus || 'Don\'t Have Disability',
             disabilityType,
             militaryExperience: militaryExperience || 'Never Served',
-            bikeAvailable: bikeAvailable || 'No',
-            drivingLicense: drivingLicense || 'No License',
+            bikeAvailable: mapBikeAvailable(bikeAvailable),
+            drivingLicense: mapDrivingLicense(drivingLicense),
             assetRequirements,
             // Location Information
             currentState: currentState || 'Not specified',
@@ -203,7 +275,7 @@ router.post('/direct', [
             // Source Information
             sourceOfVisit: sourceOfVisit || 'Direct Application',
             // Application Status
-            status: 'pending',
+            status: 'applied',
             appliedAt: new Date()
         };
 
@@ -226,7 +298,8 @@ router.post('/direct', [
             { expiresIn: '7d' }
         );
 
-        res.status(201).json({
+        // Prepare response data
+        const responseData = {
             message: isNewUser ? 'Application submitted successfully and account created' : 'Application submitted successfully',
             application: {
                 id: application._id,
@@ -244,13 +317,29 @@ router.post('/direct', [
             },
             token: token,
             isNewUser: isNewUser
-        });
+        };
+
+        // Include temporary password only for new users
+        if (isNewUser && user.tempPassword) {
+            responseData.tempPassword = user.tempPassword;
+        }
+
+        res.status(201).json(responseData);
 
     } catch (error) {
         console.error('Direct application submission error:', error);
+        console.error('Error stack:', error.stack);
+        console.error('Error details:', {
+            message: error.message,
+            name: error.name,
+            code: error.code,
+            keyPattern: error.keyPattern,
+            keyValue: error.keyValue
+        });
         res.status(500).json({ 
             message: 'Server error during application submission',
-            error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+            error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error',
+            ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
         });
     }
 });
@@ -325,6 +414,12 @@ router.post('/', [
             return res.status(404).json({ message: 'Job not found' });
         }
 
+        // Validate job has postedBy (employer)
+        if (!job.postedBy) {
+            console.error('Job missing postedBy field:', jobId);
+            return res.status(400).json({ message: 'Job is missing employer information' });
+        }
+
         // Check if user already applied for this job
         const existingApplication = await Application.findOne({
             user: req.user._id,
@@ -335,87 +430,223 @@ router.post('/', [
             return res.status(400).json({ message: 'You have already applied for this job' });
         }
 
-        // Create application
+        // Validate required fields and set defaults
+        if (!jobStatus || !['Working', 'Not Working', 'Internship', 'Apprenticeship'].includes(jobStatus)) {
+            jobStatus = 'Not Working';
+        }
+        if (!course || (Array.isArray(course) && course.length === 0)) {
+            course = 'Not specified';
+        }
+        if (!educationLevel || !['No Education', 'Below 10th', '10th Pass', '12th Pass', 'ITI', 'Diploma', 'Graduate', 'Post Graduate', 'Doctorate', 'Other'].includes(educationLevel)) {
+            educationLevel = educationLevel || 'No Education';
+        }
+        if (!currentLocation) {
+            currentLocation = currentAddress || 'Not specified';
+        }
+        if (!jobProfileDescription) {
+            jobProfileDescription = 'No description provided';
+        }
+
+        // Helper function to map bikeAvailable values
+        const mapBikeAvailable = (value) => {
+            if (!value || value.trim() === '') return null;
+            const bikeMap = {
+                'Yes, I have': 'Yes',
+                'No, I don\'t have': 'No',
+                'I Can Arrange': 'I Can Arrange',
+                'Yes': 'Yes',
+                'No': 'No'
+            };
+            return bikeMap[value] || (['Yes', 'No', 'I Can Arrange'].includes(value) ? value : null);
+        };
+
+        // Helper function to map drivingLicense values
+        const mapDrivingLicense = (value) => {
+            if (!value || value.trim() === '') return null;
+            const licenseMap = {
+                'Yes, I have valid DL': 'LMV License',
+                'No, I don\'t have': 'No License',
+                'No License': 'No License',
+                'Learning License': 'Learning License',
+                'LMV License': 'LMV License',
+                'Heavy Driver License': 'Heavy Driver License',
+                'Crane Operator License': 'Crane Operator License',
+                'Electrical License': 'Electrical License'
+            };
+            return licenseMap[value] || (['No License', 'Learning License', 'LMV License', 'Heavy Driver License', 'Crane Operator License', 'Electrical License'].includes(value) ? value : null);
+        };
+
+        // Build application data object, only including valid enum values
         const applicationData = {
             user: req.user._id,
             job: jobId,
+            employer: job.postedBy.toString(),
             // Personal Information
             fullName,
             email,
             mobileNumber,
-            whatsappNumber,
-            dateOfBirth,
-            gender,
-            maritalStatus,
-            currentLocation,
+            whatsappNumber: whatsappNumber || mobileNumber,
+            dateOfBirth: dateOfBirth || new Date('1990-01-01'),
+            gender: gender || 'Other',
+            maritalStatus: maritalStatus || 'Single',
+            currentLocation: currentLocation || currentAddress || 'Not specified',
             // Professional Information
-            currentJobTitle,
+            currentJobTitle: currentJobTitle || '',
             currentSalary: currentSalary ? parseInt(currentSalary) : undefined,
-            experienceLevel,
+            experienceLevel: experienceLevel || 'Fresher',
             jobStatus,
-            keySkills: Array.isArray(keySkills) ? keySkills : [],
+            keySkills: Array.isArray(keySkills) ? keySkills : (keySkills ? [keySkills] : []),
             jobProfileDescription,
             // Education Information
             educationLevel,
-            course,
-            institution,
+            course: Array.isArray(course) ? (course.length > 0 ? course[0] : 'Not specified') : course,
+            institution: institution || '',
             passingYear: passingYear ? parseInt(passingYear) : undefined,
-            percentage,
+            percentage: percentage || '',
             // Work Experience
-            currentCompany,
+            currentCompany: currentCompany || '',
             industry: Array.isArray(industry) ? industry : (industry ? [industry] : []),
-            companyType,
-            employmentType,
-            currentlyWorking,
-            workStartDate,
-            workEndDate,
-            workLocation,
-            noticePeriod,
-            // Additional Information
-            disabilityStatus,
-            disabilityType,
-            militaryExperience,
-            bikeAvailable,
-            drivingLicense,
-            assetRequirements,
+            workStartDate: workStartDate || '',
+            workEndDate: workEndDate || '',
+            workLocation: workLocation || '',
+            assetRequirements: assetRequirements || [],
             // Location Information
-            currentState,
-            currentCity,
-            currentAddress,
-            pincode,
-            homeTown,
-            homeTownPincode,
+            currentState: currentState || '',
+            currentCity: currentCity || '',
+            currentAddress: currentAddress || '',
+            pincode: pincode || '',
+            homeTown: homeTown || '',
+            homeTownPincode: homeTownPincode || '',
             preferredLocations: Array.isArray(preferredLocations) ? preferredLocations : [],
             // Language & Communication
-            preferredLanguage,
-            englishFluency,
+            preferredLanguage: preferredLanguage || '',
+            englishFluency: englishFluency || '',
             // Source Information
-            sourceOfVisit,
+            sourceOfVisit: sourceOfVisit || '',
             // Application Status
-            status: 'pending',
+            status: 'applied',
             appliedAt: new Date()
         };
 
-        const application = new Application(applicationData);
-        await application.save();
+        // Only add enum fields if they have valid values (completely omit if invalid/empty)
+        const validCompanyTypes = ['Indian MNC', 'Foreign MNC', 'Govt / PSU', 'Startup', 'Unicorn', 'Corporate', 'Consultancy'];
+        if (companyType && companyType.trim() !== '' && validCompanyTypes.includes(companyType)) {
+            applicationData.companyType = companyType;
+        }
 
-        // Update job application count
-        await Job.findByIdAndUpdate(jobId, {
-            $inc: { applicationCount: 1 }
-        });
+        const validEmploymentTypes = ['Permanent', 'Temporary/Contract Job', 'Internship', 'Apprenticeship', 'Freelance', 'Trainee', 'Fresher'];
+        if (employmentType && employmentType.trim() !== '' && validEmploymentTypes.includes(employmentType)) {
+            applicationData.employmentType = employmentType;
+        }
 
-        res.status(201).json({
-            message: 'Application submitted successfully',
-            application: {
-                id: application._id,
-                status: application.status,
-                appliedAt: application.appliedAt
+        if (currentlyWorking && currentlyWorking.trim() !== '' && ['Yes', 'No'].includes(currentlyWorking)) {
+            applicationData.currentlyWorking = currentlyWorking;
+        }
+
+        const validNoticePeriods = ['Immediate Joining', '7 Days', '15 Days', '30 Days', '45 Days', '60 Days', '90 Days', '90 Days Plus', 'Serving Notice Period'];
+        if (noticePeriod && noticePeriod.trim() !== '' && validNoticePeriods.includes(noticePeriod)) {
+            applicationData.noticePeriod = noticePeriod;
+        }
+
+        if (disabilityStatus && disabilityStatus.trim() !== '' && ['Don\'t Have Disability', 'Have Disability'].includes(disabilityStatus)) {
+            applicationData.disabilityStatus = disabilityStatus;
+        }
+
+        const validDisabilityTypes = ['Blindness', 'Low Vision', 'Physical Disability', 'Locomotor Disability', 'Hearing Impairment', 'Speech and Language Disability', 'Other'];
+        if (disabilityType && disabilityType.trim() !== '' && validDisabilityTypes.includes(disabilityType)) {
+            applicationData.disabilityType = disabilityType;
+        }
+
+        if (militaryExperience && militaryExperience.trim() !== '' && ['Currently Serving', 'Previously Served', 'Never Served'].includes(militaryExperience)) {
+            applicationData.militaryExperience = militaryExperience;
+        }
+
+        const mappedBikeAvailable = mapBikeAvailable(bikeAvailable);
+        if (mappedBikeAvailable) {
+            applicationData.bikeAvailable = mappedBikeAvailable;
+        }
+
+        const mappedDrivingLicense = mapDrivingLicense(drivingLicense);
+        if (mappedDrivingLicense) {
+            applicationData.drivingLicense = mappedDrivingLicense;
+        }
+
+        // Log application data for debugging
+        console.log('Creating application with data:', JSON.stringify({
+            user: applicationData.user,
+            job: applicationData.job,
+            employer: applicationData.employer,
+            fullName: applicationData.fullName,
+            email: applicationData.email,
+            jobStatus: applicationData.jobStatus,
+            educationLevel: applicationData.educationLevel,
+            course: applicationData.course,
+            currentLocation: applicationData.currentLocation,
+            jobProfileDescription: applicationData.jobProfileDescription ? applicationData.jobProfileDescription.substring(0, 50) + '...' : 'missing'
+        }, null, 2));
+
+        try {
+            const application = new Application(applicationData);
+            const validationError = application.validateSync();
+            if (validationError) {
+                console.error('Validation error before save:', validationError);
+                return res.status(400).json({ 
+                    message: 'Validation error',
+                    errors: Object.keys(validationError.errors || {}).map(key => ({
+                        field: key,
+                        message: validationError.errors[key].message
+                    }))
+                });
             }
-        });
+            await application.save();
+
+            // Update job application count
+            await Job.findByIdAndUpdate(jobId, {
+                $inc: { applicationCount: 1 }
+            });
+
+            res.status(201).json({
+                message: 'Application submitted successfully',
+                application: {
+                    id: application._id,
+                    status: application.status,
+                    appliedAt: application.appliedAt
+                }
+            });
+        } catch (saveError) {
+            console.error('Error saving application:', saveError);
+            console.error('Application data that failed:', JSON.stringify(applicationData, null, 2));
+            if (saveError.name === 'ValidationError') {
+                console.error('Validation errors:', saveError.errors);
+                return res.status(400).json({ 
+                    message: 'Validation error',
+                    errors: Object.keys(saveError.errors).map(key => ({
+                        field: key,
+                        message: saveError.errors[key].message
+                    }))
+                });
+            }
+            throw saveError; // Re-throw to be caught by outer catch
+        }
 
     } catch (error) {
         console.error('Application submission error:', error);
-        res.status(500).json({ message: 'Server error during application submission' });
+        console.error('Error name:', error.name);
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
+        if (error.name === 'ValidationError') {
+            return res.status(400).json({ 
+                message: 'Validation error',
+                errors: Object.keys(error.errors || {}).map(key => ({
+                    field: key,
+                    message: error.errors[key].message
+                }))
+            });
+        }
+        res.status(500).json({ 
+            message: 'Server error during application submission',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
     }
 });
 
@@ -487,20 +718,64 @@ router.get('/job/:jobId', auth, async (req, res) => {
         res.json({
             applications: applications.map(app => ({
                 id: app._id,
+                _id: app._id,
                 user: app.user,
                 status: app.status,
                 appliedAt: app.appliedAt,
+                updatedAt: app.updatedAt,
+                // Personal Information
                 fullName: app.fullName,
                 email: app.email,
                 mobileNumber: app.mobileNumber,
+                whatsappNumber: app.whatsappNumber,
+                dateOfBirth: app.dateOfBirth,
+                gender: app.gender,
+                maritalStatus: app.maritalStatus,
+                currentLocation: app.currentLocation,
+                // Professional Information
                 currentJobTitle: app.currentJobTitle,
+                currentSalary: app.currentSalary,
                 experienceLevel: app.experienceLevel,
+                jobStatus: app.jobStatus,
                 keySkills: app.keySkills,
                 jobProfileDescription: app.jobProfileDescription,
+                yearsOfExperience: app.yearsOfExperience,
+                // Education Information
                 educationLevel: app.educationLevel,
                 course: app.course,
-                currentLocation: app.currentLocation,
-                noticePeriod: app.noticePeriod
+                institution: app.institution,
+                passingYear: app.passingYear,
+                percentage: app.percentage,
+                // Work Experience
+                currentCompany: app.currentCompany,
+                industry: app.industry,
+                companyType: app.companyType,
+                employmentType: app.employmentType,
+                currentlyWorking: app.currentlyWorking,
+                workStartDate: app.workStartDate,
+                workEndDate: app.workEndDate,
+                workLocation: app.workLocation,
+                noticePeriod: app.noticePeriod,
+                // Location Information
+                currentState: app.currentState,
+                currentCity: app.currentCity,
+                currentAddress: app.currentAddress,
+                pincode: app.pincode,
+                homeTown: app.homeTown,
+                homeTownPincode: app.homeTownPincode,
+                preferredLocations: app.preferredLocations,
+                // Additional Information
+                disabilityStatus: app.disabilityStatus,
+                militaryExperience: app.militaryExperience,
+                bikeAvailable: app.bikeAvailable,
+                drivingLicense: app.drivingLicense,
+                englishFluency: app.englishFluency,
+                sourceOfVisit: app.sourceOfVisit,
+                // Interview Information
+                interviewScheduled: app.interviewScheduled,
+                interviewDate: app.interviewDate,
+                interviewNotes: app.interviewNotes,
+                notes: app.notes
             }))
         });
     } catch (error) {

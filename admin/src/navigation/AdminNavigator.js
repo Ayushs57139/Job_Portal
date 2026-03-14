@@ -30,6 +30,7 @@ import NotificationSettingsScreen from '../screens/Admin/Settings/NotificationSe
 import AdminEmailTemplatesScreen from '../screens/Admin/AdminEmailTemplatesScreen';
 import AdminSMTPSettingsScreen from '../screens/Admin/AdminSMTPSettingsScreen';
 import AdminEmailLogsScreen from '../screens/Admin/AdminEmailLogsScreen';
+import AdminLoginSecurityScreen from '../screens/Admin/AdminLoginSecurityScreen';
 import AdminSocialUpdatesScreen from '../screens/Admin/AdminSocialUpdatesScreen';
 import AdminPackageManagementScreen from '../screens/Admin/AdminPackageManagementScreen';
 import AdminRazorpayIntegrationScreen from '../screens/Admin/AdminRazorpayIntegrationScreen';
@@ -40,10 +41,24 @@ import AdminResumeManagementScreen from '../screens/Admin/AdminResumeManagementS
 import AdminJobAlertsScreen from '../screens/Admin/AdminJobAlertsScreen';
 import AdminCandidateSearchScreen from '../screens/Admin/AdminCandidateSearchScreen';
 import AdminCandidateDetailsScreen from '../screens/Admin/AdminCandidateDetailsScreen';
+import AdminEditCandidateScreen from '../screens/Admin/AdminEditCandidateScreen';
 import AdminHomepageScreen from '../screens/Admin/AdminHomepageScreen';
 import AdminFreejobwalaChatScreen from '../screens/Admin/AdminFreejobwalaChatScreen';
 import AdminLogoManagementScreen from '../screens/Admin/AdminLogoManagementScreen';
 import AdminPostJobScreen from '../screens/Admin/AdminPostJobScreen';
+import AdminJobEventsScreen from '../screens/Admin/AdminJobEventsScreen';
+import AdminEventRegistrationsScreen from '../screens/Admin/AdminEventRegistrationsScreen';
+import AdminCompaniesScreen from '../screens/Admin/AdminCompaniesScreen';
+import AdminCompanyDetailsScreen from '../screens/Admin/AdminCompanyDetailsScreen';
+import AdminConsultanciesScreen from '../screens/Admin/AdminConsultanciesScreen';
+import AdminConsultancyDetailsScreen from '../screens/Admin/AdminConsultancyDetailsScreen';
+// Import ChatConversationScreen from admin screens
+import ChatConversationScreen from '../screens/Chat/ChatConversationScreen';
+// Import Invitation Screens
+import AdminInvitationsScreen from '../screens/Admin/AdminInvitationsScreen';
+import AdminWhatsAppSettingsScreen from '../screens/Admin/AdminWhatsAppSettingsScreen';
+// Import Location Editor
+import AdminLocationEditorScreen from '../screens/Admin/AdminLocationEditorScreen';
 
 // Admin Master Data Screens
 import AdminJobTitlesScreen from '../screens/Admin/MasterData/AdminJobTitlesScreen';
@@ -201,6 +216,11 @@ const AdminNavigator = () => {
           options={{ title: 'Email Logs', headerShown: false }}
         />
         <Stack.Screen 
+          name="AdminLoginSecurity" 
+          component={AdminLoginSecurityScreen}
+          options={{ title: 'Login Security', headerShown: false }}
+        />
+        <Stack.Screen 
           name="AdminSocialUpdates" 
           component={AdminSocialUpdatesScreen}
           options={{ title: 'Social Updates', headerShown: false }}
@@ -226,6 +246,18 @@ const AdminNavigator = () => {
           options={{ title: 'Live Chat Support', headerShown: false }}
         />
         <Stack.Screen 
+          name="ChatConversation" 
+          component={ChatConversationScreen}
+          options={{ 
+            title: 'Chat',
+            headerShown: true,
+            headerStyle: {
+              backgroundColor: colors.primary,
+            },
+            headerTintColor: colors.textWhite,
+          }}
+        />
+        <Stack.Screen 
           name="AdminResumeSearch" 
           component={AdminResumeSearchScreen}
           options={{ title: 'Resume Search', headerShown: false }}
@@ -244,6 +276,11 @@ const AdminNavigator = () => {
           name="AdminCandidateDetails" 
           component={AdminCandidateDetailsScreen}
           options={{ title: 'Candidate Details', headerShown: false }}
+        />
+        <Stack.Screen 
+          name="AdminEditCandidate" 
+          component={AdminEditCandidateScreen}
+          options={{ title: 'Edit Candidate', headerShown: false }}
         />
         <Stack.Screen 
           name="AdminJobAlerts" 
@@ -269,6 +306,55 @@ const AdminNavigator = () => {
           name="AdminPostJob" 
           component={AdminPostJobScreen}
           options={{ title: 'Post Job', headerShown: false }}
+        />
+        <Stack.Screen 
+          name="AdminJobEvents" 
+          component={AdminJobEventsScreen}
+          options={{ title: 'Job Events Management', headerShown: false }}
+        />
+        <Stack.Screen 
+          name="AdminEventRegistrations" 
+          component={AdminEventRegistrationsScreen}
+          options={{ title: 'Event Registrations', headerShown: false }}
+        />
+        <Stack.Screen 
+          name="AdminCompanies" 
+          component={AdminCompaniesScreen}
+          options={{ title: 'Companies Management', headerShown: false }}
+        />
+        <Stack.Screen 
+          name="AdminCompanyDetails" 
+          component={AdminCompanyDetailsScreen}
+          options={{ title: 'Company Details', headerShown: false }}
+        />
+        <Stack.Screen 
+          name="AdminConsultancies" 
+          component={AdminConsultanciesScreen}
+          options={{ title: 'Consultancies Management', headerShown: false }}
+        />
+        <Stack.Screen 
+          name="AdminConsultancyDetails" 
+          component={AdminConsultancyDetailsScreen}
+          options={{ title: 'Consultancy Details', headerShown: false }}
+        />
+        
+        {/* Invitation Management Screens */}
+        <Stack.Screen 
+          name="AdminInvitations" 
+          component={AdminInvitationsScreen}
+          options={{ title: 'Bulk Invitations', headerShown: false }}
+        />
+        <Stack.Screen 
+          name="AdminWhatsAppSettings" 
+          component={AdminWhatsAppSettingsScreen}
+          options={{ title: 'WhatsApp Settings', headerShown: false }}
+        />
+        
+        {/* Location Editor */}
+        <Stack.Screen 
+          name="AdminLocationEditor" 
+          component={AdminLocationEditorScreen}
+          options={{ title: 'Location Editor', headerShown: false }}
         />
         
         {/* Admin Master Data Screens */}

@@ -163,10 +163,12 @@ const resumeUpload = multer({
 router.post('/upload-resume', auth, resumeUpload.single('resume'), async (req, res) => {
   try {
     if (!req.file) {
+      console.error('No file received in upload-resume request');
       return res.status(400).json({ message: 'No resume file uploaded' });
     }
 
     const filePath = `/uploads/resumes/${req.file.filename}`;
+    console.log(`Uploading resume for user ${req.user._id}: ${filePath}`);
     
     const user = await User.findByIdAndUpdate(
       req.user._id,
@@ -174,13 +176,22 @@ router.post('/upload-resume', auth, resumeUpload.single('resume'), async (req, r
       { new: true }
     ).select('-password');
 
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    console.log(`Resume successfully saved for user ${req.user._id}: ${user.profile?.resume || 'Not found in user object'}`);
+
     res.json({
       message: 'Resume uploaded successfully',
-      user
+      user: {
+        ...user.toObject(),
+        resume: user.profile?.resume || null
+      }
     });
   } catch (error) {
     console.error('Upload resume error:', error);
-    res.status(500).json({ message: 'Server error while uploading resume' });
+    res.status(500).json({ message: 'Server error while uploading resume', error: error.message });
   }
 });
 
@@ -415,6 +426,7 @@ router.get('/dashboard-stats', auth, async (req, res) => {
     const Application = require('../models/Application');
     const Job = require('../models/Job');
     const SavedJob = require('../models/SavedJob');
+    const JobInvitation = require('../models/JobInvitation');
 
     let stats = {};
 
@@ -425,15 +437,47 @@ router.get('/dashboard-stats', auth, async (req, res) => {
         ['pending', 'reviewed', 'shortlisted'].includes(app.status)
       ).length;
       
+      // Get assigned jobs count
+      const assignedApplications = applications.filter(app => 
+        app.status === 'assigned' && app.assignedByAdmin === true
+      );
+      const assignedJobsCount = assignedApplications.length;
+      
       const savedJobsCount = await SavedJob.getSavedJobsCount(req.user._id);
+      
+      // Get job invitations
+      const jobInvitations = await JobInvitation.find({
+        candidate: req.user._id,
+        status: { $in: ['pending', 'viewed'] },
+        expiresAt: { $gt: new Date() }
+      })
+        .populate('job', 'title company location salary type deadline')
+        .populate('invitedBy', 'firstName lastName')
+        .sort({ createdAt: -1 })
+        .limit(10)
+        .lean();
       
       // Simulate profile views (you can implement actual profile view tracking later)
       const profileViews = Math.floor(Math.random() * 200) + 50; // Random number between 50-250
       
-      const recentApplications = await Application.find({ user: req.user._id })
+      const recentApplications = await Application.find({ 
+        user: req.user._id,
+        status: { $ne: 'assigned' } // Exclude assigned jobs from recent applications
+      })
         .populate('job', 'title company location salary type')
         .sort({ appliedAt: -1 })
         .limit(5)
+        .lean();
+
+      // Get assigned jobs separately
+      const assignedJobs = await Application.find({ 
+        user: req.user._id,
+        status: 'assigned',
+        assignedByAdmin: true
+      })
+        .populate('job', 'title company location salary type deadline')
+        .sort({ assignedAt: -1 })
+        .limit(10)
         .lean();
 
       stats = {
@@ -441,11 +485,29 @@ router.get('/dashboard-stats', auth, async (req, res) => {
         activeApplications,
         savedJobs: savedJobsCount,
         profileViews,
+        assignedJobs: assignedJobsCount,
+        jobInvitations: jobInvitations.length,
         recentApplications: recentApplications.map(app => ({
           _id: app._id,
           job: app.job,
           status: app.status,
           appliedAt: app.appliedAt,
+        })),
+        assignedJobsList: assignedJobs.map(app => ({
+          _id: app._id,
+          job: app.job,
+          status: app.status,
+          assignedAt: app.assignedAt,
+          appliedAt: app.appliedAt,
+        })),
+        jobInvitationsList: jobInvitations.map(inv => ({
+          _id: inv._id,
+          job: inv.job,
+          invitedBy: inv.invitedBy,
+          message: inv.message,
+          status: inv.status,
+          createdAt: inv.createdAt,
+          expiresAt: inv.expiresAt
         })),
         statusCounts: {
           applied: applications.filter(app => app.status === 'applied').length,
@@ -453,7 +515,8 @@ router.get('/dashboard-stats', auth, async (req, res) => {
           shortlisted: applications.filter(app => app.status === 'shortlisted').length,
           rejected: applications.filter(app => app.status === 'rejected').length,
           interviewed: applications.filter(app => app.status === 'interviewed').length,
-          hired: applications.filter(app => app.status === 'hired').length
+          hired: applications.filter(app => app.status === 'hired').length,
+          assigned: assignedJobsCount
         }
       };
     } else if (req.user.userType === 'employer') {
@@ -474,6 +537,180 @@ router.get('/dashboard-stats', auth, async (req, res) => {
   } catch (error) {
     console.error('Get dashboard stats error:', error);
     res.status(500).json({ message: 'Server error while fetching dashboard stats' });
+  }
+});
+
+// @route   GET /api/users/preferences
+// @desc    Get user notification preferences
+// @access  Private
+router.get('/preferences', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select('notifications');
+    res.json({
+      success: true,
+      preferences: user.notifications || {
+        email: {
+          jobAlerts: true,
+          applicationUpdates: true,
+          marketing: false
+        },
+        push: {
+          jobAlerts: true,
+          applicationUpdates: true
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Get preferences error:', error);
+    res.status(500).json({ success: false, message: 'Server error while fetching preferences' });
+  }
+});
+
+// @route   PUT /api/users/preferences
+// @desc    Update user notification preferences
+// @access  Private
+router.put('/preferences', [
+  auth,
+  body('emailNotifications').optional().isBoolean().withMessage('emailNotifications must be a boolean'),
+  body('jobAlerts').optional().isBoolean().withMessage('jobAlerts must be a boolean'),
+  body('applicationUpdates').optional().isBoolean().withMessage('applicationUpdates must be a boolean'),
+  body('marketingEmails').optional().isBoolean().withMessage('marketingEmails must be a boolean'),
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, errors: errors.array() });
+    }
+
+    const { emailNotifications, jobAlerts, applicationUpdates, marketingEmails } = req.body;
+    const user = await User.findById(req.user._id);
+
+    // Initialize notifications if not exists
+    if (!user.notifications) {
+      user.notifications = {
+        email: {},
+        push: {}
+      };
+    }
+    if (!user.notifications.email) user.notifications.email = {};
+    if (!user.notifications.push) user.notifications.push = {};
+
+    // Map frontend field names to backend structure
+    // emailNotifications controls both email.jobAlerts and email.applicationUpdates
+    if (emailNotifications !== undefined) {
+      user.notifications.email.jobAlerts = emailNotifications;
+      user.notifications.email.applicationUpdates = emailNotifications;
+    }
+
+    // jobAlerts specifically controls job alert notifications
+    if (jobAlerts !== undefined) {
+      user.notifications.email.jobAlerts = jobAlerts;
+      user.notifications.push.jobAlerts = jobAlerts;
+    }
+
+    // applicationUpdates specifically controls application update notifications
+    if (applicationUpdates !== undefined) {
+      user.notifications.email.applicationUpdates = applicationUpdates;
+      user.notifications.push.applicationUpdates = applicationUpdates;
+    }
+
+    // marketingEmails controls marketing email notifications
+    if (marketingEmails !== undefined) {
+      user.notifications.email.marketing = marketingEmails;
+    }
+
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Preferences updated successfully',
+      preferences: user.notifications
+    });
+  } catch (error) {
+    console.error('Update preferences error:', error);
+    res.status(500).json({ success: false, message: 'Server error while updating preferences' });
+  }
+});
+
+// @route   GET /api/users/job-invitations
+// @desc    Get job invitations for current user
+// @access  Private
+router.get('/job-invitations', auth, async (req, res) => {
+  try {
+    const JobInvitation = require('../models/JobInvitation');
+
+    const invitations = await JobInvitation.find({
+      candidate: req.user._id,
+      status: { $in: ['pending', 'viewed'] },
+      expiresAt: { $gt: new Date() }
+    })
+      .populate('job', 'title company location salary type deadline description')
+      .populate('invitedBy', 'firstName lastName')
+      .sort({ createdAt: -1 });
+
+    res.json({
+      invitations,
+      count: invitations.length
+    });
+  } catch (error) {
+    console.error('Get job invitations error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   PATCH /api/users/job-invitations/:invitationId/view
+// @desc    Mark invitation as viewed
+// @access  Private
+router.patch('/job-invitations/:invitationId/view', auth, async (req, res) => {
+  try {
+    const JobInvitation = require('../models/JobInvitation');
+
+    const invitation = await JobInvitation.findOne({
+      _id: req.params.invitationId,
+      candidate: req.user._id
+    });
+
+    if (!invitation) {
+      return res.status(404).json({ message: 'Invitation not found' });
+    }
+
+    await invitation.markAsViewed();
+
+    res.json({
+      message: 'Invitation marked as viewed',
+      invitation
+    });
+  } catch (error) {
+    console.error('Mark invitation viewed error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   PATCH /api/users/job-invitations/:invitationId/decline
+// @desc    Decline job invitation
+// @access  Private
+router.patch('/job-invitations/:invitationId/decline', auth, async (req, res) => {
+  try {
+    const JobInvitation = require('../models/JobInvitation');
+
+    const invitation = await JobInvitation.findOne({
+      _id: req.params.invitationId,
+      candidate: req.user._id
+    });
+
+    if (!invitation) {
+      return res.status(404).json({ message: 'Invitation not found' });
+    }
+
+    await invitation.markAsDeclined();
+
+    res.json({
+      message: 'Invitation declined',
+      invitation
+    });
+  } catch (error) {
+    console.error('Decline invitation error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 });
 

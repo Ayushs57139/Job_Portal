@@ -380,9 +380,12 @@ const MultiStepJobPostForm = ({ onSubmit, initialData = {}, onCancel, onChange, 
 
     setIsSubmitting(true);
     try {
+      console.log('Form submission started with data:', formData);
       await onSubmit(formData);
+      console.log('Form submission completed successfully');
     } catch (error) {
-      Alert.alert('Error', error.message || 'Failed to submit form');
+      console.error('Form submission error:', error);
+      Alert.alert('Error', error.message || 'Failed to submit form. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -572,27 +575,18 @@ const MultiStepJobPostForm = ({ onSubmit, initialData = {}, onCancel, onChange, 
             onSelect={(value) => handleFieldChange(field.name, value.label)}
             allowAddNew={field.allowAddNew}
             onAddNew={async (newValue) => {
+              // Always update the field value immediately
+              handleFieldChange(field.name, newValue);
+              
+              // Optionally try to add to master list (but don't block if it fails)
               try {
-                // Call appropriate API based on field name
                 if (field.name === 'companyName') {
-                  const response = await api.addCompany(newValue);
-                  if (response.success || response.company) {
-                    Alert.alert('Success', 'Company added successfully');
-                    handleFieldChange(field.name, newValue);
-                  }
+                  await api.addCompany(newValue);
                 } else if (field.name === 'jobTitle') {
-                  const response = await api.addJobTitle(newValue);
-                  if (response.success || response.jobTitle) {
-                    Alert.alert('Success', 'Job title added successfully');
-                    handleFieldChange(field.name, newValue);
-                  }
-                } else {
-                  // For other autocomplete fields, just update the value
-                  handleFieldChange(field.name, newValue);
+                  await api.addJobTitle(newValue);
                 }
               } catch (error) {
-                console.error('Error adding new item:', error);
-                Alert.alert('Error', error.message || 'Failed to add new item. Please try again.');
+                // Silently ignore - value is already set in form
               }
             }}
             multiline={field.multiline}

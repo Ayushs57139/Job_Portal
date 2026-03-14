@@ -73,6 +73,9 @@ const EmployerCandidateSearchScreen = ({ navigation }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [searchStats, setSearchStats] = useState({});
+  const [lastSearchedCandidates, setLastSearchedCandidates] = useState([]);
+  const [loadingLastSearched, setLoadingLastSearched] = useState(false);
+  const [showLastSearched, setShowLastSearched] = useState(true);
 
   const [showFiltersModal, setShowFiltersModal] = useState(false);
   // Dropdown visibility states
@@ -231,6 +234,32 @@ const EmployerCandidateSearchScreen = ({ navigation }) => {
     setInstitutionSuggestions([]);
   };
 
+  // Load last searched candidates
+  const loadLastSearchedCandidates = async () => {
+    try {
+      setLoadingLastSearched(true);
+      const data = await api.request('/candidates/last-searched', {
+        method: 'GET',
+      });
+      if (data && data.success && data.candidates && data.candidates.length > 0) {
+        setLastSearchedCandidates(data.candidates);
+        setShowLastSearched(true);
+      } else {
+        setShowLastSearched(false);
+      }
+    } catch (error) {
+      console.error('Error loading last searched candidates:', error);
+      setShowLastSearched(false);
+    } finally {
+      setLoadingLastSearched(false);
+    }
+  };
+
+  // Load last searched on mount
+  useEffect(() => {
+    loadLastSearchedCandidates();
+  }, []);
+
   const handleSearch = async (page = 1) => {
     try {
       setSearching(true);
@@ -249,6 +278,11 @@ const EmployerCandidateSearchScreen = ({ navigation }) => {
         setCurrentPage(data.page || 1);
         setTotalPages(data.totalPages || 1);
         setSearchStats(data.searchStats || {});
+        setShowLastSearched(false); // Hide last searched when new search is performed
+        // Reload last searched after a delay
+        setTimeout(() => {
+          loadLastSearchedCandidates();
+        }, 1000);
       } else {
         Alert.alert('Error', data?.message || 'Failed to search candidates');
       }
@@ -603,6 +637,43 @@ const EmployerCandidateSearchScreen = ({ navigation }) => {
         )}
 
         <ScrollView style={{ flex: 1, padding: spacing.lg }}>
+          {/* Last Searched Candidates */}
+          {showLastSearched && lastSearchedCandidates.length > 0 && candidates.length === 0 && !searching && (
+            <View style={styles.lastSearchedContainer}>
+              <View style={styles.lastSearchedHeader}>
+                <View style={styles.lastSearchedHeaderLeft}>
+                  <Ionicons name="time-outline" size={20} color={colors.primary} />
+                  <Text style={styles.lastSearchedTitle}>Last Searched Candidates</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setShowLastSearched(false)}
+                  style={styles.closeLastSearchedButton}
+                >
+                  <Ionicons name="close" size={20} color={colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
+              {loadingLastSearched ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color={colors.primary} />
+                  <Text style={styles.loadingText}>Loading last searched candidates...</Text>
+                </View>
+              ) : (
+                <>
+                  {lastSearchedCandidates.map(renderCandidateCard)}
+                  <TouchableOpacity
+                    style={styles.viewAllButton}
+                    onPress={() => {
+                      setShowLastSearched(false);
+                      handleSearch(1);
+                    }}
+                  >
+                    <Text style={styles.viewAllButtonText}>Search All Candidates</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
+          )}
+
           {searching && candidates.length === 0 ? (
             <View style={styles.loadingContainer}><ActivityIndicator size="large" color={colors.primary} /><Text style={styles.loadingText}>Searching candidates...</Text></View>
           ) : candidates.length > 0 ? (
@@ -2372,6 +2443,47 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '500'
   },
+  lastSearchedContainer: {
+    backgroundColor: colors.background,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.sm
+  },
+  lastSearchedHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md
+  },
+  lastSearchedHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm
+  },
+  lastSearchedTitle: {
+    fontSize: typography.h3.fontSize,
+    fontWeight: 'bold',
+    color: colors.text
+  },
+  closeLastSearchedButton: {
+    padding: spacing.xs
+  },
+  viewAllButton: {
+    backgroundColor: colors.primary,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    marginTop: spacing.md
+  },
+  viewAllButtonText: {
+    color: '#fff',
+    fontSize: typography.body1.fontSize,
+    fontWeight: '600'
+  }
 });
 
 export default EmployerCandidateSearchScreen;

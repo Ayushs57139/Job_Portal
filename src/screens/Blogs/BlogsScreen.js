@@ -60,6 +60,13 @@ const BlogsScreen = ({ navigation }) => {
   useEffect(() => {
     loadUser();
     loadBlogs();
+    
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(() => {
+      loadBlogs();
+    }, 30000);
+    
+    return () => clearInterval(interval);
   }, [selectedCategory, searchQuery]);
 
   const loadUser = async () => {

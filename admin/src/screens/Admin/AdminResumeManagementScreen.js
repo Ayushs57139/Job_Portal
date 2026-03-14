@@ -50,7 +50,7 @@ const AdminResumeManagementScreen = ({ navigation }) => {
     try {
       setLoading(true);
 
-      const token = await safeAsyncStorage.getItem('adminToken');
+      const token = await safeAsyncStorage.getItem('token');
       if (!token) {
         showError('Please login again', 'Authentication Required');
         navigation.replace('AdminLogin');
@@ -80,7 +80,7 @@ const AdminResumeManagementScreen = ({ navigation }) => {
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
       try {
-        const response = await fetch(`${API_URL}/bulk-import-export/resumes?${params.toString()}`, {
+        const response = await fetch(`${API_URL}/bulk/resumes?${params.toString()}`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -101,7 +101,7 @@ const AdminResumeManagementScreen = ({ navigation }) => {
 
           // Handle authentication errors
           if (response.status === 401 || response.status === 403) {
-            await safeAsyncStorage.removeItem('adminToken');
+            await safeAsyncStorage.removeItem('token');
             showError('Session expired. Please login again.', 'Authentication Required');
             navigation.replace('AdminLogin');
             return;
@@ -111,9 +111,18 @@ const AdminResumeManagementScreen = ({ navigation }) => {
         }
 
         const data = await response.json();
+        
+        console.log('Resume Management API Response:', {
+          success: data.success,
+          profilesCount: data.data?.profiles?.length || 0,
+          total: data.data?.pagination?.total || 0,
+          stats: data.data?.stats
+        });
 
         if (data.success) {
-          setResumes(data.data?.profiles || []);
+          const profiles = data.data?.profiles || [];
+          console.log(`Setting ${profiles.length} resumes in state`);
+          setResumes(profiles);
           setPagination(data.data?.pagination || { current: 1, pages: 1, total: 0, limit: 10 });
           setStats(data.data?.stats || { total: 0, complete: 0, verified: 0, recent: 0 });
         } else {
@@ -166,7 +175,7 @@ const AdminResumeManagementScreen = ({ navigation }) => {
 
   const handleExport = async () => {
     try {
-      const token = await safeAsyncStorage.getItem('adminToken');
+      const token = await safeAsyncStorage.getItem('token');
       if (!token) {
         showError('Please login again', 'Authentication Required');
         navigation.replace('AdminLogin');
@@ -186,7 +195,7 @@ const AdminResumeManagementScreen = ({ navigation }) => {
         params.append('experience', experienceFilter);
       }
 
-      const exportUrl = `${API_URL}/bulk-import-export/export-resumes?${params.toString()}`;
+      const exportUrl = `${API_URL}/bulk/export/resumes?${params.toString()}`;
       
       Alert.alert(
         'Export Resumes',
@@ -253,6 +262,43 @@ const AdminResumeManagementScreen = ({ navigation }) => {
     } catch (error) {
       handleApiError(error, 'handleContactCandidate');
       showError('Failed to open contact method. Please try again.', 'Contact Error');
+    }
+  };
+
+  const handleDownloadResume = async (profile) => {
+    try {
+      const resumePath = profile.resume || profile.resumePath;
+      if (!resumePath) {
+        showError('Resume not available for this candidate', 'Download Error');
+        return;
+      }
+
+      const token = await safeAsyncStorage.getItem('token');
+      if (!token) {
+        showError('Please login again', 'Authentication Required');
+        navigation.replace('AdminLogin');
+        return;
+      }
+
+      // Construct the full URL to the resume file
+      const baseUrl = API_URL.replace('/api', '');
+      const resumeUrl = `${baseUrl}${resumePath}`;
+      
+      // For web, open in new tab
+      if (Platform.OS === 'web') {
+        window.open(resumeUrl, '_blank');
+      } else {
+        // For mobile, try to open with Linking
+        const canOpen = await Linking.canOpenURL(resumeUrl);
+        if (canOpen) {
+          await Linking.openURL(resumeUrl);
+        } else {
+          showError('Cannot open resume. Please check your device settings.', 'Download Error');
+        }
+      }
+    } catch (error) {
+      handleApiError(error, 'handleDownloadResume');
+      showError('Failed to download resume. Please try again.', 'Download Error');
     }
   };
 
@@ -359,6 +405,19 @@ const AdminResumeManagementScreen = ({ navigation }) => {
                 </View>
               )}
             </View>
+          </View>
+        )}
+
+        {/* Resume Download */}
+        {(profile.resume || profile.resumePath) && (
+          <View style={dynamicStyles.resumeSection}>
+            <TouchableOpacity 
+              style={dynamicStyles.downloadResumeButton}
+              onPress={() => handleDownloadResume(profile)}
+            >
+              <Ionicons name="download-outline" size={18} color="#3B82F6" />
+              <Text style={dynamicStyles.downloadResumeText}>Download Resume</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -1020,6 +1079,30 @@ const getStyles = (isMobile, isTablet) => StyleSheet.create({
   skillText: {
     fontSize: isMobile ? 11 : isTablet ? 11.5 : 12,
     color: '#374151',
+  },
+  downloadResumeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: isMobile ? 10 : 12,
+    borderRadius: 8,
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#3B82F6',
+    gap: 8,
+    marginBottom: 8,
+    ...(Platform.OS === 'web' && {
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+      ':hover': {
+        backgroundColor: '#DBEAFE',
+      },
+    }),
+  },
+  downloadResumeText: {
+    fontSize: isMobile ? 13 : isTablet ? 13.5 : 14,
+    fontWeight: '600',
+    color: '#3B82F6',
   },
   resumeActions: {
     flexDirection: 'row',

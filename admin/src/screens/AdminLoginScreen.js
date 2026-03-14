@@ -16,7 +16,6 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, typography, spacing, borderRadius, shadows } from '../styles/theme';
-// Header component removed - admin app doesn't need main site header
 import api from '../config/api';
 import { useResponsive } from '../utils/responsive';
 
@@ -96,10 +95,25 @@ const AdminLoginScreen = ({ navigation, route }) => {
       }
     } catch (error) {
       console.error('Admin login error:', error);
-      Alert.alert(
-        'Login Failed',
-        error.message || 'Invalid credentials. Please check your User ID/Email and password.'
-      );
+      
+      // Handle rate limit errors with specific messaging
+      if (error.isRateLimit || error.status === 429 || error.message.includes('Too many requests')) {
+        Alert.alert(
+          'Rate Limit Exceeded',
+          error.message || 'Too many login attempts. Please wait a few minutes before trying again.',
+          [
+            {
+              text: 'OK',
+              style: 'default'
+            }
+          ]
+        );
+      } else {
+        Alert.alert(
+          'Login Failed',
+          error.message || 'Invalid credentials. Please check your User ID/Email and password.'
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -114,31 +128,22 @@ const AdminLoginScreen = ({ navigation, route }) => {
   };
 
   const renderContent = () => {
-    const gradientColors = gradientAnim.interpolate({
-      inputRange: [0, 1],
-      outputRange: [
-        ['#667eea', '#764ba2', '#f093fb'],
-        ['#764ba2', '#667eea', '#4facfe'],
-      ],
-    });
-
     return (
       <>
-        {/* Animated Background Gradient */}
+        {/* Clean Background */}
         <Animated.View style={[dynamicStyles.animatedBackground, { opacity: fadeAnim }]}>
           <LinearGradient
-            colors={['#667eea', '#764ba2', '#f093fb', '#4facfe']}
+            colors={['#F8FAFC', '#F1F5F9', '#E2E8F0']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={StyleSheet.absoluteFill}
           />
-          {/* Decorative circles */}
+          {/* Subtle decorative elements */}
           <View style={dynamicStyles.decorativeCircle1} />
           <View style={dynamicStyles.decorativeCircle2} />
-          <View style={dynamicStyles.decorativeCircle3} />
         </Animated.View>
 
-        {/* Header Section */}
+        {/* Minimal Header Section */}
         <Animated.View
           style={[
             dynamicStyles.headerCard,
@@ -148,28 +153,19 @@ const AdminLoginScreen = ({ navigation, route }) => {
             },
           ]}
         >
-          <LinearGradient
-            colors={['rgba(102, 126, 234, 0.95)', 'rgba(118, 75, 162, 0.95)', 'rgba(240, 147, 251, 0.95)']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={dynamicStyles.headerGradient}
-          >
-            <View style={dynamicStyles.iconContainer}>
-              <View style={dynamicStyles.iconGlow}>
-                <Ionicons 
-                  name="shield-checkmark" 
-                  size={isWeb || isWideScreen 
-                    ? (isMobile ? 34 : isTablet ? 38 : 42)
-                    : (isMobile ? 52 : isTablet ? 58 : 64)} 
-                  color={colors.textWhite} 
-                />
-              </View>
-            </View>
-            <Text style={dynamicStyles.headerTitle}>Admin Portal</Text>
-            <Text style={dynamicStyles.headerSubtitle}>
-              Secure access to manage your platform
-            </Text>
-          </LinearGradient>
+          <View style={dynamicStyles.iconContainer}>
+            <Ionicons 
+              name="shield-checkmark" 
+              size={isWeb || isWideScreen 
+                ? (isMobile ? 28 : isTablet ? 30 : 32)
+                : (isMobile ? 36 : isTablet ? 40 : 44)} 
+              color={colors.primary} 
+            />
+          </View>
+          <Text style={dynamicStyles.headerTitle}>Admin Portal</Text>
+          <Text style={dynamicStyles.headerSubtitle}>
+            Secure access to manage your platform
+          </Text>
         </Animated.View>
 
         {/* Login Form Card */}
@@ -188,11 +184,12 @@ const AdminLoginScreen = ({ navigation, route }) => {
 
             {/* User ID/Email Input */}
             <View style={dynamicStyles.inputContainer}>
-              <View style={dynamicStyles.inputWrapper}>
-                <Ionicons name="person-outline" size={isMobile ? 20 : 22} color={colors.primary} style={dynamicStyles.inputIcon} />
+              <Text style={dynamicStyles.inputLabel}>Email or User ID</Text>
+              <View style={[dynamicStyles.inputWrapper, loginId && dynamicStyles.inputWrapperFilled]}>
+                <Ionicons name="mail-outline" size={20} color={loginId ? colors.primary : colors.textSecondary} style={dynamicStyles.inputIcon} />
                 <TextInput
                   style={dynamicStyles.input}
-                  placeholder="User ID or Email"
+                  placeholder="Enter your email or user ID"
                   placeholderTextColor={colors.textSecondary}
                   value={loginId}
                   onChangeText={setLoginId}
@@ -206,11 +203,12 @@ const AdminLoginScreen = ({ navigation, route }) => {
 
             {/* Password Input */}
             <View style={dynamicStyles.inputContainer}>
-              <View style={dynamicStyles.inputWrapper}>
-                <Ionicons name="lock-closed-outline" size={isMobile ? 20 : 22} color={colors.primary} style={dynamicStyles.inputIcon} />
+              <Text style={dynamicStyles.inputLabel}>Password</Text>
+              <View style={[dynamicStyles.inputWrapper, password && dynamicStyles.inputWrapperFilled]}>
+                <Ionicons name="lock-closed-outline" size={20} color={password ? colors.primary : colors.textSecondary} style={dynamicStyles.inputIcon} />
                 <TextInput
                   style={dynamicStyles.passwordInput}
-                  placeholder="Password"
+                  placeholder="Enter your password"
                   placeholderTextColor={colors.textSecondary}
                   value={password}
                   onChangeText={setPassword}
@@ -225,8 +223,8 @@ const AdminLoginScreen = ({ navigation, route }) => {
                 >
                   <Ionicons
                     name={showPassword ? 'eye-outline' : 'eye-off-outline'}
-                    size={isMobile ? 20 : 22}
-                    color={password ? colors.primary : colors.textSecondary}
+                    size={20}
+                    color={colors.textSecondary}
                   />
                 </TouchableOpacity>
               </View>
@@ -239,7 +237,6 @@ const AdminLoginScreen = ({ navigation, route }) => {
               disabled={loading}
               activeOpacity={0.7}
             >
-              <Ionicons name="key-outline" size={14} color={colors.primary} />
               <Text style={dynamicStyles.forgotPasswordText}>Forgot Password?</Text>
             </TouchableOpacity>
 
@@ -250,37 +247,27 @@ const AdminLoginScreen = ({ navigation, route }) => {
               disabled={loading}
               activeOpacity={0.9}
             >
-              <LinearGradient
-                colors={['#667eea', '#764ba2', '#f093fb']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={dynamicStyles.loginButtonGradient}
-              >
+              <View style={dynamicStyles.loginButtonGradient}>
                 {loading ? (
                   <ActivityIndicator color={colors.textWhite} size="small" />
                 ) : (
                   <>
-                    <Ionicons name="log-in-outline" size={isMobile ? 20 : 22} color={colors.textWhite} />
                     <Text style={dynamicStyles.loginButtonText}>Sign In</Text>
-                    <Ionicons name="arrow-forward" size={isMobile ? 18 : 20} color={colors.textWhite} />
+                    <Ionicons name="arrow-forward" size={18} color={colors.textWhite} />
                   </>
                 )}
-              </LinearGradient>
+              </View>
             </TouchableOpacity>
 
             {/* Security Notice */}
             <View style={dynamicStyles.securityNotice}>
-              <View style={dynamicStyles.securityIconContainer}>
-                <Ionicons 
-                  name="shield-checkmark" 
-                  size={isWeb || isWideScreen 
-                    ? (isMobile ? 16 : isTablet ? 17 : 18)
-                    : (isMobile ? 18 : 20)} 
-                  color={colors.info} 
-                />
-              </View>
+              <Ionicons 
+                name="shield-checkmark-outline" 
+                size={16} 
+                color={colors.primary} 
+              />
               <Text style={dynamicStyles.securityNoticeText}>
-                This is a secure admin area. All login attempts are monitored.
+                Secure admin area. All login attempts are monitored.
               </Text>
             </View>
           </View>
@@ -297,8 +284,8 @@ const AdminLoginScreen = ({ navigation, route }) => {
             <View style={dynamicStyles.featureIconContainer}>
               <Ionicons 
                 name="settings" 
-                size={isWeb || isWideScreen ? 38 : 48} 
-                color="rgba(255, 255, 255, 0.9)" 
+                size={isWeb || isWideScreen ? 32 : 36} 
+                color={colors.primary} 
               />
             </View>
             <Text style={dynamicStyles.rightSideTitle}>Admin Features</Text>
@@ -310,40 +297,40 @@ const AdminLoginScreen = ({ navigation, route }) => {
               <View style={dynamicStyles.featureItem}>
                 <Ionicons 
                   name="checkmark-circle" 
-                  size={isWeb || isWideScreen ? 18 : 20} 
-                  color="rgba(255, 255, 255, 0.9)" 
+                  size={isWeb || isWideScreen ? 20 : 22} 
+                  color={colors.primary} 
                 />
                 <Text style={dynamicStyles.featureText}>User Management</Text>
               </View>
               <View style={dynamicStyles.featureItem}>
                 <Ionicons 
                   name="checkmark-circle" 
-                  size={isWeb || isWideScreen ? 18 : 20} 
-                  color="rgba(255, 255, 255, 0.9)" 
+                  size={isWeb || isWideScreen ? 20 : 22} 
+                  color={colors.primary} 
                 />
                 <Text style={dynamicStyles.featureText}>Job Posting Control</Text>
               </View>
               <View style={dynamicStyles.featureItem}>
                 <Ionicons 
                   name="checkmark-circle" 
-                  size={isWeb || isWideScreen ? 18 : 20} 
-                  color="rgba(255, 255, 255, 0.9)" 
+                  size={isWeb || isWideScreen ? 20 : 22} 
+                  color={colors.primary} 
                 />
                 <Text style={dynamicStyles.featureText}>Analytics & Reports</Text>
               </View>
               <View style={dynamicStyles.featureItem}>
                 <Ionicons 
                   name="checkmark-circle" 
-                  size={isWeb || isWideScreen ? 18 : 20} 
-                  color="rgba(255, 255, 255, 0.9)" 
+                  size={isWeb || isWideScreen ? 20 : 22} 
+                  color={colors.primary} 
                 />
                 <Text style={dynamicStyles.featureText}>System Configuration</Text>
               </View>
               <View style={dynamicStyles.featureItem}>
                 <Ionicons 
                   name="checkmark-circle" 
-                  size={isWeb || isWideScreen ? 18 : 20} 
-                  color="rgba(255, 255, 255, 0.9)" 
+                  size={isWeb || isWideScreen ? 20 : 22} 
+                  color={colors.primary} 
                 />
                 <Text style={dynamicStyles.featureText}>Security Monitoring</Text>
               </View>
@@ -353,8 +340,8 @@ const AdminLoginScreen = ({ navigation, route }) => {
               <View style={dynamicStyles.statItem}>
                 <Ionicons 
                   name="people" 
-                  size={isWeb || isWideScreen ? 20 : 24} 
-                  color="rgba(255, 255, 255, 0.8)" 
+                  size={isWeb || isWideScreen ? 22 : 24} 
+                  color={colors.primary} 
                 />
                 <Text style={dynamicStyles.statNumber}>24/7</Text>
                 <Text style={dynamicStyles.statLabel}>Support</Text>
@@ -362,8 +349,8 @@ const AdminLoginScreen = ({ navigation, route }) => {
               <View style={dynamicStyles.statItem}>
                 <Ionicons 
                   name="shield-checkmark" 
-                  size={isWeb || isWideScreen ? 20 : 24} 
-                  color="rgba(255, 255, 255, 0.8)" 
+                  size={isWeb || isWideScreen ? 22 : 24} 
+                  color={colors.primary} 
                 />
                 <Text style={dynamicStyles.statNumber}>100%</Text>
                 <Text style={dynamicStyles.statLabel}>Secure</Text>
@@ -371,8 +358,8 @@ const AdminLoginScreen = ({ navigation, route }) => {
               <View style={dynamicStyles.statItem}>
                 <Ionicons 
                   name="speedometer" 
-                  size={isWeb || isWideScreen ? 20 : 24} 
-                  color="rgba(255, 255, 255, 0.8)" 
+                  size={isWeb || isWideScreen ? 22 : 24} 
+                  color={colors.primary} 
                 />
                 <Text style={dynamicStyles.statNumber}>Fast</Text>
                 <Text style={dynamicStyles.statLabel}>Access</Text>
@@ -428,7 +415,7 @@ const AdminLoginScreen = ({ navigation, route }) => {
 const getStyles = (isMobile, isTablet, isWideScreen, isWeb) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F0F23',
+    backgroundColor: '#F8FAFC',
     ...(Platform.OS === 'web' && {
       width: '100%',
       height: '100vh',
@@ -443,38 +430,26 @@ const getStyles = (isMobile, isTablet, isWideScreen, isWeb) => StyleSheet.create
   },
   decorativeCircle1: {
     position: 'absolute',
-    width: 300,
-    height: 300,
-    borderRadius: 150,
-    backgroundColor: 'rgba(102, 126, 234, 0.1)',
-    top: -100,
-    right: -100,
+    width: 400,
+    height: 400,
+    borderRadius: 200,
+    backgroundColor: 'rgba(37, 99, 235, 0.05)',
+    top: -150,
+    right: -150,
     ...(Platform.OS === 'web' && {
-      filter: 'blur(60px)',
+      filter: 'blur(80px)',
     }),
   },
   decorativeCircle2: {
     position: 'absolute',
-    width: 250,
-    height: 250,
-    borderRadius: 125,
-    backgroundColor: 'rgba(118, 75, 162, 0.1)',
-    bottom: -50,
-    left: -50,
+    width: 350,
+    height: 350,
+    borderRadius: 175,
+    backgroundColor: 'rgba(37, 99, 235, 0.04)',
+    bottom: -100,
+    left: -100,
     ...(Platform.OS === 'web' && {
-      filter: 'blur(60px)',
-    }),
-  },
-  decorativeCircle3: {
-    position: 'absolute',
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: 'rgba(240, 147, 251, 0.1)',
-    top: '40%',
-    right: '10%',
-    ...(Platform.OS === 'web' && {
-      filter: 'blur(60px)',
+      filter: 'blur(80px)',
     }),
   },
   scrollContent: {
@@ -532,7 +507,11 @@ const getStyles = (isMobile, isTablet, isWideScreen, isWeb) => StyleSheet.create
     marginTop: spacing.xl,
     paddingTop: spacing.xl,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+    borderTopColor: colors.border,
+    backgroundColor: colors.white,
+    borderRadius: 20,
+    padding: spacing.xl,
+    marginHorizontal: spacing.md,
   },
   leftColumn: {
     flex: 1,
@@ -548,8 +527,9 @@ const getStyles = (isMobile, isTablet, isWideScreen, isWeb) => StyleSheet.create
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: isWeb || isWideScreen ? spacing.lg : spacing.xl,
-    paddingVertical: isWeb || isWideScreen ? spacing.md : spacing.xl,
+    paddingHorizontal: isWeb || isWideScreen ? spacing.xl : spacing.xl,
+    paddingVertical: isWeb || isWideScreen ? spacing.xl : spacing.xl,
+    backgroundColor: '#FFFFFF',
     ...(Platform.OS === 'web' && {
       display: 'flex',
     }),
@@ -564,47 +544,36 @@ const getStyles = (isMobile, isTablet, isWideScreen, isWeb) => StyleSheet.create
     alignItems: 'center',
   },
   featureIconContainer: {
-    width: isWeb || isWideScreen ? 80 : 100,
-    height: isWeb || isWideScreen ? 80 : 100,
-    borderRadius: isWeb || isWideScreen ? 40 : 50,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    width: isWeb || isWideScreen ? 64 : 72,
+    height: isWeb || isWideScreen ? 64 : 72,
+    borderRadius: isWeb || isWideScreen ? 32 : 36,
+    backgroundColor: 'rgba(37, 99, 235, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: isWeb || isWideScreen ? spacing.md : spacing.lg,
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-    ...(Platform.OS === 'web' && {
-      backdropFilter: 'blur(10px)',
-      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
-    }),
+    marginBottom: spacing.lg,
+    borderWidth: 0,
   },
   rightSideTitle: {
     ...typography.h3,
-    color: colors.textWhite,
-    fontWeight: '800',
+    color: colors.textDark,
+    fontWeight: '600',
     fontSize: isWeb || isWideScreen
-      ? (isMobile ? 22 : isTablet ? 24 : 26)
-      : (isMobile ? 28 : isTablet ? 32 : 36),
-    marginBottom: isWeb || isWideScreen ? spacing.xs : spacing.sm,
+      ? (isMobile ? 24 : isTablet ? 26 : 28)
+      : (isMobile ? 26 : isTablet ? 28 : 30),
+    marginBottom: spacing.xs,
     textAlign: 'center',
-    letterSpacing: 0.5,
-    ...(Platform.OS === 'web' && {
-      textShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
-    }),
+    letterSpacing: -0.3,
   },
   rightSideSubtitle: {
     ...typography.body1,
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: colors.textSecondary,
     fontSize: isWeb || isWideScreen
-      ? (isMobile ? 13 : isTablet ? 14 : 15)
+      ? (isMobile ? 14 : isTablet ? 15 : 16)
       : (isMobile ? 15 : isTablet ? 16 : 17),
     textAlign: 'center',
-    marginBottom: isWeb || isWideScreen ? spacing.lg : spacing.xl,
-    lineHeight: isWeb || isWideScreen ? 20 : 24,
-    fontWeight: '500',
-    ...(Platform.OS === 'web' && {
-      textShadow: '0 1px 4px rgba(0, 0, 0, 0.2)',
-    }),
+    marginBottom: spacing.xl,
+    lineHeight: 24,
+    fontWeight: '400',
   },
   featuresList: {
     width: '100%',
@@ -619,24 +588,21 @@ const getStyles = (isMobile, isTablet, isWideScreen, isWeb) => StyleSheet.create
   },
   featureText: {
     ...typography.body1,
-    color: 'rgba(255, 255, 255, 0.95)',
+    color: colors.textDark,
     fontSize: isWeb || isWideScreen
-      ? (isMobile ? 13 : isTablet ? 14 : 15)
+      ? (isMobile ? 14 : isTablet ? 15 : 16)
       : (isMobile ? 15 : isTablet ? 16 : 17),
-    fontWeight: '600',
+    fontWeight: '400',
     flex: 1,
-    ...(Platform.OS === 'web' && {
-      textShadow: '0 1px 3px rgba(0, 0, 0, 0.2)',
-    }),
   },
   statsContainer: {
     flexDirection: 'row',
     width: '100%',
     justifyContent: 'space-around',
-    marginTop: isWeb || isWideScreen ? spacing.md : spacing.lg,
-    paddingTop: isWeb || isWideScreen ? spacing.lg : spacing.xl,
+    marginTop: spacing.xl,
+    paddingTop: spacing.xl,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.2)',
+    borderTopColor: colors.border,
   },
   statItem: {
     alignItems: 'center',
@@ -644,27 +610,21 @@ const getStyles = (isMobile, isTablet, isWideScreen, isWeb) => StyleSheet.create
   },
   statNumber: {
     ...typography.h4,
-    color: colors.textWhite,
-    fontWeight: '800',
+    color: colors.textDark,
+    fontWeight: '600',
     fontSize: isWeb || isWideScreen
-      ? (isMobile ? 16 : isTablet ? 18 : 20)
+      ? (isMobile ? 18 : isTablet ? 20 : 22)
       : (isMobile ? 20 : isTablet ? 22 : 24),
-    ...(Platform.OS === 'web' && {
-      textShadow: '0 2px 6px rgba(0, 0, 0, 0.3)',
-    }),
   },
   statLabel: {
     ...typography.caption,
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: colors.textSecondary,
     fontSize: isWeb || isWideScreen
-      ? (isMobile ? 10 : isTablet ? 11 : 12)
-      : (isMobile ? 12 : isTablet ? 13 : 14),
-    fontWeight: '600',
+      ? (isMobile ? 11 : isTablet ? 12 : 12)
+      : (isMobile ? 12 : isTablet ? 13 : 13),
+    fontWeight: '500',
     textTransform: 'uppercase',
-    letterSpacing: 1,
-    ...(Platform.OS === 'web' && {
-      textShadow: '0 1px 3px rgba(0, 0, 0, 0.2)',
-    }),
+    letterSpacing: 0.5,
   },
   loadingContainer: {
     flex: 1,
@@ -681,15 +641,9 @@ const getStyles = (isMobile, isTablet, isWideScreen, isWeb) => StyleSheet.create
     width: '100%',
     flexShrink: 0,
     position: 'relative',
-    marginBottom: isWeb || isWideScreen ? spacing.md : spacing.xl,
-    borderRadius: 0,
-    overflow: 'hidden',
-    ...(Platform.OS === 'web' || isWideScreen ? {
-      height: isMobile ? 130 : isTablet ? 140 : 150,
-      maxHeight: isMobile ? 130 : isTablet ? 140 : 150,
-    } : {
-      minHeight: isMobile ? 180 : isTablet ? 200 : 220,
-    }),
+    marginBottom: isWeb || isWideScreen ? spacing.lg : spacing.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerGradient: {
     paddingVertical: isWeb || isWideScreen 
@@ -706,16 +660,18 @@ const getStyles = (isMobile, isTablet, isWideScreen, isWeb) => StyleSheet.create
   },
   iconContainer: {
     width: isWeb || isWideScreen 
-      ? (isMobile ? 65 : isTablet ? 72 : 78)
-      : (isMobile ? 100 : isTablet ? 110 : 120),
+      ? (isMobile ? 60 : isTablet ? 64 : 68)
+      : (isMobile ? 80 : isTablet ? 88 : 96),
     height: isWeb || isWideScreen 
-      ? (isMobile ? 65 : isTablet ? 72 : 78)
-      : (isMobile ? 100 : isTablet ? 110 : 120),
+      ? (isMobile ? 60 : isTablet ? 64 : 68)
+      : (isMobile ? 80 : isTablet ? 88 : 96),
     borderRadius: borderRadius.full,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: isWeb || isWideScreen ? spacing.xs : spacing.lg,
-    position: 'relative',
+    marginBottom: isWeb || isWideScreen ? spacing.md : spacing.lg,
+    backgroundColor: 'rgba(37, 99, 235, 0.1)',
+    borderWidth: 2,
+    borderColor: 'rgba(37, 99, 235, 0.2)',
   },
   iconGlow: {
     width: '100%',
@@ -739,36 +695,26 @@ const getStyles = (isMobile, isTablet, isWideScreen, isWeb) => StyleSheet.create
   },
   headerTitle: {
     ...typography.h2,
-    color: colors.textWhite,
-    fontWeight: '900',
-    marginBottom: isWeb || isWideScreen ? 1 : spacing.sm,
+    color: colors.textDark,
+    fontWeight: '700',
+    marginBottom: spacing.xs,
     fontSize: isWeb || isWideScreen
-      ? (isMobile ? 20 : isTablet ? 22 : 24)
-      : (isMobile ? 32 : isTablet ? 36 : 40),
-    letterSpacing: 1.2,
+      ? (isMobile ? 24 : isTablet ? 26 : 28)
+      : (isMobile ? 28 : isTablet ? 32 : 36),
+    letterSpacing: -0.5,
     textAlign: 'center',
     paddingHorizontal: spacing.md,
-    ...(Platform.OS === 'web' ? {
-      textShadow: '0 4px 12px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.2)',
-    } : {
-      textShadowColor: 'rgba(0, 0, 0, 0.3)',
-      textShadowOffset: { width: 0, height: 4 },
-      textShadowRadius: 8,
-    }),
   },
   headerSubtitle: {
     ...typography.body2,
-    color: 'rgba(255, 255, 255, 0.98)',
+    color: colors.textSecondary,
     textAlign: 'center',
     fontSize: isWeb || isWideScreen
-      ? (isMobile ? 10 : isTablet ? 11 : 12)
+      ? (isMobile ? 13 : isTablet ? 14 : 15)
       : (isMobile ? 14 : isTablet ? 15 : 16),
-    fontWeight: '600',
-    letterSpacing: 0.5,
+    fontWeight: '400',
+    letterSpacing: 0,
     paddingHorizontal: spacing.md,
-    ...(Platform.OS === 'web' && {
-      textShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
-    }),
   },
   formContainer: {
     padding: isWeb || isWideScreen 
@@ -831,51 +777,35 @@ const getStyles = (isMobile, isTablet, isWideScreen, isWeb) => StyleSheet.create
     marginBottom: isWeb || isWideScreen ? spacing.md - spacing.xs : spacing.lg,
   },
   inputLabel: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: isWeb || isWideScreen ? spacing.sm : spacing.md,
-    gap: spacing.xs,
-  },
-  inputLabelText: {
-    ...typography.subtitle2,
-    color: '#2D3748',
-    fontWeight: '700',
+    ...typography.body2,
+    color: colors.textDark,
+    fontWeight: '500',
+    marginBottom: spacing.sm,
     fontSize: isWeb || isWideScreen
-      ? (isMobile ? 12 : isTablet ? 12.5 : 13)
-      : (isMobile ? 14 : isTablet ? 14.5 : 15),
-    letterSpacing: 0.3,
+      ? (isMobile ? 13 : isTablet ? 14 : 14)
+      : (isMobile ? 14 : isTablet ? 15 : 15),
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: '#E2E8F0',
+    backgroundColor: '#FAFBFC',
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: colors.border,
     paddingHorizontal: spacing.md,
     minHeight: isWeb || isWideScreen
-      ? (isMobile ? 46 : isTablet ? 48 : 50)
-      : (isMobile ? 56 : isTablet ? 58 : 60),
+      ? (isMobile ? 48 : isTablet ? 50 : 52)
+      : (isMobile ? 52 : isTablet ? 54 : 56),
     ...(Platform.OS === 'web' ? {
-      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
-    } : {
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.04,
-      shadowRadius: 8,
-      elevation: 3,
-    }),
+      transition: 'all 0.2s ease',
+    } : {}),
   },
   inputWrapperFilled: {
     borderColor: colors.primary,
-    backgroundColor: '#F0F7FF',
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    borderWidth: 2.5,
+    backgroundColor: colors.white,
+    borderWidth: 1.5,
     ...(Platform.OS === 'web' && {
-      boxShadow: '0 6px 20px rgba(37, 99, 235, 0.2), 0 0 0 4px rgba(37, 99, 235, 0.08)',
-      transform: 'translateY(-1px)',
+      boxShadow: '0 0 0 3px rgba(37, 99, 235, 0.1)',
     }),
   },
   inputIconContainer: {
@@ -886,14 +816,14 @@ const getStyles = (isMobile, isTablet, isWideScreen, isWeb) => StyleSheet.create
   input: {
     flex: 1,
     ...typography.body1,
-    color: '#1A202C',
+    color: colors.textDark,
     paddingVertical: isWeb || isWideScreen
-      ? (isMobile ? spacing.sm + 2 : spacing.md)
+      ? (isMobile ? spacing.md : spacing.md + 2)
       : (isMobile ? spacing.md : spacing.md + 2),
     fontSize: isWeb || isWideScreen
-      ? (isMobile ? 14 : isTablet ? 14.5 : 15)
-      : (isMobile ? 15.5 : isTablet ? 16 : 16.5),
-    fontWeight: '500',
+      ? (isMobile ? 15 : isTablet ? 15 : 16)
+      : (isMobile ? 15 : isTablet ? 16 : 16),
+    fontWeight: '400',
   },
   passwordInput: {
     paddingRight: spacing.sm,
@@ -926,37 +856,27 @@ const getStyles = (isMobile, isTablet, isWideScreen, isWeb) => StyleSheet.create
   forgotPasswordText: {
     ...typography.body2,
     color: colors.primary,
-    fontWeight: '700',
+    fontWeight: '500',
     fontSize: isWeb || isWideScreen
-      ? (isMobile ? 12 : isTablet ? 12.5 : 13)
-      : (isMobile ? 13.5 : isTablet ? 14 : 14.5),
+      ? (isMobile ? 13 : isTablet ? 14 : 14)
+      : (isMobile ? 14 : isTablet ? 14 : 15),
     ...(Platform.OS === 'web' && {
       transition: 'color 0.2s ease',
     }),
   },
   loginButton: {
-    borderRadius: 18,
+    borderRadius: 12,
     overflow: 'hidden',
-    marginTop: isWeb || isWideScreen ? spacing.md - spacing.xs : spacing.lg,
+    marginTop: spacing.md,
     width: '100%',
     ...(Platform.OS === 'web' ? {
-      boxShadow: '0 8px 24px rgba(102, 126, 234, 0.4), 0 4px 8px rgba(102, 126, 234, 0.3)',
-      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+      transition: 'all 0.2s ease',
       cursor: 'pointer',
       ':hover': {
-        transform: 'translateY(-2px)',
-        boxShadow: '0 12px 32px rgba(102, 126, 234, 0.5), 0 6px 12px rgba(102, 126, 234, 0.4)',
+        transform: 'translateY(-1px)',
+        boxShadow: '0 8px 20px rgba(37, 99, 235, 0.25)',
       },
-      ':active': {
-        transform: 'translateY(0px)',
-      },
-    } : {
-      shadowColor: '#667eea',
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.4,
-      shadowRadius: 20,
-      elevation: 12,
-    }),
+    } : {}),
   },
   loginButtonDisabled: {
     opacity: 0.7,
@@ -972,41 +892,45 @@ const getStyles = (isMobile, isTablet, isWideScreen, isWeb) => StyleSheet.create
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: colors.primary,
     paddingVertical: isWeb || isWideScreen
-      ? (isMobile ? spacing.md - spacing.xs : isTablet ? spacing.md : spacing.md + spacing.xs)
-      : (isMobile ? spacing.md + spacing.sm : spacing.lg),
-    gap: spacing.md,
+      ? (isMobile ? spacing.md : isTablet ? spacing.md + 2 : spacing.md + 4)
+      : (isMobile ? spacing.md + 4 : spacing.lg),
+    gap: spacing.sm,
     minHeight: isWeb || isWideScreen
-      ? (isMobile ? 46 : isTablet ? 48 : 50)
-      : (isMobile ? 56 : isTablet ? 58 : 60),
+      ? (isMobile ? 48 : isTablet ? 50 : 52)
+      : (isMobile ? 52 : isTablet ? 54 : 56),
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)',
+    } : {
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 12,
+      elevation: 8,
+    }),
   },
   loginButtonText: {
     ...typography.button,
     color: colors.textWhite,
-    fontWeight: '800',
+    fontWeight: '600',
     fontSize: isWeb || isWideScreen
-      ? (isMobile ? 14 : isTablet ? 15 : 16)
-      : (isMobile ? 16 : isTablet ? 17 : 18),
-    letterSpacing: 0.8,
-    ...(Platform.OS === 'web' && {
-      textShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
-    }),
+      ? (isMobile ? 15 : isTablet ? 15 : 16)
+      : (isMobile ? 16 : isTablet ? 16 : 17),
+    letterSpacing: 0.2,
   },
   securityNotice: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: isWeb || isWideScreen ? spacing.md - spacing.xs : spacing.xl,
+    marginTop: spacing.lg,
     padding: isWeb || isWideScreen
-      ? (isMobile ? spacing.sm : spacing.md - spacing.xs)
-      : (isMobile ? spacing.md + spacing.xs : spacing.lg),
-    backgroundColor: 'rgba(37, 99, 235, 0.08)',
-    borderRadius: 16,
-    gap: isWeb || isWideScreen ? spacing.sm : spacing.md,
-    borderWidth: 1.5,
-    borderColor: 'rgba(37, 99, 235, 0.2)',
-    ...(Platform.OS === 'web' && {
-      backdropFilter: 'blur(10px)',
-    }),
+      ? (isMobile ? spacing.md : spacing.md)
+      : (isMobile ? spacing.md : spacing.lg),
+    backgroundColor: colors.primaryLight,
+    borderRadius: 10,
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.primaryLight,
   },
   securityIconContainer: {
     width: isWeb || isWideScreen ? 28 : 32,
@@ -1018,36 +942,32 @@ const getStyles = (isMobile, isTablet, isWideScreen, isWeb) => StyleSheet.create
   },
   securityNoticeText: {
     ...typography.caption,
-    color: '#1E40AF',
+    color: colors.primary,
     flex: 1,
     fontSize: isWeb || isWideScreen
-      ? (isMobile ? 11 : isTablet ? 11.5 : 12)
-      : (isMobile ? 12.5 : isTablet ? 13 : 13.5),
-    lineHeight: isWeb || isWideScreen
-      ? (isMobile ? 14 : isTablet ? 15 : 16)
-      : (isMobile ? 17 : isTablet ? 18 : 19),
-    fontWeight: '600',
-    letterSpacing: 0.2,
+      ? (isMobile ? 12 : isTablet ? 12 : 13)
+      : (isMobile ? 12 : isTablet ? 13 : 13),
+    fontWeight: '400',
+    letterSpacing: 0,
   },
   loginCard: {
     width: '100%',
-    maxWidth: isWeb || isWideScreen ? 480 : 520,
-    backgroundColor: 'rgba(255, 255, 255, 0.98)',
-    borderRadius: isMobile ? 24 : 28,
+    maxWidth: isWeb || isWideScreen ? 440 : 480,
+    backgroundColor: colors.white,
+    borderRadius: 20,
     padding: isWeb || isWideScreen
-      ? (isMobile ? spacing.lg : isTablet ? spacing.xl : spacing.xl + spacing.sm)
-      : (isMobile ? spacing.xl + spacing.sm : isTablet ? spacing.xxl : spacing.xxl + spacing.md),
+      ? (isMobile ? spacing.xl : isTablet ? spacing.xl + spacing.sm : spacing.xxl)
+      : (isMobile ? spacing.xl + spacing.md : isTablet ? spacing.xxl : spacing.xxl + spacing.lg),
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: colors.border,
     ...(Platform.OS === 'web' ? {
-      boxShadow: '0 20px 60px rgba(0, 0, 0, 0.15), 0 8px 16px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.6)',
-      backdropFilter: 'blur(20px)',
+      boxShadow: '0 4px 24px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05)',
     } : {
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: 20 },
-      shadowOpacity: 0.15,
-      shadowRadius: 40,
-      elevation: 20,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.08,
+      shadowRadius: 24,
+      elevation: 8,
     }),
   },
   loginCardContent: {
@@ -1055,24 +975,24 @@ const getStyles = (isMobile, isTablet, isWideScreen, isWeb) => StyleSheet.create
   },
   loginTitle: {
     ...typography.h3,
-    color: '#1A202C',
-    fontWeight: '800',
+    color: colors.textDark,
+    fontWeight: '600',
     marginBottom: spacing.xs,
-    textAlign: 'center',
+    textAlign: 'left',
     fontSize: isWeb || isWideScreen
-      ? (isMobile ? 22 : isTablet ? 24 : 26)
-      : (isMobile ? 28 : isTablet ? 30 : 32),
-    letterSpacing: 0.5,
+      ? (isMobile ? 24 : isTablet ? 26 : 28)
+      : (isMobile ? 26 : isTablet ? 28 : 30),
+    letterSpacing: -0.3,
   },
   loginSubtitle: {
     ...typography.body1,
-    color: '#718096',
-    textAlign: 'center',
-    marginBottom: isWeb || isWideScreen ? spacing.lg : spacing.xl,
+    color: colors.textSecondary,
+    textAlign: 'left',
+    marginBottom: isWeb || isWideScreen ? spacing.xl : spacing.xl + spacing.sm,
     fontSize: isWeb || isWideScreen
-      ? (isMobile ? 13 : isTablet ? 14 : 15)
+      ? (isMobile ? 14 : isTablet ? 15 : 16)
       : (isMobile ? 15 : isTablet ? 16 : 17),
-    fontWeight: '500',
+    fontWeight: '400',
   },
   inputContainer: {
     marginBottom: isWeb || isWideScreen ? spacing.md : spacing.lg,

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, StyleSheet, Alert, ScrollView, Text, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, Alert, ScrollView, Text, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, typography, shadows } from '../../styles/theme';
 import EmployerSidebar from '../../components/EmployerSidebar';
@@ -70,8 +70,8 @@ const EmployerPostJobScreen = ({ navigation, route }) => {
         experienceLevel: formData.experienceLevel?.label || formData.experienceLevel?.value || '',
         experienceType: formData.experienceLevel?.label || formData.experienceLevel?.value || '',
         totalExperience: {
-          min: formData.experienceMin?.label || formData.experienceMin?.value || '',
-          max: formData.experienceMax?.label || formData.experienceMax?.value || '',
+          min: formData.experienceMin?.label || formData.experienceMin?.value || 'Fresher',
+          max: formData.experienceMax?.label || formData.experienceMax?.value || 'Fresher',
         },
         salary: {
           min: Number(formData.salaryMin) || 0,
@@ -106,7 +106,7 @@ const EmployerPostJobScreen = ({ navigation, route }) => {
           max: formData.ageMax?.label || formData.ageMax?.value || '',
         },
         preferredLanguage: labels(formData.preferredLanguage),
-        joiningPeriod: formData.joiningPeriod?.label || formData.joiningPeriod?.value || '',
+        joiningPeriod: formData.joiningPeriod?.label || formData.joiningPeriod?.value || 'Immediate Joining',
         diversityHiring: formData.diversityHiring?.label || formData.diversityHiring?.value || '',
         disabilityStatus: formData.disabilityStatus?.label || formData.disabilityStatus?.value || '',
         disabilities: labels(formData.disabilityTypes),
@@ -121,7 +121,7 @@ const EmployerPostJobScreen = ({ navigation, route }) => {
         collaboratorEmails: formData.collaboratorEmails || '',
       };
 
-      await api.createJob(jobData);
+      const response = await api.createJob(jobData);
 
       // cleanup draft if exists
       try {
@@ -134,14 +134,24 @@ const EmployerPostJobScreen = ({ navigation, route }) => {
         }
       } catch (_) {}
 
-      Alert.alert(
-        'Success',
-        'Job posted successfully!',
-        [
-          { text: 'Post Another Job', style: 'cancel' },
-          { text: 'View My Jobs', onPress: () => navigation.navigate('EmployerJobs') },
-        ]
-      );
+      // Show success message - use web alert for immediate feedback on web
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        const confirmed = window.confirm(
+          `✅ Job Posted Successfully!\n\nYour job "${jobData.title}" has been posted successfully and is now live on the platform.\n\nClick OK to view your jobs.`
+        );
+        if (confirmed) {
+          navigation.navigate('EmployerJobs');
+        }
+      } else {
+        Alert.alert(
+          '✅ Job Posted Successfully!',
+          `Your job "${jobData.title}" has been posted successfully and is now live on the platform.`,
+          [
+            { text: 'Post Another Job', style: 'cancel' },
+            { text: 'View My Jobs', onPress: () => navigation.navigate('EmployerJobs') },
+          ]
+        );
+      }
     } catch (error) {
       throw new Error(error.message || 'Failed to post job. Please try again.');
     }

@@ -12,7 +12,7 @@ import {
   Modal,
   FlatList,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -21,6 +21,7 @@ import Header from '../../components/Header';
 import api from '../../config/api';
 import { getIndustries, getSubIndustries } from '../../data/industriesData';
 import { getDepartments, getSubDepartments } from '../../data/departmentsData';
+import { useResponsive } from '../../utils/responsive';
 
 const REFERRAL_SOURCES = [
   'Freejobwala YouTube Channel',
@@ -50,6 +51,8 @@ const REFERRAL_SOURCES = [
 
 const JobApplicationScreen = ({ route, navigation }) => {
   const { jobId } = route.params;
+  const responsive = useResponsive();
+  const { width, isMobile, isTabletDevice, isDesktopDevice, getHorizontalPadding, fontScale, spacingScale } = responsive;
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [jobLoading, setJobLoading] = useState(true);
@@ -1578,6 +1581,83 @@ const JobApplicationScreen = ({ route, navigation }) => {
 
     setLoading(true);
     try {
+      // Helper function to show success message
+      const showSuccessMessage = (message, onPress = null, buttonText = 'OK') => {
+        if (Platform.OS === 'web' && typeof window !== 'undefined') {
+          // For web, use browser alert
+          window.alert(message);
+          if (onPress) {
+            setTimeout(() => {
+              onPress();
+            }, 500);
+          } else {
+            setTimeout(() => {
+              navigation.goBack();
+            }, 500);
+          }
+        } else {
+          // For mobile, use React Native Alert
+          Alert.alert(
+            '🎉 Success!',
+            message,
+            [
+              {
+                text: buttonText,
+                onPress: onPress || (() => navigation.goBack()),
+              },
+            ],
+            { cancelable: false }
+          );
+        }
+      };
+      
+      // Helper function to get first value from array or return the value itself
+      const getValue = (field, defaultValue = '') => {
+        if (Array.isArray(field)) {
+          if (field.length > 0) {
+            const firstItem = field[0];
+            if (typeof firstItem === 'object' && firstItem !== null) {
+              return firstItem.label || firstItem.value || firstItem || defaultValue;
+            }
+            return firstItem || defaultValue;
+          }
+          return defaultValue; // Empty array returns default
+        }
+        if (typeof field === 'object' && field !== null) {
+          return field.label || field.value || field || defaultValue;
+        }
+        return field || defaultValue;
+      };
+
+      // Helper function to convert array to string
+      const arrayToString = (arr) => {
+        if (!arr || !Array.isArray(arr)) return '';
+        return arr.map(item => {
+          if (typeof item === 'object' && item !== null) {
+            return item.label || item.value || item;
+          }
+          return item;
+        }).join(', ');
+      };
+
+      // Build job profile description from form data
+      const jobProfileDescription = [
+        `Experience: ${formData.experienceLevel}${formData.yearsOfExperience ? ` - ${formData.yearsOfExperience}` : ''}`,
+        formData.currentJobTitle && Array.isArray(formData.currentJobTitle) && formData.currentJobTitle.length > 0 
+          ? `Current Job Title: ${arrayToString(formData.currentJobTitle)}` 
+          : '',
+        formData.keySkills && formData.keySkills.length > 0 
+          ? `Key Skills: ${Array.isArray(formData.keySkills) ? formData.keySkills.join(', ') : formData.keySkills}` 
+          : '',
+        formData.currentCompany ? `Current Company: ${formData.currentCompany}` : '',
+        formData.currentSalary ? `Current Salary: ${formData.currentSalary}` : '',
+      ].filter(Boolean).join('. ');
+
+      // Ensure required fields have valid defaults
+      const jobStatusValue = formData.jobStatus || 'Not Working';
+      const courseValue = getValue(formData.course, 'Not specified');
+      const educationLevelValue = getValue(formData.educationLevel, 'No Education');
+      
       const applicationData = {
         jobId,
         fullName: formData.fullName,
@@ -1590,72 +1670,194 @@ const JobApplicationScreen = ({ route, navigation }) => {
         englishFluency: formData.englishFluency,
         experienceLevel: formData.experienceLevel,
         yearsOfExperience: formData.yearsOfExperience,
-        jobStatus: formData.jobStatus,
-        currentJobTitle: formData.currentJobTitle,
-        keySkills: formData.keySkills, // Already an array
-        currentCompany: formData.currentCompany,
-        currentSalary: formData.currentSalary,
-        industry: formData.currentIndustry,
-        industries: formData.industries,
-        subIndustries: formData.subIndustries,
-        currentDepartment: formData.currentDepartment,
-        departments: formData.departments,
-        subDepartments: formData.subDepartments,
-        currentJobRoles: formData.currentJobRoles,
-        preferredLocations: formData.preferredLocations.split(',').map(s => s.trim()),
-        readyToRelocate: formData.readyToRelocate,
-        noticePeriod: formData.noticePeriod,
-        educationLevel: formData.educationLevel,
-        course: formData.course,
-        specialization: formData.specialization,
-        currentAddress: formData.currentAddress,
-        bikeAvailable: formData.bikeAvailable,
-        drivingLicense: formData.drivingLicense,
-        sourceOfVisit: formData.referralSource,
+        jobStatus: jobStatusValue, // Must be one of: 'Working', 'Not Working', 'Internship', 'Apprenticeship'
+        currentJobTitle: getValue(formData.currentJobTitle) || '',
+        keySkills: Array.isArray(formData.keySkills) ? formData.keySkills : (formData.keySkills ? [formData.keySkills] : []),
+        currentCompany: formData.currentCompany || '',
+        currentSalary: formData.currentSalary || '',
+        industry: formData.currentIndustry || (formData.industries && formData.industries.length > 0 ? getValue(formData.industries[0]) : ''),
+        industries: formData.industries && Array.isArray(formData.industries) 
+          ? formData.industries.map(i => getValue(i)).filter(Boolean)
+          : (formData.currentIndustry ? [formData.currentIndustry] : []),
+        subIndustries: formData.subIndustries && Array.isArray(formData.subIndustries)
+          ? formData.subIndustries.map(i => getValue(i)).filter(Boolean)
+          : [],
+        currentDepartment: getValue(formData.currentDepartment) || '',
+        departments: formData.departments && Array.isArray(formData.departments)
+          ? formData.departments.map(d => getValue(d)).filter(Boolean)
+          : [],
+        subDepartments: formData.subDepartments && Array.isArray(formData.subDepartments)
+          ? formData.subDepartments.map(d => getValue(d)).filter(Boolean)
+          : [],
+        currentJobRoles: formData.currentJobRoles && Array.isArray(formData.currentJobRoles)
+          ? formData.currentJobRoles.map(r => getValue(r)).filter(Boolean)
+          : [],
+        preferredLocations: formData.preferredLocations 
+          ? (typeof formData.preferredLocations === 'string' 
+              ? formData.preferredLocations.split(',').map(s => s.trim()).filter(Boolean)
+              : (Array.isArray(formData.preferredLocations) ? formData.preferredLocations : []))
+          : [],
+        readyToRelocate: formData.readyToRelocate || '',
+        noticePeriod: formData.noticePeriod || '',
+        educationLevel: educationLevelValue,
+        course: courseValue,
+        specialization: getValue(formData.specialization) || '',
+        currentLocation: formData.currentAddress || '',
+        currentAddress: formData.currentAddress || '',
+        bikeAvailable: formData.bikeAvailable || '',
+        drivingLicense: formData.drivingLicense || '',
+        sourceOfVisit: formData.referralSource || '',
+        jobProfileDescription: jobProfileDescription || 'No description provided',
       };
 
-      await api.applyForJob(jobId, applicationData);
+      // Check if user is authenticated by checking token
+      await api.init(); // Ensure token is loaded
+      const isAuthenticated = !!api.token;
+
+      let response;
+      if (isAuthenticated) {
+        // Use authenticated route
+        response = await api.applyForJob(jobId, applicationData);
+      } else {
+        // Use direct application route (no auth required)
+        response = await api.applyForJobDirect(jobId, applicationData);
+      }
       
-      Alert.alert(
-        'Success!',
-        'Your application has been submitted successfully. We will contact you soon.',
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack(),
-          },
-        ]
+      console.log('Application submission response:', response);
+      
+      // Check if application was successfully submitted
+      const isSuccess = response && (
+        response.message?.toLowerCase().includes('success') ||
+        response.application ||
+        response.id ||
+        (response.success !== false)
       );
+      
+      if (!isSuccess) {
+        throw new Error(response.message || 'Application submission failed');
+      }
+      
+      // If a new user account was created, handle auto-login and show password
+      if (response.isNewUser && response.token && response.user) {
+        try {
+          // Save token and user data to AsyncStorage
+          await AsyncStorage.setItem('token', response.token);
+          await AsyncStorage.setItem('currentUser', JSON.stringify(response.user));
+          await AsyncStorage.setItem('user', JSON.stringify(response.user));
+          
+          // Update API instance token
+          await api.setToken(response.token);
+          
+          // Show success message with password prominently
+          const loginEmail = response.user.email;
+          const loginPassword = response.tempPassword || response.user.tempPassword || 'Not available';
+          
+          if (Platform.OS === 'web' && typeof window !== 'undefined') {
+            // For web, use browser alert
+            const message = `🎉 Application Submitted Successfully!\n\nYour job application has been submitted successfully!\n\nYour account has been created automatically.\n\n📧 Login Email: ${loginEmail}\n🔑 Password: ${loginPassword}\n\n⚠️ IMPORTANT: Please save these credentials!\n\nYou will be redirected to your dashboard.`;
+            window.alert(message);
+            
+            // Navigate to dashboard after alert
+            setTimeout(() => {
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'UserDashboard' }],
+              });
+            }, 500);
+          } else {
+            // For mobile, use React Native Alert
+            Alert.alert(
+              '🎉 Application Submitted Successfully!',
+              `Your job application has been submitted successfully!\n\nYour account has been created automatically.\n\n📧 Login Email: ${loginEmail}\n🔑 Password: ${loginPassword}\n\n⚠️ IMPORTANT: Please save these credentials!\n\nYou can change your password from Profile section after logging in.`,
+              [
+                {
+                  text: 'Go to Dashboard',
+                  onPress: () => {
+                    // Reset navigation stack and navigate to dashboard
+                    navigation.reset({
+                      index: 0,
+                      routes: [{ name: 'UserDashboard' }],
+                    });
+                  }
+                }
+              ],
+              { cancelable: false }
+            );
+          }
+        } catch (storageError) {
+          console.error('Error saving credentials:', storageError);
+          // Still show success but without auto-login
+          showSuccessMessage('Your application has been submitted successfully! Your account has been created. We will contact you soon.');
+        }
+      } else if (!isAuthenticated && response.token && response.user) {
+        // Existing user applied without login - auto-login them
+        try {
+          // Save token and user data to AsyncStorage
+          await AsyncStorage.setItem('token', response.token);
+          await AsyncStorage.setItem('currentUser', JSON.stringify(response.user));
+          await AsyncStorage.setItem('user', JSON.stringify(response.user));
+          
+          // Update API instance token
+          await api.setToken(response.token);
+          
+          showSuccessMessage('Your application has been submitted successfully! You have been automatically logged in.', () => {
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'UserDashboard' }],
+            });
+          }, 'Go to Dashboard');
+        } catch (storageError) {
+          console.error('Error saving credentials:', storageError);
+          showSuccessMessage('Your application has been submitted successfully! We will contact you soon.');
+        }
+      } else {
+        // Already authenticated user or successful submission - show success message
+        showSuccessMessage('🎉 Your job application has been submitted successfully! We will contact you soon.');
+      }
     } catch (error) {
-      Alert.alert('Error', error.message || 'Failed to submit application');
+      console.error('Application submission error:', error);
+      Alert.alert('Error', error.message || 'Failed to submit application. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   const renderProgressBar = () => (
-    <View style={styles.progressContainer}>
+    <View style={[
+      styles.modernProgressContainer,
+      {
+        paddingHorizontal: isMobile ? spacing.md : spacing.lg,
+        paddingVertical: isMobile ? spacing.lg : spacing.xl,
+        marginBottom: isDesktopDevice ? spacing.xl : spacing.lg,
+      }
+    ]}>
       {steps.map((step, index) => (
-        <View key={step.number} style={styles.progressStepWrapper}>
+        <View key={step.number} style={styles.modernProgressStepWrapper}>
           <TouchableOpacity 
-            style={styles.progressStep}
+            style={styles.modernProgressStep}
             onPress={() => handleStepClick(step.number)}
             activeOpacity={0.7}
           >
             <View
               style={[
-                styles.progressCircle,
-                currentStep >= step.number && styles.progressCircleActive,
-                currentStep > step.number && styles.progressCircleCompleted,
+                styles.modernProgressCircle,
+                {
+                  width: isMobile ? 40 : isDesktopDevice ? 48 : 44,
+                  height: isMobile ? 40 : isDesktopDevice ? 48 : 44,
+                  borderRadius: isMobile ? 20 : isDesktopDevice ? 24 : 22,
+                },
+                currentStep >= step.number && styles.modernProgressCircleActive,
+                currentStep > step.number && styles.modernProgressCircleCompleted,
               ]}
             >
               {currentStep > step.number ? (
-                <Ionicons name="checkmark" size={16} color={colors.textWhite} />
+                <Ionicons name="checkmark" size={isMobile ? 18 : isDesktopDevice ? 22 : 20} color={colors.textWhite} />
               ) : (
                 <Text
                   style={[
-                    styles.progressNumber,
-                    currentStep >= step.number && styles.progressNumberActive,
+                    styles.modernProgressNumber,
+                    { fontSize: fontScale(isMobile ? 14 : 16) },
+                    currentStep >= step.number && styles.modernProgressNumberActive,
                   ]}
                 >
                   {step.number}
@@ -1664,9 +1866,11 @@ const JobApplicationScreen = ({ route, navigation }) => {
             </View>
             <Text
               style={[
-                styles.progressLabel,
-                currentStep >= step.number && styles.progressLabelActive,
+                styles.modernProgressLabel,
+                { fontSize: fontScale(isMobile ? 11 : 12) },
+                currentStep >= step.number && styles.modernProgressLabelActive,
               ]}
+              numberOfLines={1}
             >
               {step.title}
             </Text>
@@ -1674,8 +1878,14 @@ const JobApplicationScreen = ({ route, navigation }) => {
           {index < steps.length - 1 && (
             <View
               style={[
-                styles.progressLine,
-                currentStep > step.number && styles.progressLineActive,
+                styles.modernProgressLine,
+                {
+                  flex: 1,
+                  height: 2,
+                  marginTop: isMobile ? -28 : isDesktopDevice ? -36 : -32,
+                  marginHorizontal: spacing.xs,
+                },
+                currentStep > step.number && styles.modernProgressLineActive,
               ]}
             />
           )}
@@ -1738,9 +1948,11 @@ const JobApplicationScreen = ({ route, navigation }) => {
   );
 
   const renderStep1 = () => (
-    <View style={styles.stepContainer}>
-      <Text style={styles.stepTitle}>Personal Information</Text>
-      <Text style={styles.stepDescription}>Let's start with your basic details</Text>
+    <View style={styles.modernStepContainer}>
+      <View style={styles.stepHeader}>
+        <Text style={[styles.modernStepTitle, { fontSize: fontScale(isMobile ? 22 : isDesktopDevice ? 28 : 26) }]}>Personal Information</Text>
+        <Text style={[styles.modernStepDescription, { fontSize: fontScale(14) }]}>Let's start with your basic details</Text>
+      </View>
 
       {renderInput('Full Name', formData.fullName, (text) => handleInputChange('fullName', text), {
         required: true,
@@ -1889,8 +2101,10 @@ const JobApplicationScreen = ({ route, navigation }) => {
 
   const renderStep2 = () => (
     <View style={styles.stepContainer}>
-      <Text style={styles.stepTitle}>Experience & Professional Details</Text>
-      <Text style={styles.stepDescription}>Tell us about your work experience</Text>
+      <View style={styles.stepHeader}>
+        <Text style={[styles.modernStepTitle, { fontSize: fontScale(isMobile ? 22 : isDesktopDevice ? 28 : 26) }]}>Experience & Professional Details</Text>
+        <Text style={[styles.modernStepDescription, { fontSize: fontScale(14) }]}>Tell us about your work experience</Text>
+      </View>
 
       <View style={styles.inputContainer}>
         <Text style={styles.inputLabel}>
@@ -2841,8 +3055,10 @@ const JobApplicationScreen = ({ route, navigation }) => {
 
     return (
     <View style={styles.stepContainer}>
-      <Text style={styles.stepTitle}>Education Details</Text>
-      <Text style={styles.stepDescription}>Share your educational background</Text>
+      <View style={styles.stepHeader}>
+        <Text style={[styles.modernStepTitle, { fontSize: fontScale(isMobile ? 22 : isDesktopDevice ? 28 : 26) }]}>Education Details</Text>
+        <Text style={[styles.modernStepDescription, { fontSize: fontScale(14) }]}>Share your educational background</Text>
+      </View>
 
         {/* Level of Education - Multi-select */}
       <View style={styles.inputContainer}>
@@ -3883,9 +4099,11 @@ const JobApplicationScreen = ({ route, navigation }) => {
   };
 
   const renderStep4 = () => (
-    <View style={styles.stepContainer}>
-      <Text style={styles.stepTitle}>Additional Details</Text>
-      <Text style={styles.stepDescription}>Just a few more details</Text>
+    <View style={styles.modernStepContainer}>
+      <View style={styles.stepHeader}>
+        <Text style={[styles.modernStepTitle, { fontSize: fontScale(isMobile ? 22 : isDesktopDevice ? 28 : 26) }]}>Additional Details</Text>
+        <Text style={[styles.modernStepDescription, { fontSize: fontScale(14) }]}>Just a few more details</Text>
+      </View>
 
       {renderInput('Current Residence Address/Location', formData.currentAddress, (text) => handleInputChange('currentAddress', text), {
         required: true,
@@ -3939,8 +4157,11 @@ const JobApplicationScreen = ({ route, navigation }) => {
   );
 
   const renderStep5 = () => (
-    <View style={styles.stepContainer}>
-      <Text style={styles.stepTitle}>Resume & Submit</Text>
+    <View style={styles.modernStepContainer}>
+      <View style={styles.stepHeader}>
+        <Text style={[styles.modernStepTitle, { fontSize: fontScale(isMobile ? 22 : isDesktopDevice ? 28 : 26) }]}>Resume & Submit</Text>
+        <Text style={[styles.modernStepDescription, { fontSize: fontScale(14) }]}>Upload your resume and review your application</Text>
+      </View>
       <Text style={styles.stepDescription}>Upload your resume and submit your application</Text>
 
       <View style={styles.inputContainer}>
@@ -4032,67 +4253,134 @@ const JobApplicationScreen = ({ route, navigation }) => {
     );
   }
 
+  // Calculate max width for desktop - more generous for modern layout
+  const containerMaxWidth = isDesktopDevice ? (width > 1400 ? 900 : width > 1200 ? 850 : 800) : '100%';
+  const horizontalMargin = isDesktopDevice ? 'auto' : (isMobile ? spacing.md : spacing.lg);
+
   return (
     <View style={styles.container}>
       <Header />
       
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          isDesktopDevice && {
+            alignItems: 'center',
+            paddingTop: spacing.xl,
+            paddingBottom: spacing.xxl,
+          }
+        ]}
         showsVerticalScrollIndicator={false}
       >
-        <LinearGradient
-          colors={['#667eea', '#764ba2']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.headerGradient}
-        >
-          <Text style={styles.headerTitle}>Job Application Form</Text>
-          {jobDetails && (
-            <View style={styles.jobInfoContainer}>
-              <Ionicons name="briefcase" size={20} color={colors.textWhite} />
-              <Text style={styles.jobTitle} numberOfLines={2}>
-                {jobDetails.jobTitle}
+        {/* Centered Container for Desktop - Modern Minimal Design */}
+        <View style={[
+          styles.contentWrapper,
+          {
+            width: '100%',
+            maxWidth: containerMaxWidth,
+            alignSelf: 'center',
+            paddingHorizontal: isDesktopDevice ? spacing.xl : spacing.md,
+          }
+        ]}>
+          {/* Modern Header with Job Details - Integrated Design */}
+          <View style={[
+            styles.modernHeader,
+            {
+              marginBottom: isDesktopDevice ? spacing.xl : spacing.lg,
+            }
+          ]}>
+            <View style={styles.headerTopSection}>
+              <Text style={[styles.modernPageTitle, { fontSize: fontScale(isMobile ? 28 : isDesktopDevice ? 36 : 32) }]}>
+                Job Application
+              </Text>
+              <Text style={[styles.stepIndicator, { fontSize: fontScale(13) }]}>
+                Step {currentStep} of {totalSteps}
               </Text>
             </View>
-          )}
-          {jobDetails?.companyName && (
-            <Text style={styles.companyName}>
-              {jobDetails.companyName}
-            </Text>
-          )}
-          <Text style={styles.headerSubtitle}>
-            Step {currentStep} of {totalSteps}
-          </Text>
-        </LinearGradient>
+            
+            {/* Job Details - Minimal Design */}
+            {jobDetails && (
+              <View style={styles.modernJobInfo}>
+                <View style={styles.jobInfoContent}>
+                  <Text style={[styles.jobPositionTitle, { fontSize: fontScale(isMobile ? 20 : isDesktopDevice ? 26 : 24) }]} numberOfLines={2}>
+                    {jobDetails.jobTitle || jobDetails.title || 'Job Position'}
+                  </Text>
+                  {(jobDetails.companyName || jobDetails.company?.name) && (
+                    <View style={styles.companyRow}>
+                      <Ionicons name="business-outline" size={fontScale(16)} color={colors.textSecondary} />
+                      <Text style={[styles.companyNameText, { fontSize: fontScale(14) }]} numberOfLines={1}>
+                        {jobDetails.companyName || jobDetails.company?.name}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+            )}
+          </View>
 
-        {renderProgressBar()}
+          {/* Modern Progress Bar */}
+          {renderProgressBar()}
 
-        <View style={styles.formContainer}>
-          {renderStepContent()}
+          {/* Modern Form Container */}
+          <View style={[
+            styles.modernFormContainer,
+            {
+              padding: isMobile ? spacing.lg : isDesktopDevice ? spacing.xxl : spacing.xl,
+              marginBottom: spacing.xl,
+            }
+          ]}>
+            {renderStepContent()}
 
-          <View style={styles.navigationButtons}>
+          <View style={[
+            styles.navigationButtons,
+            {
+              flexDirection: isMobile ? 'column' : 'row',
+              gap: isMobile ? spacing.md : spacing.md,
+            }
+          ]}>
             {currentStep > 1 && (
               <TouchableOpacity
-                style={[styles.navButton, styles.prevButton]}
+                style={[
+                  styles.navButton,
+                  styles.prevButton,
+                  {
+                    width: isMobile ? '100%' : 'auto',
+                    paddingVertical: spacingScale(14),
+                  }
+                ]}
                 onPress={handlePrevious}
               >
-                <Ionicons name="chevron-back" size={20} color={colors.primary} />
-                <Text style={styles.prevButtonText}>Previous</Text>
+                <Ionicons name="chevron-back" size={fontScale(18)} color={colors.primary} />
+                <Text style={[styles.prevButtonText, { fontSize: fontScale(15) }]}>Previous</Text>
               </TouchableOpacity>
             )}
 
             {currentStep < totalSteps ? (
               <TouchableOpacity
-                style={[styles.navButton, styles.nextButton]}
+                style={[
+                  styles.navButton,
+                  styles.nextButton,
+                  {
+                    width: isMobile ? '100%' : 'auto',
+                    paddingVertical: spacingScale(14),
+                  }
+                ]}
                 onPress={handleNext}
               >
-                <Text style={styles.nextButtonText}>Next</Text>
-                <Ionicons name="chevron-forward" size={20} color={colors.textWhite} />
+                <Text style={[styles.nextButtonText, { fontSize: fontScale(15) }]}>Next</Text>
+                <Ionicons name="chevron-forward" size={fontScale(18)} color={colors.textWhite} />
               </TouchableOpacity>
             ) : (
               <TouchableOpacity
-                style={[styles.navButton, styles.submitButton]}
+                style={[
+                  styles.navButton,
+                  styles.submitButton,
+                  {
+                    width: isMobile ? '100%' : 'auto',
+                    paddingVertical: spacingScale(14),
+                  }
+                ]}
                 onPress={handleSubmit}
                 disabled={loading}
               >
@@ -4100,13 +4388,14 @@ const JobApplicationScreen = ({ route, navigation }) => {
                   <ActivityIndicator color={colors.textWhite} />
                 ) : (
                   <>
-                    <Text style={styles.submitButtonText}>Submit Application</Text>
-                    <Ionicons name="checkmark-circle" size={20} color={colors.textWhite} />
+                    <Text style={[styles.submitButtonText, { fontSize: fontScale(15) }]}>Submit Application</Text>
+                    <Ionicons name="checkmark-circle" size={fontScale(18)} color={colors.textWhite} />
                   </>
                 )}
               </TouchableOpacity>
             )}
           </View>
+        </View>
         </View>
       </ScrollView>
 
@@ -4166,43 +4455,74 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: spacing.xxl,
   },
-  headerGradient: {
-    padding: spacing.xl,
+  contentWrapper: {
+    width: '100%',
+  },
+  // Job Details Card - Prominently displayed
+  jobDetailsCard: {
+    backgroundColor: colors.cardBackground,
+    borderRadius: borderRadius.lg,
+    ...shadows.md,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.primary,
+  },
+  jobDetailsHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+  },
+  jobDetailsIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.primaryLight || 'rgba(102, 126, 234, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  jobDetailsTextContainer: {
+    flex: 1,
+  },
+  jobDetailsLabel: {
+    color: colors.textSecondary,
+    fontWeight: '500',
+    marginBottom: spacing.xs,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  jobDetailsTitle: {
+    color: colors.text,
+    fontWeight: '700',
+    marginBottom: spacing.xs,
+    lineHeight: 28,
+  },
+  companyInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginTop: spacing.xs,
+  },
+  jobDetailsCompany: {
+    color: colors.textSecondary,
+    fontWeight: '500',
+  },
+  // Header Section - Clean and Neutral
+  headerSection: {
+    backgroundColor: colors.cardBackground,
+    borderRadius: borderRadius.lg,
+    ...shadows.sm,
+  },
+  headerContent: {
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 28,
     fontWeight: '700',
-    color: colors.textWhite,
-    marginBottom: spacing.sm,
-  },
-  jobInfoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.md,
+    color: colors.text,
     marginBottom: spacing.xs,
-    maxWidth: '90%',
-  },
-  jobTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.textWhite,
-    flex: 1,
-  },
-  companyName: {
-    fontSize: 14,
-    color: colors.textWhite,
-    opacity: 0.85,
-    marginBottom: spacing.sm,
+    textAlign: 'center',
   },
   headerSubtitle: {
-    fontSize: 14,
-    color: colors.textWhite,
-    opacity: 0.9,
+    color: colors.textSecondary,
+    fontWeight: '500',
   },
   loadingContainer: {
     flex: 1,
@@ -4217,9 +4537,9 @@ const styles = StyleSheet.create({
   progressContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.lg,
     backgroundColor: colors.cardBackground,
+    borderRadius: borderRadius.md,
+    ...shadows.sm,
   },
   progressStepWrapper: {
     flex: 1,
@@ -4231,9 +4551,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   progressCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
     backgroundColor: colors.borderLight,
     justifyContent: 'center',
     alignItems: 'center',
@@ -4265,18 +4582,136 @@ const styles = StyleSheet.create({
   progressLine: {
     height: 2,
     backgroundColor: colors.borderLight,
-    width: 20,
-    marginTop: -24,
   },
   progressLineActive: {
     backgroundColor: colors.success,
   },
   formContainer: {
     backgroundColor: colors.cardBackground,
-    margin: spacing.lg,
     borderRadius: borderRadius.lg,
-    padding: spacing.lg,
     ...shadows.md,
+  },
+  // Modern Minimal Design Styles
+  modernHeader: {
+    marginBottom: spacing.xl,
+  },
+  headerTopSection: {
+    marginBottom: spacing.lg,
+  },
+  modernPageTitle: {
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: spacing.xs,
+    letterSpacing: -0.5,
+  },
+  stepIndicator: {
+    color: colors.textSecondary,
+    fontWeight: '500',
+    marginTop: spacing.xs,
+  },
+  modernJobInfo: {
+    paddingTop: spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderLight,
+  },
+  jobInfoContent: {
+    gap: spacing.xs,
+  },
+  jobPositionTitle: {
+    fontWeight: '600',
+    color: colors.text,
+    lineHeight: 32,
+    letterSpacing: -0.3,
+  },
+  companyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginTop: spacing.xs,
+  },
+  companyNameText: {
+    color: colors.textSecondary,
+    fontWeight: '500',
+  },
+  modernProgressContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+  },
+  modernProgressStepWrapper: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  modernProgressStep: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  modernProgressCircle: {
+    backgroundColor: colors.borderLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  modernProgressCircleActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  modernProgressCircleCompleted: {
+    backgroundColor: colors.success,
+    borderColor: colors.success,
+  },
+  modernProgressNumber: {
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  modernProgressNumberActive: {
+    color: colors.textWhite,
+  },
+  modernProgressLabel: {
+    color: colors.textSecondary,
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  modernProgressLabelActive: {
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  modernProgressLine: {
+    backgroundColor: colors.borderLight,
+  },
+  modernProgressLineActive: {
+    backgroundColor: colors.success,
+  },
+  modernFormContainer: {
+    backgroundColor: colors.cardBackground,
+    borderRadius: borderRadius.xl || borderRadius.lg,
+    ...shadows.sm,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  modernStepContainer: {
+    marginBottom: spacing.xl,
+  },
+  stepHeader: {
+    marginBottom: spacing.xl,
+    paddingBottom: spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderLight,
+  },
+  modernStepTitle: {
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: spacing.xs,
+    letterSpacing: -0.3,
+  },
+  modernStepDescription: {
+    color: colors.textSecondary,
+    fontWeight: '400',
+    marginTop: spacing.xs,
   },
   stepContainer: {
     marginBottom: spacing.lg,
@@ -4300,6 +4735,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.text,
     marginBottom: spacing.sm,
+    letterSpacing: 0.1,
   },
   required: {
     color: colors.error,
@@ -4308,11 +4744,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderWidth: 1.5,
+    borderColor: colors.borderLight,
     borderRadius: borderRadius.md,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.md,
+    minHeight: 48,
   },
   inputError: {
     borderColor: colors.error,
@@ -4322,9 +4759,10 @@ const styles = StyleSheet.create({
   },
   textInput: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 15,
     color: colors.text,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.xs,
+    fontWeight: '400',
   },
   dateText: {
     flex: 1,

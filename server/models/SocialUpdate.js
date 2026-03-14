@@ -144,6 +144,22 @@ const socialUpdateSchema = new mongoose.Schema({
   },
 
   // User interactions
+  likes: [{
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    likeType: {
+      type: String,
+      enum: ['thumb', 'celebrate', 'support', 'love', 'insightful', 'funny'],
+      default: 'thumb'
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
   likedBy: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
@@ -155,13 +171,48 @@ const socialUpdateSchema = new mongoose.Schema({
     },
     platform: {
       type: String,
-      enum: ['whatsapp', 'telegram', 'instagram', 'linkedin', 'facebook', 'twitter', 'other']
+      enum: ['whatsapp', 'telegram', 'instagram', 'linkedin', 'facebook', 'twitter', 'arattai', 'gmail', 'zoho', 'outlook', 'copy_link', 'save_file', 'other']
     },
     sharedAt: {
       type: Date,
       default: Date.now
     }
   }],
+
+  // Reposts
+  reposts: [{
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    repostType: {
+      type: String,
+      enum: ['simple', 'with_thoughts'],
+      default: 'simple'
+    },
+    thoughts: {
+      type: String,
+      trim: true,
+      maxlength: 500
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+  repostCount: {
+    type: Number,
+    default: 0
+  },
+  isRepost: {
+    type: Boolean,
+    default: false
+  },
+  originalPost: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'SocialUpdate'
+  },
 
   // Comments
   comments: [{
@@ -176,6 +227,14 @@ const socialUpdateSchema = new mongoose.Schema({
       trim: true,
       maxlength: 500
     },
+    isSuggested: {
+      type: Boolean,
+      default: false
+    },
+    suggestionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'CommentSuggestion'
+    },
     createdAt: {
       type: Date,
       default: Date.now
@@ -185,7 +244,27 @@ const socialUpdateSchema = new mongoose.Schema({
       default: false
     },
     editedAt: Date,
-    likes: {
+    status: {
+      type: String,
+      enum: ['approved', 'pending', 'spam', 'trash'],
+      default: 'approved'
+    },
+    likes: [{
+      user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+      },
+      likeType: {
+        type: String,
+        enum: ['thumb', 'celebrate', 'support', 'love', 'insightful', 'funny'],
+        default: 'thumb'
+      },
+      createdAt: {
+        type: Date,
+        default: Date.now
+      }
+    }],
+    likeCount: {
       type: Number,
       default: 0
     },
@@ -214,7 +293,22 @@ const socialUpdateSchema = new mongoose.Schema({
         default: false
       },
       editedAt: Date,
-      likes: {
+      likes: [{
+        user: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User'
+        },
+        likeType: {
+          type: String,
+          enum: ['thumb', 'celebrate', 'support', 'love', 'insightful', 'funny'],
+          default: 'thumb'
+        },
+        createdAt: {
+          type: Date,
+          default: Date.now
+        }
+      }],
+      likeCount: {
         type: Number,
         default: 0
       },
@@ -354,16 +448,28 @@ socialUpdateSchema.methods.incrementViews = function() {
   return this.save();
 };
 
-// Method to like/unlike post
-socialUpdateSchema.methods.toggleLike = async function(userId) {
-  const userIndex = this.likedBy.indexOf(userId);
+// Method to like/unlike post with like type
+socialUpdateSchema.methods.toggleLike = async function(userId, likeType = 'thumb') {
+  const existingLikeIndex = this.likes.findIndex(like => like.user.toString() === userId.toString());
   
-  if (userIndex > -1) {
-    // Unlike
-    this.likedBy.splice(userIndex, 1);
-    this.engagement.likes = Math.max(0, this.engagement.likes - 1);
+  if (existingLikeIndex > -1) {
+    // Check if same like type - then unlike
+    if (this.likes[existingLikeIndex].likeType === likeType) {
+      this.likes.splice(existingLikeIndex, 1);
+      this.likedBy = this.likedBy.filter(id => id.toString() !== userId.toString());
+      this.engagement.likes = Math.max(0, this.engagement.likes - 1);
+    } else {
+      // Change like type
+      this.likes[existingLikeIndex].likeType = likeType;
+      this.likes[existingLikeIndex].createdAt = new Date();
+    }
   } else {
-    // Like
+    // Add new like
+    this.likes.push({
+      user: userId,
+      likeType: likeType,
+      createdAt: new Date()
+    });
     this.likedBy.push(userId);
     this.engagement.likes += 1;
   }
@@ -371,16 +477,59 @@ socialUpdateSchema.methods.toggleLike = async function(userId) {
   return this.save();
 };
 
+// Method to get like counts by type
+socialUpdateSchema.methods.getLikeCounts = function() {
+  const counts = {
+    thumb: 0,
+    celebrate: 0,
+    support: 0,
+    love: 0,
+    insightful: 0,
+    funny: 0,
+    total: this.likes.length
+  };
+  
+  this.likes.forEach(like => {
+    if (counts.hasOwnProperty(like.likeType)) {
+      counts[like.likeType]++;
+    }
+  });
+  
+  return counts;
+};
+
 // Method to add comment
-socialUpdateSchema.methods.addComment = async function(userId, content) {
+socialUpdateSchema.methods.addComment = async function(userId, content, isSuggested = false, suggestionId = null) {
   const comment = {
     user: userId,
     content: content.trim(),
-    createdAt: new Date()
+    isSuggested: isSuggested,
+    suggestionId: suggestionId,
+    createdAt: new Date(),
+    status: 'approved',
+    likes: [],
+    likeCount: 0,
+    likedBy: [],
+    replies: []
   };
   
   this.comments.push(comment);
   this.engagement.comments += 1;
+  
+  return this.save();
+};
+
+// Method to add repost
+socialUpdateSchema.methods.addRepost = async function(userId, repostType = 'simple', thoughts = '') {
+  const repost = {
+    user: userId,
+    repostType: repostType,
+    thoughts: thoughts.trim(),
+    createdAt: new Date()
+  };
+  
+  this.reposts.push(repost);
+  this.repostCount += 1;
   
   return this.save();
 };

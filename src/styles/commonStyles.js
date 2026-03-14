@@ -120,6 +120,7 @@ export const commonStyles = StyleSheet.create({
       width: '100%',
       height: '100%',
       minHeight: '100vh',
+      overflowX: 'hidden',
     }),
   },
   safeContainer: {
@@ -129,12 +130,16 @@ export const commonStyles = StyleSheet.create({
   scrollContainer: {
     flexGrow: 1,
     paddingBottom: rs(spacing.xxl),
+    ...(isWeb && {
+      overflowX: 'hidden',
+    }),
   },
   centeredContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: colors.background,
+    paddingHorizontal: getHorizontalPadding(),
   },
   contentContainer: {
     flex: 1,
@@ -142,50 +147,77 @@ export const commonStyles = StyleSheet.create({
     maxWidth: getContainerMaxWidth(),
     alignSelf: 'center',
     width: '100%',
+    ...(isWeb && {
+      marginHorizontal: 'auto',
+    }),
   },
   pageContainer: {
     flex: 1,
     backgroundColor: colors.background,
     paddingHorizontal: getHorizontalPadding(),
-  },
-  
-  // ==========================================
-  // CARDS
-  // ==========================================
-  card: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.md,
-    padding: isMobile ? rs(spacing.sm) : isTabletDevice ? rs(spacing.md) : rs(spacing.lg),
-    marginBottom: rs(spacing.md),
-    ...shadows.card,
     ...(isWeb && {
+      maxWidth: getContainerMaxWidth(),
+      marginHorizontal: 'auto',
       width: '100%',
     }),
   },
-  cardElevated: {
+  
+  // ==========================================
+  // CARDS - Modern Minimal Design
+  // ==========================================
+  card: {
     backgroundColor: colors.cardBackground,
     borderRadius: borderRadius.lg,
     padding: isMobile ? rs(spacing.md) : isTabletDevice ? rs(spacing.lg) : rs(spacing.xl),
     marginBottom: rs(spacing.md),
-    ...shadows.lg,
+    ...shadows.card,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
     ...(isWeb && {
       width: '100%',
+      transition: 'all 0.2s ease',
+    }),
+  },
+  cardElevated: {
+    backgroundColor: colors.cardBackground,
+    borderRadius: borderRadius.xl,
+    padding: isMobile ? rs(spacing.lg) : isTabletDevice ? rs(spacing.xl) : rs(spacing.xxl),
+    marginBottom: rs(spacing.md),
+    ...shadows.lg,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    ...(isWeb && {
+      width: '100%',
+      transition: 'all 0.2s ease',
     }),
   },
   cardCompact: {
     backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.sm,
-    padding: isMobile ? rs(spacing.xs) : rs(spacing.sm),
+    borderRadius: borderRadius.md,
+    padding: isMobile ? rs(spacing.sm) : rs(spacing.md),
     marginBottom: rs(spacing.sm),
-    ...shadows.sm,
+    ...shadows.minimal,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
   },
   cardFlat: {
     backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.md,
-    padding: isMobile ? rs(spacing.sm) : rs(spacing.md),
+    borderRadius: borderRadius.lg,
+    padding: isMobile ? rs(spacing.md) : rs(spacing.lg),
     marginBottom: rs(spacing.md),
     borderWidth: 1,
     borderColor: colors.border,
+  },
+  cardMinimal: {
+    backgroundColor: colors.cardBackground,
+    borderRadius: borderRadius.md,
+    padding: isMobile ? rs(spacing.sm) : rs(spacing.md),
+    marginBottom: rs(spacing.sm),
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    ...(isWeb && {
+      transition: 'all 0.2s ease',
+    }),
   },
   
   // ==========================================
@@ -234,47 +266,71 @@ export const commonStyles = StyleSheet.create({
   },
   
   // ==========================================
-  // BUTTONS
+  // BUTTONS - Modern Minimal Design
   // ==========================================
   button: {
     backgroundColor: colors.primary,
-    borderRadius: borderRadius.md,
-    padding: isMobile ? rs(spacing.sm) : rs(spacing.md),
+    borderRadius: borderRadius.lg,
+    padding: isMobile ? rs(spacing.md) : rs(spacing.lg),
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: isMobile ? 44 : 48,
     ...shadows.sm,
+    ...(isWeb && {
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+      userSelect: 'none',
+    }),
   },
   buttonText: {
     ...typography.button,
     fontSize: rf(16),
     color: colors.textWhite,
     fontWeight: '600',
+    letterSpacing: 0.3,
   },
   buttonSecondary: {
     backgroundColor: 'transparent',
     borderWidth: 2,
     borderColor: colors.primary,
+    borderRadius: borderRadius.lg,
   },
   buttonSecondaryText: {
     ...typography.button,
     fontSize: rf(16),
     color: colors.primary,
     fontWeight: '600',
+    letterSpacing: 0.3,
   },
   buttonOutline: {
     backgroundColor: 'transparent',
     borderWidth: 1,
     borderColor: colors.border,
+    borderRadius: borderRadius.lg,
   },
   buttonOutlineText: {
     ...typography.button,
     fontSize: rf(16),
     color: colors.text,
     fontWeight: '500',
+    letterSpacing: 0.3,
+  },
+  buttonMinimal: {
+    backgroundColor: colors.backgroundSecondary,
+    borderRadius: borderRadius.md,
+    borderWidth: 0,
+  },
+  buttonMinimalText: {
+    ...typography.button,
+    fontSize: rf(16),
+    color: colors.text,
+    fontWeight: '500',
   },
   buttonDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
+    ...(isWeb && {
+      cursor: 'not-allowed',
+    }),
   },
   buttonSmall: {
     padding: isMobile ? rs(spacing.xs) : rs(spacing.sm),

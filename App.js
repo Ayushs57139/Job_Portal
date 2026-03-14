@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { StyleSheet, View, LogBox } from 'react-native';
@@ -155,13 +155,14 @@ export default function App() {
         viewport.setAttribute('name', 'viewport');
         document.getElementsByTagName('head')[0].appendChild(viewport);
       }
-      viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+      viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes');
       
-      // Add mobile-friendly CSS
+      // Add comprehensive responsive and modern minimal CSS
       const style = document.createElement('style');
       style.textContent = `
         * {
           box-sizing: border-box;
+          -webkit-tap-highlight-color: transparent;
         }
         html, body {
           margin: 0;
@@ -171,10 +172,79 @@ export default function App() {
           overflow-x: hidden;
           -webkit-font-smoothing: antialiased;
           -moz-osx-font-smoothing: grayscale;
+          text-rendering: optimizeLegibility;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+            'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
         }
         #root {
           width: 100%;
           height: 100%;
+          min-height: 100vh;
+        }
+        /* Responsive typography scaling */
+        @media (max-width: 320px) {
+          html { font-size: 14px; }
+        }
+        @media (min-width: 321px) and (max-width: 375px) {
+          html { font-size: 15px; }
+        }
+        @media (min-width: 376px) and (max-width: 414px) {
+          html { font-size: 16px; }
+        }
+        @media (min-width: 415px) and (max-width: 768px) {
+          html { font-size: 16px; }
+        }
+        @media (min-width: 769px) and (max-width: 1024px) {
+          html { font-size: 17px; }
+        }
+        @media (min-width: 1025px) and (max-width: 1440px) {
+          html { font-size: 18px; }
+        }
+        @media (min-width: 1441px) {
+          html { font-size: 19px; }
+        }
+        /* Smooth scrolling */
+        html {
+          scroll-behavior: smooth;
+        }
+        /* Prevent text selection on buttons and interactive elements */
+        button, a, [role="button"] {
+          -webkit-user-select: none;
+          -moz-user-select: none;
+          -ms-user-select: none;
+          user-select: none;
+        }
+        /* Improve touch targets for mobile */
+        @media (max-width: 768px) {
+          button, a, [role="button"] {
+            min-height: 44px;
+            min-width: 44px;
+          }
+        }
+        /* Modern minimal scrollbar styling */
+        ::-webkit-scrollbar {
+          width: 8px;
+          height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+          background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+          background: #c1c1c1;
+          border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+          background: #a8a8a8;
+        }
+        /* Responsive images */
+        img {
+          max-width: 100%;
+          height: auto;
+        }
+        /* Focus styles for accessibility */
+        *:focus-visible {
+          outline: 2px solid #2563EB;
+          outline-offset: 2px;
         }
       `;
       document.getElementsByTagName('head')[0].appendChild(style);

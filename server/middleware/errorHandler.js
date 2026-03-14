@@ -126,12 +126,62 @@ const errorHandler = (err, req, res, next) => {
   }
 
   // Network/timeout errors
-  if (err.code === 'ECONNREFUSED' || err.code === 'ETIMEDOUT') {
+  if (err.code === 'ECONNREFUSED' || err.code === 'ETIMEDOUT' || err.code === 'ENOTFOUND') {
     error = {
       message: 'Service temporarily unavailable',
       statusCode: 503,
       name: 'NetworkError'
     };
+    logger.error('Network error detected', err, errorContext);
+  }
+
+  // File system errors
+  if (err.code === 'ENOENT' || err.code === 'EACCES' || err.code === 'EMFILE') {
+    error = {
+      message: 'File system error occurred',
+      statusCode: 500,
+      name: 'FileSystemError'
+    };
+    logger.error('File system error', err, errorContext);
+  }
+
+  // Timeout errors
+  if (err.code === 'ETIMEDOUT' || err.message && err.message.includes('timeout')) {
+    error = {
+      message: 'Request timeout. Please try again.',
+      statusCode: 408,
+      name: 'TimeoutError'
+    };
+  }
+
+  // Memory errors
+  if (err.message && (err.message.includes('heap') || err.message.includes('memory') || err.code === 'ERR_OUT_OF_MEMORY')) {
+    error = {
+      message: 'Server is experiencing high load. Please try again later.',
+      statusCode: 503,
+      name: 'MemoryError'
+    };
+    logger.error('Memory error detected - server may need restart', err, {
+      ...errorContext,
+      memoryUsage: {
+        heapUsed: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + ' MB',
+        heapTotal: Math.round(process.memoryUsage().heapTotal / 1024 / 1024) + ' MB'
+      }
+    });
+  }
+
+  // Socket.IO errors
+  if (err.name === 'SocketError' || err.message && err.message.includes('socket')) {
+    error = {
+      message: 'Connection error. Please refresh and try again.',
+      statusCode: 503,
+      name: 'SocketError'
+    };
+  }
+
+  // Generic server errors
+  if (!error.statusCode && !err.statusCode) {
+    error.statusCode = 500;
   }
 
   // Send error response
@@ -139,19 +189,22 @@ const errorHandler = (err, req, res, next) => {
   const isDevelopment = process.env.NODE_ENV === 'development';
   const isProduction = process.env.NODE_ENV === 'production';
   
-  // In production, don't expose internal error details
+  // In production, don't expose internal error details for 5xx errors
   const response = {
     success: false,
-    message: error.message || err.message || 'Server Error',
+    message: isProduction && statusCode >= 500 
+      ? 'An internal server error occurred. Please try again later.'
+      : (error.message || err.message || 'Server Error'),
     ...(isDevelopment && { 
       stack: error.stack || err.stack,
       originalError: err.message,
       errorType: err.name || 'UnknownError',
+      errorCode: err.code,
       ...(errorContext && { context: errorContext })
     }),
-    // In production, only include safe error information
-    ...(isProduction && statusCode >= 500 && {
-      message: 'An internal server error occurred. Please try again later.'
+    // Include error code in production for client-side handling
+    ...(isProduction && statusCode < 500 && {
+      errorCode: err.code || err.name
     })
   };
 
@@ -160,6 +213,14 @@ const errorHandler = (err, req, res, next) => {
     res.status(statusCode).json(response);
   } else {
     logger.error('Headers already sent, cannot send error response', err, errorContext);
+    // Try to end the response if possible
+    if (!res.finished) {
+      try {
+        res.end();
+      } catch (endError) {
+        logger.error('Error ending response', endError);
+      }
+    }
   }
 };
 

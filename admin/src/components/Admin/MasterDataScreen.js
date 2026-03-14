@@ -28,12 +28,20 @@ const MasterDataScreen = ({
   const [currentItem, setCurrentItem] = useState({ id: null });
   const [user, setUser] = useState(null);
   const [showParentDropdown, setShowParentDropdown] = useState(false);
+  const [openFieldDropdowns, setOpenFieldDropdowns] = useState({});
 
   useEffect(() => {
     fetchItems();
     if (parentField) {
       fetchParentItems();
     }
+    
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(() => {
+      fetchItems();
+    }, 30000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   const fetchParentItems = async () => {
@@ -97,19 +105,28 @@ const MasterDataScreen = ({
       // Try to find the data array in the response
       let fetchedItems = null;
       
-      // Common key names for data arrays
-      const possibleKeys = [
-        title.toLowerCase(),
-        title.toLowerCase() + 's',
-        'data',
-        'items',
-        'results'
-      ];
-      
       // First, check if the response itself is an array
       if (Array.isArray(data)) {
         fetchedItems = data;
+      } else if (data.success && data.blogs && Array.isArray(data.blogs)) {
+        // Explicitly handle blogs endpoint response format: { success: true, blogs: [...] }
+        fetchedItems = data.blogs;
+      } else if (data.blogs && Array.isArray(data.blogs)) {
+        // Handle blogs key directly
+        fetchedItems = data.blogs;
       } else {
+        // Common key names for data arrays
+        const possibleKeys = [
+          'enquiries', // For sales enquiries - check this first
+          'enquiry', // Singular form
+          'blogs', // Explicitly check for blogs
+          title.toLowerCase(),
+          title.toLowerCase() + 's',
+          'data',
+          'items',
+          'results'
+        ];
+        
         // Look for array values in the response object
         for (const key of possibleKeys) {
           if (data[key] && Array.isArray(data[key])) {
@@ -127,6 +144,17 @@ const MasterDataScreen = ({
               break;
             }
           }
+        }
+      }
+      
+      // Debug logging for blogs
+      if (title.toLowerCase() === 'blogs' || fetchEndpoint?.includes('blogs')) {
+        console.log('Blogs fetch - Response keys:', Object.keys(data));
+        console.log('Blogs fetch - data.blogs exists:', !!data.blogs);
+        console.log('Blogs fetch - data.blogs is array:', Array.isArray(data.blogs));
+        console.log('Blogs fetch - Fetched items count:', fetchedItems ? fetchedItems.length : 0);
+        if (data.blogs) {
+          console.log('Blogs fetch - data.blogs length:', data.blogs.length);
         }
       }
       
@@ -221,6 +249,8 @@ const MasterDataScreen = ({
 
       Alert.alert('Success', editMode ? `${title} updated successfully` : `${title} created successfully`);
       setModalVisible(false);
+      setShowParentDropdown(false);
+      setOpenFieldDropdowns({});
       setEditMode(false);
       resetCurrentItem();
       fetchItems();
@@ -240,6 +270,7 @@ const MasterDataScreen = ({
     }
     setCurrentItem(emptyItem);
     setEditMode(false);
+    setOpenFieldDropdowns({}); // Reset all dropdown states
   };
 
   const handleEdit = (item) => {
@@ -365,6 +396,7 @@ const MasterDataScreen = ({
             onPress={() => {
               resetCurrentItem();
               setEditMode(false);
+              setOpenFieldDropdowns({});
               setModalVisible(true);
             }}
           >
@@ -399,7 +431,11 @@ const MasterDataScreen = ({
                 filteredItems.map((item, index) => (
                   <View key={item._id || item.id || index} style={dynamicStyles.listItem}>
                     <View style={dynamicStyles.itemContent}>
-                      <Text style={dynamicStyles.itemName}>{item[fieldName]}</Text>
+                      <Text style={dynamicStyles.itemName}>
+                        {fieldName === 'firstName' && item.lastName 
+                          ? `${item[fieldName] || ''} ${item.lastName || ''}`.trim() 
+                          : (item[fieldName] || item.name || 'N/A')}
+                      </Text>
                       {parentField && (
                         <View style={dynamicStyles.parentInfoContainer}>
                           <Ionicons name="layers-outline" size={responsive.isMobile ? 14 : 16} color="#64748B" />
@@ -483,6 +519,7 @@ const MasterDataScreen = ({
           onRequestClose={() => {
             setModalVisible(false);
             setShowParentDropdown(false);
+            setOpenFieldDropdowns({});
             setEditMode(false);
             resetCurrentItem();
           }}
@@ -493,6 +530,7 @@ const MasterDataScreen = ({
             onPress={() => {
               setModalVisible(false);
               setShowParentDropdown(false);
+              setOpenFieldDropdowns({});
               setEditMode(false);
               resetCurrentItem();
             }}
@@ -624,38 +662,124 @@ const MasterDataScreen = ({
               )}
 
               <ScrollView style={dynamicStyles.modalFieldsContainer} showsVerticalScrollIndicator={false}>
-                {additionalFields.map(field => (
-                  <View key={field.key} style={dynamicStyles.fieldContainer}>
-                    {field.type === 'text' && (
-                      <>
-                        <Text style={dynamicStyles.fieldLabel}>
-                          {field.label} {field.required && <Text style={dynamicStyles.requiredStar}>*</Text>}
-                        </Text>
-                        <TextInput
-                          style={[dynamicStyles.modalInput, field.multiline && dynamicStyles.multilineInput]}
-                          placeholder={field.placeholder || field.label}
-                          placeholderTextColor="#94A3B8"
-                          value={currentItem[field.key] || ''}
-                          onChangeText={(text) => setCurrentItem({ ...currentItem, [field.key]: text })}
-                          multiline={field.multiline}
-                          numberOfLines={field.numberOfLines}
-                        />
-                      </>
-                    )}
-                    {field.type === 'boolean' && (
-                      <View style={dynamicStyles.switchContainer}>
-                        <Text style={dynamicStyles.fieldLabel}>{field.label}</Text>
-                        <Switch
-                          value={currentItem[field.key] !== undefined ? currentItem[field.key] : field.defaultValue}
-                          onValueChange={(value) => setCurrentItem({ ...currentItem, [field.key]: value })}
-                          trackColor={{ false: '#CBD5E1', true: colors.primary }}
-                          thumbColor={colors.white}
-                          ios_backgroundColor="#CBD5E1"
-                        />
-                      </View>
-                    )}
-                  </View>
-                ))}
+                {additionalFields.map(field => {
+                  const showFieldDropdown = openFieldDropdowns[field.key] || false;
+                  
+                  return (
+                    <View key={field.key} style={[
+                      dynamicStyles.fieldContainer,
+                      field.type === 'select' && showFieldDropdown && { zIndex: 1000, marginBottom: 8 }
+                    ]}>
+                      {field.type === 'text' && (
+                        <>
+                          <Text style={dynamicStyles.fieldLabel}>
+                            {field.label} {field.required && <Text style={dynamicStyles.requiredStar}>*</Text>}
+                          </Text>
+                          <TextInput
+                            style={[dynamicStyles.modalInput, field.multiline && dynamicStyles.multilineInput]}
+                            placeholder={field.placeholder || field.label}
+                            placeholderTextColor="#94A3B8"
+                            value={currentItem[field.key] || ''}
+                            onChangeText={(text) => setCurrentItem({ ...currentItem, [field.key]: text })}
+                            multiline={field.multiline}
+                            numberOfLines={field.numberOfLines}
+                          />
+                        </>
+                      )}
+                      {field.type === 'select' && (
+                        <>
+                          <Text style={dynamicStyles.fieldLabel}>
+                            {field.label} {field.required && <Text style={dynamicStyles.requiredStar}>*</Text>}
+                          </Text>
+                          <TouchableOpacity
+                            style={[
+                              dynamicStyles.dropdownButton,
+                              showFieldDropdown && dynamicStyles.dropdownButtonActive
+                            ]}
+                            onPress={() => setOpenFieldDropdowns({ ...openFieldDropdowns, [field.key]: !showFieldDropdown })}
+                          >
+                            <Text
+                              style={[
+                                dynamicStyles.dropdownButtonText,
+                                !currentItem[field.key] && { color: '#94A3B8' }
+                              ]}
+                            >
+                              {currentItem[field.key] || field.placeholder || `Select ${field.label}`}
+                            </Text>
+                            <Ionicons
+                              name={showFieldDropdown ? 'chevron-up' : 'chevron-down'}
+                              size={20}
+                              color={showFieldDropdown ? colors.primary : "#94A3B8"}
+                            />
+                          </TouchableOpacity>
+                          {showFieldDropdown && (
+                            <View style={dynamicStyles.dropdownList}>
+                              <ScrollView
+                                style={dynamicStyles.dropdownScroll}
+                                nestedScrollEnabled={true}
+                                showsVerticalScrollIndicator={false}
+                                bounces={false}
+                              >
+                                {field.options && field.options.length > 0 ? (
+                                  field.options.map((option, index) => {
+                                    const optionValue = typeof option === 'string' ? option : option.value;
+                                    const optionLabel = typeof option === 'string' ? option : option.label;
+                                    const isSelected = currentItem[field.key] === optionValue;
+                                    
+                                    return (
+                                      <TouchableOpacity
+                                        key={index}
+                                        style={[
+                                          dynamicStyles.dropdownItem,
+                                          isSelected && dynamicStyles.dropdownItemSelected
+                                        ]}
+                                        onPress={() => {
+                                          setCurrentItem({ ...currentItem, [field.key]: optionValue });
+                                          setOpenFieldDropdowns({ ...openFieldDropdowns, [field.key]: false });
+                                        }}
+                                        activeOpacity={0.7}
+                                      >
+                                        <Text
+                                          style={[
+                                            dynamicStyles.dropdownItemText,
+                                            isSelected && dynamicStyles.dropdownItemTextSelected
+                                          ]}
+                                        >
+                                          {optionLabel}
+                                        </Text>
+                                        {isSelected && (
+                                          <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
+                                        )}
+                                      </TouchableOpacity>
+                                    );
+                                  })
+                                ) : (
+                                  <View style={dynamicStyles.dropdownItem}>
+                                    <Text style={[dynamicStyles.dropdownItemText, { color: '#94A3B8', fontStyle: 'italic' }]}>
+                                      No options available
+                                    </Text>
+                                  </View>
+                                )}
+                              </ScrollView>
+                            </View>
+                          )}
+                        </>
+                      )}
+                      {field.type === 'boolean' && (
+                        <View style={dynamicStyles.switchContainer}>
+                          <Text style={dynamicStyles.fieldLabel}>{field.label}</Text>
+                          <Switch
+                            value={currentItem[field.key] !== undefined ? currentItem[field.key] : field.defaultValue}
+                            onValueChange={(value) => setCurrentItem({ ...currentItem, [field.key]: value })}
+                            trackColor={{ false: '#CBD5E1', true: colors.primary }}
+                            thumbColor={colors.white}
+                            ios_backgroundColor="#CBD5E1"
+                          />
+                        </View>
+                      )}
+                    </View>
+                  );
+                })}
               </ScrollView>
               </View>
 
@@ -1157,112 +1281,88 @@ const getStyles = (responsive) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: '#E2E8F0',
-    borderRadius: 12,
-    paddingVertical: getResponsiveValue(12, 14, 16),
-    paddingHorizontal: getResponsiveValue(spacing.md, 18, 20),
+    borderRadius: 8,
+    paddingVertical: getResponsiveValue(13, 15, 17),
+    paddingHorizontal: getResponsiveValue(16, 18, 20),
     backgroundColor: '#FFFFFF',
-    ...(Platform.OS === 'web' ? {
-      boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
-    } : {
-      elevation: 2,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.05,
-      shadowRadius: 2,
-    }),
     minHeight: getResponsiveValue(48, 52, 56),
-    zIndex: 10,
   },
   dropdownButtonActive: {
-    borderColor: '#2563EB',
-    backgroundColor: '#F8FAFC',
+    borderColor: colors.primary,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
     ...(Platform.OS === 'web' ? {
-      boxShadow: '0 2px 4px rgba(37, 99, 235, 0.15)',
+      boxShadow: '0 0 0 3px rgba(37, 99, 235, 0.08)',
     } : {
-      elevation: 3,
-      shadowColor: '#2563EB',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.15,
-      shadowRadius: 4,
+      elevation: 1,
+      shadowColor: colors.primary,
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.08,
+      shadowRadius: 3,
     }),
-    borderWidth: 2.5,
-    zIndex: 10,
   },
   dropdownButtonText: {
-    color: '#0F172A',
+    color: '#1A202C',
     flex: 1,
-    fontSize: getResponsiveFontSize(16),
+    fontSize: getResponsiveFontSize(15),
     fontWeight: '500',
-    letterSpacing: 0.1,
+    letterSpacing: 0,
   },
   dropdownList: {
     position: 'absolute',
     top: '100%',
     left: 0,
     right: 0,
+    marginTop: 4,
     backgroundColor: '#FFFFFF',
-    borderWidth: 2.5,
-    borderColor: '#2563EB',
-    borderRadius: 12,
-    marginTop: 6,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 8,
     maxHeight: getResponsiveValue(240, 280, 320),
-    minHeight: 60,
-    zIndex: 10000,
+    zIndex: 9999,
+    overflow: 'hidden',
     ...(Platform.OS === 'web' ? {
-      boxShadow: '0 4px 8px rgba(0, 0, 0, 0.25)',
+      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04)',
     } : {
-      elevation: 20,
+      elevation: 8,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.25,
+      shadowOpacity: 0.08,
       shadowRadius: 8,
-    }),
-    overflow: 'hidden',
-    ...(Platform.OS === 'web' && {
-      boxShadow: '0 10px 40px rgba(0, 0, 0, 0.25), 0 0 0 2px rgba(37, 99, 235, 0.2)',
     }),
   },
   dropdownScroll: {
     maxHeight: getResponsiveValue(240, 280, 320),
-    ...(Platform.OS === 'web' && {
-      maxHeight: 320,
-      overflowY: 'auto',
-      WebkitOverflowScrolling: 'touch',
-    }),
   },
   dropdownItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: getResponsiveValue(12, 14, 16),
-    paddingHorizontal: getResponsiveValue(spacing.md, 18, 20),
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-    minHeight: getResponsiveValue(48, 52, 56),
+    paddingHorizontal: getResponsiveValue(16, 18, 20),
     backgroundColor: '#FFFFFF',
+    borderBottomWidth: 0,
+    minHeight: getResponsiveValue(44, 48, 52),
+    ...(Platform.OS === 'web' && {
+      cursor: 'pointer',
+      transition: 'background-color 0.15s ease',
+    }),
   },
   dropdownItemSelected: {
     backgroundColor: '#EFF6FF',
-    borderLeftWidth: 4,
-    borderLeftColor: '#2563EB',
-    paddingLeft: 20,
-    borderBottomColor: '#DBEAFE',
-    borderRightWidth: 2,
-    borderRightColor: '#DBEAFE',
   },
   dropdownItemText: {
     color: '#1A202C',
     flex: 1,
     fontSize: getResponsiveFontSize(15),
-    fontWeight: '500',
-    letterSpacing: 0.1,
+    fontWeight: '400',
+    letterSpacing: 0,
   },
   dropdownItemTextSelected: {
-    color: '#2563EB',
-    fontWeight: '700',
-    fontSize: getResponsiveFontSize(15),
+    color: colors.primary,
+    fontWeight: '600',
   },
 });
 

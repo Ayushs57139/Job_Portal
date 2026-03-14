@@ -4,7 +4,6 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  FlatList,
   Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -175,17 +174,14 @@ const TrendingJobRoles = ({ navigation }) => {
       </View>
 
       <View style={dynamicStyles.cardsContainer}>
-        <FlatList
-          data={jobRoles}
-          renderItem={renderJobRoleCard}
-          keyExtractor={(item) => item.id}
-          numColumns={numColumns}
-          scrollEnabled={isPhone || isMobile}
-          nestedScrollEnabled={true}
-          showsVerticalScrollIndicator={false}
-          columnWrapperStyle={numColumns > 1 ? dynamicStyles.row : null}
-          key={`${numColumns}-columns`}
-        />
+        {Array.from({ length: Math.ceil(jobRoles.length / numColumns) }).map((_, rowIndex) => {
+          const rowItems = jobRoles.slice(rowIndex * numColumns, (rowIndex + 1) * numColumns);
+          return (
+            <View key={rowIndex} style={dynamicStyles.row}>
+              {rowItems.map((item) => renderJobRoleCard({ item }))}
+            </View>
+          );
+        })}
       </View>
 
       <TouchableOpacity
@@ -224,6 +220,7 @@ const getStyles = (isPhone, isMobile, isTablet, isDesktop, width) => StyleSheet.
     width: '100%',
   },
   row: {
+    flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: isPhone ? spacing.sm : spacing.md,
     gap: isPhone ? spacing.xs : (isMobile ? spacing.xs : spacing.sm),
@@ -234,13 +231,11 @@ const getStyles = (isPhone, isMobile, isTablet, isDesktop, width) => StyleSheet.
     borderRadius: borderRadius.md,
     padding: isPhone ? spacing.sm : (isMobile ? spacing.sm : spacing.md),
     marginHorizontal: isPhone ? spacing.xs / 2 : (isMobile ? spacing.xs / 2 : spacing.xs),
-    marginBottom: isPhone ? spacing.sm : spacing.md,
     borderWidth: 1,
     borderColor: colors.borderLight,
     flexDirection: 'row',
     alignItems: 'center',
     minHeight: isPhone ? 65 : (isMobile ? 70 : 80),
-    maxWidth: isPhone ? '48%' : (isMobile ? '48%' : undefined),
     ...shadows.sm,
     ...(isWeb && {
       cursor: 'pointer',

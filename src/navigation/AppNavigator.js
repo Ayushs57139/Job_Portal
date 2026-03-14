@@ -39,6 +39,10 @@ import EmployerJobsScreen from '../screens/Jobs/EmployerJobsScreen';
 import MyApplicationsScreen from '../screens/Jobs/MyApplicationsScreen';
 import ActiveApplicationsScreen from '../screens/Jobs/ActiveApplicationsScreen';
 import AppliedJobsScreen from '../screens/Jobs/AppliedJobsScreen';
+import SavedJobsScreen from '../screens/Jobs/SavedJobsScreen';
+import JobAlertFormScreen from '../screens/Jobs/JobAlertFormScreen';
+import JobEventsScreen from '../screens/Jobs/JobEventsScreen';
+// import JobEventDetailScreen from '../screens/Jobs/JobEventDetailScreen';
 
 // Dashboard Screens
 import UserDashboardScreen from '../screens/Dashboard/UserDashboardScreen';
@@ -114,10 +118,9 @@ import BlogsScreen from '../screens/Blogs/BlogsScreen';
 import BlogDetailScreen from '../screens/Blogs/BlogDetailScreen';
 import CreateBlogScreen from '../screens/Blogs/CreateBlogScreen';
 import SocialUpdatesScreen from '../screens/SocialUpdates/SocialUpdatesScreen';
+import PostDetailScreen from '../screens/SocialUpdates/PostDetailScreen';
 import CreateSocialPostScreen from '../screens/SocialUpdates/CreateSocialPostScreen';
 import PackagesScreen from '../screens/Packages/PackagesScreen';
-import SavedJobsScreen from '../screens/Jobs/SavedJobsScreen';
-import JobAlertFormScreen from '../screens/Jobs/JobAlertFormScreen';
 import ChatScreen from '../screens/Chat/ChatScreen';
 import LiveChatSupportScreen from '../screens/Chat/LiveChatSupportScreen';
 import ChatConversationScreen from '../screens/Chat/ChatConversationScreen';
@@ -134,13 +137,58 @@ const AppNavigator = () => {
   const navigationRef = useRef(null);
   const [navigationReady, setNavigationReady] = useState(false);
   const pendingJobIdRef = useRef(null);
+  const [pendingDashboardRoute, setPendingDashboardRoute] = useState(null);
 
   useEffect(() => {
-    // Check if user is logged in
+    // Check if user is logged in and redirect to appropriate dashboard
     const checkAuth = async () => {
       try {
         const token = await AsyncStorage.getItem('token');
         setUserToken(token);
+        
+        // If token exists, check user data and redirect to appropriate dashboard
+        if (token) {
+          const userDataStr = await AsyncStorage.getItem('user');
+          if (userDataStr) {
+            try {
+              const userData = JSON.parse(userDataStr);
+              console.log('🔵 User data found:', userData);
+              console.log('🔵 User role:', userData.role);
+              console.log('🔵 User type:', userData.userType);
+              console.log('🔵 Employer type:', userData.employerType);
+              
+              // Determine which dashboard to navigate to based on user role
+              let dashboardRoute = null;
+              
+              if (userData.role === 'JOBSEEKER' || userData.userType === 'jobseeker') {
+                dashboardRoute = 'UserDashboard';
+                console.log('✅ Will redirect to User Dashboard');
+              } else if (userData.role === 'EMPLOYER' || userData.userType === 'employer') {
+                if (userData.employerType === 'company') {
+                  dashboardRoute = 'CompanyDashboard';
+                  console.log('✅ Will redirect to Company Dashboard');
+                } else if (userData.employerType === 'consultancy') {
+                  dashboardRoute = 'ConsultancyDashboard';
+                  console.log('✅ Will redirect to Consultancy Dashboard');
+                } else {
+                  // Default employer dashboard (if no specific type)
+                  dashboardRoute = 'CompanyDashboard';
+                  console.log('✅ Will redirect to Company Dashboard (default)');
+                }
+              } else if (userData.role === 'ADMIN' || userData.userType === 'admin') {
+                dashboardRoute = 'AdminDashboard';
+                console.log('✅ Will redirect to Admin Dashboard');
+              }
+              
+              // Store the pending dashboard route to navigate when ready
+              if (dashboardRoute) {
+                setPendingDashboardRoute(dashboardRoute);
+              }
+            } catch (parseError) {
+              console.error('❌ Error parsing user data:', parseError);
+            }
+          }
+        }
       } catch (error) {
         console.error('Error checking auth:', error);
       } finally {
@@ -178,6 +226,18 @@ const AppNavigator = () => {
       }
     }
   }, [navigationReady]);
+
+  // Handle pending dashboard route when navigation is ready
+  useEffect(() => {
+    if (navigationReady && pendingDashboardRoute) {
+      console.log('🟢 Navigation ready, redirecting to:', pendingDashboardRoute);
+      navigationRef.current?.reset({
+        index: 0,
+        routes: [{ name: pendingDashboardRoute }],
+      });
+      setPendingDashboardRoute(null);
+    }
+  }, [navigationReady, pendingDashboardRoute]);
 
   // List of routes where chatbot should NOT be shown
   const noChatbotRoutes = [
@@ -232,6 +292,8 @@ const AppNavigator = () => {
         Register: 'register',
         Jobs: 'jobs',
         JobDetails: 'jobs/:id',
+        JobEvents: 'job-events',
+        JobEventDetail: 'job-events/:eventId',
         Companies: 'companies',
         CompanyDetails: 'companies/:id',
         Services: 'services',
@@ -299,16 +361,44 @@ const AppNavigator = () => {
           options={{ headerShown: false }}
         />
         
-        {/* Auth Screens */}
+        {/* Auth Screens - Modal presentation */}
         <Stack.Screen 
           name="Login" 
           component={LoginScreen}
-          options={{ title: 'Login' }}
+          options={{ 
+            title: 'Login',
+            presentation: 'transparentModal',
+            cardStyle: { backgroundColor: 'transparent' },
+            cardOverlayEnabled: true,
+            detachPreviousScreen: false,
+            cardStyleInterpolator: ({ current: { progress } }) => ({
+              cardStyle: {
+                opacity: progress.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, 1],
+                }),
+              },
+            }),
+          }}
         />
         <Stack.Screen 
           name="Register" 
           component={RegisterScreen}
-          options={{ title: 'Register' }}
+          options={{ 
+            title: 'Register',
+            presentation: 'transparentModal',
+            cardStyle: { backgroundColor: 'transparent' },
+            cardOverlayEnabled: true,
+            detachPreviousScreen: false,
+            cardStyleInterpolator: ({ current: { progress } }) => ({
+              cardStyle: {
+                opacity: progress.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, 1],
+                }),
+              },
+            }),
+          }}
         />
         <Stack.Screen 
           name="AdminLogin" 
@@ -432,6 +522,18 @@ const AppNavigator = () => {
           component={JobAlertFormScreen}
           options={{ title: 'Create Job Alert' }}
         />
+        <Stack.Screen 
+          name="JobEvents" 
+          component={JobEventsScreen}
+          options={{ title: 'Job Events' }}
+        />
+        {/* Temporarily disabled - JobEventDetail screen
+        <Stack.Screen 
+          name="JobEventDetail" 
+          component={JobEventDetailScreen}
+          options={{ title: 'Event Details' }}
+        />
+        */}
         
         {/* Dashboard Screens */}
         <Stack.Screen 
@@ -731,6 +833,11 @@ const AppNavigator = () => {
           name="SocialUpdates" 
           component={SocialUpdatesScreen}
           options={{ title: 'Social Updates' }}
+        />
+        <Stack.Screen 
+          name="PostDetail" 
+          component={PostDetailScreen}
+          options={{ title: 'Post Details' }}
         />
         <Stack.Screen 
           name="CreateSocialPost" 

@@ -581,7 +581,11 @@ userSchema.methods.isEmployerVerifiedUser = function() {
 userSchema.methods.canPostJobs = function() {
   if (this.userType === 'admin' || this.userType === 'superadmin') return true;
   if (this.userType === 'employer') {
-    // Check if KYC is verified
+    // If admin has verified the employer, allow posting jobs (bypasses KYC requirement)
+    if (this.isEmployerVerifiedUser()) {
+      return true;
+    }
+    // Otherwise, require KYC to be verified
     if (this.kycStatus !== 'verified') return false;
     return this.isEmployerVerifiedUser();
   }

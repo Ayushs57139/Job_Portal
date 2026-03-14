@@ -13,6 +13,7 @@ export const colors = {
   
   // Text
   text: '#2D3748',
+  textDark: '#1A202C',
   textSecondary: '#718096',
   textLight: '#A0AEC0',
   textWhite: '#ffffff',
@@ -153,6 +154,17 @@ export const shadows = {
       shadowOpacity: 0.2,
       shadowRadius: 16,
       elevation: 8,
+    }),
+  },
+  xl: {
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 12px 24px rgba(0, 0, 0, 0.18)',
+    } : {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 12 },
+      shadowOpacity: 0.18,
+      shadowRadius: 24,
+      elevation: 12,
     }),
   },
 };

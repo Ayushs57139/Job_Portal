@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -34,11 +34,27 @@ const isWeb = getPlatform().OS === 'web';
 
 const CompaniesScreen = () => {
   const responsive = useResponsive();
-  const isPhone = responsive.width <= 480;
-  const isMobile = responsive.isMobile;
-  const isTablet = responsive.isTablet;
-  const isDesktop = responsive.isDesktop;
-  const dynamicStyles = getStyles(isPhone, isMobile, isTablet, isDesktop, responsive.width);
+  const { width } = responsive;
+  const isXsPhone = width <= 320;
+  const isSmallPhone = width > 320 && width <= 375;
+  const isPhone = width > 375 && width <= 414;
+  const isLargePhone = width > 414 && width <= 480;
+  const isMobile = width <= 480;
+  const isSmallTablet = width > 480 && width <= 600;
+  const isTablet = width > 600 && width <= 768;
+  const isLargeTablet = width > 768 && width <= 834;
+  const isTabletDevice = width > 480 && width <= 834;
+  const isSmallLaptop = width > 834 && width <= 1024;
+  const isLaptop = width > 1024 && width <= 1200;
+  const isDesktop = width > 1200 && width <= 1440;
+  const isLargeDesktop = width > 1440;
+  const isDesktopDevice = width > 834;
+  
+  const dynamicStyles = useMemo(() => getStyles(
+    isXsPhone, isSmallPhone, isPhone, isLargePhone, isMobile,
+    isSmallTablet, isTablet, isLargeTablet, isTabletDevice,
+    isSmallLaptop, isLaptop, isDesktop, isLargeDesktop, isDesktopDevice, width
+  ), [isXsPhone, isSmallPhone, isPhone, isLargePhone, isMobile, isSmallTablet, isTablet, isLargeTablet, isTabletDevice, isSmallLaptop, isLaptop, isDesktop, isLargeDesktop, isDesktopDevice, width]);
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -84,9 +100,25 @@ const CompaniesScreen = () => {
       if (industryToUse && industryToUse !== 'all') {
         filters.industry = industryToUse;
       }
+      
+      // Set a higher limit to get more companies
+      filters.limit = 100;
 
       const response = await api.getCompanies(filters);
-      const companiesData = response.companies || [];
+      // Handle different response structures
+      let companiesData = [];
+      if (response) {
+        if (Array.isArray(response.companies)) {
+          companiesData = response.companies;
+        } else if (Array.isArray(response.data)) {
+          companiesData = response.data;
+        } else if (Array.isArray(response)) {
+          companiesData = response;
+        } else if (response.companies && !Array.isArray(response.companies)) {
+          // If companies is a single object, wrap it in an array
+          companiesData = [response.companies];
+        }
+      }
       
       // Add rating for better display
       const companiesWithData = companiesData.map((company) => ({
@@ -187,6 +219,7 @@ const CompaniesScreen = () => {
         <View style={dynamicStyles.searchSection}>
           <View style={dynamicStyles.searchRow}>
             <View style={dynamicStyles.searchInputWrapper}>
+              <Ionicons name="search-outline" size={isMobile ? 18 : (isTabletDevice ? 20 : 22)} color={colors.textSecondary} />
               <TextInput
                 style={dynamicStyles.searchInput}
                 placeholder="Search companies by name..."
@@ -207,14 +240,14 @@ const CompaniesScreen = () => {
                 </Text>
                 <Ionicons 
                   name={showIndustryDropdown ? "chevron-up" : "chevron-down"} 
-                  size={isPhone ? 18 : 20} 
+                  size={isMobile ? 18 : (isTabletDevice ? 20 : 22)} 
                   color={colors.text} 
                 />
               </TouchableOpacity>
             </View>
 
-            <TouchableOpacity style={dynamicStyles.searchButton} onPress={handleSearch}>
-              <Ionicons name="search" size={isPhone ? 18 : 20} color={colors.textWhite} />
+            <TouchableOpacity style={dynamicStyles.searchButton} onPress={handleSearch} activeOpacity={0.8}>
+              <Ionicons name="search" size={isMobile ? 18 : (isTabletDevice ? 20 : 22)} color={colors.textWhite} />
               <Text style={dynamicStyles.searchButtonText}>Search</Text>
             </TouchableOpacity>
           </View>
@@ -243,8 +276,8 @@ const CompaniesScreen = () => {
                         ? 'flash'
                         : 'grid'
                     }
-                    size={isPhone ? 12 : 14}
-                    color={isActive ? '#4338CA' : colors.textSecondary}
+                    size={isMobile ? 12 : (isTabletDevice ? 14 : 16)}
+                    color={isActive ? colors.primary : colors.textSecondary}
                   />
                   <Text
                     style={[
@@ -269,7 +302,7 @@ const CompaniesScreen = () => {
                   handleSearch();
                 }}
               >
-                <Ionicons name="sparkles" size={isPhone ? 12 : 14} color="#6366F1" />
+                <Ionicons name="sparkles" size={isMobile ? 12 : (isTabletDevice ? 14 : 16)} color={colors.primary} />
                 <Text style={dynamicStyles.trendingTagText}>{tag}</Text>
               </TouchableOpacity>
             ))}
@@ -315,8 +348,8 @@ const CompaniesScreen = () => {
                   >
                     <Ionicons 
                       name={industry.icon} 
-                      size={isPhone ? 16 : 18} 
-                      color={selectedIndustry === industry.id ? '#6366F1' : colors.text} 
+                      size={isMobile ? 16 : (isTabletDevice ? 18 : 20)} 
+                      color={selectedIndustry === industry.id ? colors.primary : colors.text} 
                     />
                     <Text 
                       style={[
@@ -375,7 +408,7 @@ const CompaniesScreen = () => {
         ) : !loading ? (
           <View style={dynamicStyles.emptyContainer}>
             <View style={dynamicStyles.emptyIconContainer}>
-              <Ionicons name="business-outline" size={isPhone ? 64 : (isMobile ? 72 : 80)} color={colors.primary} />
+              <Ionicons name="business-outline" size={isMobile ? 64 : (isTabletDevice ? 72 : 80)} color={colors.primary} />
             </View>
             <Text style={dynamicStyles.emptyText}>No Companies Found</Text>
             <Text style={dynamicStyles.emptySubtext}>
@@ -390,7 +423,7 @@ const CompaniesScreen = () => {
                 handleSearch();
               }}
             >
-              <Ionicons name="refresh-outline" size={isPhone ? 18 : 20} color={colors.textWhite} />
+              <Ionicons name="refresh-outline" size={isMobile ? 18 : (isTabletDevice ? 20 : 22)} color={colors.textWhite} />
               <Text style={dynamicStyles.clearButtonText}>Clear Filters</Text>
             </TouchableOpacity>
           </View>
@@ -400,19 +433,44 @@ const CompaniesScreen = () => {
   );
 };
 
-const getStyles = (isPhone, isMobile, isTablet, isDesktop, width) => {
+const getStyles = (
+  isXsPhone, isSmallPhone, isPhone, isLargePhone, isMobile,
+  isSmallTablet, isTablet, isLargeTablet, isTabletDevice,
+  isSmallLaptop, isLaptop, isDesktop, isLargeDesktop, isDesktopDevice, width
+) => {
   // Safely get Platform - lazy evaluation
-const getPlatform = () => {
-  try {
-    const { Platform } = require('react-native');
-    if (Platform && typeof Platform.OS !== 'undefined') {
-      return Platform;
-    }
-  } catch (e) {}
-  return { OS: 'android' };
-};
+  const getPlatform = () => {
+    try {
+      const { Platform } = require('react-native');
+      if (Platform && typeof Platform.OS !== 'undefined') {
+        return Platform;
+      }
+    } catch (e) {}
+    return { OS: 'android' };
+  };
 
-const isWeb = getPlatform().OS === 'web';
+  const isWeb = getPlatform().OS === 'web';
+  const horizontalPadding = isXsPhone ? 8 : isSmallPhone ? 10 : isMobile ? 12 : isSmallTablet ? 16 : isTablet ? 20 : isLargeTablet ? 24 : isSmallLaptop ? 32 : isLaptop ? 40 : 48;
+  
+  // Calculate grid columns
+  const getGridColumns = () => {
+    if (isLargeDesktop || isDesktop) return 4; // desktop: 4 cards
+    if (isLaptop) return 3;
+    if (isSmallLaptop) return 2;
+    if (isTabletDevice) return 2;
+    return 1;
+  };
+  
+  const gridColumns = getGridColumns();
+  const containerWidth = isDesktopDevice
+    ? (isLargeDesktop ? 1600 : isDesktop ? 1400 : 1200)
+    : width;
+  const cardGap = isMobile ? spacing.md : isTabletDevice ? spacing.lg : spacing.xl;
+  // Use CSS calc so desktop reliably renders 4 cards without leftover space
+  const cardWidth = isDesktopDevice
+    ? `calc((100% - ${(gridColumns - 1) * cardGap}px) / ${gridColumns})`
+    : '100%';
+  
   return StyleSheet.create({
   container: {
     flex: 1,
@@ -425,36 +483,41 @@ const isWeb = getPlatform().OS === 'web';
     flexGrow: 1,
   },
   heroSection: {
-    paddingVertical: isPhone ? spacing.xl : (isMobile ? spacing.xxl : spacing.xxl * 1.5),
-    paddingHorizontal: isPhone ? spacing.md : (isMobile ? spacing.lg : spacing.lg),
+    paddingVertical: isMobile ? spacing.xl : spacing.xxl,
+    paddingHorizontal: isMobile ? horizontalPadding : (isTabletDevice ? spacing.lg : spacing.xl),
     alignItems: 'center',
     borderBottomLeftRadius: borderRadius.xl,
     borderBottomRightRadius: borderRadius.xl,
+    maxWidth: isDesktopDevice ? (isLargeDesktop ? 1600 : isDesktop ? 1400 : 1200) : '100%',
+    alignSelf: 'center',
+    width: '100%',
     ...(isWeb && {
-      marginHorizontal: spacing.lg,
       marginBottom: spacing.lg,
     }),
   },
   heroTitle: {
-    fontSize: isPhone ? 24 : (isMobile ? 28 : (isTablet ? 32 : (isWeb ? 40 : 32))),
+    fontSize: isMobile ? 26 : (isTabletDevice ? 32 : (isDesktopDevice ? 42 : 36)),
     fontWeight: '700',
     color: colors.text,
     textAlign: 'center',
     marginBottom: spacing.sm,
+    paddingHorizontal: isMobile ? spacing.md : 0,
   },
   heroSubtitle: {
-    fontSize: isWeb ? 17 : 15,
+    fontSize: isMobile ? 15 : (isTabletDevice ? 16 : 18),
     color: colors.textSecondary,
     textAlign: 'center',
     opacity: 0.95,
-    maxWidth: 600,
+    maxWidth: 700,
     marginBottom: spacing.lg,
+    paddingHorizontal: isMobile ? spacing.md : spacing.lg,
   },
   heroStatsRow: {
-    flexDirection: isWeb ? 'row' : 'column',
+    flexDirection: isMobile ? 'column' : 'row',
     gap: spacing.md,
     width: '100%',
     maxWidth: 900,
+    marginTop: spacing.sm,
   },
   heroStatCard: {
     flex: 1,
@@ -478,31 +541,44 @@ const isWeb = getPlatform().OS === 'web';
   },
   searchSection: {
     backgroundColor: colors.cardBackground,
-    padding: spacing.lg,
-    marginHorizontal: isWeb ? spacing.lg : spacing.sm,
+    padding: isMobile ? spacing.md : (isTabletDevice ? spacing.lg : spacing.xl),
+    marginHorizontal: isMobile ? horizontalPadding : (isTabletDevice ? spacing.lg : spacing.xl),
     marginTop: -spacing.xl,
     borderRadius: borderRadius.xl,
-    ...shadows.lg,
+    ...shadows.card,
+    maxWidth: isDesktopDevice ? 1400 : '100%',
+    alignSelf: 'center',
+    width: '100%',
   },
   searchRow: {
-    flexDirection: isWeb && width > 768 ? 'row' : 'column',
-    gap: spacing.sm,
+    flexDirection: isDesktopDevice ? 'row' : 'column',
+    gap: isMobile ? spacing.sm : spacing.md,
+    alignItems: isDesktopDevice ? 'center' : 'stretch',
   },
   searchInputWrapper: {
-    flex: isWeb && width > 768 ? 2 : 1,
+    flex: isDesktopDevice ? 2 : 1,
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: colors.background,
     borderRadius: borderRadius.md,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: isMobile ? spacing.md : spacing.lg,
     borderWidth: 1,
     borderColor: colors.border,
+    gap: spacing.sm,
+    minHeight: isMobile ? 44 : (isTabletDevice ? 48 : 50),
   },
   searchInput: {
-    paddingVertical: spacing.md,
-    fontSize: 15,
+    flex: 1,
+    paddingVertical: isMobile ? spacing.sm : spacing.md,
+    fontSize: isMobile ? 14 : 15,
     color: colors.text,
   },
   dropdownWrapper: {
-    flex: isWeb && width > 768 ? 1 : 1,
+    flex: isDesktopDevice ? 1.2 : 1,
+    position: 'relative',
+    zIndex: 99999,
+    elevation: 15,
+    minWidth: isDesktopDevice ? 180 : '100%',
   },
   dropdown: {
     flexDirection: 'row',
@@ -510,15 +586,17 @@ const isWeb = getPlatform().OS === 'web';
     justifyContent: 'space-between',
     backgroundColor: colors.background,
     borderRadius: borderRadius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
+    paddingHorizontal: isMobile ? spacing.md : spacing.lg,
+    paddingVertical: isMobile ? spacing.sm : spacing.md,
     borderWidth: 1,
     borderColor: colors.border,
+    minHeight: isMobile ? 44 : (isTabletDevice ? 48 : 50),
   },
   dropdownText: {
-    fontSize: 15,
+    fontSize: isMobile ? 14 : 15,
     color: colors.text,
     flex: 1,
+    marginRight: spacing.xs,
   },
   quickFilters: {
     flexDirection: 'row',
@@ -539,15 +617,16 @@ const isWeb = getPlatform().OS === 'web';
   },
   quickFilterChipActive: {
     backgroundColor: '#EEF2FF',
-    borderColor: '#C7D2FE',
+    borderColor: colors.primary,
   },
   quickFilterText: {
-    fontSize: 13,
+    fontSize: isMobile ? 12 : (isTabletDevice ? 13 : 14),
     color: colors.textSecondary,
     fontWeight: '500',
   },
   quickFilterTextActive: {
-    color: '#4338CA',
+    color: colors.primary,
+    fontWeight: '600',
   },
   trendingTags: {
     flexDirection: 'row',
@@ -589,19 +668,22 @@ const isWeb = getPlatform().OS === 'web';
   },
   dropdownMenuAbsolute: {
     position: 'absolute',
-    top: isWeb ? 220 : 200,
-    left: spacing.lg,
-    right: spacing.lg,
+    top: isDesktopDevice ? 240 : (isTabletDevice ? 220 : 200),
+    left: isMobile ? horizontalPadding : (isTabletDevice ? spacing.lg : spacing.xl),
+    right: isMobile ? horizontalPadding : (isTabletDevice ? spacing.lg : spacing.xl),
     backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.md,
-    maxHeight: isWeb ? 400 : 300,
+    borderRadius: borderRadius.lg,
+    maxHeight: isMobile ? 300 : (isTabletDevice ? 350 : 400),
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderLight,
     ...shadows.lg,
     elevation: 10,
+    ...(isWeb && {
+      boxShadow: '0 10px 25px rgba(0, 0, 0, 0.15)',
+    }),
   },
   dropdownScroll: {
-    maxHeight: isWeb ? 400 : 300,
+    maxHeight: isMobile ? 300 : (isTabletDevice ? 350 : 400),
   },
   dropdownItem: {
     flexDirection: 'row',
@@ -620,47 +702,64 @@ const isWeb = getPlatform().OS === 'web';
     color: colors.text,
   },
   dropdownItemTextSelected: {
-    color: '#6366F1',
+    color: colors.primary,
     fontWeight: '600',
   },
   searchButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#6366F1',
+    backgroundColor: colors.primary,
     borderRadius: borderRadius.md,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
+    paddingVertical: isMobile ? spacing.sm : spacing.md,
+    paddingHorizontal: isMobile ? spacing.md : (isTabletDevice ? spacing.lg : spacing.xl),
     gap: spacing.sm,
-    flex: isWeb && width > 768 ? 0.8 : 1,
+    flex: isDesktopDevice ? 0.8 : 1,
+    minWidth: isDesktopDevice ? 120 : '100%',
+    minHeight: isMobile ? 44 : (isTabletDevice ? 48 : 50),
+    ...shadows.sm,
+    ...(isWeb && {
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+    }),
   },
   searchButtonText: {
-    fontSize: 16,
+    fontSize: isMobile ? 14 : (isTabletDevice ? 15 : 16),
     fontWeight: '600',
     color: colors.textWhite,
   },
   loadingMessage: {
     backgroundColor: '#E0E7FF',
     borderRadius: borderRadius.md,
-    padding: spacing.md,
+    padding: isMobile ? spacing.sm : spacing.md,
     marginTop: spacing.md,
     alignItems: 'center',
   },
   loadingMessageText: {
-    fontSize: 15,
-    color: '#4F46E5',
+    fontSize: isMobile ? 14 : 15,
+    color: colors.primary,
     fontWeight: '500',
   },
   companiesSection: {
-    padding: isWeb ? spacing.xl : spacing.lg,
+    padding: isMobile ? horizontalPadding : (isTabletDevice ? spacing.lg : spacing.xl),
+    maxWidth: isDesktopDevice ? (isLargeDesktop ? 1600 : isDesktop ? 1400 : 1200) : '100%',
+    alignSelf: 'center',
+    width: '100%',
   },
   companiesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.lg,
+    gap: cardGap,
+    justifyContent: isDesktopDevice ? 'flex-start' : 'center',
+    alignItems: 'flex-start',
   },
   companyCardWrapper: {
-    width: isWeb && width > 1200 ? '31%' : isWeb && width > 768 ? '47%' : '100%',
+    width: cardWidth,
+    flexBasis: cardWidth,
+    alignSelf: 'stretch',
+    ...(isDesktopDevice && {
+      maxWidth: cardWidth,
+    }),
   },
   emptyContainer: {
     flex: 1,
@@ -694,16 +793,21 @@ const isWeb = getPlatform().OS === 'web';
   clearButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#6366F1',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
-    borderRadius: borderRadius.md,
+    backgroundColor: colors.primary,
+    paddingVertical: isMobile ? spacing.md : spacing.lg,
+    paddingHorizontal: isMobile ? spacing.lg : spacing.xl,
+    borderRadius: borderRadius.lg,
     marginTop: spacing.xl,
     gap: spacing.sm,
     ...shadows.sm,
+    minHeight: isMobile ? 44 : 48,
+    ...(isWeb && {
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+    }),
   },
   clearButtonText: {
-    fontSize: 16,
+    fontSize: isMobile ? 14 : 16,
     color: colors.textWhite,
     fontWeight: '600',
   },

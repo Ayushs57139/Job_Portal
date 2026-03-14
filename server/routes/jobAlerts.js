@@ -275,7 +275,7 @@ router.get('/', adminAuth, async (req, res) => {
             .sort(sort)
             .skip(skip)
             .limit(limit)
-            .populate('userId', 'name email userType')
+            .populate('userId', 'firstName lastName email userType userId')
             .lean();
 
         const total = await JobAlert.countDocuments(filter);
@@ -305,7 +305,7 @@ router.get('/', adminAuth, async (req, res) => {
 router.get('/:id', adminAuth, async (req, res) => {
     try {
         const jobAlert = await JobAlert.findById(req.params.id)
-            .populate('userId', 'name email userType');
+            .populate('userId', 'firstName lastName email userType userId');
 
         if (!jobAlert) {
             return res.status(404).json({
@@ -520,7 +520,7 @@ router.post('/bulk-import', adminAuth, upload.single('csvFile'), async (req, res
 router.get('/export/csv', adminAuth, async (req, res) => {
     try {
         const jobAlerts = await JobAlert.find({})
-            .populate('userId', 'name email userType')
+            .populate('userId', 'firstName lastName email userType userId')
             .lean();
 
         if (jobAlerts.length === 0) {
@@ -546,8 +546,8 @@ router.get('/export/csv', adminAuth, async (req, res) => {
             'Email': alert.email,
             'Mobile': alert.mobile,
             'Alert Name': alert.alertName,
-            'User ID': alert.userId ? alert.userId._id : 'Anonymous',
-            'User Name': alert.userId ? alert.userId.name : 'Anonymous',
+            'User ID': alert.userId ? (alert.userId.userId || alert.userId._id) : 'Anonymous',
+            'User Name': alert.userId ? `${alert.userId.firstName || ''} ${alert.userId.lastName || ''}`.trim() : 'Anonymous',
             'User Type': alert.userId ? alert.userId.userType : 'Anonymous',
             'Is Active': alert.isActive,
             'Notification Count': alert.notificationCount,

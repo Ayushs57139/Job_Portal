@@ -55,21 +55,26 @@ const getStyles = (
   },
   hero: {
     paddingVertical: isMobile ? spacing.xl : spacing.xxl,
-    paddingHorizontal: isMobile ? spacing.md : spacing.lg,
+    paddingHorizontal: isMobile ? horizontalPadding : (isTabletDevice ? spacing.lg : spacing.xl),
     alignItems: 'center',
     borderBottomLeftRadius: borderRadius.xl,
     borderBottomRightRadius: borderRadius.xl,
+    maxWidth: isDesktopDevice ? 1600 : '100%',
+    alignSelf: 'center',
+    width: '100%',
     ...(isWeb && {
-      marginHorizontal: spacing.lg,
       marginBottom: spacing.lg,
     }),
   },
   searchContainerGradient: {
-    marginHorizontal: isPhone ? spacing.sm : spacing.lg,
+    marginHorizontal: isMobile ? horizontalPadding : (isTabletDevice ? spacing.lg : spacing.xl),
     marginTop: -spacing.xl,
     borderRadius: borderRadius.xl,
     ...shadows.lg,
     padding: 1,
+    maxWidth: isDesktopDevice ? 1400 : '100%',
+    alignSelf: 'center',
+    width: '100%',
   },
   heroTitle: {
     fontSize: isMobile ? 26 : (isTablet ? 32 : 42),
@@ -319,37 +324,48 @@ const getStyles = (
     color: colors.text,
   },
   contentContainer: {
-    flexDirection: isWeb && width > 768 ? 'row' : 'column',
+    flexDirection: isDesktopDevice ? 'row' : 'column',
     paddingVertical: spacing.lg,
-    paddingHorizontal: 0,
-    gap: 0,
+    paddingHorizontal: isMobile ? horizontalPadding : 0,
+    gap: isDesktopDevice ? spacing.lg : 0,
     alignItems: 'flex-start',
     zIndex: 1,
     position: 'relative',
+    maxWidth: isDesktopDevice ? (isLargeDesktop ? 1600 : isDesktop ? 1400 : 1200) : '100%',
+    alignSelf: 'center',
+    width: '100%',
+    ...(isWeb && {
+      marginHorizontal: 'auto',
+    }),
   },
   sidebarWrapper: {
-    width: isWeb && width > 768 ? 300 : '100%',
-    marginRight: isWeb && width > 768 ? spacing.lg : 0,
-    ...(isWeb && width > 768 && {
+    width: isDesktopDevice ? (isLaptop ? 280 : isDesktop ? 300 : 320) : '100%',
+    marginRight: isDesktopDevice ? spacing.lg : 0,
+    ...(isWeb && isDesktopDevice && {
       position: 'sticky',
       top: spacing.xl,
       alignSelf: 'flex-start',
+      maxHeight: 'calc(100vh - 120px)',
+      overflowY: 'auto',
     }),
   },
   sidebar: {
     backgroundColor: colors.cardBackground,
     borderRadius: borderRadius.xl,
-    padding: spacing.lg,
+    padding: isMobile ? spacing.md : isTabletDevice ? spacing.lg : spacing.xl,
     borderWidth: 1,
     borderColor: colors.borderLight,
-    ...shadows.md,
-    gap: spacing.lg,
+    ...shadows.card,
+    gap: isMobile ? spacing.md : spacing.lg,
+    ...(isWeb && {
+      transition: 'all 0.2s ease',
+    }),
   },
   filterHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.lg,
+    marginBottom: isMobile ? spacing.md : spacing.lg,
     paddingBottom: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.borderLight,
@@ -358,47 +374,54 @@ const getStyles = (
     ...typography.h5,
     fontWeight: '700',
     color: colors.text,
+    fontSize: isMobile ? 18 : 20,
   },
   clearAllText: {
     ...typography.body2,
     color: colors.primary,
     fontWeight: '600',
+    fontSize: isMobile ? 13 : 14,
+    ...(isWeb && {
+      cursor: 'pointer',
+    }),
   },
   filterSection: {
-    marginBottom: spacing.md,
-    padding: spacing.md,
+    marginBottom: isMobile ? spacing.sm : spacing.md,
+    padding: isMobile ? spacing.sm : spacing.md,
     borderRadius: borderRadius.lg,
     borderWidth: 1,
     borderColor: colors.borderLight,
-    backgroundColor: colors.background,
+    backgroundColor: colors.backgroundSecondary,
   },
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.background,
-    borderRadius: borderRadius.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    marginBottom: spacing.md,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: isMobile ? spacing.sm : spacing.md,
+    paddingVertical: isMobile ? spacing.xs : spacing.sm,
+    marginBottom: spacing.sm,
     borderWidth: 1,
     borderColor: colors.border,
     gap: spacing.xs,
+    minHeight: isMobile ? 40 : 44,
   },
   filterSearchInput: {
     flex: 1,
     ...typography.body2,
-    fontSize: isPhone ? 13 : (isMobile ? 14 : 14),
+    fontSize: isMobile ? 13 : 14,
     color: colors.text,
     paddingVertical: spacing.xs,
   },
   filterOptionsContainer: {
-    maxHeight: isPhone ? 200 : (isMobile ? 250 : 300),
+    maxHeight: isMobile ? 180 : isTabletDevice ? 250 : 300,
   },
   filterSectionTitle: {
     ...typography.body1,
     fontWeight: '700',
     color: colors.text,
-    marginBottom: spacing.md,
+    marginBottom: isMobile ? spacing.sm : spacing.md,
+    fontSize: isMobile ? 14 : 15,
   },
   radioOption: {
     flexDirection: 'row',
@@ -501,9 +524,10 @@ const getStyles = (
   },
   jobsListContainer: {
     flex: 1,
-    paddingLeft: isWeb && width > 768 ? spacing.lg : spacing.md,
-    paddingRight: isWeb && width > 768 ? spacing.lg : spacing.md,
+    paddingLeft: isDesktopDevice ? spacing.lg : (isMobile ? horizontalPadding : spacing.md),
+    paddingRight: isDesktopDevice ? spacing.lg : (isMobile ? horizontalPadding : spacing.md),
     gap: spacing.md,
+    width: '100%',
     ...(isWeb && {
       display: 'flex',
       flexDirection: 'column',
@@ -512,7 +536,7 @@ const getStyles = (
   },
   jobCardWrapper: {
     width: '100%',
-    maxWidth: 900,
+    maxWidth: isDesktopDevice ? 900 : '100%',
   },
   resultsCount: {
     ...typography.body1,
@@ -552,61 +576,113 @@ const getStyles = (
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.primary,
-    borderRadius: borderRadius.md,
-    paddingVertical: isPhone ? spacing.sm : spacing.md,
-    paddingHorizontal: isPhone ? spacing.md : spacing.lg,
+    borderRadius: borderRadius.lg,
+    paddingVertical: isMobile ? spacing.md : spacing.lg,
+    paddingHorizontal: isMobile ? spacing.lg : spacing.xl,
     gap: spacing.sm,
     marginBottom: spacing.md,
+    marginHorizontal: isMobile ? horizontalPadding : spacing.lg,
     zIndex: 1,
-    elevation: 1,
+    elevation: 2,
+    ...shadows.sm,
+    position: 'relative',
+    minHeight: isMobile ? 44 : 48,
+    ...(isWeb && {
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+      userSelect: 'none',
+    }),
   },
   mobileFilterText: {
     ...typography.button,
     color: colors.textWhite,
     fontWeight: '600',
+    fontSize: isMobile ? 15 : 16,
+  },
+  filterBadge: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    backgroundColor: colors.error,
+    borderRadius: borderRadius.full,
+    width: isMobile ? 20 : 22,
+    height: isMobile ? 20 : 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: colors.cardBackground,
+    zIndex: 2,
+  },
+  filterBadgeText: {
+    color: colors.textWhite,
+    fontSize: isMobile ? 10 : 11,
+    fontWeight: '700',
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: colors.overlay,
     justifyContent: 'flex-end',
+    ...(isWeb && {
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      zIndex: 9999,
+    }),
   },
   modalContent: {
     backgroundColor: colors.cardBackground,
     borderTopLeftRadius: borderRadius.xl,
     borderTopRightRadius: borderRadius.xl,
-    maxHeight: '80%',
+    maxHeight: isMobile ? '90%' : '85%',
+    ...(isWeb && {
+      maxWidth: isDesktopDevice ? 600 : '100%',
+      marginHorizontal: isDesktopDevice ? 'auto' : 0,
+    }),
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: spacing.lg,
+    padding: isMobile ? spacing.md : spacing.lg,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.borderLight,
+    ...shadows.sm,
   },
   modalTitle: {
     ...typography.h5,
     fontWeight: '700',
     color: colors.text,
+    fontSize: isMobile ? 20 : 22,
   },
   modalScroll: {
-    maxHeight: 500,
+    maxHeight: isMobile ? 500 : 600,
+    paddingHorizontal: isMobile ? spacing.md : spacing.lg,
   },
   modalFooter: {
-    padding: spacing.lg,
+    padding: isMobile ? spacing.md : spacing.lg,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
+    borderTopColor: colors.borderLight,
+    backgroundColor: colors.backgroundSecondary,
   },
   modalApplyButton: {
     backgroundColor: colors.primary,
-    borderRadius: borderRadius.md,
-    paddingVertical: spacing.md,
+    borderRadius: borderRadius.lg,
+    paddingVertical: isMobile ? spacing.md : spacing.lg,
     alignItems: 'center',
+    minHeight: isMobile ? 44 : 48,
+    ...shadows.sm,
+    ...(isWeb && {
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+    }),
   },
   modalApplyText: {
     ...typography.button,
     color: colors.textWhite,
     fontWeight: '600',
+    fontSize: isMobile ? 15 : 16,
   },
   experienceModalOverlay: {
     flex: 1,
@@ -724,9 +800,24 @@ const JobsScreen = ({ route }) => {
   // Filter states - Initialize from route params if available
   const [datePosted, setDatePosted] = useState('all');
   const [minSalary, setMinSalary] = useState(0);
-  const [workMode, setWorkMode] = useState(route?.params?.workMode ? [route.params.workMode] : []);
-  const [workType, setWorkType] = useState(route?.params?.jobType ? [route.params.jobType] : []);
-  const [workShift, setWorkShift] = useState([]);
+  const [workMode, setWorkMode] = useState(() => {
+    if (route?.params?.filterType === 'workMode' && route?.params?.filterValue) {
+      return [route.params.filterValue];
+    }
+    return route?.params?.workMode ? [route.params.workMode] : [];
+  });
+  const [workType, setWorkType] = useState(() => {
+    if (route?.params?.filterType === 'workType' && route?.params?.filterValue) {
+      return [route.params.filterValue];
+    }
+    return route?.params?.jobType ? [route.params.jobType] : [];
+  });
+  const [workShift, setWorkShift] = useState(() => {
+    if (route?.params?.filterType === 'workShift' && route?.params?.filterValue) {
+      return [route.params.filterValue];
+    }
+    return [];
+  });
   const [sortBy, setSortBy] = useState('relevant');
   
   // Industries and Departments filters
@@ -777,10 +868,6 @@ const JobsScreen = ({ route }) => {
   ];
 
   useEffect(() => {
-    // Apply filters from route params
-    if (filterType && filterValue) {
-      applyRouteFilter();
-    }
     loadMasterData();
     loadJobs();
   }, []);
@@ -857,8 +944,25 @@ const JobsScreen = ({ route }) => {
         if (locationQuery) filters.location = locationQuery;
 
         // Apply active filters
-        if (workMode.length > 0) filters.workMode = workMode.join(',');
-        if (workType.length > 0) filters.workType = workType.join(',');
+        if (workMode.length > 0) {
+          // Map frontend workMode values to backend values
+          const mappedWorkMode = workMode.map(mode => {
+            if (mode === 'wfh') return 'remote';
+            if (mode === 'office') return 'office';
+            if (mode === 'field') return 'hybrid';
+            return mode;
+          });
+          filters.workMode = mappedWorkMode.join(',');
+        }
+        if (workType.length > 0) {
+          // Map frontend workType values to backend jobType values
+          const mappedJobType = workType.map(type => {
+            if (type === 'fulltime') return 'full-time';
+            if (type === 'parttime') return 'part-time';
+            return type;
+          });
+          filters.jobType = mappedJobType.join(',');
+        }
         if (workShift.length > 0) filters.workShift = workShift.join(',');
         if (selectedExperience !== 'All Experience') filters.experience = selectedExperience;
         if (selectedIndustries.length > 0) filters.industries = selectedIndustries.join(',');
@@ -931,20 +1035,27 @@ const JobsScreen = ({ route }) => {
           filteredJobs = filteredJobs.filter(job => {
             switch (filterType) {
               case 'workMode':
-                return job.workMode?.toLowerCase() === filterValue;
+                const workModeValue = filterValue === 'wfh' ? 'remote' : (filterValue === 'field' ? 'hybrid' : filterValue);
+                return job.workMode?.toLowerCase() === workModeValue?.toLowerCase() ||
+                       job.jobModeType?.toLowerCase() === filterValue?.toLowerCase();
               case 'workType':
-                return job.jobType?.toLowerCase().includes(filterValue) || 
-                       job.workType?.toLowerCase() === filterValue;
+                const jobTypeValue = filterValue === 'fulltime' ? 'full-time' : (filterValue === 'parttime' ? 'part-time' : filterValue);
+                return job.jobType?.toLowerCase() === jobTypeValue?.toLowerCase() ||
+                       job.jobType?.toLowerCase().includes(filterValue?.toLowerCase()) ||
+                       job.workType?.toLowerCase() === filterValue?.toLowerCase() ||
+                       job.employmentType?.toLowerCase() === filterValue?.toLowerCase();
               case 'workShift':
-                return job.workShift?.toLowerCase() === filterValue;
+                return job.workShift?.toLowerCase() === filterValue?.toLowerCase() ||
+                       job.jobShiftType?.toLowerCase() === filterValue?.toLowerCase();
               case 'experience':
                 if (filterValue === 'fresher') {
                   return job.experienceRequired === '0-1 year' || 
-                         job.experienceRequired?.toLowerCase().includes('fresher');
+                         job.experienceRequired?.toLowerCase().includes('fresher') ||
+                         job.experienceLevel?.toLowerCase() === 'fresher';
                 }
                 return true;
               case 'gender':
-                return job.preferredGender?.toLowerCase() === filterValue || 
+                return job.preferredGender?.toLowerCase() === filterValue?.toLowerCase() || 
                        !job.preferredGender;
               default:
                 return true;
@@ -1031,7 +1142,7 @@ const JobsScreen = ({ route }) => {
   };
 
   const renderHeroSection = () => {
-    const dynamicStyles = getStyles(isPhone, isMobile, isTablet, isDesktop, responsive.width);
+    const dynamicStyles = mainStyles;
     return (
     <View style={dynamicStyles.hero}>
       <Text style={dynamicStyles.heroTitle}>{activeFilter || 'All Jobs'}</Text>
@@ -1073,7 +1184,7 @@ const JobsScreen = ({ route }) => {
   };
 
   const renderSearchBar = () => {
-    const dynamicStyles = getStyles(isPhone, isMobile, isTablet, isDesktop, responsive.width);
+    const dynamicStyles = mainStyles;
     return (
       <View style={dynamicStyles.searchContainerGradient}>
       <View style={dynamicStyles.searchContainer}>
@@ -1191,7 +1302,7 @@ const JobsScreen = ({ route }) => {
   };
 
   const renderSidebarFilters = () => {
-    const dynamicStyles = getStyles(isPhone, isMobile, isTablet, isDesktop, responsive.width);
+    const dynamicStyles = mainStyles;
     return (
     <View style={dynamicStyles.sidebar}>
       <View style={dynamicStyles.filterHeader}>
@@ -1421,7 +1532,7 @@ const JobsScreen = ({ route }) => {
   };
 
   const renderJobsList = () => {
-    const dynamicStyles = getStyles(isPhone, isMobile, isTablet, isDesktop, responsive.width);
+    const dynamicStyles = mainStyles;
     return (
     <View style={dynamicStyles.jobsListContainer}>
       {loading ? (
@@ -1477,7 +1588,11 @@ const JobsScreen = ({ route }) => {
   };
 
   const renderFilterModal = () => {
-    const dynamicStyles = getStyles(isPhone, isMobile, isTablet, isDesktop, responsive.width);
+    const dynamicStyles = getStyles(
+      isXsPhone, isSmallPhone, isPhone, isLargePhone, isMobile,
+      isSmallTablet, isTablet, isLargeTablet, isTabletDevice,
+      isSmallLaptop, isLaptop, isDesktop, isLargeDesktop, isDesktopDevice, width
+    );
     return (
     <Modal
       visible={showFilterModal}
@@ -1489,15 +1604,259 @@ const JobsScreen = ({ route }) => {
         <View style={dynamicStyles.modalContent}>
           <View style={dynamicStyles.modalHeader}>
             <Text style={dynamicStyles.modalTitle}>Filters</Text>
-            <TouchableOpacity onPress={() => setShowFilterModal(false)}>
-              <Ionicons name="close" size={isPhone ? 20 : 24} color={colors.text} />
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+              <TouchableOpacity 
+                onPress={clearAllFilters}
+                style={{ padding: spacing.xs }}
+              >
+                <Text style={dynamicStyles.clearAllText}>Clear all</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                onPress={() => setShowFilterModal(false)}
+                style={{ padding: spacing.xs }}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="close" size={isMobile ? 22 : 24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
           </View>
-          <ScrollView style={dynamicStyles.modalScroll}>
-            {renderSidebarFilters()}
+          <ScrollView 
+            style={dynamicStyles.modalScroll}
+            showsVerticalScrollIndicator={false}
+            nestedScrollEnabled={true}
+          >
+            <View style={[dynamicStyles.sidebar, { padding: 0, borderWidth: 0, shadowOpacity: 0 }]}>
+              {/* Date Posted Filter */}
+              <View style={dynamicStyles.filterSection}>
+                <Text style={dynamicStyles.filterSectionTitle}>Date posted</Text>
+                {datePostedOptions.map((option) => (
+                  <TouchableOpacity
+                    key={option.id}
+                    style={dynamicStyles.radioOption}
+                    onPress={() => setDatePosted(option.id)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={dynamicStyles.radioButton}>
+                      {datePosted === option.id && <View style={dynamicStyles.radioButtonSelected} />}
+                    </View>
+                    <Text style={dynamicStyles.radioLabel}>{option.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Industries Filter */}
+              <View style={dynamicStyles.filterSection}>
+                <Text style={dynamicStyles.filterSectionTitle}>Industries</Text>
+                <View style={dynamicStyles.searchInputContainer}>
+                  <Ionicons name="search-outline" size={isMobile ? 16 : 18} color={colors.textSecondary} />
+                  <TextInput
+                    style={dynamicStyles.filterSearchInput}
+                    placeholder="Search industries..."
+                    value={industrySearchQuery}
+                    onChangeText={setIndustrySearchQuery}
+                    placeholderTextColor={colors.textLight}
+                  />
+                </View>
+                <ScrollView 
+                  style={dynamicStyles.filterOptionsContainer}
+                  nestedScrollEnabled={true}
+                  showsVerticalScrollIndicator={false}
+                >
+                  {industries
+                    .filter(industry => {
+                      const name = industry.name || industry;
+                      return name.toLowerCase().includes(industrySearchQuery.toLowerCase());
+                    })
+                    .map((industry, index) => {
+                      const industryName = industry.name || industry;
+                      const isSelected = selectedIndustries.includes(industryName);
+                      return (
+                        <TouchableOpacity
+                          key={index}
+                          style={dynamicStyles.checkboxOption}
+                          onPress={() => toggleIndustry(industryName)}
+                          activeOpacity={0.7}
+                        >
+                          <View style={dynamicStyles.checkbox}>
+                            {isSelected && (
+                              <Ionicons name="checkmark" size={isMobile ? 14 : 16} color={colors.primary} />
+                            )}
+                          </View>
+                          <Text style={dynamicStyles.checkboxLabel}>{industryName}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                </ScrollView>
+              </View>
+
+              {/* Departments Filter */}
+              <View style={dynamicStyles.filterSection}>
+                <Text style={dynamicStyles.filterSectionTitle}>Departments</Text>
+                <View style={dynamicStyles.searchInputContainer}>
+                  <Ionicons name="search-outline" size={isMobile ? 16 : 18} color={colors.textSecondary} />
+                  <TextInput
+                    style={dynamicStyles.filterSearchInput}
+                    placeholder="Search departments..."
+                    value={departmentSearchQuery}
+                    onChangeText={setDepartmentSearchQuery}
+                    placeholderTextColor={colors.textLight}
+                  />
+                </View>
+                <ScrollView 
+                  style={dynamicStyles.filterOptionsContainer}
+                  nestedScrollEnabled={true}
+                  showsVerticalScrollIndicator={false}
+                >
+                  {departments
+                    .filter(department => {
+                      const name = department.name || department;
+                      return name.toLowerCase().includes(departmentSearchQuery.toLowerCase());
+                    })
+                    .map((department, index) => {
+                      const departmentName = department.name || department;
+                      const isSelected = selectedDepartments.includes(departmentName);
+                      return (
+                        <TouchableOpacity
+                          key={index}
+                          style={dynamicStyles.checkboxOption}
+                          onPress={() => toggleDepartment(departmentName)}
+                          activeOpacity={0.7}
+                        >
+                          <View style={dynamicStyles.checkbox}>
+                            {isSelected && (
+                              <Ionicons name="checkmark" size={isMobile ? 14 : 16} color={colors.primary} />
+                            )}
+                          </View>
+                          <Text style={dynamicStyles.checkboxLabel}>{departmentName}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                </ScrollView>
+              </View>
+
+              {/* Salary Filter */}
+              <View style={dynamicStyles.filterSection}>
+                <Text style={dynamicStyles.filterSectionTitle}>Salary</Text>
+                <Text style={dynamicStyles.salaryLabel}>Minimum monthly salary</Text>
+                <View style={dynamicStyles.salaryDisplay}>
+                  <Text style={dynamicStyles.salaryValue}>₹{minSalary.toLocaleString()}</Text>
+                </View>
+                <View style={dynamicStyles.salaryMarkers}>
+                  <Text style={dynamicStyles.salaryMarkerText}>0</Text>
+                  <Text style={dynamicStyles.salaryMarkerText}>15 Lakhs</Text>
+                </View>
+                <View style={dynamicStyles.salaryButtons}>
+                  {[0, 20000, 40000, 60000, 80000, 100000].map((value) => (
+                    <TouchableOpacity
+                      key={value}
+                      style={[
+                        dynamicStyles.salaryButton,
+                        minSalary === value && dynamicStyles.salaryButtonActive,
+                      ]}
+                      onPress={() => setMinSalary(value)}
+                      activeOpacity={0.7}
+                    >
+                      <Text
+                        style={[
+                          dynamicStyles.salaryButtonText,
+                          minSalary === value && dynamicStyles.salaryButtonTextActive,
+                        ]}
+                      >
+                        ₹{value / 1000}K
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Work Mode Filter */}
+              <View style={dynamicStyles.filterSection}>
+                <Text style={dynamicStyles.filterSectionTitle}>Work Mode</Text>
+                {workModeOptions.map((option) => (
+                  <TouchableOpacity
+                    key={option.id}
+                    style={dynamicStyles.checkboxOption}
+                    onPress={() => toggleWorkMode(option.id)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={dynamicStyles.checkbox}>
+                      {workMode.includes(option.id) && (
+                        <Ionicons name="checkmark" size={isMobile ? 14 : 16} color={colors.primary} />
+                      )}
+                    </View>
+                    <Ionicons name={option.icon} size={isMobile ? 18 : 20} color={colors.textSecondary} />
+                    <Text style={dynamicStyles.checkboxLabel}>{option.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Work Type Filter */}
+              <View style={dynamicStyles.filterSection}>
+                <Text style={dynamicStyles.filterSectionTitle}>Work Type</Text>
+                {workTypeOptions.map((option) => (
+                  <TouchableOpacity
+                    key={option.id}
+                    style={dynamicStyles.checkboxOption}
+                    onPress={() => toggleWorkType(option.id)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={dynamicStyles.checkbox}>
+                      {workType.includes(option.id) && (
+                        <Ionicons name="checkmark" size={isMobile ? 14 : 16} color={colors.primary} />
+                      )}
+                    </View>
+                    <Ionicons name={option.icon} size={isMobile ? 18 : 20} color={colors.textSecondary} />
+                    <Text style={dynamicStyles.checkboxLabel}>{option.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Work Shift Filter */}
+              <View style={dynamicStyles.filterSection}>
+                <Text style={dynamicStyles.filterSectionTitle}>Work Shift</Text>
+                {workShiftOptions.map((option) => (
+                  <TouchableOpacity
+                    key={option.id}
+                    style={dynamicStyles.checkboxOption}
+                    onPress={() => toggleWorkShift(option.id)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={dynamicStyles.checkbox}>
+                      {workShift.includes(option.id) && (
+                        <Ionicons name="checkmark" size={isMobile ? 14 : 16} color={colors.primary} />
+                      )}
+                    </View>
+                    <Ionicons name={option.icon} size={isMobile ? 18 : 20} color={colors.textSecondary} />
+                    <Text style={dynamicStyles.checkboxLabel}>{option.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Sort By Filter */}
+              <View style={dynamicStyles.filterSection}>
+                <Text style={dynamicStyles.filterSectionTitle}>Sort By</Text>
+                {sortByOptions.map((option) => (
+                  <TouchableOpacity
+                    key={option.id}
+                    style={dynamicStyles.radioOption}
+                    onPress={() => setSortBy(option.id)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={dynamicStyles.radioButton}>
+                      {sortBy === option.id && <View style={dynamicStyles.radioButtonSelected} />}
+                    </View>
+                    <Text style={dynamicStyles.radioLabel}>{option.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
           </ScrollView>
           <View style={dynamicStyles.modalFooter}>
-            <TouchableOpacity style={dynamicStyles.modalApplyButton} onPress={() => setShowFilterModal(false)}>
+            <TouchableOpacity 
+              style={dynamicStyles.modalApplyButton} 
+              onPress={() => setShowFilterModal(false)}
+              activeOpacity={0.8}
+            >
               <Text style={dynamicStyles.modalApplyText}>Apply Filters</Text>
             </TouchableOpacity>
           </View>
@@ -1527,7 +1886,7 @@ const JobsScreen = ({ route }) => {
         {renderSearchBar()}
 
         <View style={mainStyles.contentContainer}>
-          {isWeb && responsive.width > 768 ? (
+          {isDesktopDevice ? (
             <>
               <View style={mainStyles.sidebarWrapper}>
                 {renderSidebarFilters()}
@@ -1538,15 +1897,21 @@ const JobsScreen = ({ route }) => {
             </>
           ) : (
             <>
-              {!isWeb && (
-                <TouchableOpacity
-                  style={mainStyles.mobileFilterButton}
-                  onPress={() => setShowFilterModal(true)}
-                >
-                  <Ionicons name="filter" size={isPhone ? 18 : 20} color={colors.textWhite} />
-                  <Text style={mainStyles.mobileFilterText}>Filters</Text>
-                </TouchableOpacity>
-              )}
+              <TouchableOpacity
+                style={mainStyles.mobileFilterButton}
+                onPress={() => setShowFilterModal(true)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="filter" size={isMobile ? 18 : 20} color={colors.textWhite} />
+                <Text style={mainStyles.mobileFilterText}>Filters</Text>
+                {(selectedIndustries.length > 0 || selectedDepartments.length > 0 || workMode.length > 0 || workType.length > 0 || workShift.length > 0 || minSalary > 0 || datePosted !== 'all' || sortBy !== 'relevant') && (
+                  <View style={mainStyles.filterBadge}>
+                    <Text style={mainStyles.filterBadgeText}>
+                      {[selectedIndustries.length, selectedDepartments.length, workMode.length, workType.length, workShift.length, minSalary > 0 ? 1 : 0, datePosted !== 'all' ? 1 : 0, sortBy !== 'relevant' ? 1 : 0].reduce((a, b) => a + b, 0)}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
               {renderJobsList()}
             </>
           )}

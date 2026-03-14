@@ -6,6 +6,7 @@ import Input from '../../components/Input';
 import Button from '../../components/Button';
 import { DropdownField, MultiSelectField, AutoCompleteField } from '../../components/FormFields';
 import UserSidebar from '../../components/UserSidebar';
+import CandidateLabels from '../../components/CandidateLabels';
 import api from '../../config/api';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useResponsive } from '../../utils/responsive';
@@ -37,6 +38,7 @@ const UserProfileScreen = ({ navigation }) => {
   const [datePickerMode, setDatePickerMode] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(isWeb && !isPhone);
   const [currentUser, setCurrentUser] = useState(null);
+  const [userLabels, setUserLabels] = useState([]);
   
   // Form Data
   const [formData, setFormData] = useState({
@@ -406,6 +408,7 @@ const UserProfileScreen = ({ navigation }) => {
       const response = await api.getUserProfile();
       if (response.success && response.profile) {
         const profile = response.profile;
+        setUserLabels(profile.labels || []);
         
         // Transform profile data to form data
       setFormData({
@@ -2207,7 +2210,12 @@ const UserProfileScreen = ({ navigation }) => {
               <View style={dynamicStyles.avatar}>
                 <Text style={dynamicStyles.avatarText}>{getUserInitials()}</Text>
               </View>
-              <Text style={dynamicStyles.userName}>{currentUser?.firstName || 'User'}</Text>
+              <View style={dynamicStyles.userNameContainer}>
+                <Text style={dynamicStyles.userName}>{currentUser?.firstName || 'User'}</Text>
+                {userLabels.length > 0 && (
+                  <CandidateLabels labels={userLabels} compact={true} style={dynamicStyles.userLabels} />
+                )}
+              </View>
             </View>
             <TouchableOpacity style={dynamicStyles.logoutButtonHeader} onPress={handleLogout}>
               <Ionicons name="arrow-forward" size={isPhone ? 14 : 16} color="#FFFFFF" />
@@ -2374,6 +2382,10 @@ const getStyles = (isPhone, isMobile, isTablet, isDesktop) => {
       fontSize: isPhone ? 12 : (isMobile ? 14 : 16),
       fontWeight: '600'
     },
+    userNameContainer: {
+      flexDirection: 'column',
+      gap: 4,
+    },
     userName: {
       ...typography.body2,
       color: colors.text,
@@ -2382,6 +2394,9 @@ const getStyles = (isPhone, isMobile, isTablet, isDesktop) => {
       ...(isPhone && {
         display: 'none',
       }),
+    },
+    userLabels: {
+      marginTop: 2,
     },
     logoutButtonHeader: {
       flexDirection: 'row',

@@ -418,28 +418,69 @@ const JobAlertFormScreen = ({ navigation }) => {
       submitData.append('alertFrequency', frequencyMap[formData.alertFrequency]);
 
       if (resumeFile) {
-        submitData.append('resumeFile', {
-          uri: resumeFile.uri,
-          name: resumeFile.name,
-          type: resumeFile.mimeType || 'application/pdf',
-        });
+        // Handle file upload for both web and native
+        if (Platform.OS === 'web') {
+          // On web, expo-document-picker returns a File object
+          if (resumeFile instanceof File) {
+            submitData.append('resumeFile', resumeFile);
+          } else if (resumeFile.file) {
+            // Sometimes it's wrapped in a file property
+            submitData.append('resumeFile', resumeFile.file);
+          } else if (resumeFile.uri) {
+            // Fallback: try to fetch and convert
+            try {
+              const response = await fetch(resumeFile.uri);
+              const blob = await response.blob();
+              const file = new File([blob], resumeFile.name || 'resume.pdf', {
+                type: resumeFile.mimeType || 'application/pdf',
+              });
+              submitData.append('resumeFile', file);
+            } catch (error) {
+              console.error('Error converting file for web:', error);
+            }
+          }
+        } else {
+          // On native (React Native), use the object format
+          submitData.append('resumeFile', {
+            uri: resumeFile.uri,
+            name: resumeFile.name,
+            type: resumeFile.mimeType || 'application/pdf',
+          });
+        }
       }
 
       const response = await api.createJobAlert(submitData);
 
-      Alert.alert(
-        'Success',
-        'Job alert created successfully! You will receive notifications when matching jobs are posted.',
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack(),
-          },
-        ]
-      );
+      if (response.success) {
+        // Show success message - use web alert for immediate feedback on web
+        if (Platform.OS === 'web' && typeof window !== 'undefined') {
+          const confirmed = window.confirm(
+            `✅ Job Alert Created Successfully!\n\n${response.message || 'Your job alert has been created successfully! You will receive notifications when matching jobs are posted.'}\n\nClick OK to continue.`
+          );
+          if (confirmed) {
+            navigation.goBack();
+          }
+        } else {
+          // For mobile, use React Native Alert
+          Alert.alert(
+            '✅ Success',
+            response.message || 'Job alert created successfully! You will receive notifications when matching jobs are posted.',
+            [
+              {
+                text: 'OK',
+                onPress: () => navigation.goBack(),
+              },
+            ],
+            { cancelable: false }
+          );
+        }
+      } else {
+        throw new Error(response.message || 'Failed to create job alert');
+      }
     } catch (error) {
       console.error('Error creating job alert:', error);
-      Alert.alert('Error', error.message || 'Failed to create job alert');
+      const errorMessage = error.message || error.response?.data?.message || 'Failed to create job alert. Please check all fields and try again.';
+      Alert.alert('Error', errorMessage);
     } finally {
       setLoading(false);
     }

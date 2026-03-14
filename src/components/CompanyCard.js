@@ -114,13 +114,16 @@ const CompanyCard = ({ company }) => {
   );
 
   const companyType = getTextValue(
-    company.profile?.company?.companyType || company.companyType,
-    'Private company'
+    company.profile?.company?.companyType || company.companyType || (company.employerType === 'consultancy' ? 'Consultancy' : 'Company'),
+    company.employerType === 'consultancy' ? 'Consultancy' : 'Private company'
   );
 
   const employeeCount = getTextValue(
-    company.profile?.company?.employeeCount || company.employeeCount,
-    '200+ employees'
+    company.profile?.company?.company?.employeeCount || 
+    company.profile?.company?.consultancy?.teamSize || 
+    company.profile?.company?.size || 
+    company.employeeCount,
+    company.employerType === 'consultancy' ? 'Team size not specified' : '200+ employees'
   );
 
   const hiringStatus = (company.openPositions || 0) > 0 ? 'Actively hiring' : 'Building talent pool';
@@ -137,12 +140,14 @@ const CompanyCard = ({ company }) => {
   return (
     <TouchableOpacity 
       style={dynamicStyles.card}
-      onPress={() => navigation.navigate('CompanyDetails', { companyId: company._id })}
+      onPress={() => navigation.navigate('CompanyDetails', { companyId: company._id, id: company._id })}
       activeOpacity={0.9}
     >
       <View style={dynamicStyles.trustBadge}>
         <Ionicons name="shield-checkmark" size={getIconSize(10)} color="#4338CA" />
-        <Text style={dynamicStyles.trustBadgeText}>{company.isFeatured ? 'Featured' : 'Verified'}</Text>
+        <Text style={dynamicStyles.trustBadgeText}>
+          {company.isFeatured ? 'Featured' : (company.isVerified || company.isEmployerVerified) ? 'Verified' : 'Unverified'}
+        </Text>
       </View>
 
       <View style={dynamicStyles.header}>
@@ -221,15 +226,15 @@ const getStyles = (
 ) => {
   // Calculate responsive values
   const cardPadding = isXsPhone ? 10 : isSmallPhone ? 12 : isMobile ? 14 : isTabletDevice ? 16 : 18;
-  const cardWidth = isXsPhone ? 240 : isSmallPhone ? 260 : isMobile ? 280 : isSmallTablet ? 300 : isTabletDevice ? 320 : 340;
   
   return StyleSheet.create({
     card: {
       backgroundColor: colors.cardBackground,
       borderRadius: isXsPhone ? borderRadius.md : borderRadius.lg,
       padding: cardPadding,
-      width: cardWidth,
-      minWidth: cardWidth,
+      width: '100%',
+      minHeight: isXsPhone ? 260 : isSmallPhone ? 280 : isMobile ? 300 : isTabletDevice ? 310 : 320,
+      height: '100%',
       ...shadows.card,
       borderWidth: 1,
       borderColor: colors.borderLight,

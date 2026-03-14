@@ -1,8 +1,10 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const Application = require('../models/Application');
+const Job = require('../models/Job');
 const welcomeEmailService = require('../services/welcomeEmailService');
-const { employerAuth } = require('../middleware/auth');
+const { employerAuth, auth } = require('../middleware/auth');
 const router = express.Router();
 
 // Register Consultancy
@@ -23,7 +25,41 @@ router.post('/register', async (req, res) => {
             return res.status(400).json({ message: 'Consultancy already exists with this email' });
         }
 
+        // Ensure consultancy object exists
+        if (!consultancy) {
+            return res.status(400).json({ message: 'Consultancy information is required' });
+        }
+
         // Create new consultancy
+        const companyData = {
+            name: consultancy.name || '',
+            website: consultancy.website || '',
+            industry: consultancy.industry || '',
+            description: consultancy.description || '',
+            location: consultancy.location || {},
+            logo: consultancy.logo || '',
+            establishedYear: consultancy.establishedYear || consultancy.consultancy?.establishedYear || '',
+            socialMediaLink: consultancy.socialMediaLink || '',
+            consultancy: consultancy.consultancy || {}
+        };
+        
+        // Only set companyType if it's provided, otherwise default to 'Consultancy'
+        if (consultancy.companyType) {
+            companyData.companyType = consultancy.companyType;
+        } else {
+            companyData.companyType = 'Consultancy';
+        }
+        
+        // Only set size if it's provided and valid
+        if (consultancy.size) {
+            companyData.size = consultancy.size;
+        }
+        
+        // Only set socialMediaProfile if it's provided and valid
+        if (consultancy.socialMediaProfile) {
+            companyData.socialMediaProfile = consultancy.socialMediaProfile;
+        }
+        
         const newConsultancy = new User({
             firstName,
             lastName,
@@ -32,7 +68,9 @@ router.post('/register', async (req, res) => {
             phone,
             userType: 'employer',
             employerType: 'consultancy',
-            company: consultancy,
+            profile: {
+                company: companyData
+            },
             verificationStatus: 'pending',
             isEmployerVerified: false
         });
@@ -67,12 +105,16 @@ router.post('/register', async (req, res) => {
                 lastName: newConsultancy.lastName,
                 email: newConsultancy.email,
                 userType: 'consultancy',
-                consultancyName: newConsultancy.company?.name || ''
+                consultancyName: newConsultancy.profile?.company?.name || newConsultancy.company?.name || ''
             }
         });
     } catch (error) {
         console.error('Consultancy registration error:', error);
-        res.status(500).json({ message: 'Server error during registration' });
+        console.error('Error details:', error.message);
+        if (error.errors) {
+            console.error('Validation errors:', JSON.stringify(error.errors, null, 2));
+        }
+        res.status(500).json({ message: 'Server error during registration', error: error.message });
     }
 });
 
@@ -256,6 +298,92 @@ router.put('/profile', employerAuth, async (req, res) => {
         console.error('Update consultancy profile error:', error);
         res.status(500).json({ message: 'Server error' });
     }
+});
+
+// @route   GET /api/consultancy/applications
+// @desc    Get consultancy applications for their jobs
+// @access  Private (Consultancy Employer)
+router.get('/applications', auth, async (req, res) => {
+  try {
+    if (req.user.userType !== 'employer' || req.user.employerType !== 'consultancy') {
+      return res.status(403).json({ message: 'Access denied. Consultancy employers only.' });
+    }
+
+    const applications = await Application.find({ employer: req.user._id })
+      .populate('user', 'firstName lastName email phone userId')
+      .populate('job', 'title company location salary type employmentType jobType createdAt')
+      .sort({ appliedAt: -1 });
+
+    res.json({
+      success: true,
+      applications: applications.map(app => ({
+        id: app._id,
+        _id: app._id,
+        user: app.user,
+        job: app.job,
+        status: app.status || 'pending',
+        appliedAt: app.appliedAt,
+        updatedAt: app.updatedAt,
+        fullName: app.fullName,
+        email: app.email,
+        mobileNumber: app.mobileNumber,
+        currentJobTitle: app.currentJobTitle,
+        experienceLevel: app.experienceLevel,
+        keySkills: app.keySkills,
+        jobProfileDescription: app.jobProfileDescription,
+        educationLevel: app.educationLevel,
+        course: app.course,
+        currentLocation: app.currentLocation,
+        noticePeriod: app.noticePeriod,
+        yearsOfExperience: app.yearsOfExperience,
+        currentSalary: app.currentSalary
+      }))
+    });
+  } catch (error) {
+    console.error('Get consultancy applications error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   GET /api/consultancy/dashboard
+// @desc    Get consultancy dashboard data
+// @access  Private (Consultancy Employer)
+router.get('/dashboard', auth, async (req, res) => {
+  try {
+    if (req.user.userType !== 'employer' || req.user.employerType !== 'consultancy') {
+      return res.status(403).json({ message: 'Access denied. Consultancy employers only.' });
+    }
+
+    const activeJobs = await Job.countDocuments({ 
+      postedBy: req.user._id, 
+      status: 'active' 
+    });
+
+    const totalApplications = await Application.countDocuments({ 
+      employer: req.user._id 
+    });
+
+    const newApplications = await Application.countDocuments({ 
+      employer: req.user._id, 
+      status: 'pending',
+      appliedAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } // Last 7 days
+    });
+
+    const totalJobs = await Job.countDocuments({ postedBy: req.user._id });
+
+    res.json({
+      success: true,
+      stats: {
+        activeJobs,
+        totalApplications,
+        newApplications,
+        totalJobs
+      }
+    });
+  } catch (error) {
+    console.error('Get consultancy dashboard error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
 });
 
 module.exports = router;

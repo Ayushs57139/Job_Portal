@@ -94,7 +94,10 @@ const AdminSidebar = ({ activeScreen, onNavigate, onClose }) => {
     { id: 'roleManagement', label: 'Role Management', icon: 'shield-checkmark-outline', screen: 'AdminRoleManagement' },
     { id: 'jobs', label: 'Jobs', icon: 'briefcase-outline', screen: 'AdminJobs' },
     { id: 'postJob', label: 'Post Job', icon: 'add-circle-outline', screen: 'AdminPostJob' },
+    { id: 'jobEvents', label: 'Job Events', icon: 'calendar-outline', screen: 'AdminJobEvents' },
     { id: 'applications', label: 'Applications', icon: 'document-text-outline', screen: 'AdminApplications' },
+    { id: 'invitations', label: 'Bulk Invitations', icon: 'send-outline', screen: 'AdminInvitations' },
+    { id: 'locationEditor', label: 'Location Editor', icon: 'location-outline', screen: 'AdminLocationEditor' },
     { id: 'teamLimits', label: 'Team Limits', icon: 'people-circle-outline', screen: 'AdminTeamLimits' },
     { id: 'blogs', label: 'Blogs', icon: 'newspaper-outline', screen: 'AdminBlogs' },
     { id: 'verification', label: 'Verification', icon: 'checkmark-done-outline', screen: 'AdminVerification' },
@@ -116,6 +119,7 @@ const AdminSidebar = ({ activeScreen, onNavigate, onClose }) => {
     { id: 'emailTemplates', label: 'Email Templates', icon: 'mail-open-outline', screen: 'AdminEmailTemplates' },
     { id: 'smtpSettings', label: 'SMTP Settings', icon: 'server-outline', screen: 'AdminSMTPSettings' },
     { id: 'emailLogs', label: 'Email Logs', icon: 'list-outline', screen: 'AdminEmailLogs' },
+    { id: 'loginSecurity', label: 'Login Security', icon: 'shield-checkmark-outline', screen: 'AdminLoginSecurity' },
     { id: 'socialUpdates', label: 'Social Updates', icon: 'share-social-outline', screen: 'AdminSocialUpdates' },
     {
       id: 'masterData',

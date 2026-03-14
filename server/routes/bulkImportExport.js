@@ -1141,70 +1141,160 @@ router.post('/import/blogs', adminAuth, upload.single('file'), async (req, res) 
 // Resume Management Routes
 
 // Get all resumes with pagination and filtering
-router.get('/resumes', async (req, res) => {
+// This route fetches resumes from User model (where they are uploaded during registration)
+// and also includes UserProfile data if available
+router.get('/resumes', adminAuth, async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
     
-    // Build filter object
-    const filter = {};
+    // Build filter object for User model - only get jobseekers with resumes
+    // Use simple query like the Users API does - just check if resume exists
+    const userFilter = {
+      userType: 'jobseeker',
+      'profile.resume': { $exists: true, $ne: null, $ne: '' }
+    };
     
-    // Search filter
+    // Search filter for User model
     if (req.query.search) {
-      filter.$or = [
-        { 'personalInfo.fullName': { $regex: req.query.search, $options: 'i' } },
-        { 'personalInfo.email': { $regex: req.query.search, $options: 'i' } },
-        { 'professional.skills': { $regex: req.query.search, $options: 'i' } }
+      const searchRegex = { $regex: req.query.search, $options: 'i' };
+      userFilter.$or = [
+        { firstName: searchRegex },
+        { lastName: searchRegex },
+        { email: searchRegex },
+        { 'profile.skills': searchRegex }
       ];
     }
     
-    // Status filter
-    if (req.query.status) {
-      if (req.query.status === 'complete') {
-        filter['profileStatus.isComplete'] = true;
-      } else if (req.query.status === 'incomplete') {
-        filter['profileStatus.isComplete'] = false;
-      } else if (req.query.status === 'verified') {
-        filter['profileStatus.isVerified'] = true;
-      } else if (req.query.status === 'unverified') {
-        filter['profileStatus.isVerified'] = false;
-      }
-    }
+    // Debug: Log the filter being used
+    console.log('Resume query filter:', JSON.stringify(userFilter, null, 2));
     
-    // Experience filter
-    if (req.query.experience) {
-      const experience = req.query.experience;
-      if (experience === 'fresher') {
-        filter['professional.experience'] = { $regex: /fresher|0|no experience/i };
-      } else if (experience === '0-2') {
-        filter['professional.experience'] = { $regex: /0|1|2|fresher/i };
-      } else if (experience === '2-5') {
-        filter['professional.experience'] = { $regex: /2|3|4|5/i };
-      } else if (experience === '5-10') {
-        filter['professional.experience'] = { $regex: /5|6|7|8|9|10/i };
-      } else if (experience === '10+') {
-        filter['professional.experience'] = { $regex: /1[0-9]|[2-9][0-9]|\d{3,}/i };
-      }
-    }
+    // Get all jobseekers first, then filter in memory (more reliable)
+    let allJobseekers = await User.find({ userType: 'jobseeker' })
+      .select('firstName lastName email phone userType profile createdAt updatedAt')
+      .lean();
     
-    const profiles = await UserProfile.find(filter)
+    console.log(`Found ${allJobseekers.length} total jobseekers`);
+    
+    // Filter users with resumes in memory (more reliable than complex MongoDB queries)
+    let usersWithResumes = allJobseekers.filter(user => {
+      const resume = user.profile?.resume;
+      const hasResume = resume && 
+                       resume !== null && 
+                       resume !== undefined && 
+                       String(resume).trim() !== '';
+      
+      // Apply search filter if provided
+      if (hasResume && req.query.search) {
+        const searchTerm = req.query.search.toLowerCase();
+        const matchesSearch = 
+          (user.firstName && user.firstName.toLowerCase().includes(searchTerm)) ||
+          (user.lastName && user.lastName.toLowerCase().includes(searchTerm)) ||
+          (user.email && user.email.toLowerCase().includes(searchTerm)) ||
+          (user.profile?.skills && Array.isArray(user.profile.skills) && 
+           user.profile.skills.some(skill => String(skill).toLowerCase().includes(searchTerm)));
+        return matchesSearch;
+      }
+      
+      return hasResume;
+    });
+    
+    console.log(`Found ${usersWithResumes.length} jobseekers with resumes`);
+    
+    // Apply pagination
+    const total = usersWithResumes.length;
+    const users = usersWithResumes
+      .sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt))
+      .slice(skip, skip + limit);
+    
+    console.log(`After pagination: ${users.length} users (page ${page}, limit ${limit})`);
+    
+    // Get UserProfile data for these users if available
+    const userIds = users.map(u => u._id);
+    const userProfiles = userIds.length > 0 ? await UserProfile.find({ userId: { $in: userIds } })
       .populate('userId', 'firstName lastName email userType')
-      .sort({ updatedAt: -1 })
-      .skip(skip)
-      .limit(limit);
+      .lean() : [];
     
-    const total = await UserProfile.countDocuments(filter);
+    // Create a map of userId to UserProfile for quick lookup
+    const profileMap = {};
+    userProfiles.forEach(profile => {
+      if (profile.userId && profile.userId._id) {
+        profileMap[profile.userId._id.toString()] = profile;
+      }
+    });
     
-    // Get statistics
+    // Combine User and UserProfile data
+    const profiles = users.map(user => {
+      const userProfile = profileMap[user._id.toString()];
+      
+      // Build profile object with User data as primary and UserProfile as additional
+      const profile = {
+        _id: userProfile?._id || user._id,
+        userId: {
+          _id: user._id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          userType: user.userType
+        },
+        personalInfo: {
+          fullName: userProfile?.personalInfo?.fullName || `${user.firstName} ${user.lastName}`,
+          email: user.email,
+          mobileNumber: userProfile?.personalInfo?.mobileNumber || user.phone || 'N/A',
+          phone: userProfile?.personalInfo?.phone || user.phone || 'N/A',
+          currentCity: userProfile?.personalInfo?.currentCity || user.profile?.currentLocation || 'Not specified',
+          city: userProfile?.personalInfo?.city || user.profile?.currentLocation || 'Not specified'
+        },
+        professional: {
+          experience: userProfile?.professional?.experience || (user.profile?.experience ? `${user.profile.experience} years` : 'Not specified'),
+          currentJobTitle: userProfile?.professional?.currentJobTitle || 'Not specified',
+          currentCompanyName: userProfile?.professional?.currentCompanyName || 'Not specified',
+          skills: userProfile?.professional?.skills || user.profile?.skills || []
+        },
+        profileStatus: {
+          isComplete: userProfile?.profileStatus?.isComplete || false,
+          isVerified: userProfile?.profileStatus?.isVerified || false,
+          isActive: userProfile?.profileStatus?.isActive !== false
+        },
+        resume: user.profile?.resume || null,
+        resumePath: user.profile?.resume || null,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt || user.createdAt
+      };
+      
+      return profile;
+    });
+    
+    // Get statistics - count users with resumes
+    // Count all jobseekers with resumes (in memory for accuracy)
+    const allJobseekersForStats = await User.find({ userType: 'jobseeker' })
+      .select('profile updatedAt')
+      .lean();
+    
+    const jobseekersWithResumes = allJobseekersForStats.filter(u => {
+      const resume = u.profile?.resume;
+      return resume && resume !== null && resume !== undefined && String(resume).trim() !== '';
+    });
+    
+    const recentResumes = jobseekersWithResumes.filter(u => {
+      const updatedAt = u.updatedAt || u.createdAt;
+      return updatedAt && new Date(updatedAt) >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    });
+    
     const stats = await Promise.all([
-      UserProfile.countDocuments(),
+      Promise.resolve(jobseekersWithResumes.length), // Total resumes
       UserProfile.countDocuments({ 'profileStatus.isComplete': true }),
       UserProfile.countDocuments({ 'profileStatus.isVerified': true }),
-      UserProfile.countDocuments({ 
-        updatedAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } 
-      })
+      Promise.resolve(recentResumes.length) // Recent resumes (7 days)
     ]);
+    
+    console.log('Statistics:', {
+      total: stats[0],
+      complete: stats[1],
+      verified: stats[2],
+      recent: stats[3]
+    });
     
     res.json({
       success: true,
@@ -1235,7 +1325,7 @@ router.get('/resumes', async (req, res) => {
 });
 
 // Export all resumes to CSV
-router.get('/export/resumes', async (req, res) => {
+router.get('/export/resumes', adminAuth, async (req, res) => {
   try {
     const profiles = await UserProfile.find({})
       .populate('userId', 'firstName lastName email userType');

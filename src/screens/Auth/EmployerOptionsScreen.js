@@ -21,12 +21,20 @@ const isWeb = getPlatform().OS === 'web';
 const isWideScreen = width > 768;
 
 const EmployerOptionsScreen = ({ navigation }) => {
+  const [activeTab, setActiveTab] = useState('login'); // 'login' or 'sales'
   const [employerType, setEmployerType] = useState('company'); // 'company' or 'consultancy'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
+  
+  // Sales enquiry form state
+  const [fullName, setFullName] = useState('');
+  const [mobileNumber, setMobileNumber] = useState('');
+  const [workEmail, setWorkEmail] = useState('');
+  const [hiringFor, setHiringFor] = useState('company'); // 'company' or 'consultancy'
+  const [submitting, setSubmitting] = useState(false);
 
   const handleLogin = async () => {
     const newErrors = {};
@@ -114,6 +122,50 @@ const EmployerOptionsScreen = ({ navigation }) => {
     }
   };
 
+  const handleSalesEnquiry = async () => {
+    const newErrors = {};
+    if (!fullName.trim()) newErrors.fullName = 'Please enter your full name';
+    if (!mobileNumber.trim()) newErrors.mobileNumber = 'Please enter your mobile number';
+    if (!workEmail.trim()) newErrors.workEmail = 'Please enter your work email';
+    if (!workEmail.trim().includes('@')) newErrors.workEmail = 'Please enter a valid email address';
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
+    setSubmitting(true);
+    setErrors({});
+
+    try {
+      const enquiryData = {
+        fullName: fullName.trim(),
+        phone: mobileNumber.trim(),
+        email: workEmail.trim(),
+        hiringFor: hiringFor
+      };
+
+      const response = await api.request('/sales-enquiry/simple', {
+        method: 'POST',
+        body: JSON.stringify(enquiryData),
+      });
+
+      if (response.success) {
+        Alert.alert('Success', 'Your enquiry has been submitted successfully. We will contact you soon!');
+        // Reset form
+        setFullName('');
+        setMobileNumber('');
+        setWorkEmail('');
+        setHiringFor('company');
+      }
+    } catch (error) {
+      let errorMessage = error.message || 'Failed to submit enquiry. Please try again.';
+      Alert.alert('Error', errorMessage);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <LinearGradient
@@ -151,6 +203,146 @@ const EmployerOptionsScreen = ({ navigation }) => {
 
           {/* Login Form Card */}
           <View style={styles.loginFormCard}>
+            {/* Tab Toggle */}
+            <View style={styles.tabContainer}>
+              <TouchableOpacity
+                style={[styles.tab, activeTab === 'sales' && styles.tabActive]}
+                onPress={() => setActiveTab('sales')}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.tabText, activeTab === 'sales' && styles.tabTextActive]}>
+                  Sales enquiry
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.tab, activeTab === 'login' && styles.tabActive]}
+                onPress={() => setActiveTab('login')}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.tabText, activeTab === 'login' && styles.tabTextActive]}>
+                  Register/Log in
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {activeTab === 'sales' ? (
+              /* Sales Enquiry Form */
+              <View>
+                {/* Full Name Input */}
+                <View style={styles.inputGroup}>
+                  <TextInput
+                    style={[styles.input, errors.fullName && styles.inputError]}
+                    placeholder="Full name"
+                    placeholderTextColor="#94a3b8"
+                    value={fullName}
+                    onChangeText={(text) => {
+                      setFullName(text);
+                      setErrors({ ...errors, fullName: null });
+                    }}
+                  />
+                  {errors.fullName && (
+                    <View style={styles.errorContainer}>
+                      <Ionicons name="alert-circle" size={14} color="#ef4444" />
+                      <Text style={styles.errorText}>{errors.fullName}</Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* Mobile Number Input */}
+                <View style={styles.inputGroup}>
+                  <TextInput
+                    style={[styles.input, errors.mobileNumber && styles.inputError]}
+                    placeholder="Mobile number"
+                    placeholderTextColor="#94a3b8"
+                    value={mobileNumber}
+                    onChangeText={(text) => {
+                      setMobileNumber(text);
+                      setErrors({ ...errors, mobileNumber: null });
+                    }}
+                    keyboardType="phone-pad"
+                  />
+                  {errors.mobileNumber && (
+                    <View style={styles.errorContainer}>
+                      <Ionicons name="alert-circle" size={14} color="#ef4444" />
+                      <Text style={styles.errorText}>{errors.mobileNumber}</Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* Work Email Input */}
+                <View style={styles.inputGroup}>
+                  <TextInput
+                    style={[styles.input, errors.workEmail && styles.inputError]}
+                    placeholder="Work email"
+                    placeholderTextColor="#94a3b8"
+                    value={workEmail}
+                    onChangeText={(text) => {
+                      setWorkEmail(text);
+                      setErrors({ ...errors, workEmail: null });
+                    }}
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                  />
+                  {errors.workEmail && (
+                    <View style={styles.errorContainer}>
+                      <Ionicons name="alert-circle" size={14} color="#ef4444" />
+                      <Text style={styles.errorText}>{errors.workEmail}</Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* HIRING FOR Section */}
+                <View style={styles.inputGroup}>
+                  <Text style={styles.hiringForLabel}>HIRING FOR</Text>
+                  <View style={styles.hiringForContainer}>
+                    <TouchableOpacity
+                      style={[
+                        styles.hiringForOption,
+                        hiringFor === 'company' && styles.hiringForOptionActive
+                      ]}
+                      onPress={() => setHiringFor('company')}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[
+                        styles.hiringForOptionText,
+                        hiringFor === 'company' && styles.hiringForOptionTextActive
+                      ]}>
+                        Your company
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.hiringForOption,
+                        hiringFor === 'consultancy' && styles.hiringForOptionActive
+                      ]}
+                      onPress={() => setHiringFor('consultancy')}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[
+                        styles.hiringForOptionText,
+                        hiringFor === 'consultancy' && styles.hiringForOptionTextActive
+                      ]}>
+                        Your consultancy
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* Request Callback Button */}
+                <TouchableOpacity
+                  onPress={handleSalesEnquiry}
+                  disabled={submitting}
+                  activeOpacity={0.9}
+                  style={styles.requestCallbackButton}
+                >
+                  <Text style={styles.requestCallbackButtonText}>
+                    {submitting ? 'Submitting...' : 'Request callback'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              /* Login Form */
+              <>
             {/* Employer Type Selection */}
             <View style={styles.typeSelectorContainer}>
               <TouchableOpacity
@@ -317,6 +509,8 @@ const EmployerOptionsScreen = ({ navigation }) => {
                 <Text style={styles.createAccountLink}>Register here</Text>
               </TouchableOpacity>
             </View>
+            </>
+            )}
           </View>
         </View>
       </LinearGradient>
@@ -567,6 +761,91 @@ const styles = StyleSheet.create({
     color: '#6366f1',
     fontWeight: '700',
     textDecorationLine: 'underline',
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabActive: {
+    backgroundColor: '#ffffff',
+    ...shadows.sm,
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#64748b',
+  },
+  tabTextActive: {
+    color: '#1e293b',
+    fontWeight: '700',
+  },
+  inputError: {
+    borderColor: '#ef4444',
+    backgroundColor: '#fef2f2',
+  },
+  hiringForLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#64748b',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 12,
+  },
+  hiringForContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  hiringForOption: {
+    flex: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  hiringForOptionActive: {
+    borderColor: '#6366f1',
+    backgroundColor: '#eef2ff',
+  },
+  hiringForOptionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#64748b',
+  },
+  hiringForOptionTextActive: {
+    color: '#6366f1',
+    fontWeight: '700',
+  },
+  requestCallbackButton: {
+    backgroundColor: '#60a5fa',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 24,
+    ...shadows.md,
+  },
+  requestCallbackButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
 });
 

@@ -5,6 +5,66 @@ const { auth, adminAuth } = require('../middleware/auth');
 
 const router = express.Router();
 
+// @route   POST /api/sales-enquiry/simple
+// @desc    Submit a simple sales enquiry (from employer login page)
+// @access  Public
+router.post('/simple', [
+  body('fullName').notEmpty().withMessage('Full name is required'),
+  body('email').isEmail().withMessage('Please include a valid email'),
+  body('phone').notEmpty().withMessage('Phone number is required'),
+  body('hiringFor').isIn(['company', 'consultancy']).withMessage('Hiring for must be company or consultancy')
+], async (req, res) => {
+  console.log('[Sales Enquiry Simple] Route hit:', req.method, req.path, req.body);
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: errors.array()
+      });
+    }
+
+    // Split full name into first and last name
+    const nameParts = req.body.fullName.trim().split(/\s+/);
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || 'N/A'; // Provide default if no last name provided
+
+    // Map hiringFor to enquiry type and company info
+    const enquiryData = {
+      firstName,
+      lastName,
+      email: req.body.email.trim().toLowerCase(),
+      phone: req.body.phone.trim(),
+      company: req.body.hiringFor === 'company' ? 'Company' : 'Consultancy',
+      position: 'Hiring Manager',
+      industry: 'Other',
+      companySize: '1-10',
+      enquiryType: 'pricing',
+      message: `Sales enquiry from ${req.body.hiringFor === 'company' ? 'Company' : 'Consultancy'} - Requesting callback`,
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent'),
+      source: 'employer-login-page'
+    };
+
+    const enquiry = new SalesEnquiry(enquiryData);
+    await enquiry.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Sales enquiry submitted successfully. We will contact you soon.',
+      enquiryId: enquiry._id
+    });
+
+  } catch (error) {
+    console.error('Error creating simple sales enquiry:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while creating sales enquiry'
+    });
+  }
+});
+
 // @route   POST /api/sales-enquiry
 // @desc    Submit a sales enquiry
 // @access  Public

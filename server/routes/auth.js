@@ -50,6 +50,9 @@ router.post('/register', [
       return res.status(400).json({ message: 'User already exists with this email' });
     }
 
+    // Normalize phone number (remove spaces, dashes, etc.) for consistency
+    const normalizedPhone = phone ? phone.replace(/[\s\-\(\)]/g, '') : phone;
+
     // Create user
     const userData = {
       firstName,
@@ -57,7 +60,7 @@ router.post('/register', [
       email,
       password,
       userType,
-      phone,
+      phone: normalizedPhone,
       whatsappAvailable: whatsappAvailable || false,
       profile: {}
     };
@@ -333,18 +336,31 @@ router.post('/login', [
 // @access  Private
 router.get('/me', auth, async (req, res) => {
   try {
+    // Fetch fresh user data from database to ensure we get latest verification status
+    // This is important because verification status can change after admin verification
+    const freshUser = await User.findById(req.user._id).select('-password');
+    
+    if (!freshUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
     res.json({
       user: {
-        id: req.user._id,
-        firstName: req.user.firstName,
-        lastName: req.user.lastName,
-        email: req.user.email,
-        userType: req.user.userType,
-        employerType: req.user.employerType,
-        phone: req.user.phone,
-        profile: req.user.profile,
-        isEmailVerified: req.user.isEmailVerified,
-        lastLogin: req.user.lastLogin
+        id: freshUser._id,
+        _id: freshUser._id,
+        firstName: freshUser.firstName,
+        lastName: freshUser.lastName,
+        email: freshUser.email,
+        userType: freshUser.userType,
+        employerType: freshUser.employerType,
+        phone: freshUser.phone,
+        profile: freshUser.profile,
+        isEmailVerified: freshUser.isEmailVerified,
+        isVerified: freshUser.isVerified || false,
+        isEmployerVerified: freshUser.isEmployerVerified || false,
+        verificationStatus: freshUser.verificationStatus || 'pending',
+        verifiedAt: freshUser.verifiedAt || null,
+        lastLogin: freshUser.lastLogin
       }
     });
   } catch (error) {

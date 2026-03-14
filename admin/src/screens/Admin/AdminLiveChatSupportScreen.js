@@ -248,31 +248,48 @@ const AdminLiveChatSupportScreen = ({ navigation }) => {
     );
   };
 
-  const renderUserItem = ({ item }) => (
-    <TouchableOpacity 
-      style={dynamicStyles.userItem}
-      onPress={() => startNewChat(item)}
-    >
-      <View style={dynamicStyles.avatar}>
-        <Text style={dynamicStyles.avatarText}>
-          {item.firstName?.charAt(0).toUpperCase() || 'U'}
-        </Text>
-      </View>
-      
-      <View style={dynamicStyles.userInfo}>
-        <Text style={dynamicStyles.userName}>
-          {item.firstName} {item.lastName}
-        </Text>
-        <Text style={dynamicStyles.userType}>
-          {item.userType === 'employer' 
-            ? (item.employerType === 'company' ? 'Company' : 'Consultancy')
-            : 'Job Seeker'}
-        </Text>
-      </View>
+  const renderUserItem = ({ item }) => {
+    const userTypeLabel = item.userType === 'employer' 
+      ? (item.employerType === 'company' ? 'Company' : 'Consultancy')
+      : 'Job Seeker';
+    
+    const userTypeColor = item.userType === 'employer'
+      ? (item.employerType === 'company' ? colors.info : colors.success)
+      : colors.primary;
 
-      <Ionicons name="chatbubble-outline" size={20} color={colors.primary} />
-    </TouchableOpacity>
-  );
+    return (
+      <TouchableOpacity 
+        style={dynamicStyles.userItem}
+        onPress={() => startNewChat(item)}
+        activeOpacity={0.7}
+      >
+        <View style={dynamicStyles.userItemContent}>
+          <View style={[dynamicStyles.userAvatar, { backgroundColor: userTypeColor }]}>
+            <Text style={dynamicStyles.userAvatarText}>
+              {item.firstName?.charAt(0).toUpperCase() || 'U'}
+            </Text>
+          </View>
+          
+          <View style={dynamicStyles.userInfo}>
+            <Text style={dynamicStyles.userName} numberOfLines={1}>
+              {item.firstName} {item.lastName}
+            </Text>
+            <View style={dynamicStyles.userTypeContainer}>
+              <View style={[dynamicStyles.userTypeBadge, { backgroundColor: userTypeColor + '15' }]}>
+                <Text style={[dynamicStyles.userTypeText, { color: userTypeColor }]}>
+                  {userTypeLabel}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={dynamicStyles.userActionButton}>
+            <Ionicons name="chatbubble-ellipses" size={20} color={colors.primary} />
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   const FilterModal = () => (
     <Modal
@@ -357,53 +374,91 @@ const AdminLiveChatSupportScreen = ({ navigation }) => {
         <TouchableOpacity 
           activeOpacity={1}
           onPress={(e) => e.stopPropagation()}
+          style={dynamicStyles.modalTouchable}
         >
-        <View style={dynamicStyles.modalContent}>
-          <View style={dynamicStyles.modalHeader}>
-            <Text style={dynamicStyles.modalTitle}>Start New Chat</Text>
-            <TouchableOpacity 
-              onPress={() => setShowNewChatModal(false)}
-              style={dynamicStyles.modalCloseButton}
-            >
-              <Ionicons name="close" size={24} color="#64748B" />
-            </TouchableOpacity>
-          </View>
-
-          <View style={dynamicStyles.searchContainer}>
-            <Ionicons name="search" size={20} color={colors.textSecondary} style={dynamicStyles.searchIcon} />
-            <TextInput
-              style={dynamicStyles.searchInput}
-              placeholder="Search users by name..."
-              placeholderTextColor={colors.textSecondary}
-              value={userSearchQuery}
-              onChangeText={(text) => {
-                setUserSearchQuery(text);
-                loadAvailableUsers(text);
-              }}
-            />
-          </View>
-
-          {searchingUsers ? (
-            <View style={dynamicStyles.loadingContainer}>
-              <ActivityIndicator size="large" color={colors.primary} />
-            </View>
-          ) : (
-            <FlatList
-              data={availableUsers}
-              renderItem={renderUserItem}
-              keyExtractor={(item) => item._id}
-              style={dynamicStyles.userList}
-              ListEmptyComponent={
-                <View style={dynamicStyles.emptyState}>
-                  <Ionicons name="people-outline" size={48} color={colors.textLight} />
-                  <Text style={dynamicStyles.emptyText}>
-                    {userSearchQuery ? 'No users found' : 'Search for users to start chatting'}
+          <View style={dynamicStyles.modalContent}>
+            {/* Modern Header */}
+            <View style={dynamicStyles.modalHeader}>
+              <View style={dynamicStyles.modalHeaderContent}>
+                <View style={dynamicStyles.modalIconContainer}>
+                  <Ionicons name="chatbubbles" size={24} color={colors.primary} />
+                </View>
+                <View>
+                  <Text style={dynamicStyles.modalTitle}>Start New Chat</Text>
+                  <Text style={dynamicStyles.modalSubtitle}>
+                    Search and select a user to begin
                   </Text>
                 </View>
-              }
-            />
-          )}
-        </View>
+              </View>
+              <TouchableOpacity 
+                style={dynamicStyles.modalCloseButton}
+                onPress={() => setShowNewChatModal(false)}
+              >
+                <Ionicons name="close" size={22} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Modern Search Bar */}
+            <View style={dynamicStyles.modalSearchWrapper}>
+              <View style={dynamicStyles.modalSearchContainer}>
+                <Ionicons name="search" size={18} color={colors.textSecondary} style={dynamicStyles.modalSearchIcon} />
+                <TextInput
+                  style={dynamicStyles.modalSearchInput}
+                  placeholder="Search by name..."
+                  placeholderTextColor={colors.textLight}
+                  value={userSearchQuery}
+                  onChangeText={(text) => {
+                    setUserSearchQuery(text);
+                    loadAvailableUsers(text);
+                  }}
+                  autoFocus={false}
+                />
+                {userSearchQuery.length > 0 && (
+                  <TouchableOpacity 
+                    onPress={() => {
+                      setUserSearchQuery('');
+                      loadAvailableUsers('');
+                    }}
+                    style={dynamicStyles.modalClearButton}
+                  >
+                    <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+
+            {/* Users List */}
+            {searchingUsers ? (
+              <View style={dynamicStyles.modalLoadingContainer}>
+                <ActivityIndicator size="large" color={colors.primary} />
+                <Text style={dynamicStyles.modalLoadingText}>Searching users...</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={availableUsers}
+                renderItem={renderUserItem}
+                keyExtractor={(item) => item._id}
+                style={dynamicStyles.userList}
+                contentContainerStyle={dynamicStyles.userListContent}
+                showsVerticalScrollIndicator={true}
+                ListEmptyComponent={
+                  <View style={dynamicStyles.modalEmptyState}>
+                    <View style={dynamicStyles.modalEmptyIconContainer}>
+                      <Ionicons name="people-outline" size={56} color={colors.textLight} />
+                    </View>
+                    <Text style={dynamicStyles.modalEmptyTitle}>
+                      {userSearchQuery ? 'No users found' : 'No users available'}
+                    </Text>
+                    <Text style={dynamicStyles.modalEmptyText}>
+                      {userSearchQuery 
+                        ? 'Try a different search term' 
+                        : 'Search for users to start a conversation'}
+                    </Text>
+                  </View>
+                }
+              />
+            )}
+          </View>
         </TouchableOpacity>
       </TouchableOpacity>
     </Modal>
@@ -718,26 +773,106 @@ const getStyles = (isMobile, isTablet) => StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.lg,
+  },
+  modalTouchable: {
+    width: '100%',
+    maxWidth: 500,
+    maxHeight: '85%',
   },
   modalContent: {
     backgroundColor: colors.white,
-    borderTopLeftRadius: borderRadius.xl,
-    borderTopRightRadius: borderRadius.xl,
-    maxHeight: '80%',
-    minHeight: '50%',
+    borderRadius: borderRadius.xl,
+    maxHeight: '100%',
+    ...shadows.xl,
+    overflow: 'hidden',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: spacing.lg,
+    alignItems: 'flex-start',
+    padding: spacing.lg + 4,
+    paddingBottom: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.borderLight,
+    backgroundColor: colors.background,
+  },
+  modalHeaderContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: spacing.md,
+  },
+  modalIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.primaryLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: spacing.md,
   },
   modalTitle: {
-    ...typography.h3,
+    ...typography.h4,
+    color: colors.textDark,
+    fontWeight: '700',
+    marginBottom: spacing.xs / 2,
+  },
+  modalSubtitle: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontSize: 12,
+  },
+  modalCloseButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalSearchWrapper: {
+    padding: spacing.lg,
+    paddingBottom: spacing.md,
+    backgroundColor: colors.white,
+  },
+  modalSearchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.lg,
+    paddingHorizontal: spacing.md,
+    height: 44,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+  },
+  modalSearchIcon: {
+    marginRight: spacing.sm,
+  },
+  modalSearchInput: {
+    flex: 1,
+    ...typography.body2,
     color: colors.text,
+    height: '100%',
+    fontSize: 15,
+  },
+  modalClearButton: {
+    padding: spacing.xs,
+    marginLeft: spacing.xs,
+  },
+  modalLoadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: spacing.xxl,
+    minHeight: 200,
+  },
+  modalLoadingText: {
+    ...typography.body2,
+    color: colors.textSecondary,
+    marginTop: spacing.md,
   },
   filterOptions: {
     padding: spacing.md,
@@ -767,24 +902,101 @@ const getStyles = (isMobile, isTablet) => StyleSheet.create({
   },
   userList: {
     flex: 1,
+  },
+  userListContent: {
     padding: spacing.md,
+    paddingTop: spacing.sm,
   },
   userItem: {
+    marginBottom: spacing.sm,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    ...shadows.xs,
+    overflow: 'hidden',
+  },
+  userItemContent: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: spacing.md,
-    backgroundColor: colors.background,
-    borderRadius: borderRadius.md,
-    marginBottom: spacing.sm,
+  },
+  userAvatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: spacing.md,
+    ...shadows.sm,
+  },
+  userAvatarText: {
+    ...typography.h4,
+    color: colors.white,
+    fontWeight: '700',
+    fontSize: 18,
   },
   userInfo: {
     flex: 1,
-    marginLeft: spacing.md,
+    marginRight: spacing.sm,
   },
   userName: {
-    ...typography.subtitle1,
-    color: colors.text,
+    ...typography.body1,
+    color: colors.textDark,
     fontWeight: '600',
+    marginBottom: spacing.xs,
+    fontSize: 15,
+  },
+  userTypeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  userTypeBadge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    borderRadius: borderRadius.sm,
+  },
+  userTypeText: {
+    ...typography.caption,
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  userActionButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.primaryLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalEmptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: spacing.xxl * 2,
+    paddingHorizontal: spacing.xl,
+  },
+  modalEmptyIconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: colors.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
+  modalEmptyTitle: {
+    ...typography.h5,
+    color: colors.textDark,
+    fontWeight: '600',
+    marginBottom: spacing.sm,
+    textAlign: 'center',
+  },
+  modalEmptyText: {
+    ...typography.body2,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });
 

@@ -123,6 +123,7 @@ const Header = ({ showBack = false, title }) => {
       screen: 'Services',
       hasDropdown: true,
       items: [
+        { label: 'Job Events', screen: 'JobEvents', icon: 'calendar-outline' },
         { label: 'Resume Tools', screen: 'ResumeBuilder', icon: 'document-text-outline' },
         { label: 'Packages', screen: 'Packages', icon: 'cube-outline' },
       ],

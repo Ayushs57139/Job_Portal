@@ -12,6 +12,7 @@ const AdminVerificationScreen = ({ navigation }) => {
   const isTablet = responsive.isTablet;
   const dynamicStyles = getStyles(isMobile, isTablet);
   const [loading, setLoading] = useState(true);
+  const [verifyingUserId, setVerifyingUserId] = useState(null);
   const [users, setUsers] = useState([]);
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [user, setUser] = useState(null);
@@ -47,6 +48,8 @@ const AdminVerificationScreen = ({ navigation }) => {
       }
       
       const data = await response.json();
+      console.log('Fetched users count:', data.users?.length || 0);
+      console.log('Sample user data:', data.users?.[0]);
       setUsers(data.users || []);
       setFilteredUsers(data.users || []);
     } catch (error) {
@@ -72,7 +75,20 @@ const AdminVerificationScreen = ({ navigation }) => {
 
     // Filter by user type
     if (selectedUserType !== 'all') {
-      filtered = filtered.filter(u => u.userType === selectedUserType);
+      if (selectedUserType === 'company') {
+        // For companies, check if userType is employer and employerType is company
+        filtered = filtered.filter(u => 
+          u.userType === 'employer' && u.employerType === 'company'
+        );
+      } else if (selectedUserType === 'consultancy') {
+        // For consultancies, check if userType is employer and employerType is consultancy
+        filtered = filtered.filter(u => 
+          u.userType === 'employer' && u.employerType === 'consultancy'
+        );
+      } else {
+        // For jobseekers, check userType directly
+        filtered = filtered.filter(u => u.userType === selectedUserType);
+      }
     }
 
     // Filter by verification status
@@ -86,15 +102,40 @@ const AdminVerificationScreen = ({ navigation }) => {
   };
 
   const handleVerify = async (userId, userName) => {
-    Alert.alert(
-      'Verify User',
-      `Are you sure you want to verify ${userName}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Verify',
-          onPress: async () => {
-            try {
+    console.log('handleVerify called with userId:', userId, 'userName:', userName);
+    
+    // For web, use window.confirm which works reliably
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const confirmed = window.confirm(`Are you sure you want to verify ${userName}?`);
+      if (!confirmed) {
+        console.log('Verification cancelled');
+        return;
+      }
+    } else {
+      // For mobile, use Alert
+      Alert.alert(
+        'Verify User',
+        `Are you sure you want to verify ${userName}?`,
+        [
+          { text: 'Cancel', style: 'cancel', onPress: () => console.log('Verification cancelled') },
+          {
+            text: 'Verify',
+            onPress: () => performVerification(userId),
+          }
+        ]
+      );
+      return;
+    }
+    
+    // Execute verification directly for web
+    performVerification(userId);
+  };
+
+  const performVerification = async (userId) => {
+    try {
+      console.log('Starting verification process for user:', userId);
+      setVerifyingUserId(userId);
+              
               const token = await AsyncStorage.getItem('token');
               const headers = {
                 'Content-Type': 'application/json',
@@ -104,38 +145,125 @@ const AdminVerificationScreen = ({ navigation }) => {
                 headers['Authorization'] = `Bearer ${token}`;
               }
 
-              const response = await fetch(`${API_URL}/admin/users/${userId}/verify`, {
+              const apiUrl = `${API_URL}/admin/users/${userId}/verify`;
+              console.log('API URL:', apiUrl);
+              console.log('Headers:', { ...headers, Authorization: token ? 'Bearer ***' : 'none' });
+
+              const response = await fetch(apiUrl, {
                 method: 'PATCH',
                 headers
               });
 
-              if (!response.ok) {
-                throw new Error('Failed to verify user');
+              console.log('Response status:', response.status);
+              console.log('Response ok:', response.ok);
+
+              let data;
+              try {
+                const text = await response.text();
+                console.log('Response text:', text);
+                data = text ? JSON.parse(text) : {};
+              } catch (parseError) {
+                console.error('Error parsing response:', parseError);
+                throw new Error('Invalid response from server');
               }
 
+              if (!response.ok) {
+                console.error('Verification failed - Response:', data);
+                throw new Error(data.message || data.error || `Server error: ${response.status}`);
+              }
+
+              console.log('Verification successful - Data:', data);
+              
+              if (!data.user) {
+                console.error('No user data in response:', data);
+                throw new Error('Invalid response: user data missing');
+              }
+              
+              // Update local state immediately with all verification fields from response
+              const updatedUser = {
+                ...data.user,
+                isVerified: data.user.isVerified !== undefined ? data.user.isVerified : true,
+                verifiedAt: data.user.verifiedAt || new Date().toISOString(),
+                isEmployerVerified: data.user.isEmployerVerified,
+                verificationStatus: data.user.verificationStatus
+              };
+              
+              console.log('Updating user state with:', updatedUser);
+              
+              setUsers(prevUsers => {
+                const updated = prevUsers.map(user => {
+                  if (user._id === userId || user.id === userId) {
+                    const merged = { ...user, ...updatedUser };
+                    console.log('Updated user in state:', merged);
+                    return merged;
+                  }
+                  return user;
+                });
+                console.log('Updated users array length:', updated.length);
+                return updated;
+              });
+
+              setFilteredUsers(prevFiltered => {
+                const updated = prevFiltered.map(user => {
+                  if (user._id === userId || user.id === userId) {
+                    return { ...user, ...updatedUser };
+                  }
+                  return user;
+                });
+                console.log('Updated filtered users array length:', updated.length);
+                return updated;
+              });
+
+              setVerifyingUserId(null);
               Alert.alert('Success', 'User verified successfully');
-              fetchUsers();
+              
+              // Refresh to ensure data is in sync
+              setTimeout(() => {
+                fetchUsers();
+              }, 1000);
             } catch (error) {
               console.error('Error verifying user:', error);
-              Alert.alert('Error', 'Failed to verify user');
+              setVerifyingUserId(null);
+              Alert.alert('Error', error.message || 'Failed to verify user. Please try again.');
             }
-          }
-        }
-      ]
-    );
   };
 
   const handleUnverify = async (userId, userName) => {
-    Alert.alert(
-      'Unverify User',
-      `Are you sure you want to unverify ${userName}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Unverify',
-          style: 'destructive',
-          onPress: async () => {
-            try {
+    console.log('handleUnverify called with userId:', userId, 'userName:', userName);
+    
+    // For web, use window.confirm which works reliably
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const confirmed = window.confirm(`Are you sure you want to unverify ${userName}?`);
+      if (!confirmed) {
+        console.log('Unverification cancelled');
+        return;
+      }
+    } else {
+      // For mobile, use Alert
+      Alert.alert(
+        'Unverify User',
+        `Are you sure you want to unverify ${userName}?`,
+        [
+          { text: 'Cancel', style: 'cancel', onPress: () => console.log('Unverification cancelled') },
+          {
+            text: 'Unverify',
+            style: 'destructive',
+            onPress: () => performUnverification(userId),
+          }
+        ]
+      );
+      return;
+    }
+    
+    // Execute unverification directly for web
+    performUnverification(userId);
+  };
+
+  const performUnverification = async (userId) => {
+    try {
+      console.log('Starting unverification process for user:', userId);
+      setVerifyingUserId(userId);
+              
               const token = await AsyncStorage.getItem('token');
               const headers = {
                 'Content-Type': 'application/json',
@@ -145,25 +273,81 @@ const AdminVerificationScreen = ({ navigation }) => {
                 headers['Authorization'] = `Bearer ${token}`;
               }
 
-              const response = await fetch(`${API_URL}/admin/users/${userId}/unverify`, {
+              const apiUrl = `${API_URL}/admin/users/${userId}/unverify`;
+              console.log('API URL:', apiUrl);
+
+              const response = await fetch(apiUrl, {
                 method: 'PATCH',
                 headers
               });
 
-              if (!response.ok) {
-                throw new Error('Failed to unverify user');
+              console.log('Response status:', response.status);
+
+              let data;
+              try {
+                const text = await response.text();
+                console.log('Response text:', text);
+                data = text ? JSON.parse(text) : {};
+              } catch (parseError) {
+                console.error('Error parsing response:', parseError);
+                throw new Error('Invalid response from server');
               }
 
+              if (!response.ok) {
+                console.error('Unverification failed - Response:', data);
+                throw new Error(data.message || data.error || `Server error: ${response.status}`);
+              }
+
+              console.log('Unverification successful - Data:', data);
+              
+              if (!data.user) {
+                console.error('No user data in response:', data);
+                throw new Error('Invalid response: user data missing');
+              }
+              
+              // Update local state immediately with all verification fields from response
+              const updatedUser = {
+                ...data.user,
+                isVerified: data.user.isVerified !== undefined ? data.user.isVerified : false,
+                verifiedAt: data.user.verifiedAt || null,
+                isEmployerVerified: data.user.isEmployerVerified,
+                verificationStatus: data.user.verificationStatus
+              };
+              
+              console.log('Updating user state with:', updatedUser);
+              
+              setUsers(prevUsers => {
+                const updated = prevUsers.map(user => {
+                  if (user._id === userId || user.id === userId) {
+                    return { ...user, ...updatedUser };
+                  }
+                  return user;
+                });
+                return updated;
+              });
+
+              setFilteredUsers(prevFiltered => {
+                const updated = prevFiltered.map(user => {
+                  if (user._id === userId || user.id === userId) {
+                    return { ...user, ...updatedUser };
+                  }
+                  return user;
+                });
+                return updated;
+              });
+
+              setVerifyingUserId(null);
               Alert.alert('Success', 'User unverified successfully');
-              fetchUsers();
+              
+              // Refresh to ensure data is in sync
+              setTimeout(() => {
+                fetchUsers();
+              }, 1000);
             } catch (error) {
               console.error('Error unverifying user:', error);
-              Alert.alert('Error', 'Failed to unverify user');
+              setVerifyingUserId(null);
+              Alert.alert('Error', error.message || 'Failed to unverify user. Please try again.');
             }
-          }
-        }
-      ]
-    );
   };
 
   const getStatsCount = () => {
@@ -172,8 +356,8 @@ const AdminVerificationScreen = ({ navigation }) => {
       verified: users.filter(u => u.isVerified).length,
       unverified: users.filter(u => !u.isVerified).length,
       jobseekers: users.filter(u => u.userType === 'jobseeker').length,
-      companies: users.filter(u => u.userType === 'company').length,
-      consultancies: users.filter(u => u.userType === 'consultancy').length,
+      companies: users.filter(u => u.userType === 'employer' && u.employerType === 'company').length,
+      consultancies: users.filter(u => u.userType === 'employer' && u.employerType === 'consultancy').length,
     };
   };
 
@@ -337,9 +521,18 @@ const AdminVerificationScreen = ({ navigation }) => {
                     )}
                   </View>
                   <View style={dynamicStyles.badges}>
-                    <View style={[dynamicStyles.typeBadge, styles[`${u.userType}Badge`]]}>
+                    <View style={[
+                      dynamicStyles.typeBadge, 
+                      u.userType === 'jobseeker' ? styles.jobseekerBadge :
+                      u.employerType === 'company' ? styles.companyBadge :
+                      u.employerType === 'consultancy' ? styles.consultancyBadge :
+                      styles.jobseekerBadge
+                    ]}>
                       <Text style={dynamicStyles.typeBadgeText}>
-                        {u.userType === 'jobseeker' ? 'Job Seeker' : u.userType === 'company' ? 'Company' : 'Consultancy'}
+                        {u.userType === 'jobseeker' ? 'Job Seeker' : 
+                         u.employerType === 'company' ? 'Company' : 
+                         u.employerType === 'consultancy' ? 'Consultancy' : 
+                         u.userType === 'employer' ? 'Employer' : 'Unknown'}
                       </Text>
                     </View>
                     <View style={[
@@ -384,11 +577,34 @@ const AdminVerificationScreen = ({ navigation }) => {
                     </TouchableOpacity>
                   ) : (
                     <TouchableOpacity
-                      style={[dynamicStyles.actionButton, dynamicStyles.verifyButton]}
-                      onPress={() => handleVerify(u._id, `${u.firstName} ${u.lastName}`)}
+                      style={[
+                        dynamicStyles.actionButton, 
+                        dynamicStyles.verifyButton,
+                        verifyingUserId === (u._id || u.id) && { opacity: 0.6 }
+                      ]}
+                      onPress={(e) => {
+                        e?.stopPropagation?.();
+                        e?.preventDefault?.();
+                        const userId = u._id || u.id;
+                        console.log('Verify button clicked for user:', userId, u.firstName, u.lastName);
+                        if (userId) {
+                          handleVerify(userId, `${u.firstName || ''} ${u.lastName || ''}`.trim() || 'User');
+                        } else {
+                          console.error('User ID is missing:', u);
+                          Alert.alert('Error', 'User ID is missing. Please refresh the page.');
+                        }
+                      }}
+                      activeOpacity={0.7}
+                      disabled={verifyingUserId === (u._id || u.id)}
                     >
-                      <Ionicons name="checkmark-circle" size={20} color="#FFF" />
-                      <Text style={dynamicStyles.actionButtonText}>Verify User</Text>
+                      {verifyingUserId === (u._id || u.id) ? (
+                        <ActivityIndicator size="small" color="#FFF" />
+                      ) : (
+                        <>
+                          <Ionicons name="checkmark-circle" size={20} color="#FFF" />
+                          <Text style={dynamicStyles.actionButtonText}>Verify User</Text>
+                        </>
+                      )}
                     </TouchableOpacity>
                   )}
                 </View>

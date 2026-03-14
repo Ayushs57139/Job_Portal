@@ -62,6 +62,13 @@ const AdminPackageManagementScreen = ({ navigation }) => {
 
   useEffect(() => {
     fetchPackages();
+    
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(() => {
+      fetchPackages();
+    }, 30000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -71,25 +78,53 @@ const AdminPackageManagementScreen = ({ navigation }) => {
   const fetchPackages = async () => {
     try {
       setLoading(true);
-      const token = await AsyncStorage.getItem('adminToken');
+      const token = await AsyncStorage.getItem('token');
       
-      const response = await fetch(`${API_URL}/api/admin/packages`, {
+      console.log('Fetching packages - API_URL:', API_URL);
+      console.log('Fetching packages - Token exists:', !!token);
+      
+      if (!token) {
+        Alert.alert('Error', 'Authentication required. Please login again.');
+        setLoading(false);
+        return;
+      }
+      
+      // API_URL already includes /api, so use it directly
+      const url = `${API_URL}/admin/packages`;
+      console.log('Fetching packages from:', url);
+      
+      const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });
 
+      console.log('Packages response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Packages API error response:', errorText);
+        throw new Error(`API returned status ${response.status}: ${errorText}`);
+      }
+
       const data = await response.json();
+      console.log('Packages API response:', JSON.stringify(data, null, 2));
       
       if (data.success) {
-        setPackages(data.packages || []);
+        const packagesList = data.packages || [];
+        console.log('Packages fetched successfully:', packagesList.length);
+        setPackages(packagesList);
       } else {
+        console.error('Packages API returned success: false', data);
         Alert.alert('Error', data.message || 'Failed to fetch packages');
+        setPackages([]);
       }
     } catch (error) {
       console.error('Fetch packages error:', error);
-      Alert.alert('Error', 'Failed to fetch packages');
+      console.error('Error stack:', error.stack);
+      Alert.alert('Error', error.message || 'Failed to fetch packages');
+      setPackages([]);
     } finally {
       setLoading(false);
     }
@@ -179,7 +214,12 @@ const AdminPackageManagementScreen = ({ navigation }) => {
     }
 
     try {
-      const token = await AsyncStorage.getItem('adminToken');
+      const token = await AsyncStorage.getItem('token');
+      
+      if (!token) {
+        Alert.alert('Error', 'Authentication required. Please login again.');
+        return;
+      }
       
       const packageData = {
         name: formData.name.trim(),
@@ -199,8 +239,8 @@ const AdminPackageManagementScreen = ({ navigation }) => {
       };
 
       const url = editMode
-        ? `${API_URL}/api/admin/packages/${currentPackage._id}`
-        : `${API_URL}/api/admin/packages`;
+        ? `${API_URL}/admin/packages/${currentPackage._id}`
+        : `${API_URL}/admin/packages`;
 
       const method = editMode ? 'PUT' : 'POST';
 
@@ -239,9 +279,14 @@ const AdminPackageManagementScreen = ({ navigation }) => {
           style: 'destructive',
           onPress: async () => {
             try {
-              const token = await AsyncStorage.getItem('adminToken');
+              const token = await AsyncStorage.getItem('token');
               
-              const response = await fetch(`${API_URL}/api/admin/packages/${pkg._id}`, {
+              if (!token) {
+                Alert.alert('Error', 'Authentication required. Please login again.');
+                return;
+              }
+              
+              const response = await fetch(`${API_URL}/admin/packages/${pkg._id}`, {
                 method: 'DELETE',
                 headers: {
                   'Authorization': `Bearer ${token}`,
@@ -269,9 +314,14 @@ const AdminPackageManagementScreen = ({ navigation }) => {
 
   const toggleActive = async (pkg) => {
     try {
-      const token = await AsyncStorage.getItem('adminToken');
+      const token = await AsyncStorage.getItem('token');
       
-      const response = await fetch(`${API_URL}/api/admin/packages/${pkg._id}/toggle-active`, {
+      if (!token) {
+        Alert.alert('Error', 'Authentication required. Please login again.');
+        return;
+      }
+      
+      const response = await fetch(`${API_URL}/admin/packages/${pkg._id}/toggle-active`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -294,9 +344,14 @@ const AdminPackageManagementScreen = ({ navigation }) => {
 
   const toggleFeatured = async (pkg) => {
     try {
-      const token = await AsyncStorage.getItem('adminToken');
+      const token = await AsyncStorage.getItem('token');
       
-      const response = await fetch(`${API_URL}/api/admin/packages/${pkg._id}/toggle-featured`, {
+      if (!token) {
+        Alert.alert('Error', 'Authentication required. Please login again.');
+        return;
+      }
+      
+      const response = await fetch(`${API_URL}/admin/packages/${pkg._id}/toggle-featured`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,

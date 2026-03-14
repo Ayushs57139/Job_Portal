@@ -39,7 +39,7 @@ const blogSchema = new mongoose.Schema({
     authorType: {
         type: String,
         required: true,
-        enum: ['admin', 'superadmin', 'company', 'consultancy'],
+        enum: ['admin', 'superadmin', 'company', 'consultancy', 'employer'],
         trim: true
     },
     image: {

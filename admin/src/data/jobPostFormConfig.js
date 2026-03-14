@@ -535,7 +535,7 @@ export const formSteps = [
         type: 'multiselect',
         placeholder: 'Select cities',
         icon: 'business-outline',
-        required: true,
+        required: false,
         allowAddNew: true,
         maxSelections: 10,
         options: [],
@@ -938,7 +938,7 @@ export const formSteps = [
         type: 'text',
         placeholder: 'Enter contact person name',
         icon: 'person-outline',
-        required: false,
+        required: true,
       },
       {
         name: 'contactPersonNumber',
@@ -946,7 +946,7 @@ export const formSteps = [
         type: 'tel',
         placeholder: 'Enter contact number',
         icon: 'call-outline',
-        required: false,
+        required: true,
       },
       {
         name: 'contactPersonEmail',
@@ -954,7 +954,7 @@ export const formSteps = [
         type: 'email',
         placeholder: 'Enter email address',
         icon: 'mail-outline',
-        required: false,
+        required: true,
       },
       {
         name: 'contactPersonWhatsapp',

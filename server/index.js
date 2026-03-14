@@ -1,14 +1,16 @@
+const dns = require("dns");
+dns.setDefaultResultOrder("ipv4first");
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const compression = require('compression');
-const rateLimit = require('express-rate-limit');
 const path = require('path');
 const http = require('http');
 const socketIo = require('socket.io');
 const jwt = require('jsonwebtoken');
+const fs = require('fs');
 require('dotenv').config();
 
 // Import utilities
@@ -81,13 +83,7 @@ app.use(helmet({
 }));
 app.use(compression());
 
-// Rate limiting (skip OPTIONS requests for CORS preflight)
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  skip: (req) => req.method === 'OPTIONS' // Skip rate limiting for OPTIONS requests
-});
-app.use(limiter);
+// Rate limiting removed for production - allow unlimited requests from clients
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
@@ -116,9 +112,104 @@ if (process.env.NODE_ENV === 'development') {
   }));
 }
 
-// Request logging middleware
+// Request monitoring for auto-restart on high load
+const requestMonitor = {
+  requests: [],
+  maxRequestsPerMinute: 50000, // Increased threshold - allow many requests from clients
+  windowMs: 60000, // 1 minute window
+  restartOnHighLoad: process.env.AUTO_RESTART_ON_HIGH_LOAD !== 'false', // Enable by default
+  lastRestartTime: 0,
+  minRestartInterval: 300000, // 5 minutes between restarts
+  crashCount: 0,
+  lastCrashTime: 0,
+  maxCrashesPerHour: 10, // Max crashes per hour before alerting
+  
+  // Clean old requests periodically
+  cleanup() {
+    const now = Date.now();
+    this.requests = this.requests.filter(time => now - time < this.windowMs);
+  },
+  
+  // Add request timestamp
+  addRequest() {
+    const now = Date.now();
+    this.requests.push(now);
+    this.cleanup();
+    
+    // Check if we need to restart due to high load
+    if (this.restartOnHighLoad && this.requests.length > this.maxRequestsPerMinute) {
+      const timeSinceLastRestart = now - this.lastRestartTime;
+      
+      if (timeSinceLastRestart > this.minRestartInterval) {
+        logger.warn(`High request load detected: ${this.requests.length} requests in last minute. Auto-restarting server...`, {
+          requestCount: this.requests.length,
+          threshold: this.maxRequestsPerMinute,
+          memoryUsage: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + ' MB'
+        });
+        
+        this.lastRestartTime = now;
+        
+        // Graceful restart after 2 seconds
+        setTimeout(() => {
+          logger.info('Initiating graceful server restart due to high load...');
+          process.exit(1); // PM2 will auto-restart
+        }, 2000);
+      } else {
+        logger.warn(`High request load detected but restart skipped (too soon since last restart): ${this.requests.length} requests/min`, {
+          requestCount: this.requests.length,
+          timeSinceLastRestart: Math.round(timeSinceLastRestart / 1000) + 's'
+        });
+      }
+    }
+    
+    return this.requests.length;
+  },
+  
+  // Track crashes
+  recordCrash() {
+    const now = Date.now();
+    this.crashCount++;
+    
+    // Reset counter if more than an hour has passed
+    if (now - this.lastCrashTime > 3600000) {
+      this.crashCount = 1;
+    }
+    
+    this.lastCrashTime = now;
+    
+    if (this.crashCount > this.maxCrashesPerHour) {
+      logger.error(`High crash frequency detected: ${this.crashCount} crashes in the last hour`, {
+        crashCount: this.crashCount,
+        maxCrashesPerHour: this.maxCrashesPerHour
+      });
+    }
+  },
+  
+  // Get current request rate
+  getRequestRate() {
+    this.cleanup();
+    return {
+      requestsPerMinute: this.requests.length,
+      maxRequestsPerMinute: this.maxRequestsPerMinute,
+      threshold: (this.requests.length / this.maxRequestsPerMinute * 100).toFixed(2) + '%',
+      crashCount: this.crashCount
+    };
+  }
+};
+
+// Cleanup old requests every 30 seconds
+setInterval(() => {
+  requestMonitor.cleanup();
+}, 30000);
+
+// Request logging middleware with monitoring
 app.use((req, res, next) => {
   const start = Date.now();
+  
+  // Track request for monitoring
+  if (req.path.startsWith('/api') && !req.path.startsWith('/api/health')) {
+    requestMonitor.addRequest();
+  }
   
   res.on('finish', () => {
     const duration = Date.now() - start;
@@ -307,6 +398,7 @@ app.use('/api/admin/logos', require('./routes/logos'));
 app.use('/api/logos', require('./routes/logos'));
 app.use('/api/bulk', require('./routes/bulkImportExport'));
 app.use('/api/sales-enquiry', require('./routes/salesEnquiry'));
+console.log('[Routes] Sales enquiry routes registered: /api/sales-enquiry (including /simple endpoint)');
 app.use('/api/verification', require('./routes/verification')); // Employer verification routes
 app.use('/api/subusers', require('./routes/subusers')); // Subuser management routes
 app.use('/api/custom-fields', require('./routes/customFields')); // Custom fields management routes
@@ -329,19 +421,36 @@ app.use('/api/chatbot', require('./routes/chatbot')); // Chatbot conversations r
 app.use('/api/kyc', require('./routes/kyc')); // KYC document management routes
 app.use('/api/advertisements', require('./routes/advertisements')); // Advertisement management routes
 app.use('/api/social-updates', require('./routes/socialUpdates')); // Social updates and sharing routes
+app.use('/api/connections', require('./routes/connections')); // Connection requests and management
+app.use('/api/follows', require('./routes/follows')); // Follow system for companies/consultancies
+app.use('/api/comment-suggestions', require('./routes/commentSuggestions')); // Comment suggestions management
 app.use('/api/saved-jobs', require('./routes/savedJobs')); // Saved jobs management routes
 app.use('/api/settings', require('./routes/settings')); // Platform settings management routes
 app.use('/api/theme', require('./routes/theme')); // Theme management routes
 app.use('/api/upload', require('./routes/upload')); // File upload routes
 app.use('/api/popular-searches', require('./routes/popularSearches')); // Popular searches routes
+app.use('/api/job-events', require('./routes/jobEvents')); // Job events management routes
+app.use('/api/admin', require('./routes/invitations')); // Bulk invitations and WhatsApp settings routes
+app.use('/api/admin/locations', require('./routes/locationManagement')); // Location management routes
+app.use('/api/locations', require('./routes/locationManagement')); // Public location routes
 
 // Public packages route
 app.get('/api/packages', async (req, res) => {
   try {
     const Package = require('./models/Package');
-    const packageType = req.query.type || '';
+    // Support both 'type' and 'packageType' query parameters
+    const packageType = req.query.packageType || req.query.type || '';
+    const isActive = req.query.isActive;
     
-    let query = { isActive: true };
+    let query = {};
+    
+    // Only show active packages by default for public endpoint
+    if (isActive !== undefined) {
+      query.isActive = isActive === 'true';
+    } else {
+      query.isActive = true;
+    }
+    
     if (packageType) {
       query.packageType = packageType;
     }
@@ -349,6 +458,8 @@ app.get('/api/packages', async (req, res) => {
     const packages = await Package.find(query)
       .sort({ displayOrder: 1, createdAt: 1 })
       .select('-createdBy -updatedBy -createdAt -updatedAt');
+    
+    console.log(`Public packages fetch - Type: ${packageType || 'all'}, Total: ${packages.length}`);
     
     res.json({
       success: true,
@@ -358,7 +469,8 @@ app.get('/api/packages', async (req, res) => {
     console.error('Error fetching packages:', error);
     res.status(500).json({ 
       success: false, 
-      message: 'Server error' 
+      message: 'Server error',
+      error: error.message
     });
   }
 });
@@ -367,35 +479,74 @@ app.get('/api/packages', async (req, res) => {
 app.get('/api/health', async (req, res) => {
   try {
     const dbStatus = require('./config/database').getConnectionStatus();
+    const memUsage = process.memoryUsage();
+    const requestRate = requestMonitor.getRequestRate();
+    
     const healthStatus = {
       status: 'OK',
       message: 'Server is running',
       timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
+      uptime: Math.round(process.uptime()),
+      uptimeFormatted: formatUptime(process.uptime()),
       environment: process.env.NODE_ENV || 'development',
+      nodeVersion: process.version,
       database: {
         connected: dbStatus.isConnected,
         state: dbStatus.state,
-        host: dbStatus.host
+        host: dbStatus.host,
+        reconnectAttempts: dbStatus.reconnectAttempts || 0
       },
       memory: {
-        used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + ' MB',
-        total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024) + ' MB'
+        used: Math.round(memUsage.heapUsed / 1024 / 1024) + ' MB',
+        total: Math.round(memUsage.heapTotal / 1024 / 1024) + ' MB',
+        rss: Math.round(memUsage.rss / 1024 / 1024) + ' MB',
+        external: Math.round(memUsage.external / 1024 / 1024) + ' MB',
+        percentage: ((memUsage.heapUsed / memUsage.heapTotal) * 100).toFixed(2) + '%'
+      },
+      requests: {
+        requestsPerMinute: requestRate.requestsPerMinute,
+        maxRequestsPerMinute: requestRate.maxRequestsPerMinute,
+        threshold: requestRate.threshold,
+        crashCount: requestRate.crashCount || 0
+      },
+      process: {
+        pid: process.pid,
+        platform: process.platform,
+        arch: process.arch
       }
     };
 
     // Return 503 if database is not connected
     const statusCode = dbStatus.isConnected ? 200 : 503;
+    if (!dbStatus.isConnected) {
+      healthStatus.status = 'DEGRADED';
+      healthStatus.message = 'Server is running but database is disconnected';
+    }
+    
     res.status(statusCode).json(healthStatus);
   } catch (error) {
     logger.error('Health check error', error);
     res.status(500).json({
       status: 'ERROR',
       message: 'Health check failed',
-      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal error'
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal error',
+      timestamp: new Date().toISOString()
     });
   }
 });
+
+// Helper function to format uptime
+function formatUptime(seconds) {
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+  
+  if (days > 0) return `${days}d ${hours}h ${minutes}m ${secs}s`;
+  if (hours > 0) return `${hours}h ${minutes}m ${secs}s`;
+  if (minutes > 0) return `${minutes}m ${secs}s`;
+  return `${secs}s`;
+}
 
 // Favicon endpoints to prevent 500 errors
 app.get('/favicon.ico', (req, res) => {
@@ -420,49 +571,94 @@ app.use('/api/*', (req, res) => {
 });
 
 // 404 handler for non-API routes (SPA fallback)
-// This handles client-side routing for production deployments
-app.use('*', (req, res) => {
-  // If it's an API request that wasn't caught, return JSON
-  if (req.path.startsWith('/api')) {
-    return res.status(404).json({ 
+// This handles client-side routing for production deployments - fixes 404 on hard refresh
+app.use('*', (req, res, next) => {
+  try {
+    // If it's an API request that wasn't caught, return JSON
+    if (req.path.startsWith('/api')) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'API route not found',
+        path: req.originalUrl 
+      });
+    }
+    
+    // Skip static file requests (they should be handled by express.static)
+    const ext = path.extname(req.path);
+    const staticExtensions = ['.js', '.css', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.woff', '.woff2', '.ttf', '.eot', '.json', '.xml', '.txt', '.pdf', '.zip', '.map'];
+    if (ext && staticExtensions.includes(ext.toLowerCase())) {
+      // Static file not found - return 404
+      logger.debug(`Static file not found: ${req.originalUrl}`);
+      return res.status(404).json({ 
+        success: false,
+        message: 'Resource not found' 
+      });
+    }
+    
+    // For SPA routing, serve index.html for all non-API, non-static routes
+    // This allows client-side routing to work on refresh (fixes 404 on hard refresh)
+    const possibleWebPaths = [
+      path.join(__dirname, '../web'),
+      path.join(__dirname, '../build'),
+      path.join(__dirname, '../dist'),
+      path.join(__dirname, '../public'),
+      path.join(__dirname, '..'), // Root directory
+      path.join(__dirname, '../../web'), // Alternative path
+      path.join(__dirname, '../../build'), // Alternative path
+      path.join(__dirname, '../../dist') // Alternative path
+    ];
+    
+    let indexPath = null;
+    for (const webPath of possibleWebPaths) {
+      try {
+        const testPath = path.join(webPath, 'index.html');
+        if (fs.existsSync(testPath)) {
+          indexPath = testPath;
+          break;
+        }
+      } catch (err) {
+        // Continue to next path if this one fails
+        continue;
+      }
+    }
+    
+    if (indexPath) {
+      logger.debug(`Serving index.html for SPA route: ${req.originalUrl}`);
+      // Set proper content type
+      res.setHeader('Content-Type', 'text/html');
+      return res.sendFile(indexPath, (err) => {
+        if (err) {
+          logger.error('Error serving index.html', err, {
+            path: indexPath,
+            originalUrl: req.originalUrl
+          });
+          // Fall through to 404 response
+          return res.status(404).json({ 
+            success: false,
+            message: 'Route not found',
+            path: req.originalUrl 
+          });
+        }
+      });
+    }
+    
+    // Fallback: return 404 JSON
+    logger.warn(`Route not found and no index.html found: ${req.method} ${req.originalUrl}`, {
+      ip: req.ip,
+      userAgent: req.get('user-agent')
+    });
+    res.status(404).json({ 
       success: false,
-      message: 'API route not found',
+      message: 'Route not found',
       path: req.originalUrl 
     });
-  }
-  
-  // For non-API routes, check if it's a static file request
-  const ext = path.extname(req.path);
-  if (ext && ext !== '.html') {
-    // Static file not found
-    logger.warn(`Static file not found: ${req.originalUrl}`);
-    return res.status(404).json({ 
-      success: false,
-      message: 'Resource not found' 
+  } catch (error) {
+    // Error handling for the 404 handler itself
+    logger.error('Error in 404 handler', error, {
+      originalUrl: req.originalUrl
     });
+    next(error); // Pass to error handler middleware
   }
-  
-  // For SPA routing, serve index.html if it exists
-  // This allows client-side routing to work on refresh
-  const webPath = path.join(__dirname, '../web');
-  const indexPath = path.join(webPath, 'index.html');
-  
-  const fs = require('fs');
-  if (fs.existsSync(indexPath)) {
-    logger.debug(`Serving index.html for SPA route: ${req.originalUrl}`);
-    return res.sendFile(indexPath);
-  }
-  
-  // Fallback: return 404 JSON
-  logger.warn(`Route not found: ${req.method} ${req.originalUrl}`, {
-    ip: req.ip,
-    userAgent: req.get('user-agent')
-  });
-  res.status(404).json({ 
-    success: false,
-    message: 'Route not found',
-    path: req.originalUrl 
-  });
 });
 
 // Error handling middleware (must be after all routes and 404 handler)
@@ -704,9 +900,9 @@ jobNotificationService.start();
 const PORT = process.env.PORT || 5000;
 
 // Global process error handlers - MUST be after server creation
-// These handlers prevent the server from crashing on unexpected errors
+// These handlers prevent the server from crashing on unexpected errors and enable auto-restart
 
-// Critical errors that should cause shutdown
+// Critical errors that should cause shutdown (PM2 will auto-restart)
 const CRITICAL_ERRORS = [
   'EADDRINUSE',      // Port already in use
   'EACCES',          // Permission denied
@@ -714,53 +910,100 @@ const CRITICAL_ERRORS = [
   'ECONNREFUSED'     // Critical connection refused (if it's our DB)
 ];
 
+// Track error frequency for debugging
+let errorCount = 0;
+let lastErrorTime = Date.now();
+const ERROR_RESET_INTERVAL = 3600000; // 1 hour
+
 process.on('uncaughtException', (error) => {
+  errorCount++;
+  const now = Date.now();
+  
+  // Reset error count if more than an hour has passed
+  if (now - lastErrorTime > ERROR_RESET_INTERVAL) {
+    errorCount = 1;
+  }
+  lastErrorTime = now;
+  
+  requestMonitor.recordCrash();
+  
   logger.error('UNCAUGHT EXCEPTION', error, {
     type: 'uncaughtException',
-    critical: CRITICAL_ERRORS.includes(error.code)
+    critical: CRITICAL_ERRORS.includes(error.code),
+    errorCount: errorCount,
+    memoryUsage: {
+      heapUsed: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + ' MB',
+      heapTotal: Math.round(process.memoryUsage().heapTotal / 1024 / 1024) + ' MB',
+      rss: Math.round(process.memoryUsage().rss / 1024 / 1024) + ' MB'
+    },
+    uptime: Math.round(process.uptime()) + 's'
   });
   
-  // Only exit for critical errors
+  // Only exit for critical errors (PM2 will auto-restart)
   const isCritical = CRITICAL_ERRORS.includes(error.code) || 
                      error.message.includes('Cannot find module') ||
-                     error.message.includes('MODULE_NOT_FOUND');
+                     error.message.includes('MODULE_NOT_FOUND') ||
+                     error.message.includes('EADDRINUSE');
   
   if (isCritical) {
-    logger.error('Critical error detected, shutting down server', error);
+    logger.error('Critical error detected, shutting down server (PM2 will auto-restart)', error);
     // Close server gracefully
     server.close(() => {
-      logger.info('Server closed due to critical uncaught exception');
-      process.exit(1);
+      logger.info('Server closed due to critical uncaught exception. PM2 will restart automatically.');
+      process.exit(1); // PM2 will catch this and restart
     });
     
     // Force exit after 10 seconds if graceful shutdown fails
     setTimeout(() => {
-      logger.error('Forced exit after timeout');
-      process.exit(1);
+      logger.error('Forced exit after timeout. PM2 will restart automatically.');
+      process.exit(1); // PM2 will catch this and restart
     }, 10000);
   } else {
-    // Non-critical errors: log and continue
+    // Non-critical errors: log and continue (don't crash)
     logger.warn('Non-critical uncaught exception, server will continue running', {
       error: error.message,
-      code: error.code
+      code: error.code,
+      errorCount: errorCount
     });
+    // Don't exit - let the server continue running
   }
 });
 
 process.on('unhandledRejection', (reason, promise) => {
   const error = reason instanceof Error ? reason : new Error(String(reason));
   
+  errorCount++;
+  const now = Date.now();
+  
+  // Reset error count if more than an hour has passed
+  if (now - lastErrorTime > ERROR_RESET_INTERVAL) {
+    errorCount = 1;
+  }
+  lastErrorTime = now;
+  
   logger.error('UNHANDLED REJECTION', error, {
     type: 'unhandledRejection',
-    promise: promise.toString().substring(0, 200)
+    promise: promise.toString().substring(0, 200),
+    errorCount: errorCount,
+    memoryUsage: {
+      heapUsed: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + ' MB',
+      heapTotal: Math.round(process.memoryUsage().heapTotal / 1024 / 1024) + ' MB'
+    }
   });
   
   // Don't exit on unhandled rejections - log and continue
   // Most unhandled rejections are from async operations that can be recovered
   logger.warn('Unhandled rejection logged, server will continue running');
   
-  // In production, you might want to restart the process after too many rejections
-  // For now, we'll just log them
+  // If too many unhandled rejections, consider restarting (PM2 will handle it)
+  if (errorCount > 100) {
+    logger.error('Too many errors detected, initiating restart (PM2 will auto-restart)', {
+      errorCount: errorCount
+    });
+    setTimeout(() => {
+      process.exit(1); // PM2 will catch this and restart
+    }, 5000);
+  }
 });
 
 // SIGTERM handler (graceful shutdown)
@@ -781,16 +1024,30 @@ process.on('SIGTERM', () => {
 });
 
 server.listen(PORT, '0.0.0.0', () => {
+  const memUsage = process.memoryUsage();
   logger.info(`Server started successfully on port ${PORT}`, {
     port: PORT,
     environment: process.env.NODE_ENV || 'development',
-    nodeVersion: process.version
+    nodeVersion: process.version,
+    pid: process.pid,
+    memory: {
+      heapUsed: Math.round(memUsage.heapUsed / 1024 / 1024) + ' MB',
+      heapTotal: Math.round(memUsage.heapTotal / 1024 / 1024) + ' MB',
+      rss: Math.round(memUsage.rss / 1024 / 1024) + ' MB'
+    },
+    timestamp: new Date().toISOString()
   });
   console.log(`✅ Server running on port ${PORT}`);
   console.log(`   Accessible at http://localhost:${PORT} and http://0.0.0.0:${PORT}`);
   console.log(`   For Android emulator, use: http://10.0.2.2:${PORT}`);
   console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`   Process ID: ${process.pid}`);
+  console.log(`   Node Version: ${process.version}`);
+  console.log(`   Memory: ${Math.round(memUsage.heapUsed / 1024 / 1024)} MB / ${Math.round(memUsage.heapTotal / 1024 / 1024)} MB`);
   console.log('   Freejobwala Chat Feature is active');
+  console.log('   Auto-restart enabled: Server will automatically restart on crashes');
+  console.log('   High-load monitoring: Server will restart if request load is too high');
+  console.log('   Health check: http://localhost:' + PORT + '/api/health');
 });
 
 // Handle server errors

@@ -14,9 +14,12 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import { colors, spacing, typography, borderRadius } from '../../styles/theme';
+import { colors, spacing, typography, borderRadius, shadows } from '../../styles/theme';
 import UserSidebar from '../../components/UserSidebar';
+import EmployerSidebar from '../../components/EmployerSidebar';
 import api from '../../config/api';
+import socketService from '../../services/socketService';
+import { useResponsive } from '../../utils/responsive';
 
 // Safely get Platform - lazy evaluation
 const getPlatform = () => {
@@ -30,9 +33,10 @@ const getPlatform = () => {
 };
 
 const isWeb = getPlatform().OS === 'web';
-const REFRESH_INTERVAL = 10000; // 10 seconds for real-time chat updates
 
 const LiveChatSupportScreen = ({ navigation }) => {
+  const responsive = useResponsive();
+  const { isMobile } = responsive;
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -44,12 +48,63 @@ const LiveChatSupportScreen = ({ navigation }) => {
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(isWeb);
-  const intervalRef = useRef(null);
+  const [userType, setUserType] = useState(null);
+  const [isConnected, setIsConnected] = useState(false);
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     loadCurrentUser();
     loadConversations();
+    
+    // Initialize socket connection
+    const initializeSocket = async () => {
+      try {
+        await socketService.connect();
+        setIsConnected(true);
+        
+        // Listen for new messages and conversation updates
+        const unsubscribeNotification = socketService.onMessageNotification((data) => {
+          // Reload conversations to update unread counts and last messages
+          loadConversations(false);
+        });
+
+        // Listen for new messages in any conversation
+        const unsubscribeNewMessage = socketService.onNewMessage((data) => {
+          // Update the conversation's last message
+          setConversations(prev => 
+            prev.map(conv => {
+              if (conv._id === data.conversationId) {
+                return {
+                  ...conv,
+                  lastMessage: {
+                    content: data.message.content,
+                    sender: data.message.sender,
+                    timestamp: data.message.createdAt
+                  }
+                };
+              }
+              return conv;
+            })
+          );
+        });
+
+        return () => {
+          unsubscribeNotification();
+          unsubscribeNewMessage();
+        };
+      } catch (error) {
+        console.error('Error initializing socket:', error);
+        setIsConnected(false);
+      }
+    };
+
+    const cleanup = initializeSocket();
+
+    return () => {
+      if (cleanup && typeof cleanup.then === 'function') {
+        cleanup.then(cleanupFn => cleanupFn && cleanupFn());
+      }
+    };
   }, []);
 
   // Load conversations function
@@ -73,26 +128,27 @@ const LiveChatSupportScreen = ({ navigation }) => {
       const response = await api.getConversations();
       if (response.success) {
         const convs = response.conversations || [];
-        // Filter conversations to only show company, consultancy, and admin
-        const filtered = convs.filter(conv => {
-          if (!currentUser) return false;
-          
-          const otherParticipants = conv.participants.filter(
-            p => p.user && p.user._id !== currentUser._id
-          );
-          
-          if (otherParticipants.length === 0) return false;
-          
-          const otherUser = otherParticipants[0].user;
-          const userType = otherUser?.userType;
-          
-          // Only show conversations with company, consultancy, or admin
-          return (
-            userType === 'admin' || 
-            userType === 'superadmin' || 
-            (userType === 'employer' && (otherUser?.employerType === 'company' || otherUser?.employerType === 'consultancy'))
-          );
-        });
+        // Show all conversations for company/consultancy users, filtered conversations for jobseekers
+        let filtered = convs;
+        if (currentUser && currentUser.userType === 'jobseeker') {
+          // Jobseekers can only see conversations with company, consultancy, and admin
+          filtered = convs.filter(conv => {
+            const otherParticipants = conv.participants.filter(
+              p => p.user && p.user._id !== currentUser._id
+            );
+            
+            if (otherParticipants.length === 0) return false;
+            
+            const otherUser = otherParticipants[0].user;
+            const userType = otherUser?.userType;
+            
+            return (
+              userType === 'admin' || 
+              userType === 'superadmin' || 
+              (userType === 'employer' && (otherUser?.employerType === 'company' || otherUser?.employerType === 'consultancy'))
+            );
+          });
+        }
         
         setConversations(filtered);
       }
@@ -107,36 +163,10 @@ const LiveChatSupportScreen = ({ navigation }) => {
     }
   }, [currentUser, fadeAnim]);
 
-  // Auto-refresh interval
-  useEffect(() => {
-    intervalRef.current = setInterval(() => {
-      loadConversations(false); // Silent refresh
-    }, REFRESH_INTERVAL);
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    };
-  }, [loadConversations]);
-
   // Refresh on screen focus
   useFocusEffect(
     useCallback(() => {
       loadConversations(false);
-      
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-      intervalRef.current = setInterval(() => {
-        loadConversations(false);
-      }, REFRESH_INTERVAL);
-
-      return () => {
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-        }
-      };
     }, [loadConversations])
   );
 
@@ -144,6 +174,14 @@ const LiveChatSupportScreen = ({ navigation }) => {
     try {
       const user = await api.getCurrentUserFromStorage();
       setCurrentUser(user);
+      // Determine user type for sidebar selection
+      if (user) {
+        if (user.userType === 'employer' && (user.employerType === 'company' || user.employerType === 'consultancy')) {
+          setUserType(user.employerType);
+        } else {
+          setUserType('jobseeker');
+        }
+      }
     } catch (error) {
       console.error('Error loading current user:', error);
     }
@@ -156,15 +194,18 @@ const LiveChatSupportScreen = ({ navigation }) => {
       if (response.success) {
         const users = response.users || [];
         
-        // Filter to only show company, consultancy, and admin users
-        const filtered = users.filter(user => {
-          const userType = user.userType;
-          return (
-            userType === 'admin' || 
-            userType === 'superadmin' || 
-            (userType === 'employer' && (user.employerType === 'company' || user.employerType === 'consultancy'))
-          );
-        });
+        // For company/consultancy users: show all users. For jobseekers: filter to company/consultancy/admin only
+        let filtered = users;
+        if (currentUser && currentUser.userType === 'jobseeker') {
+          filtered = users.filter(user => {
+            const userType = user.userType;
+            return (
+              userType === 'admin' || 
+              userType === 'superadmin' || 
+              (userType === 'employer' && (user.employerType === 'company' || user.employerType === 'consultancy'))
+            );
+          });
+        }
         
         setAvailableUsers(filtered);
         setFilteredUsers(filtered);
@@ -227,14 +268,40 @@ const LiveChatSupportScreen = ({ navigation }) => {
         return;
       }
 
-      // Determine conversation type
-      let conversationType = 'jobseeker_employer';
+      // Determine conversation type based on both users
+      let conversationType = 'general';
       
-      if (currentUser.userType === 'jobseeker') {
-        if (user.userType === 'employer') {
+      const currentUserType = currentUser.userType;
+      const otherUserType = user.userType;
+      
+      if (currentUserType === 'jobseeker') {
+        if (otherUserType === 'employer') {
           conversationType = 'jobseeker_employer';
-        } else if (user.userType === 'admin' || user.userType === 'superadmin') {
+        } else if (otherUserType === 'admin' || otherUserType === 'superadmin') {
           conversationType = 'jobseeker_support';
+        }
+      } else if (currentUserType === 'employer') {
+        if (otherUserType === 'jobseeker') {
+          conversationType = 'jobseeker_employer';
+        } else if (otherUserType === 'admin' || otherUserType === 'superadmin') {
+          conversationType = 'employer_support';
+        } else if (otherUserType === 'employer') {
+          // Company to company, company to consultancy, consultancy to consultancy
+          if (currentUser.employerType === 'company' && user.employerType === 'company') {
+            conversationType = 'company_company';
+          } else if (currentUser.employerType === 'consultancy' && user.employerType === 'consultancy') {
+            conversationType = 'consultancy_consultancy';
+          } else {
+            conversationType = 'company_consultancy';
+          }
+        }
+      } else if (currentUserType === 'admin' || currentUserType === 'superadmin') {
+        if (otherUserType === 'jobseeker') {
+          conversationType = 'jobseeker_support';
+        } else if (otherUserType === 'employer') {
+          conversationType = 'employer_support';
+        } else {
+          conversationType = 'admin_admin';
         }
       }
 
@@ -273,6 +340,9 @@ const LiveChatSupportScreen = ({ navigation }) => {
     }
   };
 
+  // Determine if current user is employer (company/consultancy)
+  const isEmployer = userType === 'company' || userType === 'consultancy';
+
   const getOtherParticipant = (conversation) => {
     if (!currentUser) return null;
     
@@ -287,7 +357,9 @@ const LiveChatSupportScreen = ({ navigation }) => {
         type: user.userType === 'employer' 
           ? (user.employerType === 'company' ? 'Company' : 'Consultancy')
           : user.userType === 'admin' || user.userType === 'superadmin'
-          ? 'Support'
+          ? 'Admin Support'
+          : user.userType === 'jobseeker'
+          ? 'Job Seeker'
           : 'User',
         avatar: user.profile?.avatar,
         userType: user.userType,
@@ -407,7 +479,9 @@ const LiveChatSupportScreen = ({ navigation }) => {
           {item.userType === 'employer' 
             ? (item.employerType === 'company' ? 'Company' : 'Consultancy')
             : item.userType === 'admin' || item.userType === 'superadmin'
-            ? 'Support Admin'
+            ? 'Admin Support'
+            : item.userType === 'jobseeker'
+            ? 'Job Seeker'
             : 'User'}
         </Text>
       </View>
@@ -436,7 +510,7 @@ const LiveChatSupportScreen = ({ navigation }) => {
             <Ionicons name="search" size={20} color={colors.textSecondary} style={styles.searchIcon} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search companies, consultancies, or support..."
+              placeholder={isEmployer ? "Search members, admins, job seekers, companies, or consultancies..." : "Search companies, consultancies, or support..."}
               placeholderTextColor={colors.textSecondary}
               value={userSearchQuery}
               onChangeText={(text) => {
@@ -460,7 +534,11 @@ const LiveChatSupportScreen = ({ navigation }) => {
                 <View style={styles.emptyState}>
                   <Ionicons name="people-outline" size={48} color={colors.textSecondary} />
                   <Text style={styles.emptyText}>
-                    {userSearchQuery ? 'No users found' : 'Search for companies, consultancies, or support to start chatting'}
+                    {userSearchQuery 
+                      ? 'No users found' 
+                      : isEmployer
+                      ? 'Search for members, admins, job seekers, companies, or consultancies to start chatting'
+                      : 'Search for companies, consultancies, or support to start chatting'}
                   </Text>
                 </View>
               }
@@ -483,13 +561,40 @@ const LiveChatSupportScreen = ({ navigation }) => {
   return (
     <View style={styles.container}>
       {/* Sidebar */}
-      {sidebarOpen && (
-        <UserSidebar
-          navigation={navigation}
-          activeKey="liveChat"
-          onClose={!isWeb ? () => setSidebarOpen(false) : null}
-          badges={{}}
-        />
+      {isEmployer ? (
+        <>
+          {!isMobile && (
+            <View style={styles.sidebarWrapper}>
+              <EmployerSidebar permanent navigation={navigation} role={userType} activeKey="liveChat" />
+            </View>
+          )}
+          {isMobile && (
+            <EmployerSidebar
+              visible={sidebarOpen}
+              onClose={() => setSidebarOpen(false)}
+              navigation={navigation}
+              role={userType}
+              activeKey="liveChat"
+            />
+          )}
+          {isMobile && (
+            <TouchableOpacity 
+              style={styles.menuButton}
+              onPress={() => setSidebarOpen(true)}
+            >
+              <Ionicons name="menu" size={24} color={colors.text} />
+            </TouchableOpacity>
+          )}
+        </>
+      ) : (
+        sidebarOpen && (
+          <UserSidebar
+            navigation={navigation}
+            activeKey="liveChat"
+            onClose={!isWeb ? () => setSidebarOpen(false) : null}
+            badges={{}}
+          />
+        )
       )}
 
       {/* Main Content */}
@@ -591,6 +696,8 @@ const LiveChatSupportScreen = ({ navigation }) => {
                   <Text style={styles.emptyText}>
                     {searchQuery
                       ? 'No conversations match your search'
+                      : isEmployer
+                      ? 'Start a conversation with any member, admin, job seeker, company, or consultancy'
                       : 'Start a conversation with companies, consultancies, or support'}
                   </Text>
                   
@@ -631,6 +738,19 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     backgroundColor: colors.background,
+  },
+  sidebarWrapper: {
+    width: 280,
+  },
+  menuButton: {
+    position: 'absolute',
+    top: spacing.md,
+    left: spacing.md,
+    zIndex: 1000,
+    backgroundColor: '#FFFFFF',
+    padding: spacing.sm,
+    borderRadius: borderRadius.md,
+    ...shadows.sm,
   },
   loadingContainer: {
     flex: 1,

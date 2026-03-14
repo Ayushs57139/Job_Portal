@@ -77,16 +77,29 @@ router.post('/submit', auth, submitUploadFields, async (req, res) => {
       });
     }
 
-    // Update document fields
+    // Update document fields - handle both string (JSON) and object formats
     if (documents) {
       Object.keys(documents).forEach(fieldName => {
+        let documentData = null;
         if (typeof documents[fieldName] === 'string') {
-          const documentData = JSON.parse(documents[fieldName]);
+          try {
+            documentData = JSON.parse(documents[fieldName]);
+          } catch (e) {
+            console.error('Error parsing document data:', e);
+            documentData = { idNumber: '' };
+          }
+        } else if (typeof documents[fieldName] === 'object') {
+          documentData = documents[fieldName];
+        }
+        
+        if (documentData) {
+          const idNumber = documentData.idNumber || '';
           if (kyc.documents[fieldName]) {
-            kyc.documents[fieldName].idNumber = documentData.idNumber || kyc.documents[fieldName].idNumber;
+            // Preserve existing documentUrl if file not uploaded
+            kyc.documents[fieldName].idNumber = idNumber || kyc.documents[fieldName].idNumber;
           } else {
             kyc.documents[fieldName] = {
-              idNumber: documentData.idNumber || '',
+              idNumber: idNumber,
               documentUrl: '',
               uploadedAt: new Date()
             };
@@ -105,9 +118,11 @@ router.post('/submit', auth, submitUploadFields, async (req, res) => {
           const documentUrl = relativePath.startsWith('/') ? relativePath : '/' + relativePath;
           
           if (kyc.documents[fieldName]) {
+            // Merge with existing document data (preserve idNumber)
             kyc.documents[fieldName].documentUrl = documentUrl;
             kyc.documents[fieldName].uploadedAt = new Date();
           } else {
+            // Create new document entry
             kyc.documents[fieldName] = {
               idNumber: '',
               documentUrl: documentUrl,

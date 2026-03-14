@@ -68,14 +68,80 @@ router.get('/', [
       ];
     }
 
-    // Job type filter
+    // Job type filter - handle both API format and database format
     if (jobType) {
-      filter.jobType = jobType;
+      // Handle comma-separated values
+      const jobTypes = jobType.split(',').map(t => t.trim());
+      if (jobTypes.length === 1) {
+        // Map API format to database format
+        const typeMap = {
+          'full-time': 'Full Time',
+          'part-time': 'Part Time',
+          'fulltime': 'Full Time',
+          'parttime': 'Part Time',
+          'Full Time': 'Full Time',
+          'Part Time': 'Part Time',
+          'Any': 'Any'
+        };
+        const mappedType = typeMap[jobTypes[0].toLowerCase()] || jobTypes[0];
+        filter.jobType = mappedType;
+      } else {
+        // Multiple job types - use $in operator
+        const mappedTypes = jobTypes.map(t => {
+          const typeMap = {
+            'full-time': 'Full Time',
+            'part-time': 'Part Time',
+            'fulltime': 'Full Time',
+            'parttime': 'Part Time',
+            'Full Time': 'Full Time',
+            'Part Time': 'Part Time',
+            'Any': 'Any'
+          };
+          return typeMap[t.toLowerCase()] || t;
+        });
+        filter.jobType = { $in: mappedTypes };
+      }
     }
 
-    // Work mode filter
+    // Work mode filter - handle both API format and database format
     if (workMode) {
-      filter.workMode = workMode;
+      // Handle comma-separated values
+      const workModes = workMode.split(',').map(m => m.trim());
+      if (workModes.length === 1) {
+        // Map API format to database format
+        const modeMap = {
+          'wfh': 'Work From Home',
+          'remote': 'Remote',
+          'office': 'Work From Office',
+          'field': 'Work From Field',
+          'hybrid': 'Hybrid',
+          'Work From Home': 'Work From Home',
+          'Work From Office': 'Work From Office',
+          'Work From Field': 'Work From Field',
+          'Remote': 'Remote',
+          'Hybrid': 'Hybrid'
+        };
+        const mappedMode = modeMap[workModes[0]] || workModes[0];
+        filter.jobModeType = mappedMode;
+      } else {
+        // Multiple work modes - use $in operator
+        const mappedModes = workModes.map(m => {
+          const modeMap = {
+            'wfh': 'Work From Home',
+            'remote': 'Remote',
+            'office': 'Work From Office',
+            'field': 'Work From Field',
+            'hybrid': 'Hybrid',
+            'Work From Home': 'Work From Home',
+            'Work From Office': 'Work From Office',
+            'Work From Field': 'Work From Field',
+            'Remote': 'Remote',
+            'Hybrid': 'Hybrid'
+          };
+          return modeMap[m] || m;
+        });
+        filter.jobModeType = { $in: mappedModes };
+      }
     }
 
     // Salary filter
@@ -170,7 +236,6 @@ router.post('/', [
   body('company.name').notEmpty().withMessage('Company name is required'),
   body('company.type').notEmpty().withMessage('Company type is required'),
   body('company.totalEmployees').notEmpty().withMessage('Total employees count is required'),
-  body('location.city').notEmpty().withMessage('City is required'),
   body('location.state').notEmpty().withMessage('State is required'),
   body('salary.min').isNumeric().withMessage('Minimum salary must be a number'),
   body('salary.max').isNumeric().withMessage('Maximum salary must be a number'),
@@ -188,20 +253,47 @@ router.post('/', [
   body('hrContact.email').isEmail().withMessage('Valid HR contact email is required')
 ], async (req, res) => {
   try {
+    // Set defaults for required fields before validation
+    if (!req.body.totalExperience) {
+      req.body.totalExperience = {};
+    }
+    if (!req.body.totalExperience.min || req.body.totalExperience.min.trim() === '') {
+      req.body.totalExperience.min = 'Fresher';
+    }
+    if (!req.body.totalExperience.max || req.body.totalExperience.max.trim() === '') {
+      req.body.totalExperience.max = 'Fresher';
+    }
+    if (!req.body.joiningPeriod || req.body.joiningPeriod.trim() === '') {
+      req.body.joiningPeriod = 'Immediate Joining';
+    }
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    // Check if employer is verified (only for employers, not admins)
-    const isAdmin = req.user.userType === 'admin' || req.user.userType === 'superadmin';
+    // Fetch fresh user data from database to ensure we have latest verification status
+    const User = require('../models/User');
+    const freshUser = await User.findById(req.user._id).select('-password');
     
-    if (!isAdmin && req.user.userType === 'employer' && !req.user.canPostJobs()) {
+    if (!freshUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Check if employer is verified (only for employers, not admins)
+    const isAdmin = freshUser.userType === 'admin' || freshUser.userType === 'superadmin';
+    
+    if (!isAdmin && freshUser.userType === 'employer' && !freshUser.canPostJobs()) {
       return res.status(403).json({
         message: 'Your employer account is not verified yet. Please wait for admin verification before posting jobs.',
-        verificationStatus: req.user.verificationStatus
+        verificationStatus: freshUser.verificationStatus,
+        isEmployerVerified: freshUser.isEmployerVerified,
+        kycStatus: freshUser.kycStatus
       });
     }
+
+    // Update req.user with fresh data for use in rest of endpoint
+    req.user = freshUser;
 
     // Check for duplicate job posting within last 30 seconds (skip for admins)
     if (!isAdmin) {
@@ -222,8 +314,11 @@ router.post('/', [
     const jobData = {
       ...req.body,
       postedBy: req.user._id,
-      // Set job to active immediately if posted by admin
-      status: isAdmin ? 'active' : (req.body.status || 'pending')
+      // Set job to active immediately for all authenticated users (admin, company, consultancy)
+      // This ensures jobs are visible on main website and admin panel
+      status: req.body.status || 'active',
+      // Set default jobPostType if not provided (required field)
+      jobPostType: req.body.jobPostType || 'Sales'
     };
 
     // Process skills array
@@ -256,14 +351,53 @@ router.post('/', [
       delete jobData.departmentSubcategory;
     }
 
-    // Process arrays for checkboxes
-    const arrayFields = ['keySkills', 'additionalBenefits', 'gender', 'maritalStatus', 'industry', 'department', 'jobRole', 'education', 'course', 'candidateIndustry', 'preferredLanguage', 'diversityHiring', 'disabilityStatus', 'disabilities', 'jobResponseMethods', 'communicationPreference', 'questionsForCandidates', 'collaborateWithOtherUsers', 'hrContact.days'];
+    // Map joiningPeriod value
+    if (jobData.joiningPeriod === 'Immediate') {
+      jobData.joiningPeriod = 'Immediate Joining';
+    }
+
+    // Process arrays for checkboxes - filter out empty strings and handle boolean values
+    const arrayFields = ['keySkills', 'additionalBenefits', 'gender', 'maritalStatus', 'industry', 'department', 'jobRole', 'education', 'course', 'candidateIndustry', 'preferredLanguage', 'diversityHiring', 'disabilityStatus', 'disabilities', 'jobResponseMethods', 'communicationPreference', 'questionsForCandidates', 'hrContact.days'];
     
     arrayFields.forEach(field => {
-      if (jobData[field] && !Array.isArray(jobData[field])) {
-        jobData[field] = [jobData[field]];
+      // Handle empty strings explicitly - convert to empty array
+      if (jobData[field] === '' || (typeof jobData[field] === 'string' && jobData[field].trim() === '')) {
+        jobData[field] = [];
+      } else if (jobData[field]) {
+        if (!Array.isArray(jobData[field])) {
+          jobData[field] = [jobData[field]];
+        }
+        // Filter out empty strings from enum arrays
+        jobData[field] = jobData[field].filter(item => item && item.toString().trim() !== '');
+      } else {
+        // Set to empty array if field doesn't exist
+        jobData[field] = [];
       }
     });
+
+    // Handle collaborateWithOtherUsers separately (it's a boolean, not an array of strings)
+    if (jobData.collaborateWithOtherUsers === false || jobData.collaborateWithOtherUsers === 'false') {
+      jobData.collaborateWithOtherUsers = [];
+    } else if (jobData.collaborateWithOtherUsers && !Array.isArray(jobData.collaborateWithOtherUsers)) {
+      jobData.collaborateWithOtherUsers = [jobData.collaborateWithOtherUsers];
+      jobData.collaborateWithOtherUsers = jobData.collaborateWithOtherUsers.filter(item => item && item.toString().trim() !== '');
+    } else if (Array.isArray(jobData.collaborateWithOtherUsers)) {
+      jobData.collaborateWithOtherUsers = jobData.collaborateWithOtherUsers.filter(item => item && item.toString().trim() !== '');
+    }
+
+    // Handle candidateAge - remove if empty strings
+    if (jobData.candidateAge) {
+      if (!jobData.candidateAge.min || jobData.candidateAge.min.trim() === '') {
+        delete jobData.candidateAge.min;
+      }
+      if (!jobData.candidateAge.max || jobData.candidateAge.max.trim() === '') {
+        delete jobData.candidateAge.max;
+      }
+      // If both are empty, remove the entire object
+      if (!jobData.candidateAge.min && !jobData.candidateAge.max) {
+        delete jobData.candidateAge;
+      }
+    }
 
     // Process candidate questions
     if (jobData.candidateQuestions && Array.isArray(jobData.candidateQuestions)) {
@@ -311,7 +445,12 @@ router.post('/', [
     });
   } catch (error) {
     console.error('Create job error:', error);
-    res.status(500).json({ message: 'Server error while creating job' });
+    console.error('Error details:', error.message);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ 
+      message: 'Server error while creating job',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 
@@ -517,7 +656,6 @@ router.post('/post-without-registration', [
   body('description').notEmpty().withMessage('Job description is required'),
   body('numberOfVacancy').isInt({ min: 1 }).withMessage('Number of vacancies must be at least 1'),
   body('location.state').notEmpty().withMessage('State is required'),
-  body('location.city').notEmpty().withMessage('City is required'),
   body('hrContact.name').notEmpty().withMessage('HR contact name is required'),
   body('hrContact.email').isEmail().withMessage('Please include a valid email'),
   body('hrContact.number').notEmpty().withMessage('HR contact phone is required'),
@@ -528,6 +666,82 @@ router.post('/post-without-registration', [
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
+
+    // Helper functions to map form values to server enum values
+    const mapEmploymentType = (value) => {
+      if (!value) return 'Permanent';
+      const val = String(value).toLowerCase();
+      const map = {
+        'permanent': 'Permanent',
+        'temporary': 'Temporary/Contract Job',
+        'temporary/contract job': 'Temporary/Contract Job',
+        'internship': 'Internship',
+        'apprenticeship': 'Apprenticeship',
+        'naps': 'NAPS',
+        'freelance': 'Freelance',
+        'trainee': 'Trainee',
+        'fresher': 'Fresher'
+      };
+      return map[val] || 'Permanent';
+    };
+
+    const mapJobType = (value) => {
+      if (!value) return 'Full Time';
+      const val = String(value).toLowerCase().replace(/\s+/g, '_');
+      const map = {
+        'full_time': 'Full Time',
+        'part_time': 'Part Time',
+        'any': 'Any',
+        'full time': 'Full Time',
+        'part time': 'Part Time'
+      };
+      return map[val] || 'Full Time';
+    };
+
+    const mapJobModeType = (value) => {
+      if (!value) return 'Work From Office';
+      const val = String(value).toLowerCase().replace(/\s+/g, '_');
+      const map = {
+        'work_from_home': 'Work From Home',
+        'work_from_office': 'Work From Office',
+        'work_from_field': 'Work From Field',
+        'hybrid': 'Hybrid',
+        'remote': 'Remote',
+        'work from home': 'Work From Home',
+        'work from office': 'Work From Office',
+        'work from field': 'Work From Field'
+      };
+      return map[val] || 'Work From Office';
+    };
+
+    const mapJobShiftType = (value) => {
+      if (!value) return 'Day Shift';
+      const val = String(value).toLowerCase().replace(/\s+/g, '_');
+      const map = {
+        'day_shift': 'Day Shift',
+        'night_shift': 'Night Shift',
+        'rotational_shift': 'Rotational Shift',
+        'split_shift': 'Split Shift',
+        'day shift': 'Day Shift',
+        'night shift': 'Night Shift',
+        'rotational shift': 'Rotational Shift',
+        'split shift': 'Split Shift'
+      };
+      return map[val] || 'Day Shift';
+    };
+
+    const mapExperienceLevel = (value) => {
+      if (!value) return 'Fresher';
+      const val = String(value).toLowerCase();
+      const map = {
+        'fresher': 'Fresher',
+        'experienced': 'Experienced',
+        'internship': 'Internship',
+        'apprenticeship': 'Apprenticeship',
+        'any': 'Any'
+      };
+      return map[val] || 'Fresher';
+    };
 
         const {
           userType,
@@ -601,11 +815,27 @@ router.post('/post-without-registration', [
       const salt = await bcrypt.genSalt(10);
       const hashedPassword = await bcrypt.hash(tempPassword, salt);
 
+      // Split name into first and last name - ensure lastName is never empty
+      const nameParts = (hrContact.name || '').trim().split(/\s+/).filter(part => part.length > 0);
+      let firstName = nameParts[0] || 'User';
+      let lastName = nameParts.slice(1).join(' ').trim();
+      
+      // If no last name, use a default value to satisfy validation
+      if (!lastName || lastName.length === 0) {
+        lastName = 'Name';
+      }
+      
+      // Ensure both names are not empty after trimming
+      firstName = firstName.trim() || 'User';
+      lastName = lastName.trim() || 'Name';
+
+      console.log('Creating user with name:', { firstName, lastName, originalName: hrContact.name });
+
       // Create user data
       const userData = {
         userId,
-        firstName: hrContact.name.split(' ')[0] || hrContact.name,
-        lastName: hrContact.name.split(' ').slice(1).join(' ') || '',
+        firstName: firstName,
+        lastName: lastName,
         email: hrContact.email.toLowerCase(),
         password: hashedPassword,
         phone: hrContact.number,
@@ -626,8 +856,16 @@ router.post('/post-without-registration', [
         tempPassword: tempPassword // Store temp password for email notification
       };
 
+      // Validate userData before creating
+      if (!userData.firstName || !userData.lastName) {
+        console.error('Invalid user data:', userData);
+        throw new Error('Failed to create user: firstName and lastName are required');
+      }
+
       user = new User(userData);
       await user.save();
+      
+      console.log('User created successfully:', { userId: user._id, email: user.email, firstName: user.firstName, lastName: user.lastName });
     }
 
     // Create job data using the same format as admin panel
@@ -645,13 +883,13 @@ router.post('/post-without-registration', [
         industry: ''
       },
       
-      // Job details
+      // Job details - map form values to server enum values
       jobPostType: 'Sales',
-      employmentType: employmentType || 'Permanent',
-      jobType: jobType || 'Full Time',
-      jobModeType: jobModeType || 'Work From Office',
-      jobShiftType: jobShiftType || 'Day Shift',
-      skills: skills ? skills.split(',').map(skill => skill.trim()) : [],
+      employmentType: mapEmploymentType(employmentType) || 'Permanent',
+      jobType: mapJobType(jobType) || 'Full Time',
+      jobModeType: mapJobModeType(jobModeType) || 'Work From Office',
+      jobShiftType: mapJobShiftType(jobShiftType) || 'Day Shift',
+      skills: Array.isArray(skills) ? skills : (skills ? skills.split(',').map(skill => skill.trim()).filter(skill => skill) : []),
       
       // Location
       location: {
@@ -662,9 +900,9 @@ router.post('/post-without-registration', [
         includeWillingToRelocate: location.includeWillingToRelocate || false
       },
       
-      // Experience
-      experienceLevel: experienceLevel || 'Fresher',
-      experienceType: experienceLevel || 'Fresher',
+      // Experience - map to server enum values
+      experienceLevel: mapExperienceLevel(experienceLevel) || 'Fresher',
+      experienceType: mapExperienceLevel(experienceLevel) || 'Fresher',
       totalExperience: {
         min: totalExperience.min || 'Fresher',
         max: totalExperience.max || 'Fresher'
@@ -694,18 +932,71 @@ router.post('/post-without-registration', [
         days: hrContact.days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
       },
       
-      // Additional comprehensive fields
-      additionalBenefits: additionalBenefits || [],
-      gender: gender || '',
-      maritalStatus: maritalStatus || '',
+      // Additional comprehensive fields - filter out empty values
+      additionalBenefits: Array.isArray(additionalBenefits) ? additionalBenefits.filter(Boolean) : [],
+      gender: Array.isArray(gender) ? gender.filter(Boolean) : (gender && gender.trim() ? [gender] : []),
+      maritalStatus: Array.isArray(maritalStatus) ? maritalStatus.filter(Boolean) : (maritalStatus && maritalStatus.trim() ? [maritalStatus] : []),
       candidateAge: candidateAge || {},
-      preferredLanguage: preferredLanguage || [],
-      joiningPeriod: joiningPeriod || '',
-      diversityHiring: diversityHiring || '',
-      disabilityStatus: disabilityStatus || '',
-      disabilities: disabilities || '',
-      jobResponseMethods: jobResponseMethods || '',
-      communicationPreference: communicationPreference || '',
+      preferredLanguage: Array.isArray(preferredLanguage) ? preferredLanguage.filter(Boolean) : [],
+      // Only include joiningPeriod if it has a valid value
+      ...(joiningPeriod && String(joiningPeriod).trim() ? { joiningPeriod: String(joiningPeriod).trim() } : {}),
+      diversityHiring: Array.isArray(diversityHiring) ? diversityHiring.filter(Boolean) : (diversityHiring && diversityHiring.trim() ? [diversityHiring] : []),
+      disabilityStatus: Array.isArray(disabilityStatus) ? disabilityStatus.filter(Boolean) : (disabilityStatus && disabilityStatus.trim() ? [disabilityStatus] : []),
+      disabilities: Array.isArray(disabilities) ? disabilities.filter(Boolean) : [],
+      // Map jobResponseMethods values to server enum values
+      jobResponseMethods: (() => {
+        const mapJobResponseMethod = (val) => {
+          if (!val) return null;
+          const valStr = String(val).toLowerCase();
+          const map = {
+            'internal': 'Receive Applicants Responses Internally',
+            'email': 'Receive Applicants Responses On Email',
+            'whatsapp': 'Receive Applicants Responses On WhatsApp',
+            'external_url': 'Receive Applicants Responses External Website URL',
+            'receive applicants responses internally': 'Receive Applicants Responses Internally',
+            'receive applicants responses on email': 'Receive Applicants Responses On Email',
+            'receive applicants responses on whatsapp': 'Receive Applicants Responses On WhatsApp',
+            'receive applicants responses external website url': 'Receive Applicants Responses External Website URL'
+          };
+          return map[valStr] || val; // Return original if not in map (might already be correct)
+        };
+        
+        if (Array.isArray(jobResponseMethods)) {
+          const mapped = jobResponseMethods.map(mapJobResponseMethod).filter(Boolean);
+          return mapped.length > 0 ? mapped : [];
+        }
+        if (jobResponseMethods && String(jobResponseMethods).trim()) {
+          const mapped = mapJobResponseMethod(jobResponseMethods);
+          return mapped ? [mapped] : [];
+        }
+        return [];
+      })(),
+      // Map communicationPreference values to server enum values
+      communicationPreference: (() => {
+        const mapCommunicationPreference = (val) => {
+          if (!val) return null;
+          const valStr = String(val).toLowerCase();
+          const map = {
+            'myself': 'Yes To My Self',
+            'other_recruiter': 'Yes To Other Recruiter (Enter Name, Number, Email ID)',
+            'no_contact': 'No I will Contact Candidates First',
+            'yes to my self': 'Yes To My Self',
+            'yes to other recruiter (enter name, number, email id)': 'Yes To Other Recruiter (Enter Name, Number, Email ID)',
+            'no i will contact candidates first': 'No I will Contact Candidates First'
+          };
+          return map[valStr] || val; // Return original if not in map (might already be correct)
+        };
+        
+        if (Array.isArray(communicationPreference)) {
+          const mapped = communicationPreference.map(mapCommunicationPreference).filter(Boolean);
+          return mapped.length > 0 ? mapped : [];
+        }
+        if (communicationPreference && String(communicationPreference).trim()) {
+          const mapped = mapCommunicationPreference(communicationPreference);
+          return mapped ? [mapped] : [];
+        }
+        return [];
+      })(),
       includeWalkinDetails: includeWalkinDetails || false,
       walkinStartDate: walkinStartDate || '',
       walkinEndDate: walkinEndDate || '',
@@ -714,8 +1005,8 @@ router.post('/post-without-registration', [
       contactPersonName: contactPersonName || '',
       contactPersonNumber: contactPersonNumber || '',
       googleMapUrl: googleMapUrl || '',
-      questionsForCandidates: questionsForCandidates || '',
-      collaborateWithOtherUsers: collaborateWithOtherUsers || '',
+      questionsForCandidates: Array.isArray(questionsForCandidates) ? questionsForCandidates.filter(Boolean) : (questionsForCandidates && questionsForCandidates.trim() ? [questionsForCandidates] : []),
+      collaborateWithOtherUsers: Array.isArray(collaborateWithOtherUsers) ? collaborateWithOtherUsers.filter(Boolean) : (collaborateWithOtherUsers && collaborateWithOtherUsers.trim() ? [collaborateWithOtherUsers] : []),
       aboutYourClients: aboutYourClients || '',
       clientCompanyName: clientCompanyName || '',
       hideClientName: hideClientName || false,
@@ -731,22 +1022,36 @@ router.post('/post-without-registration', [
     const job = new Job(jobData);
     await job.save();
 
-        // Send email notification with login credentials (if new user)
-        if (isNewUser) {
-          // Here you would typically send an email with login credentials
-          // For now, we'll just log it
-          console.log(`New user created: ${hrContact.email}, Temp password: ${user.tempPassword}`);
-        }
+    // Generate JWT token for automatic login (if new user)
+    let token = null;
+    if (isNewUser) {
+      const jwt = require('jsonwebtoken');
+      token = jwt.sign(
+        { id: user._id },
+        process.env.JWT_SECRET || 'fallback-secret',
+        { expiresIn: process.env.JWT_EXPIRE || '7d' }
+      );
+      
+      // Here you would typically send an email with login credentials
+      // For now, we'll just log it
+      console.log(`New user created: ${hrContact.email}, Temp password: ${user.tempPassword}`);
+    }
 
     res.status(201).json({
       success: true,
       message: 'Job posted successfully and account created',
+      token: token, // Include token for automatic login
       job: job,
       user: {
         id: user._id,
+        userId: user.userId,
         email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
         userType: user.userType,
         employerType: user.employerType,
+        phone: user.phone,
+        profile: user.profile,
         isNewUser: isNewUser,
         tempPassword: isNewUser ? user.tempPassword : undefined
       }

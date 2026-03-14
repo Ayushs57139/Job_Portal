@@ -42,6 +42,14 @@ const DropdownField = ({
 
   const displayValue = value ? (typeof value === 'object' ? value.label : value) : placeholder;
 
+  // Always use ScrollView for consistent scrolling behavior
+  const OptionsListComponent = ScrollView;
+  const optionsListProps = { 
+    style: styles.optionsList, 
+    showsVerticalScrollIndicator: true,
+    nestedScrollEnabled: true
+  };
+
   return (
     <View style={styles.container}>
       {label && (
@@ -86,28 +94,37 @@ const DropdownField = ({
       <Modal
         visible={modalVisible}
         transparent
-        animationType="slide"
+        animationType="fade"
+        statusBarTranslucent={true}
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{label || 'Select an option'}</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Ionicons name="close" size={24} color={colors.text} />
-              </TouchableOpacity>
-            </View>
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setModalVisible(false)}
+        >
+          <View style={styles.modalContentWrapper}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>{label || 'Select an option'}</Text>
+                <TouchableOpacity 
+                  onPress={() => setModalVisible(false)}
+                  style={styles.closeButton}
+                >
+                  <Ionicons name="close" size={22} color={colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
 
-            <View style={styles.searchContainer}>
-              <Ionicons name="search" size={20} color={colors.textSecondary} style={styles.searchIcon} />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search..."
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                placeholderTextColor={colors.textLight}
-              />
-            </View>
+              <View style={styles.searchContainer}>
+                <Ionicons name="search" size={18} color={colors.textSecondary} style={styles.searchIcon} />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search..."
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  placeholderTextColor={colors.textLight}
+                />
+              </View>
 
             {allowAddNew && (
               <TouchableOpacity
@@ -134,7 +151,7 @@ const DropdownField = ({
               </View>
             )}
 
-            <ScrollView style={styles.optionsList}>
+            <OptionsListComponent {...optionsListProps}>
               {filteredOptions.map((option, index) => (
                 <TouchableOpacity
                   key={option.value || index}
@@ -151,16 +168,22 @@ const DropdownField = ({
                     {option.label}
                   </Text>
                   {value?.value === option.value && (
-                    <Ionicons name="checkmark" size={20} color={colors.primary} />
+                    <View style={styles.checkmarkContainer}>
+                      <Ionicons name="checkmark-circle" size={22} color="#1976D2" />
+                    </View>
                   )}
                 </TouchableOpacity>
               ))}
               {filteredOptions.length === 0 && (
-                <Text style={styles.noResultsText}>No results found</Text>
+                <View style={styles.noResultsContainer}>
+                  <Ionicons name="search-outline" size={48} color={colors.textLight} />
+                  <Text style={styles.noResultsText}>No results found</Text>
+                </View>
               )}
-            </ScrollView>
+            </OptionsListComponent>
+            </View>
           </View>
-        </View>
+        </TouchableOpacity>
       </Modal>
     </View>
   );
@@ -213,45 +236,78 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xl,
+  },
+  modalContentWrapper: {
+    width: '100%',
+    maxWidth: 420,
   },
   modalContent: {
-    backgroundColor: colors.cardBackground,
-    borderTopLeftRadius: borderRadius.lg,
-    borderTopRightRadius: borderRadius.lg,
-    maxHeight: '80%',
-    paddingBottom: spacing.xl,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    maxHeight: '85%',
+    paddingBottom: spacing.md,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 8,
+    },
+    shadowOpacity: 0.12,
+    shadowRadius: 24,
+    elevation: 8,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: '#F5F5F5',
   },
   modalTitle: {
-    ...typography.h5,
-    color: colors.text,
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#212121',
+    letterSpacing: -0.2,
+  },
+  closeButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#F8F9FA',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    margin: spacing.lg,
-    marginBottom: spacing.md,
-    backgroundColor: colors.background,
-    borderRadius: borderRadius.md,
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.sm,
+    marginBottom: spacing.xs,
+    backgroundColor: '#FAFBFC',
+    borderRadius: 10,
     paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
+    borderWidth: 1,
+    borderColor: '#E8EBED',
   },
   searchIcon: {
     marginRight: spacing.sm,
+    opacity: 0.5,
   },
   searchInput: {
     flex: 1,
-    paddingVertical: spacing.md,
-    fontSize: 16,
-    color: colors.text,
+    paddingVertical: 2,
+    fontSize: 14,
+    color: '#2C2C2C',
+    fontWeight: '400',
   },
   addNewButton: {
     flexDirection: 'row',
@@ -293,33 +349,51 @@ const styles = StyleSheet.create({
   },
   optionsList: {
     paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.xs,
+    maxHeight: 320,
   },
   option: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
+    paddingVertical: spacing.md + 2,
+    paddingHorizontal: spacing.md,
+    borderRadius: 10,
+    marginVertical: 2,
+    backgroundColor: 'transparent',
   },
   optionSelected: {
-    backgroundColor: colors.borderLight,
-    paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.md,
-    marginVertical: 2,
+    backgroundColor: '#F0F7FF',
+    borderWidth: 1,
+    borderColor: '#DBECFC',
   },
   optionText: {
-    fontSize: 16,
-    color: colors.text,
+    fontSize: 15,
+    color: '#323232',
+    fontWeight: '400',
+    letterSpacing: -0.15,
   },
   optionTextSelected: {
-    color: colors.primary,
-    fontWeight: '600',
+    color: '#1565C0',
+    fontWeight: '500',
+  },
+  checkmarkContainer: {
+    marginLeft: spacing.sm,
+    marginRight: 2,
+  },
+  noResultsContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.xl * 2,
+    paddingHorizontal: spacing.lg,
   },
   noResultsText: {
     textAlign: 'center',
-    color: colors.textSecondary,
-    paddingVertical: spacing.xl,
+    color: '#9E9E9E',
+    fontSize: 15,
+    marginTop: spacing.md,
+    fontWeight: '400',
   },
 });
 

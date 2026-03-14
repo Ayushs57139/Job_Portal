@@ -62,13 +62,65 @@ const KYCFormScreen = ({ route, navigation }) => {
 
   const handleDocumentPick = async (docKey) => {
     try {
-      // Request permissions for image picker
-      if (Platform.OS !== 'web') {
-        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (status !== 'granted') {
-          Alert.alert('Permission Required', 'Permission to access media library is required');
-          return;
+      // For web platform, use document picker directly
+      if (Platform.OS === 'web') {
+        try {
+          const result = await DocumentPicker.getDocumentAsync({
+            type: '*/*',
+            copyToCacheDirectory: false, // On web, we don't need to copy to cache
+          });
+
+          if (!result.canceled && result.assets && result.assets.length > 0) {
+            const asset = result.assets[0];
+            // On web, DocumentPicker returns a File object directly in some cases
+            // Check if it's already a File object
+            if (asset.file instanceof File) {
+              updateDocument(docKey, asset.file);
+            } else if (asset.uri) {
+              // If we have a URI, try to convert it to a File
+              try {
+                // Check if it's a blob URL
+                if (asset.uri.startsWith('blob:')) {
+                  const response = await fetch(asset.uri);
+                  const blob = await response.blob();
+                  const file = new File([blob], asset.name || 'document', { 
+                    type: asset.mimeType || blob.type || 'application/octet-stream' 
+                  });
+                  updateDocument(docKey, file);
+                } else {
+                  // For other URIs, try to fetch and convert
+                  const response = await fetch(asset.uri);
+                  const blob = await response.blob();
+                  const file = new File([blob], asset.name || 'document', { 
+                    type: asset.mimeType || blob.type || 'application/octet-stream' 
+                  });
+                  updateDocument(docKey, file);
+                }
+              } catch (fetchError) {
+                console.error('Error converting file:', fetchError);
+                // Fallback: store as object with uri (will be handled by API)
+                updateDocument(docKey, {
+                  uri: asset.uri,
+                  type: asset.mimeType || 'application/octet-stream',
+                  name: asset.name || 'document',
+                });
+              }
+            } else {
+              Alert.alert('Error', 'Unable to process selected file');
+            }
+          }
+        } catch (error) {
+          console.error('Document picker error:', error);
+          Alert.alert('Error', 'Failed to pick document. Please try again.');
         }
+        return;
+      }
+
+      // Request permissions for image picker on mobile
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Permission to access media library is required');
+        return;
       }
 
       // Show options to pick image or document
@@ -79,46 +131,56 @@ const KYCFormScreen = ({ route, navigation }) => {
           {
             text: 'Camera',
             onPress: async () => {
-              const result = await ImagePicker.launchCameraAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                allowsEditing: true,
-                quality: 0.8,
-              });
-
-              if (!result.canceled && result.assets[0]) {
-                const asset = result.assets[0];
-                const fileName = asset.uri.split('/').pop();
-                const match = /\.(\w+)$/.exec(fileName);
-                const type = match ? `image/${match[1]}` : 'image/jpeg';
-
-                updateDocument(docKey, {
-                  uri: asset.uri,
-                  type,
-                  name: fileName,
+              try {
+                const result = await ImagePicker.launchCameraAsync({
+                  mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                  allowsEditing: true,
+                  quality: 0.8,
                 });
+
+                if (!result.canceled && result.assets[0]) {
+                  const asset = result.assets[0];
+                  const fileName = asset.uri.split('/').pop();
+                  const match = /\.(\w+)$/.exec(fileName);
+                  const type = match ? `image/${match[1]}` : 'image/jpeg';
+
+                  updateDocument(docKey, {
+                    uri: asset.uri,
+                    type,
+                    name: fileName,
+                  });
+                }
+              } catch (error) {
+                console.error('Camera error:', error);
+                Alert.alert('Error', 'Failed to capture image. Please try again.');
               }
             },
           },
           {
             text: 'Gallery',
             onPress: async () => {
-              const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                allowsEditing: true,
-                quality: 0.8,
-              });
-
-              if (!result.canceled && result.assets[0]) {
-                const asset = result.assets[0];
-                const fileName = asset.uri.split('/').pop();
-                const match = /\.(\w+)$/.exec(fileName);
-                const type = match ? `image/${match[1]}` : 'image/jpeg';
-
-                updateDocument(docKey, {
-                  uri: asset.uri,
-                  type,
-                  name: fileName,
+              try {
+                const result = await ImagePicker.launchImageLibraryAsync({
+                  mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                  allowsEditing: true,
+                  quality: 0.8,
                 });
+
+                if (!result.canceled && result.assets[0]) {
+                  const asset = result.assets[0];
+                  const fileName = asset.uri.split('/').pop();
+                  const match = /\.(\w+)$/.exec(fileName);
+                  const type = match ? `image/${match[1]}` : 'image/jpeg';
+
+                  updateDocument(docKey, {
+                    uri: asset.uri,
+                    type,
+                    name: fileName,
+                  });
+                }
+              } catch (error) {
+                console.error('Gallery error:', error);
+                Alert.alert('Error', 'Failed to pick image. Please try again.');
               }
             },
           },
@@ -135,22 +197,23 @@ const KYCFormScreen = ({ route, navigation }) => {
                   const asset = result.assets[0];
                   updateDocument(docKey, {
                     uri: asset.uri,
-                    type: asset.mimeType,
+                    type: asset.mimeType || 'application/octet-stream',
                     name: asset.name,
                   });
                 }
               } catch (error) {
                 console.error('Document picker error:', error);
-                Alert.alert('Error', 'Failed to pick document');
+                Alert.alert('Error', 'Failed to pick document. Please try again.');
               }
             },
           },
           { text: 'Cancel', style: 'cancel' },
-        ]
+        ],
+        { cancelable: true }
       );
     } catch (error) {
       console.error('Error picking document:', error);
-      Alert.alert('Error', 'Failed to pick document');
+      Alert.alert('Error', 'Failed to pick document. Please try again.');
     }
   };
 
@@ -206,41 +269,67 @@ const KYCFormScreen = ({ route, navigation }) => {
       getDocumentFields().forEach((doc) => {
         const docData = documents[doc.key];
         if (docData) {
+          // Always include document entry with idNumber (even if empty)
           formData.documents[doc.key] = {
             idNumber: docData.idNumber || '',
           };
+          // Include file if it exists
           if (docData.file) {
             formData.files[doc.key] = docData.file;
           }
         }
       });
 
+      console.log('Submitting KYC with formData:', {
+        userType: formData.userType,
+        companyType: formData.companyType,
+        documentKeys: Object.keys(formData.documents),
+        fileKeys: Object.keys(formData.files),
+      });
+
       const response = await api.submitKYC(formData);
 
+      console.log('KYC submission response:', response);
+
+      // Determine dashboard route based on user type
+      const dashboardRoute = userType === 'company' ? 'CompanyDashboard' : 'ConsultancyDashboard';
+
+      // Navigate to dashboard immediately after successful submission
       if (response.isComplete) {
+        // Show success message briefly, then navigate
         Alert.alert(
           'Success',
-          'KYC documents submitted successfully! You will be redirected to your dashboard.',
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                navigation.reset({
-                  index: 0,
-                  routes: [
-                    { name: userType === 'company' ? 'CompanyDashboard' : 'ConsultancyDashboard' },
-                  ],
-                });
-              },
-            },
-          ]
+          'KYC documents submitted successfully!',
+          [],
+          { cancelable: false }
         );
       } else {
-        Alert.alert('Success', 'KYC documents saved. Please upload more documents to complete.');
+        // Documents saved but not complete
+        Alert.alert(
+          'Success', 
+          'KYC documents saved. Please upload more documents to complete.',
+          [],
+          { cancelable: false }
+        );
       }
+
+      // Navigate to dashboard immediately (works on both web and mobile)
+      setTimeout(() => {
+        try {
+          navigation.reset({
+            index: 0,
+            routes: [{ name: dashboardRoute }],
+          });
+        } catch (navError) {
+          console.error('Navigation error:', navError);
+          // Fallback: try regular navigate
+          navigation.navigate(dashboardRoute);
+        }
+      }, 800);
     } catch (error) {
       console.error('KYC submission error:', error);
-      Alert.alert('Submission Failed', error.message || 'Failed to submit KYC documents. Please try again.');
+      const errorMessage = error.message || 'Failed to submit KYC documents. Please try again.';
+      Alert.alert('Submission Failed', errorMessage);
     } finally {
       setLoading(false);
     }

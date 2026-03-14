@@ -13,6 +13,8 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import AdminLayout from '../../components/Admin/AdminLayout';
+import CandidateLabelManager from '../../components/CandidateLabelManager';
+import CandidateLabels from '../../components/CandidateLabels';
 import { API_URL } from '../../config/api';
 import { useResponsive } from '../../utils/responsive';
 
@@ -24,6 +26,8 @@ const AdminCandidateDetailsScreen = ({ route, navigation }) => {
   const { candidateId } = route.params;
   const [loading, setLoading] = useState(true);
   const [candidate, setCandidate] = useState(null);
+  const [showLabelManager, setShowLabelManager] = useState(false);
+  const [candidateLabels, setCandidateLabels] = useState([]);
 
   useEffect(() => {
     fetchCandidateDetails();
@@ -51,6 +55,7 @@ const AdminCandidateDetailsScreen = ({ route, navigation }) => {
 
       if (response.ok && data.success) {
         setCandidate(data.profile);
+        setCandidateLabels(data.profile.labels || []);
       } else {
         Alert.alert('Error', data.message || 'Failed to fetch candidate details');
       }
@@ -69,6 +74,13 @@ const AdminCandidateDetailsScreen = ({ route, navigation }) => {
       Linking.openURL(`tel:${value}`);
     } else if (type === 'whatsapp') {
       Linking.openURL(`https://wa.me/${value}`);
+    }
+  };
+
+  const handleLabelsUpdate = (newLabels) => {
+    setCandidateLabels(newLabels);
+    if (candidate) {
+      setCandidate({ ...candidate, labels: newLabels });
     }
   };
 
@@ -139,6 +151,32 @@ const AdminCandidateDetailsScreen = ({ route, navigation }) => {
                 {candidate.professional?.currentCompany || 'Not specified'}
               </Text>
             </View>
+          </View>
+
+          {/* Candidate Labels */}
+          {candidateLabels.length > 0 && (
+            <View style={dynamicStyles.labelsSection}>
+              <CandidateLabels labels={candidateLabels} />
+            </View>
+          )}
+
+          {/* Action Buttons */}
+          <View style={dynamicStyles.actionButtonsRow}>
+            <TouchableOpacity
+              style={dynamicStyles.manageLabelButton}
+              onPress={() => setShowLabelManager(true)}
+            >
+              <Ionicons name="pricetag" size={20} color="#007bff" />
+              <Text style={dynamicStyles.manageLabelButtonText}>Manage Labels</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={dynamicStyles.editButton}
+              onPress={() => navigation.navigate('AdminEditCandidate', { candidateId })}
+            >
+              <Ionicons name="create" size={20} color="#fff" />
+              <Text style={dynamicStyles.editButtonText}>Edit Profile</Text>
+            </TouchableOpacity>
           </View>
           
           {/* Quick Actions */}
@@ -381,6 +419,15 @@ const AdminCandidateDetailsScreen = ({ route, navigation }) => {
           <Text style={dynamicStyles.bioText}>{candidate.additionalInfo.bio}</Text>
         ))}
       </ScrollView>
+
+      {/* Label Manager Modal */}
+      <CandidateLabelManager
+        candidateId={candidateId}
+        currentLabels={candidateLabels}
+        onLabelsUpdate={handleLabelsUpdate}
+        visible={showLabelManager}
+        onClose={() => setShowLabelManager(false)}
+      />
     </AdminLayout>
   );
 };
@@ -455,6 +502,51 @@ const getStyles = (isMobile, isTablet) => StyleSheet.create({
   headerInfo: {
     flex: 1,
     justifyContent: 'center'
+  },
+  labelsSection: {
+    marginBottom: 16,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0'
+  },
+  actionButtonsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16
+  },
+  manageLabelButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#e7f3ff',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#007bff'
+  },
+  manageLabelButtonText: {
+    color: '#007bff',
+    fontSize: 14,
+    fontWeight: '600'
+  },
+  editButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#007bff',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    gap: 8
+  },
+  editButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600'
   },
   candidateName: {
     fontSize: 24,

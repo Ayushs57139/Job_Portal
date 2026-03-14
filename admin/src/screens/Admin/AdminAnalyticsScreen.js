@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity
 import AdminLayout from '../../components/Admin/AdminLayout';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_URL } from '../../config/api';
+import api from '../../config/api';
 import { useResponsive } from '../../utils/responsive';
 
 const AdminAnalyticsScreen = ({ navigation }) => {
@@ -19,37 +19,87 @@ const AdminAnalyticsScreen = ({ navigation }) => {
 
   useEffect(() => {
     fetchAnalytics();
+    
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(() => {
+      fetchAnalytics();
+    }, 30000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   const fetchAnalytics = async () => {
     try {
       setLoading(true);
       setError(null);
-      const token = await AsyncStorage.getItem('token');
-      const headers = {
-        'Content-Type': 'application/json',
+      
+      // Ensure API is initialized with token
+      await api.init();
+      
+      console.log('Fetching analytics from:', `${api.baseURL}/admin/analytics`);
+      const data = await api.request('/admin/analytics');
+      console.log('Analytics data received:', data);
+      
+      // Log raw data for debugging
+      if (!data || Object.keys(data).length === 0) {
+        console.warn('Analytics API returned empty data');
+      }
+      
+      // Ensure all required fields exist with defaults
+      const processedData = {
+        users: {
+          total: data.users?.total || 0,
+          verified: data.users?.verified || 0,
+          jobseekers: data.users?.jobseekers || 0,
+          companies: data.users?.companies || 0,
+          consultancies: data.users?.consultancies || 0,
+          newToday: data.users?.newToday || 0,
+          newThisWeek: data.users?.newThisWeek || 0,
+          newThisMonth: data.users?.newThisMonth || 0,
+          growthRate: parseFloat(data.users?.growthRate || 0)
+        },
+        jobs: {
+          total: data.jobs?.total || 0,
+          active: data.jobs?.active || 0,
+          inactive: data.jobs?.inactive || 0,
+          closed: data.jobs?.closed || 0,
+          newToday: data.jobs?.newToday || 0,
+          newThisWeek: data.jobs?.newThisWeek || 0,
+          newThisMonth: data.jobs?.newThisMonth || 0,
+          growthRate: parseFloat(data.jobs?.growthRate || 0),
+          avgPerCompany: parseFloat(data.jobs?.avgPerCompany || 0)
+        },
+        applications: {
+          total: data.applications?.total || 0,
+          pending: data.applications?.pending || 0,
+          shortlisted: data.applications?.shortlisted || 0,
+          rejected: data.applications?.rejected || 0,
+          accepted: data.applications?.accepted || 0,
+          newToday: data.applications?.newToday || 0,
+          newThisWeek: data.applications?.newThisWeek || 0,
+          newThisMonth: data.applications?.newThisMonth || 0,
+          avgPerJob: parseFloat(data.applications?.avgPerJob || 0),
+          conversionRate: parseFloat(data.applications?.conversionRate || 0)
+        },
+        metrics: {
+          jobFillRate: parseFloat(data.metrics?.jobFillRate || 0),
+          verificationRate: parseFloat(data.metrics?.verificationRate || 0)
+        },
+        topLocations: data.topLocations || [],
+        topIndustries: data.topIndustries || [],
+        chartData: data.chartData || []
       };
       
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
-      console.log('Fetching analytics from:', `${API_URL}/admin/analytics`);
-      const response = await fetch(`${API_URL}/admin/analytics`, { headers });
-      
-      console.log('Analytics response status:', response.status);
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Failed to fetch analytics');
-      }
-      
-      const data = await response.json();
-      console.log('Analytics data received:', data);
-      setAnalytics(data);
+      setAnalytics(processedData);
     } catch (error) {
       console.error('Error fetching analytics:', error);
-      setError(error.message);
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack,
+        endpoint: '/admin/analytics',
+        baseURL: api.baseURL
+      });
+      setError(error.message || 'Failed to load analytics data');
       // Set default empty analytics to prevent crashes
       setAnalytics({
         users: {
@@ -83,9 +133,11 @@ const AdminAnalyticsScreen = ({ navigation }) => {
   };
 
   const formatNumber = (num) => {
-    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
-    if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
-    return num.toString();
+    if (num === null || num === undefined || isNaN(num)) return '0';
+    const number = typeof num === 'string' ? parseFloat(num) : num;
+    if (number >= 1000000) return (number / 1000000).toFixed(1) + 'M';
+    if (number >= 1000) return (number / 1000).toFixed(1) + 'K';
+    return Math.round(number).toString();
   };
 
   const handleLogout = () => navigation.replace('AdminLogin');
@@ -524,7 +576,9 @@ const AdminAnalyticsScreen = ({ navigation }) => {
                   <View style={dynamicStyles.metricRow}>
                     <Text style={dynamicStyles.metricRowLabel}>Success Rate</Text>
                     <Text style={dynamicStyles.metricRowValue}>
-                      {((analytics.applications.accepted / analytics.applications.total) * 100).toFixed(1)}%
+                      {analytics.applications.total > 0 
+                        ? ((analytics.applications.accepted / analytics.applications.total) * 100).toFixed(1)
+                        : 0}%
                     </Text>
                   </View>
                 </View>

@@ -14,6 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography, borderRadius } from '../../styles/theme';
 import api from '../../config/api';
+import socketService from '../../services/socketService';
 
 const ChatConversationScreen = ({ navigation, route }) => {
   const { conversationId } = route.params;
@@ -23,9 +24,11 @@ const ChatConversationScreen = ({ navigation, route }) => {
   const [sending, setSending] = useState(false);
   const [messageText, setMessageText] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
+  const [isConnected, setIsConnected] = useState(false);
   const flatListRef = useRef(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const typingTimeoutRef = useRef(null);
 
   useEffect(() => {
     loadCurrentUser();
@@ -35,13 +38,74 @@ const ChatConversationScreen = ({ navigation, route }) => {
     // Mark conversation as read
     markAsRead();
 
-    // Set up auto-refresh every 5 seconds
-    const interval = setInterval(() => {
-      loadMessages(false);
-    }, 5000);
+    // Connect to socket and join conversation
+    const initializeSocket = async () => {
+      try {
+        await socketService.connect();
+        setIsConnected(true);
+        socketService.joinConversation(conversationId);
 
-    return () => clearInterval(interval);
-  }, [conversationId]);
+        // Listen for new messages
+        const unsubscribeNewMessage = socketService.onNewMessage((data) => {
+          if (data.conversationId === conversationId) {
+            // Check if message already exists
+            setMessages(prev => {
+              const exists = prev.some(msg => msg._id === data.message._id);
+              if (!exists) {
+                return [...prev, data.message];
+              }
+              return prev;
+            });
+            
+            // Scroll to bottom
+            setTimeout(() => {
+              flatListRef.current?.scrollToEnd({ animated: true });
+            }, 100);
+
+            // Mark as read if it's not from current user
+            if (data.message.sender._id !== currentUser?._id) {
+              markAsRead();
+            }
+          }
+        });
+
+        // Listen for message notifications
+        const unsubscribeNotification = socketService.onMessageNotification((data) => {
+          if (data.conversationId === conversationId) {
+            // Update conversation unread count
+            loadConversation();
+          }
+        });
+
+        // Listen for typing indicators
+        const unsubscribeTyping = socketService.onUserTyping((data) => {
+          if (data.conversationId === conversationId && data.userId !== currentUser?._id) {
+            // Handle typing indicator (you can add UI for this)
+            console.log('User typing:', data.userName);
+          }
+        });
+
+        return () => {
+          unsubscribeNewMessage();
+          unsubscribeNotification();
+          unsubscribeTyping();
+          socketService.leaveConversation(conversationId);
+        };
+      } catch (error) {
+        console.error('Error initializing socket:', error);
+        setIsConnected(false);
+      }
+    };
+
+    const cleanup = initializeSocket();
+
+    return () => {
+      if (cleanup && typeof cleanup.then === 'function') {
+        cleanup.then(cleanupFn => cleanupFn && cleanupFn());
+      }
+      socketService.leaveConversation(conversationId);
+    };
+  }, [conversationId, currentUser]);
 
   const loadCurrentUser = async () => {
     try {
@@ -102,9 +166,18 @@ const ChatConversationScreen = ({ navigation, route }) => {
   const sendMessage = async () => {
     if (!messageText.trim()) return;
 
+    const content = messageText.trim();
+    setMessageText('');
+    
+    // Stop typing indicator
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    socketService.stopTyping(conversationId);
+
     const tempMessage = {
       _id: Date.now().toString(),
-      content: messageText.trim(),
+      content: content,
       sender: currentUser,
       createdAt: new Date().toISOString(),
       status: 'sending',
@@ -112,7 +185,6 @@ const ChatConversationScreen = ({ navigation, route }) => {
 
     // Optimistically add message to UI
     setMessages(prev => [...prev, tempMessage]);
-    setMessageText('');
     
     // Scroll to bottom
     setTimeout(() => {
@@ -121,13 +193,31 @@ const ChatConversationScreen = ({ navigation, route }) => {
 
     try {
       setSending(true);
-      const response = await api.sendMessage(conversationId, tempMessage.content);
       
-      if (response.success) {
-        // Replace temp message with actual message
-        setMessages(prev => 
-          prev.map(msg => msg._id === tempMessage._id ? response.message : msg)
-        );
+      // Send via socket if connected, otherwise fallback to API
+      if (isConnected) {
+        socketService.sendMessage(conversationId, content);
+        // The message will be updated when we receive it via socket
+        // For now, mark it as sent
+        setTimeout(() => {
+          setMessages(prev => 
+            prev.map(msg => 
+              msg._id === tempMessage._id 
+                ? { ...msg, status: 'sent' }
+                : msg
+            )
+          );
+        }, 500);
+      } else {
+        // Fallback to API if socket not connected
+        const response = await api.sendMessage(conversationId, content);
+        
+        if (response.success) {
+          // Replace temp message with actual message
+          setMessages(prev => 
+            prev.map(msg => msg._id === tempMessage._id ? response.message : msg)
+          );
+        }
       }
     } catch (error) {
       console.error('Error sending message:', error);
@@ -135,9 +225,29 @@ const ChatConversationScreen = ({ navigation, route }) => {
       
       // Remove temp message on error
       setMessages(prev => prev.filter(msg => msg._id !== tempMessage._id));
-      setMessageText(tempMessage.content); // Restore the message text
+      setMessageText(content); // Restore the message text
     } finally {
       setSending(false);
+    }
+  };
+
+  // Handle typing indicator
+  const handleTextChange = (text) => {
+    setMessageText(text);
+    
+    if (isConnected) {
+      // Clear existing timeout
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      
+      // Start typing indicator
+      socketService.startTyping(conversationId);
+      
+      // Stop typing after 3 seconds of inactivity
+      typingTimeoutRef.current = setTimeout(() => {
+        socketService.stopTyping(conversationId);
+      }, 3000);
     }
   };
 
@@ -294,7 +404,7 @@ const ChatConversationScreen = ({ navigation, route }) => {
             placeholder="Type a message..."
             placeholderTextColor={colors.textSecondary}
             value={messageText}
-            onChangeText={setMessageText}
+            onChangeText={handleTextChange}
             multiline
             maxLength={2000}
           />

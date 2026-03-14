@@ -15,6 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../config/api';
+import api from '../config/api';
 import { colors, spacing, borderRadius, shadows, typography } from '../styles/theme';
 import { useResponsive } from '../utils/responsive';
 
@@ -45,14 +46,22 @@ const ChatbotWidget = () => {
   const [sessionId, setSessionId] = useState(null);
   const [isTyping, setIsTyping] = useState(false);
   const [error, setError] = useState(null);
+  const [user, setUser] = useState(null);
   const scrollViewRef = useRef(null);
   const inputRef = useRef(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    loadSession();
+    loadUserAndSession();
     startPulseAnimation();
   }, []);
+
+  useEffect(() => {
+    // Reload conversation when user changes
+    if (user) {
+      loadConversationFromServer();
+    }
+  }, [user]);
 
   useEffect(() => {
     if (isOpen && messages.length === 0) {
@@ -87,8 +96,20 @@ const ChatbotWidget = () => {
     ).start();
   };
 
-  const loadSession = async () => {
+  const loadUserAndSession = async () => {
     try {
+      // Try to get authenticated user
+      try {
+        const userData = await api.getCurrentUserFromStorage();
+        if (userData) {
+          setUser(userData);
+        }
+      } catch (err) {
+        // User not logged in, continue as guest
+        console.log('No authenticated user found, continuing as guest');
+      }
+
+      // Load local session as fallback
       const savedSessionId = await AsyncStorage.getItem('chatbotSessionId');
       const savedMessages = await AsyncStorage.getItem('chatbotMessages');
       
@@ -105,18 +126,62 @@ const ChatbotWidget = () => {
     }
   };
 
+  const loadConversationFromServer = async () => {
+    try {
+      if (!sessionId) return;
+      
+      const token = await AsyncStorage.getItem('token');
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(`${API_URL}/chatbot/conversation/${sessionId}`, { headers });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.conversation && data.conversation.messages) {
+          const serverMessages = data.conversation.messages.map(msg => ({
+            sender: msg.sender,
+            message: msg.message,
+            timestamp: msg.timestamp
+          }));
+          setMessages(serverMessages);
+          await AsyncStorage.setItem('chatbotMessages', JSON.stringify(serverMessages));
+        }
+      }
+    } catch (error) {
+      console.error('Error loading conversation from server:', error);
+    }
+  };
+
   const startNewSession = async () => {
     try {
+      const token = await AsyncStorage.getItem('token');
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const requestBody = {
+        guestName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || 'Guest' : 'Guest',
+        platform: getPlatform().OS,
+        userAgent: getPlatform().OS === 'web' ? (typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown') : `React Native ${getPlatform().Version || 'unknown'}`
+      };
+
+      // Add user info if authenticated
+      if (user) {
+        requestBody.guestEmail = user.email;
+        requestBody.guestPhone = user.phone;
+      }
+
       const response = await fetch(`${API_URL}/chatbot/start`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          guestName: 'Guest',
-          platform: getPlatform().OS,
-          userAgent: getPlatform().OS === 'web' ? (typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown') : `React Native ${getPlatform().Version || 'unknown'}`
-        })
+        headers,
+        body: JSON.stringify(requestBody)
       });
 
       const data = await response.json();
@@ -199,11 +264,17 @@ const ChatbotWidget = () => {
       }
 
       // Send message to backend
+      const token = await AsyncStorage.getItem('token');
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch(`${API_URL}/chatbot/message`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({
           sessionId: currentSessionId,
           message: userMessage,
@@ -219,6 +290,10 @@ const ChatbotWidget = () => {
           addBotMessage(data.botResponse);
           setIsTyping(false);
           setLoading(false);
+          // Reload conversation to sync with server
+          if (user) {
+            loadConversationFromServer();
+          }
         }, 800 + Math.random() * 500);
       } else {
         throw new Error(data.message || 'Failed to get response');
@@ -243,9 +318,13 @@ const ChatbotWidget = () => {
     await AsyncStorage.removeItem('chatbotSessionId');
     await AsyncStorage.removeItem('chatbotMessages');
     
-    setTimeout(() => {
-      addBotMessage("Chat cleared! How can I help you today? 😊");
-    }, 300);
+    // Start a new session
+    const newSessionId = await startNewSession();
+    if (newSessionId) {
+      setTimeout(() => {
+        addBotMessage("Chat cleared! How can I help you today? 😊");
+      }, 300);
+    }
   };
 
   const formatTime = (timestamp) => {

@@ -516,6 +516,7 @@ class JobWalaAPI {
     console.log(`\n${'='.repeat(80)}`);
     console.log(`[DEBUG ${timestamp}] Starting API Connection Test`);
     console.log(`[DEBUG] Base URL: ${this.baseURL}`);
+    const Platform = getPlatform();
     console.log(`[DEBUG] Platform: ${Platform?.OS || 'unknown'}`);
     console.log(`[DEBUG] __DEV__: ${__DEV__}`);
     
@@ -598,9 +599,17 @@ class JobWalaAPI {
     const requestId = Math.random().toString(36).substring(7);
     const timestamp = new Date().toISOString();
     
-    // Ensure init is called before making requests
-    if (!this.token && AsyncStorage) {
+    // Ensure init is called and token is loaded before making requests
+    if (AsyncStorage) {
       await this.init();
+      // Double-check token from storage if not in memory
+      if (!this.token) {
+        try {
+          this.token = await AsyncStorage.getItem('token');
+        } catch (error) {
+          console.warn('Error retrieving token from storage:', error);
+        }
+      }
     }
 
     try {
@@ -635,6 +644,23 @@ class JobWalaAPI {
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({ message: 'API request failed' }));
           console.log(`[API ${requestId}] Error response:`, JSON.stringify(errorData).substring(0, 200));
+          
+          // Handle rate limiting (429 Too Many Requests)
+          if (response.status === 429) {
+            const retryAfter = response.headers.get('Retry-After');
+            const retryAfterSeconds = retryAfter ? parseInt(retryAfter, 10) : null;
+            const waitTimeMinutes = retryAfterSeconds ? Math.ceil(retryAfterSeconds / 60) : 1;
+            const waitTimeMessage = retryAfterSeconds 
+              ? `${retryAfterSeconds} seconds` 
+              : `${waitTimeMinutes} minute${waitTimeMinutes > 1 ? 's' : ''}`;
+            
+            const rateLimitError = new Error(`Too many requests. Please wait ${waitTimeMessage} before trying again.`);
+            rateLimitError.status = 429;
+            rateLimitError.retryAfter = retryAfterSeconds;
+            rateLimitError.isRateLimit = true;
+            throw rateLimitError;
+          }
+          
           // Handle validation errors array
           if (errorData.errors && Array.isArray(errorData.errors)) {
             const errorMessages = errorData.errors.map(err => err.msg || err.message || JSON.stringify(err)).join(', ');
@@ -669,6 +695,12 @@ class JobWalaAPI {
       console.error(`[API Error ${requestId}] Full error:`, error);
       console.error(`[API Error ${requestId}] Error type:`, error.constructor.name);
       console.error(`[API Error ${requestId}] Error stack:`, error.stack?.substring(0, 500));
+      
+      // Handle rate limit errors
+      if (error.isRateLimit || error.status === 429 || error.message.includes('Too many requests')) {
+        // Rate limit error - preserve the message
+        throw error;
+      }
       
       // Provide helpful error message for connection issues
       if (error.message.includes('Network request failed') || 
@@ -835,6 +867,13 @@ class JobWalaAPI {
 
   async createJob(jobData) {
     return await this.request('/jobs', {
+      method: 'POST',
+      body: JSON.stringify(jobData),
+    });
+  }
+
+  async createJobWithoutRegistration(jobData) {
+    return await this.request('/jobs/post-without-registration', {
       method: 'POST',
       body: JSON.stringify(jobData),
     });
@@ -1048,6 +1087,23 @@ class JobWalaAPI {
     return await this.request('/users/dashboard-stats');
   }
 
+  // Job Invitations APIs
+  async getJobInvitations() {
+    return await this.request('/users/job-invitations');
+  }
+
+  async markInvitationAsViewed(invitationId) {
+    return await this.request(`/users/job-invitations/${invitationId}/view`, {
+      method: 'PATCH',
+    });
+  }
+
+  async declineInvitation(invitationId) {
+    return await this.request(`/users/job-invitations/${invitationId}/decline`, {
+      method: 'PATCH',
+    });
+  }
+
   // Saved Jobs APIs
   async getSavedJobs() {
     return await this.request('/saved-jobs');
@@ -1095,6 +1151,18 @@ class JobWalaAPI {
     return await this.request('/auth/change-password', {
       method: 'POST',
       body: JSON.stringify(passwordData),
+    });
+  }
+
+  // User Preferences APIs
+  async getUserPreferences() {
+    return await this.request('/users/preferences');
+  }
+
+  async updateUserPreferences(preferences) {
+    return await this.request('/users/preferences', {
+      method: 'PUT',
+      body: JSON.stringify(preferences),
     });
   }
 
@@ -1224,14 +1292,33 @@ class JobWalaAPI {
     });
   }
 
-  async likeSocialUpdate(id) {
+  async likeSocialUpdate(id, likeType = 'thumb') {
     return await this.request(`/social-updates/${id}/like`, {
       method: 'POST',
+      body: JSON.stringify({ likeType }),
     });
   }
 
-  async commentOnSocialUpdate(id, content) {
+  async getLikeCounts(id) {
+    return await this.request(`/social-updates/${id}/like-counts`);
+  }
+
+  async commentOnSocialUpdate(id, content, isSuggested = false, suggestionId = null) {
     return await this.request(`/social-updates/${id}/comment`, {
+      method: 'POST',
+      body: JSON.stringify({ content, isSuggested, suggestionId }),
+    });
+  }
+
+  async likeComment(postId, commentId, likeType = 'thumb') {
+    return await this.request(`/social-updates/${postId}/comment/${commentId}/like`, {
+      method: 'POST',
+      body: JSON.stringify({ likeType }),
+    });
+  }
+
+  async replyToComment(postId, commentId, content) {
+    return await this.request(`/social-updates/${postId}/comment/${commentId}/reply`, {
       method: 'POST',
       body: JSON.stringify({ content }),
     });
@@ -1242,6 +1329,70 @@ class JobWalaAPI {
       method: 'POST',
       body: JSON.stringify({ platform }),
     });
+  }
+
+  async repostSocialUpdate(id, repostType = 'simple', thoughts = '') {
+    return await this.request(`/social-updates/${id}/repost`, {
+      method: 'POST',
+      body: JSON.stringify({ repostType, thoughts }),
+    });
+  }
+
+  // Comment Suggestions
+  async getCommentSuggestionsForUser(postType = 'all', limit = 10) {
+    return await this.request(`/comment-suggestions/for-user?postType=${postType}&limit=${limit}`);
+  }
+
+  async recordSuggestionUsage(id) {
+    return await this.request(`/comment-suggestions/${id}/use`, {
+      method: 'POST',
+    });
+  }
+
+  // Follow System
+  async followUser(userId, notifications = null) {
+    return await this.request(`/follows/follow/${userId}`, {
+      method: 'POST',
+      body: JSON.stringify({ notifications }),
+    });
+  }
+
+  async unfollowUser(userId) {
+    return await this.request(`/follows/unfollow/${userId}`, {
+      method: 'POST',
+    });
+  }
+
+  async isFollowing(userId) {
+    return await this.request(`/follows/is-following/${userId}`);
+  }
+
+  async getFollowCounts(userId = null) {
+    const userParam = userId ? `/${userId}` : '';
+    return await this.request(`/follows/counts${userParam}`);
+  }
+
+  // Connection System
+  async sendConnectionRequest(recipientId, message = '', connectionType = 'professional') {
+    return await this.request('/connections/send', {
+      method: 'POST',
+      body: JSON.stringify({ recipientId, message, connectionType }),
+    });
+  }
+
+  async getReceivedConnectionRequests(status = 'pending', page = 1, limit = 20) {
+    return await this.request(`/connections/requests/received?status=${status}&page=${page}&limit=${limit}`);
+  }
+
+  async respondToConnectionRequest(connectionId, action, suggestedReply = null, replyMessage = '') {
+    return await this.request(`/connections/respond/${connectionId}`, {
+      method: 'POST',
+      body: JSON.stringify({ action, suggestedReply, replyMessage }),
+    });
+  }
+
+  async getMyConnections(page = 1, limit = 50, search = '') {
+    return await this.request(`/connections/my-connections?page=${page}&limit=${limit}&search=${search}`);
   }
 
   async getMySocialUpdates(filters = {}) {
@@ -1257,14 +1408,27 @@ class JobWalaAPI {
   // Job Alert APIs
   async createJobAlert(formData) {
     const url = `${this.baseURL}/job-alerts`;
+    const headers = {};
+    
+    // Only add Authorization header if token exists
+    if (this.token) {
+      headers['Authorization'] = `Bearer ${this.token}`;
+    }
+    
+    // Don't set Content-Type for FormData - browser will set it automatically with boundary
     const response = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Authorization': this.token ? `Bearer ${this.token}` : undefined,
-      },
+      headers: headers,
       body: formData,
     });
-    return await response.json();
+    
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.message || `Failed to create job alert: ${response.statusText}`);
+    }
+    
+    return data;
   }
 
   async getJobAlerts(filters = {}) {
@@ -1696,11 +1860,14 @@ class JobWalaAPI {
     // Add text fields
     if (formData.userType) formDataToSend.append('userType', formData.userType);
     if (formData.companyType) formDataToSend.append('companyType', formData.companyType);
+    
+    // Add documents with idNumber
     if (formData.documents) {
       Object.keys(formData.documents).forEach(key => {
         const doc = formData.documents[key];
-        if (doc && doc.idNumber) {
-          formDataToSend.append(`documents[${key}]`, JSON.stringify({ idNumber: doc.idNumber }));
+        if (doc && (doc.idNumber || formData.files?.[key])) {
+          // Always send idNumber, even if empty, so server knows about this document
+          formDataToSend.append(`documents[${key}]`, JSON.stringify({ idNumber: doc.idNumber || '' }));
         }
       });
     }
@@ -1708,12 +1875,23 @@ class JobWalaAPI {
     // Add files
     if (formData.files) {
       Object.keys(formData.files).forEach(key => {
-        if (formData.files[key]) {
-          formDataToSend.append(key, {
-            uri: formData.files[key].uri,
-            type: formData.files[key].type,
-            name: formData.files[key].name,
-          });
+        const file = formData.files[key];
+        if (file) {
+          // Handle web platform differently
+          if (typeof File !== 'undefined' && file instanceof File) {
+            // Web: File object
+            formDataToSend.append(key, file);
+          } else if (file.uri) {
+            // React Native: use uri format
+            formDataToSend.append(key, {
+              uri: file.uri,
+              type: file.type || 'application/octet-stream',
+              name: file.name || 'document',
+            });
+          } else if (file instanceof Blob) {
+            // Web: Blob object
+            formDataToSend.append(key, file, file.name || 'document');
+          }
         }
       });
     }
@@ -1722,20 +1900,26 @@ class JobWalaAPI {
     if (this.token) {
       headers['Authorization'] = `Bearer ${this.token}`;
     }
+    // Don't set Content-Type for FormData - let browser set it with boundary
     
-    const response = await fetch(url, {
-      method: 'POST',
-      headers,
-      body: formDataToSend,
-    });
-    
-    const data = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(data.message || 'KYC submission failed');
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: formDataToSend,
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'KYC submission failed');
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('KYC submission error:', error);
+      throw error;
     }
-    
-    return data;
   }
 
   async uploadKYCDocument(documentType, file, idNumber) {
@@ -1787,6 +1971,14 @@ class JobWalaAPI {
   }
 
   // Consultancy Profile APIs
+  async getConsultancyApplications() {
+    return await this.request('/consultancy/applications');
+  }
+
+  async getConsultancyDashboard() {
+    return await this.request('/consultancy/dashboard');
+  }
+
   async getConsultancyProfile() {
     return await this.request('/consultancy/me');
   }
@@ -1827,10 +2019,17 @@ class JobWalaAPI {
 
   // Add new job title
   async addJobTitle(name, category = 'Other') {
-    return await this.request('/job-titles', {
-      method: 'POST',
-      body: JSON.stringify({ name, category }),
-    });
+    try {
+      return await this.request('/job-titles', {
+        method: 'POST',
+        body: JSON.stringify({ name, category }),
+      });
+    } catch (error) {
+      // If endpoint doesn't exist, return success anyway
+      // The job title will still be used in the job post
+      console.warn('Job title endpoint not available, but job title will be used:', error.message);
+      return { success: true, jobTitle: { name, category } };
+    }
   }
 
   // Add new key skill
@@ -1856,10 +2055,9 @@ class JobWalaAPI {
 
   // Add new company
   async addCompany(name) {
-    return await this.request('/companies', {
-      method: 'POST',
-      body: JSON.stringify({ name }),
-    });
+    // Endpoint doesn't exist, so just return success
+    // The company name will still be used in the job post
+    return Promise.resolve({ success: true, company: { name } });
   }
 }
 

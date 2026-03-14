@@ -268,8 +268,8 @@ router.get('/chat-partners', auth, async (req, res) => {
         }
       ];
     } else if (userType === 'employer') {
-      // Employers can chat with job seekers and support
-      query.userType = { $in: ['jobseeker', 'admin', 'superadmin'] };
+      // Employers (company/consultancy) can chat with everyone: jobseekers, other companies/consultancies, admins
+      query.userType = { $in: ['jobseeker', 'employer', 'admin', 'superadmin'] };
     } else if (userType === 'admin' || userType === 'superadmin') {
       // Admins can chat with everyone
       query.userType = { $in: ['jobseeker', 'employer', 'admin', 'superadmin'] };

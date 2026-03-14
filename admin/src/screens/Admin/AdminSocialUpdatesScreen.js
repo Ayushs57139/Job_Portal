@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import * as ImagePicker from 'expo-image-picker';
 import AdminLayout from '../../components/Admin/AdminLayout';
+import AdminPostCard from '../../components/SocialUpdates/AdminPostCard';
 import api from '../../config/api';
 import { colors, spacing, typography, borderRadius, shadows } from '../../styles/theme';
 import { useResponsive } from '../../utils/responsive';
@@ -36,6 +37,13 @@ const AdminSocialUpdatesScreen = ({ navigation }) => {
     totalLikes: 0,
     totalComments: 0,
     totalShares: 0,
+    // Comment stats
+    allComments: 0,
+    mineComments: 0,
+    approvedComments: 0,
+    unapprovedComments: 0,
+    spamComments: 0,
+    trashComments: 0,
   });
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -50,6 +58,17 @@ const AdminSocialUpdatesScreen = ({ navigation }) => {
     status: '',
     postType: '',
     search: '',
+  });
+
+  // Comment filter
+  const [commentFilter, setCommentFilter] = useState('ALL');
+
+  // Comment date filter
+  const [commentDateFilter, setCommentDateFilter] = useState('ALL_TIME');
+  const [customCommentDateModalVisible, setCustomCommentDateModalVisible] = useState(false);
+  const [customCommentDateRange, setCustomCommentDateRange] = useState({
+    startDate: '',
+    endDate: '',
   });
 
   // Modal States
@@ -76,42 +95,269 @@ const AdminSocialUpdatesScreen = ({ navigation }) => {
 
   useEffect(() => {
     loadData();
-  }, [filters.page, filters.status, filters.postType]);
+    
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(() => {
+      loadData();
+    }, 30000);
+    
+    return () => clearInterval(interval);
+  }, [filters.page, filters.status, filters.postType, filters.search]);
 
   const loadData = async () => {
     try {
       setLoading(true);
+      
+      // Ensure API is initialized
+      await api.init();
+      
+      // Prepare filters for API call
+      const apiFilters = {
+        page: filters.page || 1,
+        limit: filters.limit || 10,
+      };
+      
+      if (filters.status && filters.status !== '') {
+        apiFilters.status = filters.status;
+      }
+      if (filters.postType && filters.postType !== '') {
+        apiFilters.postType = filters.postType;
+      }
+      if (filters.search && filters.search.trim() !== '') {
+        apiFilters.search = filters.search.trim();
+      }
+      
+      console.log('Loading social updates with filters:', apiFilters);
+      
       const [postsResponse, statsResponse] = await Promise.all([
-        api.getAdminSocialUpdates(filters),
+        api.getAdminSocialUpdates(apiFilters),
         api.getSocialUpdateStats(),
       ]);
 
-      if (postsResponse && postsResponse.socialUpdates) {
-        setPosts(postsResponse.socialUpdates);
-        setPagination(postsResponse.pagination);
+      console.log('Posts response:', postsResponse);
+      console.log('Stats response:', statsResponse);
+
+      if (postsResponse) {
+        if (postsResponse.socialUpdates && Array.isArray(postsResponse.socialUpdates)) {
+          setPosts(postsResponse.socialUpdates);
+          calculateCommentStats(postsResponse.socialUpdates);
+        } else if (Array.isArray(postsResponse)) {
+          setPosts(postsResponse);
+          calculateCommentStats(postsResponse);
+        }
+        
+        if (postsResponse.pagination) {
+          setPagination(postsResponse.pagination);
+        } else {
+          setPagination({
+            currentPage: apiFilters.page,
+            totalPages: 1,
+            totalItems: Array.isArray(postsResponse.socialUpdates) ? postsResponse.socialUpdates.length : (Array.isArray(postsResponse) ? postsResponse.length : 0),
+          });
+        }
       }
 
       if (statsResponse) {
-        setStats(statsResponse);
+        setStats(prevStats => ({
+          ...prevStats,
+          ...statsResponse
+        }));
       }
     } catch (error) {
       console.error('Error loading data:', error);
-      Alert.alert('Error', 'Failed to load social updates');
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack,
+        endpoint: '/social-updates/admin/all',
+        baseURL: api.baseURL
+      });
+      Alert.alert('Error', error.message || 'Failed to load social updates');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
+  const calculateCommentStats = (postsData) => {
+    let allComments = 0;
+    let mineComments = 0;
+    let approvedComments = 0;
+    let unapprovedComments = 0;
+    let spamComments = 0;
+    let trashComments = 0;
+
+    postsData.forEach(post => {
+      if (post.comments && Array.isArray(post.comments)) {
+        post.comments.forEach(comment => {
+          allComments++;
+
+          // Mine/Admin comments (check if comment is from admin)
+          if (comment.isAdmin || comment.user?.role === 'admin' || comment.user?.role === 'ADMIN') {
+            mineComments++;
+          }
+
+          // Approved comments
+          if (comment.status === 'approved' || comment.isApproved) {
+            approvedComments++;
+          }
+
+          // Unapproved comments
+          if (comment.status === 'pending' || comment.status === 'unapproved' || (!comment.isApproved && comment.status !== 'approved')) {
+            unapprovedComments++;
+          }
+
+          // Spam comments
+          if (comment.status === 'spam' || comment.isSpam) {
+            spamComments++;
+          }
+
+          // Trash comments
+          if (comment.status === 'trash' || comment.isDeleted || comment.deleted) {
+            trashComments++;
+          }
+        });
+      }
+    });
+
+    setStats(prevStats => ({
+      ...prevStats,
+      allComments,
+      mineComments,
+      approvedComments,
+      unapprovedComments,
+      spamComments,
+      trashComments,
+    }));
+  };
+
+  const getFilteredComments = (comments) => {
+    if (!comments || !Array.isArray(comments)) return [];
+
+    // First filter by status
+    let filtered = comments;
+    switch (commentFilter) {
+      case 'MINE':
+        filtered = comments.filter(c => c.isAdmin || c.user?.role === 'admin' || c.user?.role === 'ADMIN');
+        break;
+      case 'APPROVED':
+        filtered = comments.filter(c => c.status === 'approved' || c.isApproved);
+        break;
+      case 'UNAPPROVED':
+        filtered = comments.filter(c => c.status === 'pending' || c.status === 'unapproved' || (!c.isApproved && c.status !== 'approved'));
+        break;
+      case 'SPAM':
+        filtered = comments.filter(c => c.status === 'spam' || c.isSpam);
+        break;
+      case 'TRASH':
+        filtered = comments.filter(c => c.status === 'trash' || c.isDeleted || c.deleted);
+        break;
+      case 'ALL':
+      default:
+        filtered = comments;
+    }
+
+    // Then filter by date
+    return filterCommentsByDate(filtered);
+  };
+
+  const filterCommentsByDate = (comments) => {
+    if (commentDateFilter === 'ALL_TIME') {
+      return comments;
+    }
+
+    const now = new Date();
+    let startDate;
+
+    switch (commentDateFilter) {
+      case 'LAST_24_HOURS':
+        startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        break;
+      case 'LAST_7_DAYS':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case 'LAST_14_DAYS':
+        startDate = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+        break;
+      case 'LAST_30_DAYS':
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case 'LAST_90_DAYS':
+        startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+        break;
+      case 'LAST_120_DAYS':
+        startDate = new Date(now.getTime() - 120 * 24 * 60 * 60 * 1000);
+        break;
+      case 'LAST_6_MONTHS':
+        startDate = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
+        break;
+      case 'LAST_9_MONTHS':
+        startDate = new Date(now.getTime() - 270 * 24 * 60 * 60 * 1000);
+        break;
+      case 'LAST_12_MONTHS':
+        startDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+        break;
+      case 'CUSTOM':
+        if (customCommentDateRange.startDate && customCommentDateRange.endDate) {
+          const customStart = new Date(customCommentDateRange.startDate);
+          const customEnd = new Date(customCommentDateRange.endDate);
+          customEnd.setHours(23, 59, 59, 999);
+          return comments.filter(comment => {
+            const commentDate = new Date(comment.createdAt);
+            return commentDate >= customStart && commentDate <= customEnd;
+          });
+        }
+        return comments;
+      default:
+        return comments;
+    }
+
+    return comments.filter(comment => {
+      const commentDate = new Date(comment.createdAt);
+      return commentDate >= startDate;
+    });
+  };
+
+  const handleCustomCommentDateApply = () => {
+    if (!customCommentDateRange.startDate || !customCommentDateRange.endDate) {
+      Alert.alert('Validation Error', 'Please select both start and end dates');
+      return;
+    }
+
+    const start = new Date(customCommentDateRange.startDate);
+    const end = new Date(customCommentDateRange.endDate);
+
+    if (start > end) {
+      Alert.alert('Validation Error', 'Start date must be before end date');
+      return;
+    }
+
+    setCommentDateFilter('CUSTOM');
+    setCustomCommentDateModalVisible(false);
+  };
+
+  const getCommentDateFilterLabel = () => {
+    switch (commentDateFilter) {
+      case 'LAST_24_HOURS': return 'Last 24 Hours';
+      case 'LAST_7_DAYS': return 'Last 7 Days';
+      case 'LAST_14_DAYS': return 'Last 14 Days';
+      case 'LAST_30_DAYS': return 'Last 30 Days';
+      case 'LAST_90_DAYS': return 'Last 90 Days';
+      case 'LAST_120_DAYS': return 'Last 120 Days';
+      case 'LAST_6_MONTHS': return 'Last 6 Months';
+      case 'LAST_9_MONTHS': return 'Last 9 Months';
+      case 'LAST_12_MONTHS': return 'Last 12 Months';
+      case 'CUSTOM': return 'Custom Date';
+      case 'ALL_TIME':
+      default: return 'All Time';
+    }
+  };
+
+
   const onRefresh = () => {
     setRefreshing(true);
     loadData();
   };
 
-  const handleSearch = () => {
-    setFilters({ ...filters, page: 1 });
-    loadData();
-  };
 
   const openCreateModal = () => {
     setFormData({
@@ -384,116 +630,14 @@ const AdminSocialUpdatesScreen = ({ navigation }) => {
   );
 
   const renderPostCard = (post) => (
-    <TouchableOpacity
+    <AdminPostCard
       key={post._id}
-      style={dynamicStyles.postCard}
-      onPress={() => handleViewDetails(post)}
-      activeOpacity={0.7}
-    >
-      <View style={dynamicStyles.postHeader}>
-        <View style={dynamicStyles.postTitleContainer}>
-          <Text style={dynamicStyles.postTitle} numberOfLines={2}>
-            {post.title}
-          </Text>
-          <View style={dynamicStyles.postBadges}>
-            <View style={[dynamicStyles.badge, dynamicStyles.typeBadge]}>
-              <Text style={dynamicStyles.badgeText}>{getPostTypeLabel(post.postType)}</Text>
-            </View>
-            {post.isPinned && (
-              <View style={[dynamicStyles.badge, dynamicStyles.pinnedBadge]}>
-                <Ionicons name="pin" size={12} color="#FFF" />
-                <Text style={dynamicStyles.badgeText}>Pinned</Text>
-              </View>
-            )}
-            {post.isFeatured && (
-              <View style={[dynamicStyles.badge, dynamicStyles.featuredBadge]}>
-                <Ionicons name="star" size={12} color="#FFF" />
-                <Text style={dynamicStyles.badgeText}>Featured</Text>
-              </View>
-            )}
-            <View
-              style={[
-                dynamicStyles.badge,
-                post.status === 'published' ? dynamicStyles.publishedBadge : dynamicStyles.draftBadge,
-              ]}
-            >
-              <Text style={dynamicStyles.badgeText}>
-                {post.status === 'published' ? 'Published' : 'Draft'}
-              </Text>
-            </View>
-          </View>
-        </View>
-      </View>
-
-      <View style={dynamicStyles.postBody}>
-        <View style={dynamicStyles.postMeta}>
-          <View style={dynamicStyles.metaItem}>
-            <Ionicons name="person-outline" size={14} color={colors.textSecondary} />
-            <Text style={dynamicStyles.metaText}>{post.authorName}</Text>
-          </View>
-          <View style={dynamicStyles.metaItem}>
-            <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
-            <Text style={dynamicStyles.metaText}>{formatDate(post.createdAt)}</Text>
-          </View>
-        </View>
-
-        <Text style={dynamicStyles.postContent} numberOfLines={3}>
-          {post.content}
-        </Text>
-
-        <View style={dynamicStyles.engagementStats}>
-          <View style={dynamicStyles.engagementItem}>
-            <Ionicons name="heart" size={16} color={colors.error} />
-            <Text style={dynamicStyles.engagementText}>{post.engagement?.likes || 0}</Text>
-          </View>
-          <View style={dynamicStyles.engagementItem}>
-            <Ionicons name="chatbubble" size={16} color={colors.primary} />
-            <Text style={dynamicStyles.engagementText}>{post.engagement?.comments || 0}</Text>
-          </View>
-          <View style={dynamicStyles.engagementItem}>
-            <Ionicons name="share-social" size={16} color={colors.success} />
-            <Text style={dynamicStyles.engagementText}>{post.engagement?.shares || 0}</Text>
-          </View>
-          <View style={dynamicStyles.engagementItem}>
-            <Ionicons name="eye" size={16} color={colors.info} />
-            <Text style={dynamicStyles.engagementText}>{post.engagement?.views || 0}</Text>
-          </View>
-        </View>
-      </View>
-
-      <View style={dynamicStyles.postActions}>
-        <TouchableOpacity
-          style={dynamicStyles.actionButton}
-          onPress={(e) => {
-            e.stopPropagation();
-            handleViewDetails(post);
-          }}
-        >
-          <Ionicons name="eye-outline" size={18} color={colors.primary} />
-          <Text style={dynamicStyles.actionButtonText}>View Details</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={dynamicStyles.actionButton}
-          onPress={(e) => {
-            e.stopPropagation();
-            openEditModal(post);
-          }}
-        >
-          <Ionicons name="create-outline" size={18} color={colors.success} />
-          <Text style={dynamicStyles.actionButtonText}>Edit</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={dynamicStyles.actionButton}
-          onPress={(e) => {
-            e.stopPropagation();
-            handleDelete(post);
-          }}
-        >
-          <Ionicons name="trash-outline" size={18} color={colors.error} />
-          <Text style={dynamicStyles.actionButtonText}>Delete</Text>
-        </TouchableOpacity>
-      </View>
-    </TouchableOpacity>
+      post={post}
+      onUpdate={loadData}
+      onEdit={() => openEditModal(post)}
+      onDelete={() => handleDelete(post)}
+      onViewDetails={() => handleViewDetails(post)}
+    />
   );
 
   if (loading && !refreshing) {
@@ -549,6 +693,214 @@ const AdminSocialUpdatesScreen = ({ navigation }) => {
             {renderStatCard('Total Likes', stats.totalLikes || 0, 'heart-outline', colors.error)}
             {renderStatCard('Total Comments', stats.totalComments || 0, 'chatbubble-outline', '#6366F1')}
           </View>
+          <View style={dynamicStyles.statsRow}>
+            {renderStatCard('Total Shares', stats.totalShares || 0, 'share-social-outline', '#10B981')}
+            {renderStatCard('Total Reposts', posts.reduce((sum, p) => sum + (p.repostCount || 0), 0), 'repeat-outline', '#8B5CF6')}
+          </View>
+        </View>
+
+        {/* Comment Statistics */}
+        <View style={dynamicStyles.statsContainer}>
+          <View style={dynamicStyles.sectionHeaderRow}>
+            <Text style={dynamicStyles.sectionTitle}>Comment Statistics</Text>
+            <View style={dynamicStyles.dateFilterContainer}>
+              <Ionicons name="calendar-outline" size={16} color="#64748B" />
+              <Text style={dynamicStyles.dateFilterLabel}>{getCommentDateFilterLabel()}</Text>
+            </View>
+          </View>
+
+          {/* Date Filter Options */}
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            style={dynamicStyles.dateFilterScroll}
+            contentContainerStyle={dynamicStyles.dateFilterContent}
+          >
+            <TouchableOpacity 
+              style={[dynamicStyles.dateFilterChip, commentDateFilter === 'ALL_TIME' && dynamicStyles.dateFilterChipActive]}
+              onPress={() => setCommentDateFilter('ALL_TIME')}
+            >
+              <Text style={[dynamicStyles.dateFilterChipText, commentDateFilter === 'ALL_TIME' && dynamicStyles.dateFilterChipTextActive]}>
+                All Time
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[dynamicStyles.dateFilterChip, commentDateFilter === 'LAST_24_HOURS' && dynamicStyles.dateFilterChipActive]}
+              onPress={() => setCommentDateFilter('LAST_24_HOURS')}
+            >
+              <Text style={[dynamicStyles.dateFilterChipText, commentDateFilter === 'LAST_24_HOURS' && dynamicStyles.dateFilterChipTextActive]}>
+                Last 24 Hours
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[dynamicStyles.dateFilterChip, commentDateFilter === 'LAST_7_DAYS' && dynamicStyles.dateFilterChipActive]}
+              onPress={() => setCommentDateFilter('LAST_7_DAYS')}
+            >
+              <Text style={[dynamicStyles.dateFilterChipText, commentDateFilter === 'LAST_7_DAYS' && dynamicStyles.dateFilterChipTextActive]}>
+                Last 7 Days
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[dynamicStyles.dateFilterChip, commentDateFilter === 'LAST_14_DAYS' && dynamicStyles.dateFilterChipActive]}
+              onPress={() => setCommentDateFilter('LAST_14_DAYS')}
+            >
+              <Text style={[dynamicStyles.dateFilterChipText, commentDateFilter === 'LAST_14_DAYS' && dynamicStyles.dateFilterChipTextActive]}>
+                Last 14 Days
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[dynamicStyles.dateFilterChip, commentDateFilter === 'LAST_30_DAYS' && dynamicStyles.dateFilterChipActive]}
+              onPress={() => setCommentDateFilter('LAST_30_DAYS')}
+            >
+              <Text style={[dynamicStyles.dateFilterChipText, commentDateFilter === 'LAST_30_DAYS' && dynamicStyles.dateFilterChipTextActive]}>
+                Last 30 Days
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[dynamicStyles.dateFilterChip, commentDateFilter === 'LAST_90_DAYS' && dynamicStyles.dateFilterChipActive]}
+              onPress={() => setCommentDateFilter('LAST_90_DAYS')}
+            >
+              <Text style={[dynamicStyles.dateFilterChipText, commentDateFilter === 'LAST_90_DAYS' && dynamicStyles.dateFilterChipTextActive]}>
+                Last 90 Days
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[dynamicStyles.dateFilterChip, commentDateFilter === 'LAST_120_DAYS' && dynamicStyles.dateFilterChipActive]}
+              onPress={() => setCommentDateFilter('LAST_120_DAYS')}
+            >
+              <Text style={[dynamicStyles.dateFilterChipText, commentDateFilter === 'LAST_120_DAYS' && dynamicStyles.dateFilterChipTextActive]}>
+                Last 120 Days
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[dynamicStyles.dateFilterChip, commentDateFilter === 'LAST_6_MONTHS' && dynamicStyles.dateFilterChipActive]}
+              onPress={() => setCommentDateFilter('LAST_6_MONTHS')}
+            >
+              <Text style={[dynamicStyles.dateFilterChipText, commentDateFilter === 'LAST_6_MONTHS' && dynamicStyles.dateFilterChipTextActive]}>
+                Last 6 Months
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[dynamicStyles.dateFilterChip, commentDateFilter === 'LAST_9_MONTHS' && dynamicStyles.dateFilterChipActive]}
+              onPress={() => setCommentDateFilter('LAST_9_MONTHS')}
+            >
+              <Text style={[dynamicStyles.dateFilterChipText, commentDateFilter === 'LAST_9_MONTHS' && dynamicStyles.dateFilterChipTextActive]}>
+                Last 9 Months
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[dynamicStyles.dateFilterChip, commentDateFilter === 'LAST_12_MONTHS' && dynamicStyles.dateFilterChipActive]}
+              onPress={() => setCommentDateFilter('LAST_12_MONTHS')}
+            >
+              <Text style={[dynamicStyles.dateFilterChipText, commentDateFilter === 'LAST_12_MONTHS' && dynamicStyles.dateFilterChipTextActive]}>
+                Last 12 Months
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[dynamicStyles.dateFilterChip, commentDateFilter === 'CUSTOM' && dynamicStyles.dateFilterChipActive]}
+              onPress={() => setCustomCommentDateModalVisible(true)}
+            >
+              <Ionicons name="calendar" size={14} color={commentDateFilter === 'CUSTOM' ? '#FFF' : '#4A90E2'} />
+              <Text style={[dynamicStyles.dateFilterChipText, commentDateFilter === 'CUSTOM' && dynamicStyles.dateFilterChipTextActive]}>
+                Custom Date
+              </Text>
+            </TouchableOpacity>
+          </ScrollView>
+
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            style={dynamicStyles.commentStatsScroll}
+            contentContainerStyle={dynamicStyles.commentStatsContent}
+          >
+            <TouchableOpacity 
+              style={[dynamicStyles.commentStatCard, commentFilter === 'ALL' && dynamicStyles.commentStatCardActive]}
+              onPress={() => setCommentFilter('ALL')}
+            >
+              <Ionicons name="chatbubbles-outline" size={24} color={commentFilter === 'ALL' ? '#FFF' : '#3498DB'} />
+              <Text style={[dynamicStyles.commentStatValue, commentFilter === 'ALL' && dynamicStyles.commentStatValueActive]}>
+                {stats.allComments}
+              </Text>
+              <Text style={[dynamicStyles.commentStatLabel, commentFilter === 'ALL' && dynamicStyles.commentStatLabelActive]}>
+                All Comments
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[dynamicStyles.commentStatCard, commentFilter === 'MINE' && dynamicStyles.commentStatCardActive]}
+              onPress={() => setCommentFilter('MINE')}
+            >
+              <Ionicons name="person-outline" size={24} color={commentFilter === 'MINE' ? '#FFF' : '#9B59B6'} />
+              <Text style={[dynamicStyles.commentStatValue, commentFilter === 'MINE' && dynamicStyles.commentStatValueActive]}>
+                {stats.mineComments}
+              </Text>
+              <Text style={[dynamicStyles.commentStatLabel, commentFilter === 'MINE' && dynamicStyles.commentStatLabelActive]}>
+                Mine/Admin
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[dynamicStyles.commentStatCard, commentFilter === 'APPROVED' && dynamicStyles.commentStatCardActive]}
+              onPress={() => setCommentFilter('APPROVED')}
+            >
+              <Ionicons name="checkmark-circle-outline" size={24} color={commentFilter === 'APPROVED' ? '#FFF' : '#27AE60'} />
+              <Text style={[dynamicStyles.commentStatValue, commentFilter === 'APPROVED' && dynamicStyles.commentStatValueActive]}>
+                {stats.approvedComments}
+              </Text>
+              <Text style={[dynamicStyles.commentStatLabel, commentFilter === 'APPROVED' && dynamicStyles.commentStatLabelActive]}>
+                Approved
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[dynamicStyles.commentStatCard, commentFilter === 'UNAPPROVED' && dynamicStyles.commentStatCardActive]}
+              onPress={() => setCommentFilter('UNAPPROVED')}
+            >
+              <Ionicons name="time-outline" size={24} color={commentFilter === 'UNAPPROVED' ? '#FFF' : '#F39C12'} />
+              <Text style={[dynamicStyles.commentStatValue, commentFilter === 'UNAPPROVED' && dynamicStyles.commentStatValueActive]}>
+                {stats.unapprovedComments}
+              </Text>
+              <Text style={[dynamicStyles.commentStatLabel, commentFilter === 'UNAPPROVED' && dynamicStyles.commentStatLabelActive]}>
+                Unapproved
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[dynamicStyles.commentStatCard, commentFilter === 'SPAM' && dynamicStyles.commentStatCardActive]}
+              onPress={() => setCommentFilter('SPAM')}
+            >
+              <Ionicons name="warning-outline" size={24} color={commentFilter === 'SPAM' ? '#FFF' : '#E67E22'} />
+              <Text style={[dynamicStyles.commentStatValue, commentFilter === 'SPAM' && dynamicStyles.commentStatValueActive]}>
+                {stats.spamComments}
+              </Text>
+              <Text style={[dynamicStyles.commentStatLabel, commentFilter === 'SPAM' && dynamicStyles.commentStatLabelActive]}>
+                Spam
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[dynamicStyles.commentStatCard, commentFilter === 'TRASH' && dynamicStyles.commentStatCardActive]}
+              onPress={() => setCommentFilter('TRASH')}
+            >
+              <Ionicons name="trash-outline" size={24} color={commentFilter === 'TRASH' ? '#FFF' : '#E74C3C'} />
+              <Text style={[dynamicStyles.commentStatValue, commentFilter === 'TRASH' && dynamicStyles.commentStatValueActive]}>
+                {stats.trashComments}
+              </Text>
+              <Text style={[dynamicStyles.commentStatLabel, commentFilter === 'TRASH' && dynamicStyles.commentStatLabelActive]}>
+                Trash
+              </Text>
+            </TouchableOpacity>
+          </ScrollView>
         </View>
 
         {/* Filters */}
@@ -558,11 +910,11 @@ const AdminSocialUpdatesScreen = ({ navigation }) => {
           <View style={dynamicStyles.filterRow}>
             <TextInput
               style={dynamicStyles.searchInput}
-              value={filters.search}
-              onChangeText={(text) => setFilters({ ...filters, search: text })}
+              value={filters.search || ''}
+              onChangeText={(text) => setFilters({ ...filters, search: text, page: 1 })}
               placeholder="Search posts..."
               placeholderTextColor={colors.textSecondary}
-              onSubmitEditing={handleSearch}
+              onSubmitEditing={() => loadData()}
             />
           </View>
 
@@ -672,22 +1024,28 @@ const AdminSocialUpdatesScreen = ({ navigation }) => {
       {/* Create Post Modal */}
       <Modal
         visible={createModalVisible}
-        animationType="fade"
+        animationType="slide"
         transparent={true}
         onRequestClose={() => setCreateModalVisible(false)}
       >
-        <TouchableOpacity 
-          style={dynamicStyles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setCreateModalVisible(false)}
-        >
+        <View style={dynamicStyles.modalOverlay}>
           <TouchableOpacity 
+            style={dynamicStyles.modalBackdrop}
             activeOpacity={1}
-            onPress={(e) => e.stopPropagation()}
-          >
+            onPress={() => setCreateModalVisible(false)}
+          />
           <View style={dynamicStyles.modalContainer}>
+            {/* Enhanced Header with Gradient Effect */}
             <View style={dynamicStyles.modalHeader}>
-              <Text style={dynamicStyles.modalTitle}>Create Social Update</Text>
+              <View style={dynamicStyles.modalHeaderContent}>
+                <View style={dynamicStyles.modalIconContainer}>
+                  <Ionicons name="create-outline" size={28} color="#4A90E2" />
+                </View>
+                <View style={dynamicStyles.modalTitleContainer}>
+                  <Text style={dynamicStyles.modalTitle}>Create Social Update</Text>
+                  <Text style={dynamicStyles.modalSubtitle}>Share your thoughts with the community</Text>
+                </View>
+              </View>
               <TouchableOpacity 
                 onPress={() => setCreateModalVisible(false)}
                 style={dynamicStyles.modalCloseButton}
@@ -696,169 +1054,239 @@ const AdminSocialUpdatesScreen = ({ navigation }) => {
               </TouchableOpacity>
             </View>
 
-          <ScrollView style={dynamicStyles.modalContent}>
-            <View style={dynamicStyles.inputGroup}>
-              <Text style={dynamicStyles.label}>Title *</Text>
-              <TextInput
-                style={dynamicStyles.input}
-                value={formData.title}
-                onChangeText={(text) => setFormData({ ...formData, title: text })}
-                placeholder="Enter post title..."
-                placeholderTextColor={colors.textSecondary}
-              />
-            </View>
-
-            <View style={dynamicStyles.inputGroup}>
-              <Text style={dynamicStyles.label}>Content *</Text>
-              <TextInput
-                style={[dynamicStyles.input, dynamicStyles.textArea]}
-                value={formData.content}
-                onChangeText={(text) => setFormData({ ...formData, content: text })}
-                placeholder="Write your post content..."
-                placeholderTextColor={colors.textSecondary}
-                multiline
-                numberOfLines={8}
-                textAlignVertical="top"
-              />
-            </View>
-
-            <View style={dynamicStyles.inputGroup}>
-              <Text style={dynamicStyles.label}>Post Type</Text>
-              <View style={dynamicStyles.picker}>
-                <Picker
-                  selectedValue={formData.postType}
-                  onValueChange={(value) => setFormData({ ...formData, postType: value })}
-                  style={dynamicStyles.pickerInput}
-                >
-                  <Picker.Item label="General" value="general" />
-                  <Picker.Item label="Job Announcement" value="job_announcement" />
-                  <Picker.Item label="Company Update" value="company_update" />
-                  <Picker.Item label="Industry News" value="industry_news" />
-                  <Picker.Item label="Career Tips" value="career_tips" />
-                  <Picker.Item label="Event Announcement" value="event_announcement" />
-                </Picker>
-              </View>
-            </View>
-
-            <View style={dynamicStyles.inputGroup}>
-              <Text style={dynamicStyles.label}>Category (Optional)</Text>
-              <TextInput
-                style={dynamicStyles.input}
-                value={formData.category}
-                onChangeText={(text) => setFormData({ ...formData, category: text })}
-                placeholder="e.g., Technology, Healthcare"
-                placeholderTextColor={colors.textSecondary}
-              />
-            </View>
-
-            <View style={dynamicStyles.inputGroup}>
-              <Text style={dynamicStyles.label}>Tags (Optional)</Text>
-              <TextInput
-                style={dynamicStyles.input}
-                value={formData.tags}
-                onChangeText={(text) => setFormData({ ...formData, tags: text })}
-                placeholder="e.g., hiring, remote, tech (comma separated)"
-                placeholderTextColor={colors.textSecondary}
-              />
-            </View>
-
-            <View style={dynamicStyles.inputGroup}>
-              <Text style={dynamicStyles.label}>Visibility</Text>
-              <View style={dynamicStyles.picker}>
-                <Picker
-                  selectedValue={formData.visibility}
-                  onValueChange={(value) => setFormData({ ...formData, visibility: value })}
-                  style={dynamicStyles.pickerInput}
-                >
-                  <Picker.Item label="Public" value="public" />
-                  <Picker.Item label="Followers Only" value="followers_only" />
-                  <Picker.Item label="Private" value="private" />
-                </Picker>
-              </View>
-            </View>
-
-            <View style={dynamicStyles.inputGroup}>
-              <Text style={dynamicStyles.label}>Images (Optional)</Text>
-              <Text style={dynamicStyles.hint}>Add up to 5 images to your post</Text>
-              
-              {/* Image Preview */}
-              {selectedImages.length > 0 && (
-                <View style={dynamicStyles.imagesPreviewContainer}>
-                  {selectedImages.map((image, index) => (
-                    <View key={index} style={dynamicStyles.imagePreviewWrapper}>
-                      <Image source={{ uri: image.uri }} style={dynamicStyles.imagePreview} />
-                      <TouchableOpacity
-                        style={dynamicStyles.removeImageButton}
-                        onPress={() => handleRemoveImage(index)}
-                      >
-                        <Ionicons name="close-circle" size={24} color={colors.error} />
-                      </TouchableOpacity>
-                    </View>
-                  ))}
+            <ScrollView 
+              style={dynamicStyles.modalContent}
+              showsVerticalScrollIndicator={false}
+            >
+              {/* Title Input with Icon */}
+              <View style={dynamicStyles.inputGroup}>
+                <View style={dynamicStyles.labelRow}>
+                  <Ionicons name="text-outline" size={18} color="#4A90E2" />
+                  <Text style={dynamicStyles.label}>Title</Text>
+                  <View style={dynamicStyles.requiredBadge}>
+                    <Text style={dynamicStyles.requiredText}>Required</Text>
+                  </View>
                 </View>
-              )}
+                <View style={dynamicStyles.inputWrapper}>
+                  <TextInput
+                    style={dynamicStyles.input}
+                    value={formData.title}
+                    onChangeText={(text) => setFormData({ ...formData, title: text })}
+                    placeholder="Enter an engaging title..."
+                    placeholderTextColor="#94A3B8"
+                  />
+                </View>
+              </View>
 
-              {/* Add Image Button */}
-              {selectedImages.length < 5 && (
-                <TouchableOpacity
-                  style={dynamicStyles.addImageButton}
-                  onPress={handlePickImage}
-                >
-                  <Ionicons name="image-outline" size={24} color={colors.primary} />
-                  <Text style={dynamicStyles.addImageButtonText}>
-                    {selectedImages.length > 0 ? 'Add More Images' : 'Add Images'}
-                  </Text>
-                  <Text style={dynamicStyles.addImageButtonSubtext}>
-                    {selectedImages.length}/5 images
-                  </Text>
-                </TouchableOpacity>
-              )}
+              {/* Content Input with Icon */}
+              <View style={dynamicStyles.inputGroup}>
+                <View style={dynamicStyles.labelRow}>
+                  <Ionicons name="document-text-outline" size={18} color="#4A90E2" />
+                  <Text style={dynamicStyles.label}>Content</Text>
+                  <View style={dynamicStyles.requiredBadge}>
+                    <Text style={dynamicStyles.requiredText}>Required</Text>
+                  </View>
+                </View>
+                <View style={dynamicStyles.inputWrapper}>
+                  <TextInput
+                    style={[dynamicStyles.input, dynamicStyles.textArea]}
+                    value={formData.content}
+                    onChangeText={(text) => setFormData({ ...formData, content: text })}
+                    placeholder="Share your story, announcement, or update..."
+                    placeholderTextColor="#94A3B8"
+                    multiline
+                    numberOfLines={8}
+                    textAlignVertical="top"
+                  />
+                  <Text style={dynamicStyles.charCount}>{formData.content.length} characters</Text>
+                </View>
+              </View>
+
+              {/* Two Column Layout for Selects */}
+              <View style={dynamicStyles.twoColumnRow}>
+                {/* Post Type */}
+                <View style={[dynamicStyles.inputGroup, dynamicStyles.halfWidth]}>
+                  <View style={dynamicStyles.labelRow}>
+                    <Ionicons name="pricetag-outline" size={18} color="#4A90E2" />
+                    <Text style={dynamicStyles.label}>Post Type</Text>
+                  </View>
+                  <View style={dynamicStyles.pickerWrapper}>
+                    <Picker
+                      selectedValue={formData.postType}
+                      onValueChange={(value) => setFormData({ ...formData, postType: value })}
+                      style={dynamicStyles.pickerInput}
+                    >
+                      <Picker.Item label="General" value="general" />
+                      <Picker.Item label="Job Announcement" value="job_announcement" />
+                      <Picker.Item label="Company Update" value="company_update" />
+                      <Picker.Item label="Industry News" value="industry_news" />
+                      <Picker.Item label="Career Tips" value="career_tips" />
+                      <Picker.Item label="Event" value="event_announcement" />
+                    </Picker>
+                  </View>
+                </View>
+
+                {/* Visibility */}
+                <View style={[dynamicStyles.inputGroup, dynamicStyles.halfWidth]}>
+                  <View style={dynamicStyles.labelRow}>
+                    <Ionicons name="eye-outline" size={18} color="#4A90E2" />
+                    <Text style={dynamicStyles.label}>Visibility</Text>
+                  </View>
+                  <View style={dynamicStyles.pickerWrapper}>
+                    <Picker
+                      selectedValue={formData.visibility}
+                      onValueChange={(value) => setFormData({ ...formData, visibility: value })}
+                      style={dynamicStyles.pickerInput}
+                    >
+                      <Picker.Item label="🌍 Public" value="public" />
+                      <Picker.Item label="👥 Followers Only" value="followers_only" />
+                      <Picker.Item label="🔒 Private" value="private" />
+                    </Picker>
+                  </View>
+                </View>
+              </View>
+
+              {/* Category Input */}
+              <View style={dynamicStyles.inputGroup}>
+                <View style={dynamicStyles.labelRow}>
+                  <Ionicons name="folder-outline" size={18} color="#4A90E2" />
+                  <Text style={dynamicStyles.label}>Category</Text>
+                  <Text style={dynamicStyles.optionalText}>Optional</Text>
+                </View>
+                <View style={dynamicStyles.inputWrapper}>
+                  <TextInput
+                    style={dynamicStyles.input}
+                    value={formData.category}
+                    onChangeText={(text) => setFormData({ ...formData, category: text })}
+                    placeholder="e.g., Technology, Healthcare, Finance"
+                    placeholderTextColor="#94A3B8"
+                  />
+                </View>
+              </View>
+
+              {/* Tags Input */}
+              <View style={dynamicStyles.inputGroup}>
+                <View style={dynamicStyles.labelRow}>
+                  <Ionicons name="pricetags-outline" size={18} color="#4A90E2" />
+                  <Text style={dynamicStyles.label}>Tags</Text>
+                  <Text style={dynamicStyles.optionalText}>Optional</Text>
+                </View>
+                <View style={dynamicStyles.inputWrapper}>
+                  <TextInput
+                    style={dynamicStyles.input}
+                    value={formData.tags}
+                    onChangeText={(text) => setFormData({ ...formData, tags: text })}
+                    placeholder="hiring, remote, tech, career (comma separated)"
+                    placeholderTextColor="#94A3B8"
+                  />
+                  <Text style={dynamicStyles.hint}>💡 Use relevant tags to increase discoverability</Text>
+                </View>
+              </View>
+
+              {/* Images Section */}
+              <View style={dynamicStyles.inputGroup}>
+                <View style={dynamicStyles.labelRow}>
+                  <Ionicons name="images-outline" size={18} color="#4A90E2" />
+                  <Text style={dynamicStyles.label}>Media</Text>
+                  <Text style={dynamicStyles.optionalText}>Optional</Text>
+                </View>
+                
+                {/* Image Preview Grid */}
+                {selectedImages.length > 0 && (
+                  <View style={dynamicStyles.imagesPreviewContainer}>
+                    {selectedImages.map((image, index) => (
+                      <View key={index} style={dynamicStyles.imagePreviewWrapper}>
+                        <Image source={{ uri: image.uri }} style={dynamicStyles.imagePreview} />
+                        <TouchableOpacity
+                          style={dynamicStyles.removeImageButton}
+                          onPress={() => handleRemoveImage(index)}
+                        >
+                          <Ionicons name="close-circle" size={28} color="#EF4444" />
+                        </TouchableOpacity>
+                        <View style={dynamicStyles.imageIndexBadge}>
+                          <Text style={dynamicStyles.imageIndexText}>{index + 1}</Text>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                {/* Add Image Button */}
+                {selectedImages.length < 5 && (
+                  <TouchableOpacity
+                    style={dynamicStyles.addImageButton}
+                    onPress={handlePickImage}
+                  >
+                    <View style={dynamicStyles.addImageIconContainer}>
+                      <Ionicons name="cloud-upload-outline" size={32} color="#4A90E2" />
+                    </View>
+                    <Text style={dynamicStyles.addImageButtonText}>
+                      {selectedImages.length > 0 ? 'Add More Images' : 'Upload Images'}
+                    </Text>
+                    <Text style={dynamicStyles.addImageButtonSubtext}>
+                      {selectedImages.length}/5 images • PNG, JPG up to 10MB
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </ScrollView>
+
+            {/* Enhanced Footer */}
+            <View style={dynamicStyles.modalFooter}>
+              <TouchableOpacity
+                style={dynamicStyles.cancelButton}
+                onPress={() => setCreateModalVisible(false)}
+              >
+                <Ionicons name="close-outline" size={20} color="#64748B" />
+                <Text style={dynamicStyles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[dynamicStyles.saveButton, saving && dynamicStyles.saveButtonDisabled]}
+                onPress={handleCreatePost}
+                disabled={saving}
+              >
+                {saving ? (
+                  <>
+                    <ActivityIndicator size="small" color="#FFF" />
+                    <Text style={dynamicStyles.saveButtonText}>Publishing...</Text>
+                  </>
+                ) : (
+                  <>
+                    <Ionicons name="checkmark-circle-outline" size={20} color="#FFF" />
+                    <Text style={dynamicStyles.saveButtonText}>Publish Post</Text>
+                  </>
+                )}
+              </TouchableOpacity>
             </View>
-          </ScrollView>
-
-          <View style={dynamicStyles.modalFooter}>
-            <TouchableOpacity
-              style={dynamicStyles.cancelButton}
-              onPress={() => setCreateModalVisible(false)}
-            >
-              <Text style={dynamicStyles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={dynamicStyles.saveButton}
-              onPress={handleCreatePost}
-              disabled={saving}
-            >
-              {saving ? (
-                <ActivityIndicator size="small" color="#FFF" />
-              ) : (
-                <Text style={dynamicStyles.saveButtonText}>Publish Post</Text>
-              )}
-            </TouchableOpacity>
           </View>
-          </View>
-          </TouchableOpacity>
-        </TouchableOpacity>
+        </View>
       </Modal>
 
       {/* Edit Post Modal */}
       <Modal
         visible={editModalVisible}
-        animationType="fade"
+        animationType="slide"
         transparent={true}
         onRequestClose={() => setEditModalVisible(false)}
       >
-        <TouchableOpacity 
-          style={dynamicStyles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setEditModalVisible(false)}
-        >
+        <View style={dynamicStyles.modalOverlay}>
           <TouchableOpacity 
+            style={dynamicStyles.modalBackdrop}
             activeOpacity={1}
-            onPress={(e) => e.stopPropagation()}
-          >
+            onPress={() => setEditModalVisible(false)}
+          />
           <View style={dynamicStyles.modalContainer}>
+            {/* Enhanced Header */}
             <View style={dynamicStyles.modalHeader}>
-              <Text style={dynamicStyles.modalTitle}>Edit Social Update</Text>
+              <View style={dynamicStyles.modalHeaderContent}>
+                <View style={dynamicStyles.modalIconContainer}>
+                  <Ionicons name="create" size={28} color="#10B981" />
+                </View>
+                <View style={dynamicStyles.modalTitleContainer}>
+                  <Text style={dynamicStyles.modalTitle}>Edit Social Update</Text>
+                  <Text style={dynamicStyles.modalSubtitle}>Update your post content and settings</Text>
+                </View>
+              </View>
               <TouchableOpacity 
                 onPress={() => setEditModalVisible(false)}
                 style={dynamicStyles.modalCloseButton}
@@ -867,148 +1295,212 @@ const AdminSocialUpdatesScreen = ({ navigation }) => {
               </TouchableOpacity>
             </View>
 
-          <ScrollView style={dynamicStyles.modalContent}>
-            <View style={dynamicStyles.inputGroup}>
-              <Text style={dynamicStyles.label}>Title *</Text>
-              <TextInput
-                style={dynamicStyles.input}
-                value={formData.title}
-                onChangeText={(text) => setFormData({ ...formData, title: text })}
-                placeholder="Enter post title..."
-                placeholderTextColor={colors.textSecondary}
-              />
-            </View>
-
-            <View style={dynamicStyles.inputGroup}>
-              <Text style={dynamicStyles.label}>Content *</Text>
-              <TextInput
-                style={[dynamicStyles.input, dynamicStyles.textArea]}
-                value={formData.content}
-                onChangeText={(text) => setFormData({ ...formData, content: text })}
-                placeholder="Write your post content..."
-                placeholderTextColor={colors.textSecondary}
-                multiline
-                numberOfLines={8}
-                textAlignVertical="top"
-              />
-            </View>
-
-            <View style={dynamicStyles.inputGroup}>
-              <Text style={dynamicStyles.label}>Post Type</Text>
-              <View style={dynamicStyles.picker}>
-                <Picker
-                  selectedValue={formData.postType}
-                  onValueChange={(value) => setFormData({ ...formData, postType: value })}
-                  style={dynamicStyles.pickerInput}
-                >
-                  <Picker.Item label="General" value="general" />
-                  <Picker.Item label="Job Announcement" value="job_announcement" />
-                  <Picker.Item label="Company Update" value="company_update" />
-                  <Picker.Item label="Industry News" value="industry_news" />
-                  <Picker.Item label="Career Tips" value="career_tips" />
-                  <Picker.Item label="Event Announcement" value="event_announcement" />
-                </Picker>
-              </View>
-            </View>
-
-            <View style={dynamicStyles.inputGroup}>
-              <Text style={dynamicStyles.label}>Category (Optional)</Text>
-              <TextInput
-                style={dynamicStyles.input}
-                value={formData.category}
-                onChangeText={(text) => setFormData({ ...formData, category: text })}
-                placeholder="e.g., Technology, Healthcare"
-                placeholderTextColor={colors.textSecondary}
-              />
-            </View>
-
-            <View style={dynamicStyles.inputGroup}>
-              <Text style={dynamicStyles.label}>Tags (Optional)</Text>
-              <TextInput
-                style={dynamicStyles.input}
-                value={formData.tags}
-                onChangeText={(text) => setFormData({ ...formData, tags: text })}
-                placeholder="e.g., hiring, remote, tech (comma separated)"
-                placeholderTextColor={colors.textSecondary}
-              />
-            </View>
-
-            <View style={dynamicStyles.inputGroup}>
-              <Text style={dynamicStyles.label}>Visibility</Text>
-              <View style={dynamicStyles.picker}>
-                <Picker
-                  selectedValue={formData.visibility}
-                  onValueChange={(value) => setFormData({ ...formData, visibility: value })}
-                  style={dynamicStyles.pickerInput}
-                >
-                  <Picker.Item label="Public" value="public" />
-                  <Picker.Item label="Followers Only" value="followers_only" />
-                  <Picker.Item label="Private" value="private" />
-                </Picker>
-              </View>
-            </View>
-
-            <View style={dynamicStyles.inputGroup}>
-              <Text style={dynamicStyles.label}>Images (Optional)</Text>
-              <Text style={dynamicStyles.hint}>Add up to 5 images to your post</Text>
-              
-              {/* Image Preview */}
-              {selectedImages.length > 0 && (
-                <View style={dynamicStyles.imagesPreviewContainer}>
-                  {selectedImages.map((image, index) => (
-                    <View key={index} style={dynamicStyles.imagePreviewWrapper}>
-                      <Image source={{ uri: image.uri }} style={dynamicStyles.imagePreview} />
-                      <TouchableOpacity
-                        style={dynamicStyles.removeImageButton}
-                        onPress={() => handleRemoveImage(index)}
-                      >
-                        <Ionicons name="close-circle" size={24} color={colors.error} />
-                      </TouchableOpacity>
-                    </View>
-                  ))}
+            <ScrollView 
+              style={dynamicStyles.modalContent}
+              showsVerticalScrollIndicator={false}
+            >
+              {/* Title Input with Icon */}
+              <View style={dynamicStyles.inputGroup}>
+                <View style={dynamicStyles.labelRow}>
+                  <Ionicons name="text-outline" size={18} color="#10B981" />
+                  <Text style={dynamicStyles.label}>Title</Text>
+                  <View style={dynamicStyles.requiredBadge}>
+                    <Text style={dynamicStyles.requiredText}>Required</Text>
+                  </View>
                 </View>
-              )}
+                <View style={dynamicStyles.inputWrapper}>
+                  <TextInput
+                    style={dynamicStyles.input}
+                    value={formData.title}
+                    onChangeText={(text) => setFormData({ ...formData, title: text })}
+                    placeholder="Enter an engaging title..."
+                    placeholderTextColor="#94A3B8"
+                  />
+                </View>
+              </View>
 
-              {/* Add Image Button */}
-              {selectedImages.length < 5 && (
-                <TouchableOpacity
-                  style={dynamicStyles.addImageButton}
-                  onPress={handlePickImage}
-                >
-                  <Ionicons name="image-outline" size={24} color={colors.primary} />
-                  <Text style={dynamicStyles.addImageButtonText}>
-                    {selectedImages.length > 0 ? 'Add More Images' : 'Add Images'}
-                  </Text>
-                  <Text style={dynamicStyles.addImageButtonSubtext}>
-                    {selectedImages.length}/5 images
-                  </Text>
-                </TouchableOpacity>
-              )}
+              {/* Content Input with Icon */}
+              <View style={dynamicStyles.inputGroup}>
+                <View style={dynamicStyles.labelRow}>
+                  <Ionicons name="document-text-outline" size={18} color="#10B981" />
+                  <Text style={dynamicStyles.label}>Content</Text>
+                  <View style={dynamicStyles.requiredBadge}>
+                    <Text style={dynamicStyles.requiredText}>Required</Text>
+                  </View>
+                </View>
+                <View style={dynamicStyles.inputWrapper}>
+                  <TextInput
+                    style={[dynamicStyles.input, dynamicStyles.textArea]}
+                    value={formData.content}
+                    onChangeText={(text) => setFormData({ ...formData, content: text })}
+                    placeholder="Share your story, announcement, or update..."
+                    placeholderTextColor="#94A3B8"
+                    multiline
+                    numberOfLines={8}
+                    textAlignVertical="top"
+                  />
+                  <Text style={dynamicStyles.charCount}>{formData.content.length} characters</Text>
+                </View>
+              </View>
+
+              {/* Two Column Layout for Selects */}
+              <View style={dynamicStyles.twoColumnRow}>
+                {/* Post Type */}
+                <View style={[dynamicStyles.inputGroup, dynamicStyles.halfWidth]}>
+                  <View style={dynamicStyles.labelRow}>
+                    <Ionicons name="pricetag-outline" size={18} color="#10B981" />
+                    <Text style={dynamicStyles.label}>Post Type</Text>
+                  </View>
+                  <View style={dynamicStyles.pickerWrapper}>
+                    <Picker
+                      selectedValue={formData.postType}
+                      onValueChange={(value) => setFormData({ ...formData, postType: value })}
+                      style={dynamicStyles.pickerInput}
+                    >
+                      <Picker.Item label="General" value="general" />
+                      <Picker.Item label="Job Announcement" value="job_announcement" />
+                      <Picker.Item label="Company Update" value="company_update" />
+                      <Picker.Item label="Industry News" value="industry_news" />
+                      <Picker.Item label="Career Tips" value="career_tips" />
+                      <Picker.Item label="Event" value="event_announcement" />
+                    </Picker>
+                  </View>
+                </View>
+
+                {/* Visibility */}
+                <View style={[dynamicStyles.inputGroup, dynamicStyles.halfWidth]}>
+                  <View style={dynamicStyles.labelRow}>
+                    <Ionicons name="eye-outline" size={18} color="#10B981" />
+                    <Text style={dynamicStyles.label}>Visibility</Text>
+                  </View>
+                  <View style={dynamicStyles.pickerWrapper}>
+                    <Picker
+                      selectedValue={formData.visibility}
+                      onValueChange={(value) => setFormData({ ...formData, visibility: value })}
+                      style={dynamicStyles.pickerInput}
+                    >
+                      <Picker.Item label="🌍 Public" value="public" />
+                      <Picker.Item label="👥 Followers Only" value="followers_only" />
+                      <Picker.Item label="🔒 Private" value="private" />
+                    </Picker>
+                  </View>
+                </View>
+              </View>
+
+              {/* Category Input */}
+              <View style={dynamicStyles.inputGroup}>
+                <View style={dynamicStyles.labelRow}>
+                  <Ionicons name="folder-outline" size={18} color="#10B981" />
+                  <Text style={dynamicStyles.label}>Category</Text>
+                  <Text style={dynamicStyles.optionalText}>Optional</Text>
+                </View>
+                <View style={dynamicStyles.inputWrapper}>
+                  <TextInput
+                    style={dynamicStyles.input}
+                    value={formData.category}
+                    onChangeText={(text) => setFormData({ ...formData, category: text })}
+                    placeholder="e.g., Technology, Healthcare, Finance"
+                    placeholderTextColor="#94A3B8"
+                  />
+                </View>
+              </View>
+
+              {/* Tags Input */}
+              <View style={dynamicStyles.inputGroup}>
+                <View style={dynamicStyles.labelRow}>
+                  <Ionicons name="pricetags-outline" size={18} color="#10B981" />
+                  <Text style={dynamicStyles.label}>Tags</Text>
+                  <Text style={dynamicStyles.optionalText}>Optional</Text>
+                </View>
+                <View style={dynamicStyles.inputWrapper}>
+                  <TextInput
+                    style={dynamicStyles.input}
+                    value={formData.tags}
+                    onChangeText={(text) => setFormData({ ...formData, tags: text })}
+                    placeholder="hiring, remote, tech, career (comma separated)"
+                    placeholderTextColor="#94A3B8"
+                  />
+                  <Text style={dynamicStyles.hint}>💡 Use relevant tags to increase discoverability</Text>
+                </View>
+              </View>
+
+              {/* Images Section */}
+              <View style={dynamicStyles.inputGroup}>
+                <View style={dynamicStyles.labelRow}>
+                  <Ionicons name="images-outline" size={18} color="#10B981" />
+                  <Text style={dynamicStyles.label}>Media</Text>
+                  <Text style={dynamicStyles.optionalText}>Optional</Text>
+                </View>
+                
+                {/* Image Preview Grid */}
+                {selectedImages.length > 0 && (
+                  <View style={dynamicStyles.imagesPreviewContainer}>
+                    {selectedImages.map((image, index) => (
+                      <View key={index} style={dynamicStyles.imagePreviewWrapper}>
+                        <Image source={{ uri: image.uri }} style={dynamicStyles.imagePreview} />
+                        <TouchableOpacity
+                          style={dynamicStyles.removeImageButton}
+                          onPress={() => handleRemoveImage(index)}
+                        >
+                          <Ionicons name="close-circle" size={28} color="#EF4444" />
+                        </TouchableOpacity>
+                        <View style={dynamicStyles.imageIndexBadge}>
+                          <Text style={dynamicStyles.imageIndexText}>{index + 1}</Text>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                {/* Add Image Button */}
+                {selectedImages.length < 5 && (
+                  <TouchableOpacity
+                    style={dynamicStyles.addImageButton}
+                    onPress={handlePickImage}
+                  >
+                    <View style={dynamicStyles.addImageIconContainer}>
+                      <Ionicons name="cloud-upload-outline" size={32} color="#10B981" />
+                    </View>
+                    <Text style={dynamicStyles.addImageButtonText}>
+                      {selectedImages.length > 0 ? 'Add More Images' : 'Upload Images'}
+                    </Text>
+                    <Text style={dynamicStyles.addImageButtonSubtext}>
+                      {selectedImages.length}/5 images • PNG, JPG up to 10MB
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </ScrollView>
+
+            {/* Enhanced Footer */}
+            <View style={dynamicStyles.modalFooter}>
+              <TouchableOpacity
+                style={dynamicStyles.cancelButton}
+                onPress={() => setEditModalVisible(false)}
+              >
+                <Ionicons name="close-outline" size={20} color="#64748B" />
+                <Text style={dynamicStyles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[dynamicStyles.saveButton, saving && dynamicStyles.saveButtonDisabled]}
+                onPress={handleUpdatePost}
+                disabled={saving}
+              >
+                {saving ? (
+                  <>
+                    <ActivityIndicator size="small" color="#FFF" />
+                    <Text style={dynamicStyles.saveButtonText}>Updating...</Text>
+                  </>
+                ) : (
+                  <>
+                    <Ionicons name="checkmark-circle-outline" size={20} color="#FFF" />
+                    <Text style={dynamicStyles.saveButtonText}>Update Post</Text>
+                  </>
+                )}
+              </TouchableOpacity>
             </View>
-          </ScrollView>
-
-          <View style={dynamicStyles.modalFooter}>
-            <TouchableOpacity
-              style={dynamicStyles.cancelButton}
-              onPress={() => setEditModalVisible(false)}
-            >
-              <Text style={dynamicStyles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={dynamicStyles.saveButton}
-              onPress={handleUpdatePost}
-              disabled={saving}
-            >
-              {saving ? (
-                <ActivityIndicator size="small" color="#FFF" />
-              ) : (
-                <Text style={dynamicStyles.saveButtonText}>Update Post</Text>
-              )}
-            </TouchableOpacity>
           </View>
         </View>
-        </TouchableOpacity>
-      </TouchableOpacity>
       </Modal>
 
       {/* Detail Modal */}
@@ -1110,14 +1602,33 @@ const AdminSocialUpdatesScreen = ({ navigation }) => {
               {selectedPost.comments && selectedPost.comments.length > 0 && (
                 <View style={dynamicStyles.detailSection}>
                   <Text style={dynamicStyles.detailSectionTitle}>
-                    Comments ({selectedPost.comments.length})
+                    Comments ({getFilteredComments(selectedPost.comments).length})
+                    {commentFilter !== 'ALL' && ` - ${commentFilter}`}
                   </Text>
-                  {selectedPost.comments.map((comment, index) => (
+                  {getFilteredComments(selectedPost.comments).map((comment, index) => (
                     <View key={index} style={dynamicStyles.commentCard}>
                       <View style={dynamicStyles.commentHeader}>
-                        <Text style={dynamicStyles.commentAuthor}>
-                          {comment.user?.firstName} {comment.user?.lastName}
-                        </Text>
+                        <View style={dynamicStyles.commentAuthorRow}>
+                          <Text style={dynamicStyles.commentAuthor}>
+                            {comment.user?.firstName} {comment.user?.lastName}
+                          </Text>
+                          {(comment.isAdmin || comment.user?.role === 'admin' || comment.user?.role === 'ADMIN') && (
+                            <View style={dynamicStyles.adminBadge}>
+                              <Text style={dynamicStyles.adminBadgeText}>Admin</Text>
+                            </View>
+                          )}
+                          {comment.status && (
+                            <View style={[
+                              dynamicStyles.commentStatusBadge,
+                              comment.status === 'approved' && dynamicStyles.approvedBadge,
+                              comment.status === 'pending' && dynamicStyles.pendingBadge,
+                              comment.status === 'spam' && dynamicStyles.spamBadge,
+                              comment.status === 'trash' && dynamicStyles.trashBadge,
+                            ]}>
+                              <Text style={dynamicStyles.commentStatusText}>{comment.status}</Text>
+                            </View>
+                          )}
+                        </View>
                         <Text style={dynamicStyles.commentDate}>
                           {formatDate(comment.createdAt)}
                         </Text>
@@ -1131,6 +1642,11 @@ const AdminSocialUpdatesScreen = ({ navigation }) => {
                       )}
                     </View>
                   ))}
+                  {getFilteredComments(selectedPost.comments).length === 0 && (
+                    <Text style={dynamicStyles.noCommentsText}>
+                      No {commentFilter.toLowerCase()} comments found
+                    </Text>
+                  )}
                 </View>
               )}
 
@@ -1190,6 +1706,92 @@ const AdminSocialUpdatesScreen = ({ navigation }) => {
           </View>
           </TouchableOpacity>
         </TouchableOpacity>
+      </Modal>
+
+      {/* Custom Comment Date Filter Modal */}
+      <Modal
+        visible={customCommentDateModalVisible}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setCustomCommentDateModalVisible(false)}
+      >
+        <View style={dynamicStyles.modalOverlay}>
+          <TouchableOpacity 
+            style={dynamicStyles.modalBackdrop}
+            activeOpacity={1}
+            onPress={() => setCustomCommentDateModalVisible(false)}
+          />
+          <View style={dynamicStyles.customDateModalContainer}>
+            <View style={dynamicStyles.modalHeader}>
+              <View style={dynamicStyles.modalHeaderContent}>
+                <View style={dynamicStyles.modalIconContainer}>
+                  <Ionicons name="calendar" size={28} color="#4A90E2" />
+                </View>
+                <View style={dynamicStyles.modalTitleContainer}>
+                  <Text style={dynamicStyles.modalTitle}>Custom Date Range</Text>
+                  <Text style={dynamicStyles.modalSubtitle}>Filter comments by date range</Text>
+                </View>
+              </View>
+              <TouchableOpacity 
+                onPress={() => setCustomCommentDateModalVisible(false)}
+                style={dynamicStyles.modalCloseButton}
+              >
+                <Ionicons name="close" size={24} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={dynamicStyles.customDateModalContent}>
+              <View style={dynamicStyles.inputGroup}>
+                <View style={dynamicStyles.labelRow}>
+                  <Ionicons name="calendar-outline" size={18} color="#4A90E2" />
+                  <Text style={dynamicStyles.label}>Start Date</Text>
+                </View>
+                <TextInput
+                  style={dynamicStyles.input}
+                  value={customCommentDateRange.startDate}
+                  onChangeText={(text) => setCustomCommentDateRange({ ...customCommentDateRange, startDate: text })}
+                  placeholder="YYYY-MM-DD"
+                  placeholderTextColor="#94A3B8"
+                />
+              </View>
+
+              <View style={dynamicStyles.inputGroup}>
+                <View style={dynamicStyles.labelRow}>
+                  <Ionicons name="calendar-outline" size={18} color="#4A90E2" />
+                  <Text style={dynamicStyles.label}>End Date</Text>
+                </View>
+                <TextInput
+                  style={dynamicStyles.input}
+                  value={customCommentDateRange.endDate}
+                  onChangeText={(text) => setCustomCommentDateRange({ ...customCommentDateRange, endDate: text })}
+                  placeholder="YYYY-MM-DD"
+                  placeholderTextColor="#94A3B8"
+                />
+              </View>
+
+              <Text style={dynamicStyles.hint}>
+                💡 Enter dates in YYYY-MM-DD format (e.g., 2024-01-15)
+              </Text>
+            </View>
+
+            <View style={dynamicStyles.modalFooter}>
+              <TouchableOpacity
+                style={dynamicStyles.cancelButton}
+                onPress={() => setCustomCommentDateModalVisible(false)}
+              >
+                <Ionicons name="close-outline" size={20} color="#64748B" />
+                <Text style={dynamicStyles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={dynamicStyles.saveButton}
+                onPress={handleCustomCommentDateApply}
+              >
+                <Ionicons name="checkmark-circle-outline" size={20} color="#FFF" />
+                <Text style={dynamicStyles.saveButtonText}>Apply Filter</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </Modal>
     </AdminLayout>
   );
@@ -1336,15 +1938,6 @@ const getStyles = (isMobile, isTablet) => StyleSheet.create({
     padding: spacing.md,
     fontSize: 14,
     color: colors.text,
-  },
-  picker: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.md,
-    backgroundColor: '#FFF',
-  },
-  pickerInput: {
-    height: 48,
   },
   postsContainer: {
     padding: spacing.lg,
@@ -1524,121 +2117,320 @@ const getStyles = (isMobile, isTablet) => StyleSheet.create({
   // Modal Styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: spacing.lg + 8,
+  },
+  modalBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   modalContainer: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.xl + 16,
-    padding: 0,
-    width: '100%',
-    maxWidth: 680,
-    maxHeight: '90%',
-    ...shadows.lg,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    elevation: 25,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    width: isMobile ? '95%' : isTablet ? '85%' : '90%',
+    maxWidth: 800,
+    maxHeight: '92%',
     overflow: 'hidden',
+    ...shadows.lg,
     ...(Platform.OS === 'web' && {
-      boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05)',
+      boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(0, 0, 0, 0.05)',
+    }),
+    ...(Platform.OS !== 'web' && {
+      elevation: 25,
     }),
   },
+  customDateModalContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    width: isMobile ? '95%' : isTablet ? '70%' : '50%',
+    maxWidth: 500,
+    overflow: 'hidden',
+    ...shadows.lg,
+    ...(Platform.OS === 'web' && {
+      boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(0, 0, 0, 0.05)',
+    }),
+    ...(Platform.OS !== 'web' && {
+      elevation: 25,
+    }),
+  },
+  customDateModalContent: {
+    padding: spacing.xl,
+    backgroundColor: '#FAFBFC',
+  },
   modalHeader: {
+    backgroundColor: 'linear-gradient(135deg, #667EEA 0%, #764BA2 100%)',
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  modalHeaderContent: {
+    flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: borderRadius.xl + 16,
-    borderTopRightRadius: borderRadius.xl + 16,
-    paddingHorizontal: spacing.xl + 20,
-    paddingTop: spacing.xl + 20,
-    paddingBottom: spacing.lg + 8,
-    borderBottomWidth: 2,
-    borderBottomColor: '#E2E8F0',
+    flex: 1,
+    gap: spacing.md,
+  },
+  modalIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: '#EBF5FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...shadows.sm,
+  },
+  modalTitleContainer: {
+    flex: 1,
   },
   modalTitle: {
-    ...typography.h4,
-    color: '#0F172A',
-    marginBottom: 0,
+    fontSize: isMobile ? 20 : 24,
     fontWeight: '700',
-    fontSize: 24,
-    letterSpacing: -0.3,
+    color: '#0F172A',
+    marginBottom: 4,
+    letterSpacing: -0.5,
+  },
+  modalSubtitle: {
+    fontSize: isMobile ? 12 : 14,
+    color: '#64748B',
+    fontWeight: '400',
   },
   modalCloseButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#F8FAFC',
     justifyContent: 'center',
     alignItems: 'center',
     ...shadows.sm,
-    elevation: 2,
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: '#E2E8F0',
   },
   modalContent: {
-    padding: spacing.xl + 20,
-    maxHeight: '60vh',
-    backgroundColor: '#FFFFFF',
-    overflow: 'hidden',
-    ...(Platform.OS === 'web' && {
-      maxHeight: 'calc(85vh - 200px)',
-    }),
+    padding: spacing.xl,
+    backgroundColor: '#FAFBFC',
   },
   inputGroup: {
-    marginBottom: spacing.lg,
+    marginBottom: spacing.lg + 4,
+  },
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+    gap: spacing.xs,
   },
   label: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
-    color: colors.text,
-    marginBottom: spacing.xs,
+    color: '#1E293B',
+  },
+  requiredBadge: {
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginLeft: spacing.xs,
+  },
+  requiredText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#DC2626',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  optionalText: {
+    fontSize: 12,
+    color: '#94A3B8',
+    fontStyle: 'italic',
+    marginLeft: spacing.xs,
+  },
+  inputWrapper: {
+    position: 'relative',
   },
   input: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    fontSize: 14,
-    color: colors.text,
-    backgroundColor: '#FFF',
+    borderWidth: 2,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    padding: spacing.md + 2,
+    fontSize: 15,
+    color: '#1E293B',
+    backgroundColor: '#FFFFFF',
+    ...shadows.sm,
+    ...(Platform.OS === 'web' && {
+      outlineStyle: 'none',
+      transition: 'all 0.2s ease',
+    }),
   },
   textArea: {
-    minHeight: 120,
+    minHeight: 140,
+    paddingTop: spacing.md + 2,
+  },
+  charCount: {
+    position: 'absolute',
+    bottom: 12,
+    right: 12,
+    fontSize: 11,
+    color: '#94A3B8',
+    backgroundColor: '#F8FAFC',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  twoColumnRow: {
+    flexDirection: isMobile ? 'column' : 'row',
+    gap: spacing.md,
+    marginBottom: spacing.md,
+  },
+  halfWidth: {
+    flex: 1,
+    marginBottom: 0,
+  },
+  pickerWrapper: {
+    borderWidth: 2,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    overflow: 'hidden',
+    ...shadows.sm,
+  },
+  pickerInput: {
+    height: 52,
+    color: '#1E293B',
+  },
+  hint: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: spacing.xs,
+    fontStyle: 'italic',
+  },
+  imagesPreviewContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.md,
+    marginBottom: spacing.md,
+  },
+  imagePreviewWrapper: {
+    position: 'relative',
+    width: isMobile ? 100 : 120,
+    height: isMobile ? 100 : 120,
+    borderRadius: 12,
+    overflow: 'hidden',
+    ...shadows.md,
+  },
+  imagePreview: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#F1F5F9',
+  },
+  removeImageButton: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    ...shadows.lg,
+  },
+  imageIndexBadge: {
+    position: 'absolute',
+    bottom: 8,
+    left: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  imageIndexText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  addImageButton: {
+    borderWidth: 2,
+    borderColor: '#CBD5E1',
+    borderStyle: 'dashed',
+    borderRadius: 16,
+    padding: spacing.xl,
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    ...(Platform.OS === 'web' && {
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+    }),
+  },
+  addImageIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#EBF5FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  addImageButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#4A90E2',
+    marginTop: spacing.sm,
+  },
+  addImageButtonSubtext: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 4,
   },
   modalFooter: {
     flexDirection: 'row',
-    padding: spacing.lg,
+    padding: spacing.lg + 4,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
+    borderTopColor: '#E2E8F0',
     gap: spacing.md,
+    backgroundColor: '#FFFFFF',
   },
   cancelButton: {
     flex: 1,
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.md + 4,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#FFFFFF',
+    gap: spacing.xs,
+    ...shadows.sm,
   },
   cancelButtonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    color: colors.text,
+    color: '#64748B',
   },
   saveButton: {
     flex: 1,
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.primary,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.md + 4,
+    borderRadius: 12,
+    backgroundColor: '#4A90E2',
+    gap: spacing.xs,
+    ...shadows.md,
+    ...(Platform.OS === 'web' && {
+      transition: 'all 0.2s ease',
+    }),
+  },
+  saveButtonDisabled: {
+    opacity: 0.6,
   },
   saveButtonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#FFF',
+    color: '#FFFFFF',
   },
   // Detail Modal Styles
   detailSection: {
@@ -1760,64 +2552,172 @@ const getStyles = (isMobile, isTablet) => StyleSheet.create({
     fontWeight: '600',
     color: '#FFF',
   },
-  hint: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginBottom: spacing.sm,
-    fontStyle: 'italic',
-  },
-  imagesPreviewContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
+  sectionTitle: {
+    fontSize: isMobile ? 16 : 18,
+    fontWeight: '700',
+    color: colors.text,
     marginBottom: spacing.md,
   },
-  imagePreviewWrapper: {
-    position: 'relative',
-    width: 100,
-    height: 100,
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
   },
-  imagePreview: {
-    width: '100%',
-    height: '100%',
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.border,
+  dateFilterContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: spacing.sm + 4,
+    paddingVertical: spacing.xs,
+    borderRadius: 8,
   },
-  removeImageButton: {
-    position: 'absolute',
-    top: -8,
-    right: -8,
-    backgroundColor: '#FFF',
-    borderRadius: 12,
-    ...(Platform.OS === 'web' ? {
-      boxShadow: '0 2px 3px rgba(0, 0, 0, 0.2)',
-    } : {
-      elevation: 3,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.2,
-      shadowRadius: 3,
+  dateFilterLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  dateFilterScroll: {
+    marginBottom: spacing.md,
+  },
+  dateFilterContent: {
+    paddingRight: spacing.md,
+    gap: 8,
+  },
+  dateFilterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    gap: 4,
+    ...(Platform.OS === 'web' && {
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
     }),
   },
-  addImageButton: {
-    borderWidth: 2,
-    borderColor: colors.border,
-    borderStyle: 'dashed',
-    borderRadius: borderRadius.md,
-    padding: spacing.lg,
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
+  dateFilterChipActive: {
+    backgroundColor: '#4A90E2',
+    borderColor: '#4A90E2',
   },
-  addImageButtonText: {
-    fontSize: 14,
+  dateFilterChipText: {
+    fontSize: 13,
     fontWeight: '600',
-    color: colors.primary,
-    marginTop: spacing.xs,
+    color: '#64748B',
   },
-  addImageButtonSubtext: {
+  dateFilterChipTextActive: {
+    color: '#FFFFFF',
+  },
+  commentStatsScroll: {
+    marginTop: spacing.sm,
+  },
+  commentStatsContent: {
+    paddingRight: spacing.md,
+    gap: 12,
+  },
+  commentStatCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    padding: 16,
+    minWidth: 140,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.08)',
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+      ':hover': {
+        transform: 'translateY(-2px)',
+        boxShadow: '0 4px 8px rgba(0, 0, 0, 0.12)',
+        borderColor: '#4A90E2',
+      },
+    } : {
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 4,
+    }),
+  },
+  commentStatCardActive: {
+    borderColor: '#4A90E2',
+    backgroundColor: '#4A90E2',
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 4px 8px rgba(74, 144, 226, 0.2)',
+    } : {
+      elevation: 4,
+    }),
+  },
+  commentStatValue: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#1F2937',
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  commentStatValueActive: {
+    color: '#FFF',
+  },
+  commentStatLabel: {
     fontSize: 12,
+    color: '#6B7280',
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  commentStatLabelActive: {
+    color: '#FFF',
+  },
+  commentAuthorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+  },
+  adminBadge: {
+    backgroundColor: '#9B59B6',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  adminBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#FFF',
+  },
+  commentStatusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  approvedBadge: {
+    backgroundColor: 'rgba(39, 174, 96, 0.1)',
+  },
+  pendingBadge: {
+    backgroundColor: 'rgba(243, 156, 18, 0.1)',
+  },
+  spamBadge: {
+    backgroundColor: 'rgba(230, 126, 34, 0.1)',
+  },
+  trashBadge: {
+    backgroundColor: 'rgba(231, 76, 60, 0.1)',
+  },
+  commentStatusText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#333',
+  },
+  noCommentsText: {
+    fontSize: 14,
     color: colors.textSecondary,
-    marginTop: 4,
+    textAlign: 'center',
+    paddingVertical: spacing.lg,
+    fontStyle: 'italic',
   },
 });
 

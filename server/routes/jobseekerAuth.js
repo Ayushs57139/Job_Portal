@@ -63,13 +63,16 @@ router.post('/register', async (req, res) => {
             }
         }
 
+        // Normalize phone number (remove spaces, dashes, etc.) for consistency
+        const normalizedPhone = phone ? phone.replace(/[\s\-\(\)]/g, '') : phone;
+
         // Create new job seeker with all data
         const jobSeekerData = {
             firstName,
             lastName,
             email,
             password,
-            phone,
+            phone: normalizedPhone,
             userType: 'jobseeker',
             userId,
             // Store additional data in profile
@@ -156,15 +159,24 @@ router.post('/login', async (req, res) => {
         // Use loginId if provided, otherwise use email
         const loginField = loginId || email;
 
-        // Find job seeker by email or userId
+        // Find job seeker by userId, email, or phone
         let jobSeeker = null;
         
-        // Try to find by email first
-        if (loginField.includes('@')) {
-            jobSeeker = await User.findOne({ email: loginField.toLowerCase() });
-        } else {
-            // Try to find by userId
+        // Try to find by userId first (format: JW + 8 digits)
+        if (loginField.startsWith('JW') && loginField.length === 10) {
             jobSeeker = await User.findOne({ userId: loginField });
+        }
+        
+        // If not found by userId, try email
+        if (!jobSeeker && loginField.includes('@')) {
+            jobSeeker = await User.findOne({ email: loginField.toLowerCase() });
+        }
+        
+        // If not found by email, try phone number
+        if (!jobSeeker) {
+            // Clean phone number (remove spaces, dashes, etc.)
+            const cleanPhone = loginField.replace(/[\s\-\(\)]/g, '');
+            jobSeeker = await User.findOne({ phone: cleanPhone });
         }
         
         if (!jobSeeker) {

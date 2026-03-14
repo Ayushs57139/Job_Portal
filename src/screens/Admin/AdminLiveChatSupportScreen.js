@@ -15,7 +15,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import AdminLayout from '../../components/Admin/AdminLayout';
 import api from '../../config/api';
-import { colors, spacing, typography, borderRadius } from '../../styles/theme';
+import { colors, spacing, typography, borderRadius, shadows } from '../../styles/theme';
+import socketService from '../../services/socketService';
 
 const AdminLiveChatSupportScreen = ({ navigation }) => {
   const [conversations, setConversations] = useState([]);
@@ -29,9 +30,60 @@ const AdminLiveChatSupportScreen = ({ navigation }) => {
   const [availableUsers, setAvailableUsers] = useState([]);
   const [searchingUsers, setSearchingUsers] = useState(false);
   const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
     loadConversations();
+    
+    // Initialize socket connection
+    const initializeSocket = async () => {
+      try {
+        await socketService.connect();
+        setIsConnected(true);
+        
+        // Listen for new messages and conversation updates
+        const unsubscribeNotification = socketService.onMessageNotification((data) => {
+          // Reload conversations to update unread counts and last messages
+          loadConversations();
+        });
+
+        // Listen for new messages in any conversation
+        const unsubscribeNewMessage = socketService.onNewMessage((data) => {
+          // Update the conversation's last message
+          setConversations(prev => 
+            prev.map(conv => {
+              if (conv._id === data.conversationId) {
+                return {
+                  ...conv,
+                  lastMessage: {
+                    content: data.message.content,
+                    sender: data.message.sender,
+                    timestamp: data.message.createdAt
+                  }
+                };
+              }
+              return conv;
+            })
+          );
+        });
+
+        return () => {
+          unsubscribeNotification();
+          unsubscribeNewMessage();
+        };
+      } catch (error) {
+        console.error('Error initializing socket:', error);
+        setIsConnected(false);
+      }
+    };
+
+    const cleanup = initializeSocket();
+
+    return () => {
+      if (cleanup && typeof cleanup.then === 'function') {
+        cleanup.then(cleanupFn => cleanupFn && cleanupFn());
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -197,6 +249,7 @@ const AdminLiveChatSupportScreen = ({ navigation }) => {
       <TouchableOpacity 
         style={[styles.conversationItem, hasUnread && styles.unreadConversation]}
         onPress={() => openConversation(item)}
+        activeOpacity={0.7}
       >
         <View style={styles.avatarContainer}>
           <View style={[styles.avatar, hasUnread && styles.avatarUnread]}>
@@ -204,30 +257,32 @@ const AdminLiveChatSupportScreen = ({ navigation }) => {
               {participantInfo.name.charAt(0).toUpperCase()}
             </Text>
           </View>
-          {hasUnread && <View style={styles.unreadBadge} />}
+          {hasUnread && (
+            <View style={styles.unreadBadge}>
+              <Text style={styles.unreadBadgeText}>
+                {item.unreadCount > 9 ? '9+' : item.unreadCount}
+              </Text>
+            </View>
+          )}
         </View>
         
         <View style={styles.conversationContent}>
           <View style={styles.conversationHeader}>
-            <Text style={[styles.participantName, hasUnread && styles.unreadText]}>
-              {participantInfo.name}
-            </Text>
+            <View style={styles.nameContainer}>
+              <Text style={[styles.participantName, hasUnread && styles.unreadText]} numberOfLines={1}>
+                {participantInfo.name}
+              </Text>
+              <View style={[styles.userTypeBadge, participantInfo.type === 'Company' && styles.userTypeCompany, participantInfo.type === 'Consultancy' && styles.userTypeConsultancy]}>
+                <Text style={styles.userTypeText}>{participantInfo.type}</Text>
+              </View>
+            </View>
             <Text style={styles.timestamp}>
               {formatTime(item.lastMessage?.timestamp)}
             </Text>
           </View>
           
-          <View style={styles.conversationBody}>
-            <Text style={styles.userType}>{participantInfo.type}</Text>
-            {item.subject && (
-              <Text style={styles.subject} numberOfLines={1}>
-                {item.subject}
-              </Text>
-            )}
-          </View>
-          
           {item.lastMessage && (
-            <Text style={styles.lastMessage} numberOfLines={2}>
+            <Text style={[styles.lastMessage, hasUnread && styles.lastMessageUnread]} numberOfLines={2}>
               {item.lastMessage.content}
             </Text>
           )}
@@ -235,38 +290,56 @@ const AdminLiveChatSupportScreen = ({ navigation }) => {
 
         <Ionicons 
           name="chevron-forward" 
-          size={20} 
-          color={colors.textSecondary} 
+          size={18} 
+          color={colors.textLight} 
+          style={styles.chevron}
         />
       </TouchableOpacity>
     );
   };
 
-  const renderUserItem = ({ item }) => (
-    <TouchableOpacity 
-      style={styles.userItem}
-      onPress={() => startNewChat(item)}
-    >
-      <View style={styles.avatar}>
-        <Text style={styles.avatarText}>
-          {item.firstName?.charAt(0).toUpperCase() || 'U'}
-        </Text>
-      </View>
-      
-      <View style={styles.userInfo}>
-        <Text style={styles.userName}>
-          {item.firstName} {item.lastName}
-        </Text>
-        <Text style={styles.userType}>
-          {item.userType === 'employer' 
-            ? (item.employerType === 'company' ? 'Company' : 'Consultancy')
-            : 'Job Seeker'}
-        </Text>
-      </View>
+  const renderUserItem = ({ item }) => {
+    const userTypeLabel = item.userType === 'employer' 
+      ? (item.employerType === 'company' ? 'Company' : 'Consultancy')
+      : 'Job Seeker';
+    
+    const userTypeColor = item.userType === 'employer'
+      ? (item.employerType === 'company' ? colors.info : colors.success)
+      : colors.primary;
 
-      <Ionicons name="chatbubble-outline" size={20} color={colors.primary} />
-    </TouchableOpacity>
-  );
+    return (
+      <TouchableOpacity 
+        style={styles.userItem}
+        onPress={() => startNewChat(item)}
+        activeOpacity={0.7}
+      >
+        <View style={styles.userItemContent}>
+          <View style={[styles.userAvatar, { backgroundColor: userTypeColor }]}>
+            <Text style={styles.userAvatarText}>
+              {item.firstName?.charAt(0).toUpperCase() || 'U'}
+            </Text>
+          </View>
+          
+          <View style={styles.userInfo}>
+            <Text style={styles.userName} numberOfLines={1}>
+              {item.firstName} {item.lastName}
+            </Text>
+            <View style={styles.userTypeContainer}>
+              <View style={[styles.userTypeBadge, { backgroundColor: userTypeColor + '15' }]}>
+                <Text style={[styles.userTypeText, { color: userTypeColor }]}>
+                  {userTypeLabel}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.userActionButton}>
+            <Ionicons name="chatbubble-ellipses" size={20} color={colors.primary} />
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   const FilterModal = () => (
     <Modal
@@ -328,54 +401,104 @@ const AdminLiveChatSupportScreen = ({ navigation }) => {
     <Modal
       visible={showNewChatModal}
       transparent
-      animationType="slide"
+      animationType="fade"
       onRequestClose={() => setShowNewChatModal(false)}
     >
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Start New Chat</Text>
-            <TouchableOpacity onPress={() => setShowNewChatModal(false)}>
-              <Ionicons name="close" size={24} color={colors.text} />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.searchContainer}>
-            <Ionicons name="search" size={20} color={colors.textSecondary} style={styles.searchIcon} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search users by name..."
-              placeholderTextColor={colors.textSecondary}
-              value={userSearchQuery}
-              onChangeText={(text) => {
-                setUserSearchQuery(text);
-                loadAvailableUsers(text);
-              }}
-            />
-          </View>
-
-          {searchingUsers ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={colors.primary} />
-            </View>
-          ) : (
-            <FlatList
-              data={availableUsers}
-              renderItem={renderUserItem}
-              keyExtractor={(item) => item._id}
-              style={styles.userList}
-              ListEmptyComponent={
-                <View style={styles.emptyState}>
-                  <Ionicons name="people-outline" size={48} color={colors.textLight} />
-                  <Text style={styles.emptyText}>
-                    {userSearchQuery ? 'No users found' : 'Search for users to start chatting'}
+      <TouchableOpacity 
+        style={styles.modalOverlay}
+        activeOpacity={1}
+        onPress={() => setShowNewChatModal(false)}
+      >
+        <TouchableOpacity 
+          activeOpacity={1}
+          onPress={(e) => e.stopPropagation()}
+          style={styles.modalTouchable}
+        >
+          <View style={styles.modalContent}>
+            {/* Modern Header */}
+            <View style={styles.modalHeader}>
+              <View style={styles.modalHeaderContent}>
+                <View style={styles.modalIconContainer}>
+                  <Ionicons name="chatbubbles" size={24} color={colors.primary} />
+                </View>
+                <View>
+                  <Text style={styles.modalTitle}>Start New Chat</Text>
+                  <Text style={styles.modalSubtitle}>
+                    Search and select a user to begin
                   </Text>
                 </View>
-              }
-            />
-          )}
-        </View>
-      </View>
+              </View>
+              <TouchableOpacity 
+                style={styles.modalCloseButton}
+                onPress={() => setShowNewChatModal(false)}
+              >
+                <Ionicons name="close" size={22} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Modern Search Bar */}
+            <View style={styles.modalSearchWrapper}>
+              <View style={styles.modalSearchContainer}>
+                <Ionicons name="search" size={18} color={colors.textSecondary} style={styles.modalSearchIcon} />
+                <TextInput
+                  style={styles.modalSearchInput}
+                  placeholder="Search by name..."
+                  placeholderTextColor={colors.textLight}
+                  value={userSearchQuery}
+                  onChangeText={(text) => {
+                    setUserSearchQuery(text);
+                    loadAvailableUsers(text);
+                  }}
+                  autoFocus={false}
+                />
+                {userSearchQuery.length > 0 && (
+                  <TouchableOpacity 
+                    onPress={() => {
+                      setUserSearchQuery('');
+                      loadAvailableUsers('');
+                    }}
+                    style={styles.modalClearButton}
+                  >
+                    <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+
+            {/* Users List */}
+            {searchingUsers ? (
+              <View style={styles.modalLoadingContainer}>
+                <ActivityIndicator size="large" color={colors.primary} />
+                <Text style={styles.modalLoadingText}>Searching users...</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={availableUsers}
+                renderItem={renderUserItem}
+                keyExtractor={(item) => item._id}
+                style={styles.userList}
+                contentContainerStyle={styles.userListContent}
+                showsVerticalScrollIndicator={true}
+                ListEmptyComponent={
+                  <View style={styles.modalEmptyState}>
+                    <View style={styles.modalEmptyIconContainer}>
+                      <Ionicons name="people-outline" size={56} color={colors.textLight} />
+                    </View>
+                    <Text style={styles.modalEmptyTitle}>
+                      {userSearchQuery ? 'No users found' : 'No users available'}
+                    </Text>
+                    <Text style={styles.modalEmptyText}>
+                      {userSearchQuery 
+                        ? 'Try a different search term' 
+                        : 'Search for users to start a conversation'}
+                    </Text>
+                  </View>
+                }
+              />
+            )}
+          </View>
+        </TouchableOpacity>
+      </TouchableOpacity>
     </Modal>
   );
 
@@ -393,27 +516,50 @@ const AdminLiveChatSupportScreen = ({ navigation }) => {
   return (
     <AdminLayout title="Live Chat Support" activeScreen="AdminLiveChatSupport" onNavigate={handleNavigate} onLogout={handleLogout}>
       <View style={styles.container}>
+        {/* Modern Header */}
         <View style={styles.header}>
-          <Text style={styles.pageTitle}>Live Chat Support</Text>
-          <Text style={styles.pageSubtitle}>
-            {filteredConversations.length} conversation{filteredConversations.length !== 1 ? 's' : ''}
-          </Text>
+          <View style={styles.headerContent}>
+            <View>
+              <Text style={styles.pageTitle}>Live Chat Support</Text>
+              <View style={styles.headerMeta}>
+                <View style={styles.statusIndicator}>
+                  <View style={[styles.statusDot, isConnected && styles.statusDotActive]} />
+                  <Text style={styles.statusText}>
+                    {isConnected ? 'Connected' : 'Connecting...'}
+                  </Text>
+                </View>
+                <Text style={styles.pageSubtitle}>
+                  {filteredConversations.length} conversation{filteredConversations.length !== 1 ? 's' : ''}
+                </Text>
+              </View>
+            </View>
+            <TouchableOpacity 
+              style={styles.newChatButtonHeader}
+              onPress={() => {
+                setShowNewChatModal(true);
+                loadAvailableUsers();
+              }}
+            >
+              <Ionicons name="add" size={20} color={colors.white} />
+              <Text style={styles.newChatButtonText}>New Chat</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* Search and Filter Bar */}
+        {/* Modern Search and Filter Bar */}
         <View style={styles.searchBar}>
           <View style={styles.searchContainer}>
-            <Ionicons name="search" size={20} color={colors.textSecondary} style={styles.searchIcon} />
+            <Ionicons name="search" size={18} color={colors.textSecondary} style={styles.searchIcon} />
             <TextInput
               style={styles.searchInput}
               placeholder="Search conversations..."
-              placeholderTextColor={colors.textSecondary}
+              placeholderTextColor={colors.textLight}
               value={searchQuery}
               onChangeText={setSearchQuery}
             />
             {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
+              <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.clearButton}>
+                <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
               </TouchableOpacity>
             )}
           </View>
@@ -424,19 +570,12 @@ const AdminLiveChatSupportScreen = ({ navigation }) => {
           >
             <Ionicons 
               name="filter" 
-              size={20} 
+              size={18} 
               color={selectedFilter !== 'all' ? colors.white : colors.primary} 
             />
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.newChatButton}
-            onPress={() => {
-              setShowNewChatModal(true);
-              loadAvailableUsers();
-            }}
-          >
-            <Ionicons name="add" size={24} color={colors.white} />
+            {selectedFilter !== 'all' && (
+              <View style={styles.filterBadge} />
+            )}
           </TouchableOpacity>
         </View>
 
@@ -492,163 +631,263 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: colors.background,
   },
   loadingText: {
     marginTop: spacing.md,
-    ...typography.body1,
+    ...typography.body2,
     color: colors.textSecondary,
   },
   header: {
-    padding: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.md,
     backgroundColor: colors.white,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.borderLight,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
   },
   pageTitle: {
-    ...typography.h2,
-    color: colors.text,
+    ...typography.h3,
+    color: colors.textDark,
+    fontWeight: '700',
     marginBottom: spacing.xs,
+    letterSpacing: -0.3,
+  },
+  headerMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  statusIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.textLight,
+  },
+  statusDotActive: {
+    backgroundColor: colors.success,
+  },
+  statusText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontSize: 11,
   },
   pageSubtitle: {
-    ...typography.body2,
+    ...typography.caption,
     color: colors.textSecondary,
+    fontSize: 12,
+  },
+  newChatButtonHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
+    gap: spacing.xs,
+    ...shadows.sm,
+  },
+  newChatButtonText: {
+    ...typography.buttonSmall,
+    color: colors.white,
+    fontWeight: '600',
   },
   searchBar: {
     flexDirection: 'row',
     padding: spacing.md,
     backgroundColor: colors.white,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.borderLight,
     gap: spacing.sm,
+    alignItems: 'center',
   },
   searchContainer: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.background,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     paddingHorizontal: spacing.md,
-    height: 44,
+    height: 40,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
   },
   searchIcon: {
-    marginRight: spacing.sm,
+    marginRight: spacing.xs,
   },
   searchInput: {
     flex: 1,
-    ...typography.body1,
+    ...typography.body2,
     color: colors.text,
     height: '100%',
+    fontSize: 14,
+  },
+  clearButton: {
+    padding: spacing.xs,
+    marginLeft: spacing.xs,
   },
   filterButton: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: colors.background,
     borderRadius: borderRadius.md,
     borderWidth: 1,
-    borderColor: colors.primary,
+    borderColor: colors.border,
+    position: 'relative',
   },
   filterButtonActive: {
     backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
-  newChatButton: {
-    width: 44,
-    height: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.primary,
-    borderRadius: borderRadius.md,
+  filterBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.error,
   },
   conversationsList: {
     flex: 1,
+    backgroundColor: colors.background,
   },
   conversationItem: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: spacing.md,
+    paddingVertical: spacing.md + 4,
     backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    marginHorizontal: spacing.md,
+    marginTop: spacing.sm,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    ...shadows.xs,
   },
   unreadConversation: {
-    backgroundColor: '#F0F8FF',
+    backgroundColor: colors.primaryLight,
+    borderColor: colors.primary,
+    borderWidth: 1.5,
   },
   avatarContainer: {
     position: 'relative',
     marginRight: spacing.md,
   },
   avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
+    ...shadows.sm,
   },
   avatarUnread: {
-    borderWidth: 2,
-    borderColor: colors.success,
+    borderWidth: 2.5,
+    borderColor: colors.primary,
   },
   avatarText: {
-    ...typography.h3,
+    ...typography.h4,
     color: colors.white,
-    fontWeight: 'bold',
+    fontWeight: '700',
+    fontSize: 18,
   },
   unreadBadge: {
     position: 'absolute',
-    top: 0,
-    right: 0,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    top: -4,
+    right: -4,
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
     backgroundColor: colors.error,
     borderWidth: 2,
     borderColor: colors.white,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  unreadBadgeText: {
+    ...typography.caption,
+    color: colors.white,
+    fontSize: 10,
+    fontWeight: '700',
   },
   conversationContent: {
     flex: 1,
+    marginRight: spacing.sm,
   },
   conversationHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: spacing.xs,
   },
+  nameContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    flex: 1,
+    marginRight: spacing.sm,
+  },
   participantName: {
-    ...typography.subtitle1,
-    color: colors.text,
+    ...typography.body1,
+    color: colors.textDark,
     fontWeight: '600',
+    fontSize: 15,
   },
   unreadText: {
-    fontWeight: 'bold',
+    fontWeight: '700',
+    color: colors.textDark,
+  },
+  userTypeBadge: {
+    paddingHorizontal: spacing.xs + 2,
+    paddingVertical: 2,
+    borderRadius: borderRadius.sm,
+    backgroundColor: colors.background,
+  },
+  userTypeCompany: {
+    backgroundColor: colors.infoLight,
+  },
+  userTypeConsultancy: {
+    backgroundColor: colors.successLight,
+  },
+  userTypeText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontSize: 10,
+    fontWeight: '600',
   },
   timestamp: {
     ...typography.caption,
-    color: colors.textSecondary,
-  },
-  conversationBody: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.xs,
-  },
-  userType: {
-    ...typography.caption,
-    color: colors.primary,
-    backgroundColor: colors.primaryLight,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: borderRadius.sm,
-    marginRight: spacing.sm,
-  },
-  subject: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    flex: 1,
+    color: colors.textLight,
+    fontSize: 11,
   },
   lastMessage: {
     ...typography.body2,
     color: colors.textSecondary,
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 2,
+  },
+  lastMessageUnread: {
+    color: colors.textDark,
+    fontWeight: '500',
+  },
+  chevron: {
+    opacity: 0.4,
   },
   emptyState: {
     flex: 1,
@@ -658,16 +897,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
   },
   emptyTitle: {
-    ...typography.h3,
-    color: colors.text,
+    ...typography.h4,
+    color: colors.textDark,
     marginTop: spacing.lg,
     marginBottom: spacing.sm,
+    fontWeight: '600',
   },
   emptyText: {
-    ...typography.body1,
+    ...typography.body2,
     color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: spacing.lg,
+    lineHeight: 20,
   },
   startChatButton: {
     flexDirection: 'row',
@@ -677,34 +918,116 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     borderRadius: borderRadius.md,
     gap: spacing.sm,
+    ...shadows.sm,
   },
   startChatButtonText: {
-    ...typography.button,
+    ...typography.buttonSmall,
     color: colors.white,
+    fontWeight: '600',
   },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.lg,
+  },
+  modalTouchable: {
+    width: '100%',
+    maxWidth: 500,
+    maxHeight: '85%',
   },
   modalContent: {
     backgroundColor: colors.white,
-    borderTopLeftRadius: borderRadius.xl,
-    borderTopRightRadius: borderRadius.xl,
-    maxHeight: '80%',
-    minHeight: '50%',
+    borderRadius: borderRadius.xl,
+    maxHeight: '100%',
+    ...shadows.xl,
+    overflow: 'hidden',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: spacing.lg,
+    alignItems: 'flex-start',
+    padding: spacing.lg + 4,
+    paddingBottom: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.borderLight,
+    backgroundColor: colors.background,
+  },
+  modalHeaderContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: spacing.md,
+  },
+  modalIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.primaryLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: spacing.md,
   },
   modalTitle: {
-    ...typography.h3,
+    ...typography.h4,
+    color: colors.textDark,
+    fontWeight: '700',
+    marginBottom: spacing.xs / 2,
+  },
+  modalSubtitle: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontSize: 12,
+  },
+  modalCloseButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalSearchWrapper: {
+    padding: spacing.lg,
+    paddingBottom: spacing.md,
+    backgroundColor: colors.white,
+  },
+  modalSearchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.lg,
+    paddingHorizontal: spacing.md,
+    height: 44,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+  },
+  modalSearchIcon: {
+    marginRight: spacing.sm,
+  },
+  modalSearchInput: {
+    flex: 1,
+    ...typography.body2,
     color: colors.text,
+    height: '100%',
+    fontSize: 15,
+  },
+  modalClearButton: {
+    padding: spacing.xs,
+    marginLeft: spacing.xs,
+  },
+  modalLoadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: spacing.xxl,
+    minHeight: 200,
+  },
+  modalLoadingText: {
+    ...typography.body2,
+    color: colors.textSecondary,
+    marginTop: spacing.md,
   },
   filterOptions: {
     padding: spacing.md,
@@ -716,17 +1039,20 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
     marginBottom: spacing.sm,
     backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
   },
   filterOptionSelected: {
     backgroundColor: colors.primaryLight,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: colors.primary,
   },
   filterLabel: {
-    ...typography.body1,
+    ...typography.body2,
     color: colors.text,
     marginLeft: spacing.md,
     flex: 1,
+    fontWeight: '500',
   },
   filterLabelSelected: {
     color: colors.primary,
@@ -734,24 +1060,101 @@ const styles = StyleSheet.create({
   },
   userList: {
     flex: 1,
+  },
+  userListContent: {
     padding: spacing.md,
+    paddingTop: spacing.sm,
   },
   userItem: {
+    marginBottom: spacing.sm,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    ...shadows.xs,
+    overflow: 'hidden',
+  },
+  userItemContent: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: spacing.md,
-    backgroundColor: colors.background,
-    borderRadius: borderRadius.md,
-    marginBottom: spacing.sm,
+  },
+  userAvatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: spacing.md,
+    ...shadows.sm,
+  },
+  userAvatarText: {
+    ...typography.h4,
+    color: colors.white,
+    fontWeight: '700',
+    fontSize: 18,
   },
   userInfo: {
     flex: 1,
-    marginLeft: spacing.md,
+    marginRight: spacing.sm,
   },
   userName: {
-    ...typography.subtitle1,
-    color: colors.text,
+    ...typography.body1,
+    color: colors.textDark,
     fontWeight: '600',
+    marginBottom: spacing.xs,
+    fontSize: 15,
+  },
+  userTypeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  userTypeBadge: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    borderRadius: borderRadius.sm,
+  },
+  userTypeText: {
+    ...typography.caption,
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  userActionButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.primaryLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalEmptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: spacing.xxl * 2,
+    paddingHorizontal: spacing.xl,
+  },
+  modalEmptyIconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: colors.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
+  modalEmptyTitle: {
+    ...typography.h5,
+    color: colors.textDark,
+    fontWeight: '600',
+    marginBottom: spacing.sm,
+    textAlign: 'center',
+  },
+  modalEmptyText: {
+    ...typography.body2,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });
 

@@ -35,6 +35,9 @@ const AdminCandidateSearchScreen = ({ navigation }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [searchStats, setSearchStats] = useState({});
+  const [lastSearchedCandidates, setLastSearchedCandidates] = useState([]);
+  const [loadingLastSearched, setLoadingLastSearched] = useState(false);
+  const [showLastSearched, setShowLastSearched] = useState(true);
   
   // Filter states
   const [filters, setFilters] = useState({
@@ -216,6 +219,41 @@ const AdminCandidateSearchScreen = ({ navigation }) => {
     '30 Days', '60 Days', '90 Days', '180 Days', 'Any'
   ];
 
+  // Load last searched candidates
+  const loadLastSearchedCandidates = async () => {
+    try {
+      setLoadingLastSearched(true);
+      const token = await AsyncStorage.getItem('adminToken');
+      if (!token) return;
+
+      const response = await fetch(`${API_URL}/candidates/last-searched`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const data = await response.json();
+      if (response.ok && data.success && data.candidates && data.candidates.length > 0) {
+        setLastSearchedCandidates(data.candidates);
+        setShowLastSearched(true);
+      } else {
+        setShowLastSearched(false);
+      }
+    } catch (error) {
+      console.error('Error loading last searched candidates:', error);
+      setShowLastSearched(false);
+    } finally {
+      setLoadingLastSearched(false);
+    }
+  };
+
+  // Load last searched on mount
+  useEffect(() => {
+    loadLastSearchedCandidates();
+  }, []);
+
   // Search candidates
   const handleSearch = async (page = 1) => {
     try {
@@ -252,6 +290,11 @@ const AdminCandidateSearchScreen = ({ navigation }) => {
         setCurrentPage(data.page);
         setTotalPages(data.totalPages);
         setSearchStats(data.searchStats);
+        setShowLastSearched(false); // Hide last searched when new search is performed
+        // Reload last searched after a delay
+        setTimeout(() => {
+          loadLastSearchedCandidates();
+        }, 1000);
       } else {
         Alert.alert('Error', data.message || 'Failed to search candidates');
       }
@@ -512,6 +555,43 @@ const AdminCandidateSearchScreen = ({ navigation }) => {
               <Ionicons name="close-circle" size={16} color="#dc3545" />
               <Text style={styles.clearFiltersText}>Clear Filters</Text>
             </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Last Searched Candidates */}
+        {showLastSearched && lastSearchedCandidates.length > 0 && candidates.length === 0 && !searching && (
+          <View style={styles.lastSearchedContainer}>
+            <View style={styles.lastSearchedHeader}>
+              <View style={styles.lastSearchedHeaderLeft}>
+                <Ionicons name="time-outline" size={20} color="#007bff" />
+                <Text style={styles.lastSearchedTitle}>Last Searched Candidates</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setShowLastSearched(false)}
+                style={styles.closeLastSearchedButton}
+              >
+                <Ionicons name="close" size={20} color="#666" />
+              </TouchableOpacity>
+            </View>
+            {loadingLastSearched ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#007bff" />
+                <Text style={styles.loadingText}>Loading last searched candidates...</Text>
+              </View>
+            ) : (
+              <>
+                {lastSearchedCandidates.map(renderCandidateCard)}
+                <TouchableOpacity
+                  style={styles.viewAllButton}
+                  onPress={() => {
+                    setShowLastSearched(false);
+                    handleSearch(1);
+                  }}
+                >
+                  <Text style={styles.viewAllButtonText}>Search All Candidates</Text>
+                </TouchableOpacity>
+              </>
+            )}
           </View>
         )}
 
@@ -1804,6 +1884,46 @@ const styles = StyleSheet.create({
     alignItems: 'center'
   },
   applyButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600'
+  },
+  lastSearchedContainer: {
+    backgroundColor: '#f8f9fa',
+    padding: 16,
+    marginBottom: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e0e0e0'
+  },
+  lastSearchedHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16
+  },
+  lastSearchedHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8
+  },
+  lastSearchedTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333'
+  },
+  closeLastSearchedButton: {
+    padding: 4
+  },
+  viewAllButton: {
+    backgroundColor: '#007bff',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 12
+  },
+  viewAllButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600'

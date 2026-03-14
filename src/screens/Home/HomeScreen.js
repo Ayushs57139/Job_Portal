@@ -60,6 +60,7 @@ const HomeScreen = ({ navigation }) => {
   const [latestJobs, setLatestJobs] = useState([]);
   const [topCompanies, setTopCompanies] = useState([]);
   const [careerBlogs, setCareerBlogs] = useState([]);
+  const [upcomingEvents, setUpcomingEvents] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [locationQuery, setLocationQuery] = useState('');
   const [experience, setExperience] = useState('Select experience');
@@ -259,12 +260,27 @@ const HomeScreen = ({ navigation }) => {
       } else {
         setCareerBlogs([]);
       }
+
+      // Load upcoming job events - fully dynamic from API
+      try {
+        const eventsResponse = await fetch(`${api.baseURL}/job-events/public?limit=6&status=active`);
+        const eventsData = await eventsResponse.json();
+        if (eventsData.success && eventsData.data.events && eventsData.data.events.length > 0) {
+          setUpcomingEvents(eventsData.data.events);
+        } else {
+          setUpcomingEvents([]);
+        }
+      } catch (error) {
+        console.error('Error loading events:', error);
+        setUpcomingEvents([]);
+      }
     } catch (error) {
       console.error('Error loading home data:', error);
       // On error, ensure all data is cleared
       setLatestJobs([]);
       setTopCompanies([]);
       setCareerBlogs([]);
+      setUpcomingEvents([]);
     } finally {
       setLoading(false);
     }
@@ -332,57 +348,55 @@ const HomeScreen = ({ navigation }) => {
                       autoFocus={true}
                     />
                   </View>
-                  <FlatList
-                    data={filteredSearchOptions}
-                    keyExtractor={(item, index) => `${item}-${index}`}
+                  <ScrollView
                     style={dynamicStyles.experienceMenuScroll}
                     contentContainerStyle={dynamicStyles.optionsListContent}
                     nestedScrollEnabled={true}
                     showsVerticalScrollIndicator={false}
-                    initialNumToRender={20}
-                    maxToRenderPerBatch={20}
-                    windowSize={5}
                     keyboardShouldPersistTaps="handled"
-                    renderItem={({ item: option, index }) => (
-                      <TouchableOpacity
-                        style={[
-                          dynamicStyles.experienceOption,
-                          index === filteredSearchOptions.length - 1 && dynamicStyles.experienceOptionLast,
-                          selectedSkills.includes(option) && dynamicStyles.experienceOptionActive,
-                        ]}
-                        onPress={() => {
-                          setSelectedSkills((prev) => {
-                            const exists = prev.includes(option);
-                            if (exists) {
-                              const updated = prev.filter(item => item !== option);
+                  >
+                    {filteredSearchOptions.length > 0 ? (
+                      filteredSearchOptions.map((option, index) => (
+                        <TouchableOpacity
+                          key={`${option}-${index}`}
+                          style={[
+                            dynamicStyles.experienceOption,
+                            index === filteredSearchOptions.length - 1 && dynamicStyles.experienceOptionLast,
+                            selectedSkills.includes(option) && dynamicStyles.experienceOptionActive,
+                          ]}
+                          onPress={() => {
+                            setSelectedSkills((prev) => {
+                              const exists = prev.includes(option);
+                              if (exists) {
+                                const updated = prev.filter(item => item !== option);
+                                setSearchQuery(updated.join(', '));
+                                return updated;
+                              }
+                              if (prev.length >= 12) return prev;
+                              const updated = [...prev, option];
                               setSearchQuery(updated.join(', '));
                               return updated;
-                            }
-                            if (prev.length >= 12) return prev;
-                            const updated = [...prev, option];
-                            setSearchQuery(updated.join(', '));
-                            return updated;
-                          });
-                          setSearchFilter('');
-                        }}
-                        activeOpacity={0.7}
-                      >
-                        <Text
-                          style={[
-                            dynamicStyles.experienceOptionText,
-                            selectedSkills.includes(option) && dynamicStyles.experienceOptionTextActive,
-                          ]}
+                            });
+                            setSearchFilter('');
+                          }}
+                          activeOpacity={0.7}
                         >
-                          {option}
-                        </Text>
-                      </TouchableOpacity>
-                    )}
-                    ListEmptyComponent={(
+                          <Text
+                            style={[
+                              dynamicStyles.experienceOptionText,
+                              selectedSkills.includes(option) && dynamicStyles.experienceOptionTextActive,
+                            ]}
+                          >
+                            {option}
+                          </Text>
+                        </TouchableOpacity>
+                      ))
+                    ) : (
                       <View style={dynamicStyles.noResultsContainer}>
                         <Text style={dynamicStyles.noResultsText}>No results found</Text>
                       </View>
                     )}
-                  />
+                  </ScrollView>
                 </View>
                 <TouchableOpacity
                   style={dynamicStyles.dropdownBackdrop}
@@ -731,6 +745,95 @@ const HomeScreen = ({ navigation }) => {
     </View>
   );
 
+  const renderJobEvents = () => (
+    <View style={dynamicStyles.section}>
+      <View style={dynamicStyles.sectionHeader}>
+        <View>
+          <Text style={dynamicStyles.sectionTitle}>Upcoming Job Events</Text>
+          <Text style={dynamicStyles.sectionSubtitle}>
+            Join job fairs, recruitment drives, and career workshops
+          </Text>
+        </View>
+        <TouchableOpacity
+          style={dynamicStyles.viewAllButton}
+          onPress={() => navigation.navigate('JobEvents')}
+        >
+          <Text style={dynamicStyles.viewAllText}>View All</Text>
+          <Ionicons name="arrow-forward" size={16} color={colors.primary} />
+        </TouchableOpacity>
+      </View>
+
+      {loading ? (
+        <Text style={dynamicStyles.loadingText}>Loading events...</Text>
+      ) : upcomingEvents.length > 0 ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={dynamicStyles.horizontalScroll}
+        >
+          {upcomingEvents.map((event) => (
+            <TouchableOpacity
+              key={event._id}
+              style={dynamicStyles.eventCard}
+              onPress={() => Alert.alert('Event Details', `${event.title}\n\nEvent details screen coming soon!`)}
+            >
+              <View style={dynamicStyles.eventHeader}>
+                <View style={dynamicStyles.eventIconContainer}>
+                  <Ionicons name="calendar" size={24} color={colors.primary} />
+                </View>
+                <View style={dynamicStyles.eventStatusBadge}>
+                  <Text style={dynamicStyles.eventStatusText}>
+                    {event.status.toUpperCase()}
+                  </Text>
+                </View>
+              </View>
+              
+              <Text style={dynamicStyles.eventTitle} numberOfLines={2}>
+                {event.title}
+              </Text>
+              
+              <Text style={dynamicStyles.eventDescription} numberOfLines={2}>
+                {event.description}
+              </Text>
+              
+              <View style={dynamicStyles.eventDetails}>
+                <View style={dynamicStyles.eventDetailItem}>
+                  <Ionicons name="calendar-outline" size={14} color={colors.textSecondary} />
+                  <Text style={dynamicStyles.eventDetailText}>
+                    {new Date(event.startDate).toLocaleDateString('en-IN', {
+                      day: '2-digit',
+                      month: 'short',
+                      year: 'numeric',
+                    })}
+                  </Text>
+                </View>
+                <View style={dynamicStyles.eventDetailItem}>
+                  <Ionicons name="location-outline" size={14} color={colors.textSecondary} />
+                  <Text style={dynamicStyles.eventDetailText} numberOfLines={1}>
+                    {event.city || 'N/A'}
+                  </Text>
+                </View>
+              </View>
+              
+              <View style={dynamicStyles.eventFooter}>
+                <Text style={dynamicStyles.eventOrganizer} numberOfLines={1}>
+                  <Ionicons name="business-outline" size={12} color={colors.textSecondary} />
+                  {' '}{event.organizerName}
+                </Text>
+                <TouchableOpacity style={dynamicStyles.eventButton}>
+                  <Text style={dynamicStyles.eventButtonText}>View Details</Text>
+                  <Ionicons name="arrow-forward" size={12} color="#FFF" />
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      ) : (
+        <Text style={dynamicStyles.emptyText}>No upcoming events</Text>
+      )}
+    </View>
+  );
+
   const renderResumeCTA = () => (
     <View style={dynamicStyles.resumeSection}>
       <View style={dynamicStyles.resumeCTA}>
@@ -797,6 +900,8 @@ const HomeScreen = ({ navigation }) => {
         <TrendingJobRoles navigation={navigation} />
         
         {renderCareerInsights()}
+
+        {renderJobEvents()}
         
         {/* Advertisement - Bottom Content */}
         <AdvertisementWidget 
@@ -1283,6 +1388,101 @@ const getStyles = (
   companyCarousel: {
     paddingRight: spacing.lg,
     gap: spacing.md,
+  },
+  // Event Card Styles
+  eventCard: {
+    width: isMobile ? 280 : isTablet ? 320 : 340,
+    backgroundColor: colors.cardBackground,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    marginRight: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.sm,
+  },
+  eventHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  eventIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.primary + '15',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  eventStatusBadge: {
+    backgroundColor: colors.success + '20',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: borderRadius.sm,
+  },
+  eventStatusText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.success,
+  },
+  eventTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: spacing.sm,
+    lineHeight: 24,
+  },
+  eventDescription: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginBottom: spacing.md,
+    lineHeight: 20,
+  },
+  eventDetails: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginBottom: spacing.md,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  eventDetailItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    flex: 1,
+  },
+  eventDetailText: {
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  eventFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  eventOrganizer: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    flex: 1,
+    marginRight: spacing.sm,
+  },
+  eventButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.sm,
+  },
+  eventButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFF',
   },
 })};
 
