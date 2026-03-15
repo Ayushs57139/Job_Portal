@@ -1,494 +1,344 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity, Alert, TextInput, Modal, Platform } from 'react-native';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import {
+  View, Text, ScrollView, StyleSheet, ActivityIndicator,
+  TouchableOpacity, Alert, TextInput, Modal, Platform, FlatList
+} from 'react-native';
 import AdminLayout from '../../components/Admin/AdminLayout';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../../config/api';
 import { useResponsive } from '../../utils/responsive';
 
+const INDIGO = '#4F46E5';
+const LIGHT_BG = '#F8FAFF';
+
 const AdminFreejobwalaChatScreen = ({ navigation }) => {
   const responsive = useResponsive();
   const isMobile = responsive.isMobile;
-  const isTablet = responsive.isTablet;
-  const dynamicStyles = getStyles(isMobile, isTablet);
+
   const [loading, setLoading] = useState(true);
   const [conversations, setConversations] = useState([]);
-  const [filteredConversations, setFilteredConversations] = useState([]);
-  const [user, setUser] = useState(null);
+  const [filtered, setFiltered] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('all');
-  const [selectedConversation, setSelectedConversation] = useState(null);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [adminNotes, setAdminNotes] = useState('');
   const [stats, setStats] = useState(null);
 
-  useEffect(() => {
-    fetchConversations();
-    fetchStats();
-  }, []);
+  // Chat modal state
+  const [chatOpen, setChatOpen] = useState(false);
+  const [activeConv, setActiveConv] = useState(null);
+  const [adminInput, setAdminInput] = useState('');
+  const [sending, setSending] = useState(false);
+  const scrollRef = useRef(null);
+
+  useEffect(() => { fetchAll(); }, []);
 
   useEffect(() => {
-    filterConversations();
+    let result = [...conversations];
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(c =>
+        c.guestName?.toLowerCase().includes(q) ||
+        c.guestEmail?.toLowerCase().includes(q) ||
+        c.sessionId?.includes(q)
+      );
+    }
+    if (selectedStatus !== 'all') result = result.filter(c => c.status === selectedStatus);
+    setFiltered(result);
   }, [searchQuery, selectedStatus, conversations]);
 
-  const fetchStats = async () => {
-    try {
-      const token = await AsyncStorage.getItem('token');
-      const headers = {
-        'Content-Type': 'application/json',
-      };
-      
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
+  const fetchAll = async () => {
+    await Promise.all([fetchConversations(), fetchStats()]);
+  };
 
-      const response = await fetch(`${API_URL}/admin/chatbot/stats`, { headers });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setStats(data.stats);
-      }
-    } catch (error) {
-      console.error('Error fetching stats:', error);
-    }
+  const getHeaders = async () => {
+    const token = await AsyncStorage.getItem('token');
+    return { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
   };
 
   const fetchConversations = async () => {
     try {
       setLoading(true);
-      const token = await AsyncStorage.getItem('token');
-      const headers = {
-        'Content-Type': 'application/json',
-      };
-      
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
-      const response = await fetch(`${API_URL}/admin/chatbot/conversations?limit=100`, { headers });
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch conversations');
-      }
-      
-      const data = await response.json();
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/admin/chatbot/conversations?limit=100`, { headers });
+      const data = await res.json();
       setConversations(data.conversations || []);
-      setFilteredConversations(data.conversations || []);
-    } catch (error) {
-      console.error('Error fetching conversations:', error);
-      Alert.alert('Error', 'Failed to fetch conversations');
+    } catch (e) {
+      console.error(e);
     } finally {
       setLoading(false);
     }
   };
 
-  const filterConversations = () => {
-    let filtered = [...conversations];
-
-    // Filter by search query
-    if (searchQuery) {
-      filtered = filtered.filter(conv =>
-        conv.guestName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        conv.guestEmail?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        conv.guestPhone?.includes(searchQuery) ||
-        conv.sessionId?.includes(searchQuery)
-      );
-    }
-
-    // Filter by status
-    if (selectedStatus !== 'all') {
-      filtered = filtered.filter(conv => conv.status === selectedStatus);
-    }
-
-    setFilteredConversations(filtered);
+  const fetchStats = async () => {
+    try {
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/admin/chatbot/stats`, { headers });
+      if (res.ok) { const d = await res.json(); setStats(d.stats); }
+    } catch (e) { console.error(e); }
   };
 
-  const handleViewConversation = async (conversation) => {
+  const openChat = async (conv) => {
     try {
-      const token = await AsyncStorage.getItem('token');
-      const headers = {
-        'Content-Type': 'application/json',
-      };
-      
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
-      const response = await fetch(`${API_URL}/admin/chatbot/conversations/${conversation._id}`, { headers });
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch conversation details');
-      }
-      
-      const data = await response.json();
-      setSelectedConversation(data.conversation);
-      setAdminNotes(data.conversation.adminNotes || '');
-      setModalVisible(true);
-      
-      // Refresh to update read status
-      fetchConversations();
-    } catch (error) {
-      console.error('Error fetching conversation details:', error);
-      Alert.alert('Error', 'Failed to fetch conversation details');
+      const headers = await getHeaders();
+      const res = await fetch(`${API_URL}/admin/chatbot/conversations/${conv._id}`, { headers });
+      const data = await res.json();
+      setActiveConv(data.conversation || conv);
+      setChatOpen(true);
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: false }), 200);
+    } catch (e) {
+      setActiveConv(conv);
+      setChatOpen(true);
     }
   };
 
-  const handleUpdateStatus = async (newStatus) => {
-    if (!selectedConversation) return;
-
+  const sendAdminMessage = async () => {
+    if (!adminInput.trim() || !activeConv) return;
+    setSending(true);
     try {
-      const token = await AsyncStorage.getItem('token');
-      const headers = {
-        'Content-Type': 'application/json',
-      };
-      
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
-      const response = await fetch(`${API_URL}/admin/chatbot/conversations/${selectedConversation._id}`, {
-        method: 'PATCH',
+      const headers = await getHeaders();
+      await fetch(`${API_URL}/chatbot/admin/send`, {
+        method: 'POST',
         headers,
-        body: JSON.stringify({ status: newStatus, adminNotes })
+        body: JSON.stringify({ sessionId: activeConv.sessionId, message: adminInput.trim() })
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to update conversation');
-      }
-
-      Alert.alert('Success', 'Conversation updated successfully');
-      setModalVisible(false);
-      fetchConversations();
-      fetchStats();
-    } catch (error) {
-      console.error('Error updating conversation:', error);
-      Alert.alert('Error', 'Failed to update conversation');
+      // Refresh conversation
+      const res = await fetch(`${API_URL}/admin/chatbot/conversations/${activeConv._id}`, { headers });
+      const data = await res.json();
+      setActiveConv(data.conversation);
+      setAdminInput('');
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+    } catch (e) {
+      Alert.alert('Error', 'Failed to send message');
+    } finally {
+      setSending(false);
     }
   };
 
-  const handleDeleteConversation = async (convId) => {
-    Alert.alert(
-      'Delete Conversation',
-      'Are you sure you want to delete this conversation?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const token = await AsyncStorage.getItem('token');
-              const headers = {
-                'Content-Type': 'application/json',
-              };
-              
-              if (token) {
-                headers['Authorization'] = `Bearer ${token}`;
-              }
+  const updateStatus = async (newStatus) => {
+    if (!activeConv) return;
+    try {
+      const headers = await getHeaders();
+      await fetch(`${API_URL}/admin/chatbot/conversations/${activeConv._id}`, {
+        method: 'PATCH', headers,
+        body: JSON.stringify({ status: newStatus })
+      });
+      setChatOpen(false);
+      fetchAll();
+    } catch (e) { Alert.alert('Error', 'Failed to update'); }
+  };
 
-              const response = await fetch(`${API_URL}/admin/chatbot/conversations/${convId}`, {
-                method: 'DELETE',
-                headers
-              });
-
-              if (!response.ok) {
-                throw new Error('Failed to delete conversation');
-              }
-
-              Alert.alert('Success', 'Conversation deleted successfully');
-              setModalVisible(false);
-              fetchConversations();
-              fetchStats();
-            } catch (error) {
-              console.error('Error deleting conversation:', error);
-              Alert.alert('Error', 'Failed to delete conversation');
-            }
-          }
+  const deleteConv = (id) => {
+    Alert.alert('Delete', 'Delete this conversation?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete', style: 'destructive', onPress: async () => {
+          const headers = await getHeaders();
+          await fetch(`${API_URL}/admin/chatbot/conversations/${id}`, { method: 'DELETE', headers });
+          setChatOpen(false);
+          fetchAll();
         }
-      ]
-    );
+      }
+    ]);
   };
 
-  const formatTimestamp = (timestamp) => {
-    const date = new Date(timestamp);
-    return date.toLocaleString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+  const fmtTime = (ts) => {
+    const d = new Date(ts);
+    return d.toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
   };
 
-  const handleLogout = () => {
-    navigation.replace('AdminLogin');
-  };
-
-  const handleNavigate = (screen) => {
-    navigation.navigate(screen);
-  };
+  const statusColor = { active: '#10B981', closed: '#6B7280', archived: '#9CA3AF' };
 
   return (
     <AdminLayout
       title="Freejobwala Chat"
       activeScreen="AdminFreejobwalaChat"
-      onNavigate={handleNavigate}
-      user={user}
-      onLogout={handleLogout}
+      onNavigate={(s) => navigation.navigate(s)}
+      onLogout={() => navigation.replace('AdminLogin')}
     >
-      <ScrollView style={dynamicStyles.scrollContainer} showsVerticalScrollIndicator={false}>
-        <View style={dynamicStyles.container}>
-          <View style={dynamicStyles.headerSection}>
-            <Text style={dynamicStyles.pageTitle}>Freejobwala Chat</Text>
-            <Text style={dynamicStyles.pageSubtitle}>Manage chatbot conversations</Text>
+      <ScrollView style={S.scroll} showsVerticalScrollIndicator={false}>
+        <View style={S.container}>
+
+          {/* Header */}
+          <View style={S.pageHeader}>
+            <View>
+              <Text style={S.pageTitle}>Chatbot Dashboard</Text>
+              <Text style={S.pageSub}>Manage all chatbot conversations in real-time</Text>
+            </View>
+            <View style={S.headerActions}>
+              <TouchableOpacity style={S.refreshBtn} onPress={fetchAll}>
+                <Ionicons name="refresh" size={18} color={INDIGO} />
+              </TouchableOpacity>
+              <TouchableOpacity style={S.templateBtn} onPress={() => navigation.navigate('AdminChatTemplates')}>
+                <Ionicons name="list" size={16} color="#FFF" />
+                <Text style={S.templateBtnText}>Templates</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
-          {/* Statistics Cards */}
+          {/* Stats */}
           {stats && (
-            <View style={dynamicStyles.statsGrid}>
-              <View style={dynamicStyles.statCard}>
-                <Ionicons name="chatbubbles" size={24} color="#4A90E2" />
-                <Text style={dynamicStyles.statNumber}>{stats.total}</Text>
-                <Text style={dynamicStyles.statLabel}>Total</Text>
-              </View>
-              <View style={dynamicStyles.statCard}>
-                <Ionicons name="time" size={24} color="#27AE60" />
-                <Text style={dynamicStyles.statNumber}>{stats.active}</Text>
-                <Text style={dynamicStyles.statLabel}>Active</Text>
-              </View>
-              <View style={dynamicStyles.statCard}>
-                <Ionicons name="checkmark-done" size={24} color="#95A5A6" />
-                <Text style={dynamicStyles.statNumber}>{stats.closed}</Text>
-                <Text style={dynamicStyles.statLabel}>Closed</Text>
-              </View>
-              <View style={dynamicStyles.statCard}>
-                <Ionicons name="chatbox-ellipses" size={24} color="#9B59B6" />
-                <Text style={dynamicStyles.statNumber}>{stats.totalMessages}</Text>
-                <Text style={dynamicStyles.statLabel}>Messages</Text>
-              </View>
+            <View style={S.statsRow}>
+              {[
+                { label: 'Total', value: stats.total, icon: 'chatbubbles', color: INDIGO },
+                { label: 'Active', value: stats.active, icon: 'radio-button-on', color: '#10B981' },
+                { label: 'Closed', value: stats.closed, icon: 'checkmark-circle', color: '#6B7280' },
+                { label: 'Messages', value: stats.totalMessages, icon: 'chatbox-ellipses', color: '#F59E0B' },
+              ].map(s => (
+                <View key={s.label} style={S.statCard}>
+                  <View style={[S.statIcon, { backgroundColor: s.color + '18' }]}>
+                    <Ionicons name={s.icon} size={20} color={s.color} />
+                  </View>
+                  <Text style={S.statNum}>{s.value ?? 0}</Text>
+                  <Text style={S.statLabel}>{s.label}</Text>
+                </View>
+              ))}
             </View>
           )}
 
-          {/* Search Bar */}
-          <View style={dynamicStyles.searchSection}>
-            <View style={dynamicStyles.searchBar}>
-              <Ionicons name="search" size={20} color="#999" />
+          {/* Search + Filter */}
+          <View style={S.searchRow}>
+            <View style={S.searchBox}>
+              <Ionicons name="search" size={18} color="#94A3B8" />
               <TextInput
-                style={dynamicStyles.searchInput}
-                placeholder="Search by name, email, phone, or session ID..."
+                style={S.searchInput}
+                placeholder="Search by name, email, session..."
                 value={searchQuery}
                 onChangeText={setSearchQuery}
-                placeholderTextColor="#999"
+                placeholderTextColor="#94A3B8"
               />
               {searchQuery.length > 0 && (
                 <TouchableOpacity onPress={() => setSearchQuery('')}>
-                  <Ionicons name="close-circle" size={20} color="#999" />
+                  <Ionicons name="close-circle" size={18} color="#94A3B8" />
                 </TouchableOpacity>
               )}
             </View>
           </View>
 
-          {/* Status Filter */}
-          <View style={dynamicStyles.filtersSection}>
-            <Text style={dynamicStyles.filtersLabel}>Status:</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={dynamicStyles.filtersScroll}>
-              {['all', 'active', 'closed', 'archived'].map(status => (
-                <TouchableOpacity
-                  key={status}
-                  style={[dynamicStyles.filterChip, selectedStatus === status && dynamicStyles.filterChipActive]}
-                  onPress={() => setSelectedStatus(status)}
-                >
-                  <Text style={[dynamicStyles.filterChipText, selectedStatus === status && dynamicStyles.filterChipTextActive]}>
-                    {status.charAt(0).toUpperCase() + status.slice(1)}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={S.filterRow}>
+            {['all', 'active', 'closed', 'archived'].map(s => (
+              <TouchableOpacity
+                key={s}
+                style={[S.chip, selectedStatus === s && S.chipActive]}
+                onPress={() => setSelectedStatus(s)}
+              >
+                <Text style={[S.chipText, selectedStatus === s && S.chipTextActive]}>
+                  {s.charAt(0).toUpperCase() + s.slice(1)}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
 
-          {/* Results */}
-          <View style={dynamicStyles.resultsSection}>
-            <Text style={dynamicStyles.resultsText}>
-              Showing {filteredConversations.length} {filteredConversations.length === 1 ? 'conversation' : 'conversations'}
-            </Text>
-          </View>
+          <Text style={S.resultCount}>{filtered.length} conversation{filtered.length !== 1 ? 's' : ''}</Text>
 
-          {/* Conversations List */}
+          {/* List */}
           {loading ? (
-            <View style={dynamicStyles.loadingContainer}>
-              <ActivityIndicator size="large" color="#4A90E2" />
-              <Text style={dynamicStyles.loadingText}>Loading conversations...</Text>
+            <View style={S.center}><ActivityIndicator size="large" color={INDIGO} /></View>
+          ) : filtered.length === 0 ? (
+            <View style={S.empty}>
+              <Ionicons name="chatbubbles-outline" size={56} color="#CBD5E1" />
+              <Text style={S.emptyText}>No conversations found</Text>
             </View>
-          ) : filteredConversations.length > 0 ? (
-            filteredConversations.map((conv, index) => (
-              <View key={conv._id || index} style={dynamicStyles.convCard}>
-                <View style={dynamicStyles.convHeader}>
-                  <View style={dynamicStyles.userInfo}>
-                    <View style={dynamicStyles.nameRow}>
-                      <Text style={dynamicStyles.userName}>{conv.guestName || 'Guest'}</Text>
-                      {conv.unreadCount > 0 && (
-                        <View style={dynamicStyles.unreadBadge}>
-                          <Text style={dynamicStyles.unreadText}>{conv.unreadCount}</Text>
-                        </View>
-                      )}
-                    </View>
-                    {conv.guestEmail && (
-                      <Text style={dynamicStyles.userEmail}>{conv.guestEmail}</Text>
-                    )}
-                    {conv.guestPhone && (
-                      <Text style={dynamicStyles.userPhone}>📞 {conv.guestPhone}</Text>
-                    )}
+          ) : (
+            filtered.map((conv) => (
+              <View key={conv._id} style={S.convCard}>
+                <View style={S.convTop}>
+                  <View style={S.avatar}>
+                    <Text style={S.avatarText}>{(conv.guestName || 'G')[0].toUpperCase()}</Text>
                   </View>
-                  <View style={dynamicStyles.badges}>
-                    <View style={[dynamicStyles.statusBadge, styles[`${conv.status}Badge`]]}>
-                      <Text style={dynamicStyles.statusBadgeText}>{conv.status}</Text>
-                    </View>
+                  <View style={S.convInfo}>
+                    <Text style={S.convName}>{conv.guestName || 'Guest'}</Text>
+                    {conv.guestEmail && <Text style={S.convMeta}>{conv.guestEmail}</Text>}
+                    <Text style={S.convMeta}>{fmtTime(conv.lastActivity)}</Text>
+                  </View>
+                  <View style={[S.statusPill, { backgroundColor: (statusColor[conv.status] || '#6B7280') + '18' }]}>
+                    <View style={[S.statusDot, { backgroundColor: statusColor[conv.status] || '#6B7280' }]} />
+                    <Text style={[S.statusText, { color: statusColor[conv.status] || '#6B7280' }]}>{conv.status}</Text>
                   </View>
                 </View>
 
-                <View style={dynamicStyles.convMeta}>
-                  <View style={dynamicStyles.metaItem}>
-                    <Ionicons name="chatbox-ellipses" size={16} color="#999" />
-                    <Text style={dynamicStyles.metaText}>{conv.messageCount} messages</Text>
-                  </View>
-                  <View style={dynamicStyles.metaItem}>
-                    <Ionicons name="time" size={16} color="#999" />
-                    <Text style={dynamicStyles.metaText}>
-                      {formatTimestamp(conv.lastActivity)}
-                    </Text>
-                  </View>
-                </View>
-
-                {conv.messages && conv.messages.length > 0 && (
-                  <View style={dynamicStyles.lastMessage}>
-                    <Text style={dynamicStyles.lastMessageLabel}>Last message:</Text>
-                    <Text style={dynamicStyles.lastMessageText} numberOfLines={2}>
-                      {conv.messages[conv.messages.length - 1]?.message}
-                    </Text>
-                  </View>
+                {conv.messages?.length > 0 && (
+                  <Text style={S.lastMsg} numberOfLines={2}>
+                    {conv.messages[conv.messages.length - 1]?.message}
+                  </Text>
                 )}
 
-                <TouchableOpacity
-                  style={dynamicStyles.viewButton}
-                  onPress={() => handleViewConversation(conv)}
-                >
-                  <Ionicons name="eye" size={20} color="#FFF" />
-                  <Text style={dynamicStyles.viewButtonText}>View Conversation</Text>
-                </TouchableOpacity>
+                <View style={S.convFooter}>
+                  <Text style={S.msgCount}>{conv.messageCount || 0} messages</Text>
+                  <TouchableOpacity style={S.openBtn} onPress={() => openChat(conv)}>
+                    <Ionicons name="chatbubble-ellipses" size={14} color="#FFF" />
+                    <Text style={S.openBtnText}>Open Chat</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             ))
-          ) : (
-            <View style={dynamicStyles.emptyState}>
-              <Ionicons name="chatbubbles-outline" size={64} color="#CCC" />
-              <Text style={dynamicStyles.emptyStateText}>No conversations found</Text>
-              <Text style={dynamicStyles.emptyStateSubtext}>
-                {searchQuery ? 'Try adjusting your search' : 'Conversations will appear here when users chat'}
-              </Text>
-            </View>
           )}
         </View>
       </ScrollView>
 
-      {/* Conversation Details Modal */}
-      <Modal
-        visible={modalVisible}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={dynamicStyles.modalOverlay}>
-          <View style={dynamicStyles.modalContent}>
-            <View style={dynamicStyles.modalHeader}>
-              <Text style={dynamicStyles.modalTitle}>Conversation Details</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Ionicons name="close" size={28} color="#333" />
-              </TouchableOpacity>
+      {/* Chat Modal */}
+      <Modal visible={chatOpen} transparent animationType="slide" onRequestClose={() => setChatOpen(false)}>
+        <View style={S.modalOverlay}>
+          <View style={S.chatModal}>
+            {/* Modal Header */}
+            <View style={S.chatHeader}>
+              <View style={S.chatHeaderLeft}>
+                <View style={S.chatAvatar}>
+                  <Text style={S.chatAvatarText}>{(activeConv?.guestName || 'G')[0].toUpperCase()}</Text>
+                </View>
+                <View>
+                  <Text style={S.chatName}>{activeConv?.guestName || 'Guest'}</Text>
+                  <Text style={S.chatSub}>{activeConv?.guestEmail || activeConv?.sessionId?.slice(0, 16) + '...'}</Text>
+                </View>
+              </View>
+              <View style={S.chatHeaderRight}>
+                {activeConv?.status === 'active' && (
+                  <TouchableOpacity style={S.closeConvBtn} onPress={() => updateStatus('closed')}>
+                    <Text style={S.closeConvText}>Close</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity style={S.deleteConvBtn} onPress={() => deleteConv(activeConv?._id)}>
+                  <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setChatOpen(false)} style={S.closeChatBtn}>
+                  <Ionicons name="close" size={22} color="#64748B" />
+                </TouchableOpacity>
+              </View>
             </View>
 
-            <ScrollView style={dynamicStyles.modalBody} showsVerticalScrollIndicator={false}>
-              {selectedConversation && (
-                <>
-                  {/* User Info */}
-                  <View style={dynamicStyles.modalSection}>
-                    <Text style={dynamicStyles.sectionTitle}>User Information</Text>
-                    <Text style={dynamicStyles.sectionText}>Name: {selectedConversation.guestName || 'Guest'}</Text>
-                    {selectedConversation.guestEmail && (
-                      <Text style={dynamicStyles.sectionText}>Email: {selectedConversation.guestEmail}</Text>
-                    )}
-                    {selectedConversation.guestPhone && (
-                      <Text style={dynamicStyles.sectionText}>Phone: {selectedConversation.guestPhone}</Text>
-                    )}
-                    <Text style={dynamicStyles.sectionText}>Session ID: {selectedConversation.sessionId}</Text>
-                    <Text style={dynamicStyles.sectionText}>Status: {selectedConversation.status}</Text>
-                  </View>
-
-                  {/* Messages */}
-                  <View style={dynamicStyles.modalSection}>
-                    <Text style={dynamicStyles.sectionTitle}>Conversation</Text>
-                    <View style={dynamicStyles.messagesContainer}>
-                      {selectedConversation.messages && selectedConversation.messages.map((msg, idx) => (
-                        <View
-                          key={idx}
-                          style={[
-                            dynamicStyles.messageBubble,
-                            msg.sender === 'user' ? dynamicStyles.userMessage : dynamicStyles.botMessage
-                          ]}
-                        >
-                          <Text style={dynamicStyles.messageSender}>
-                            {msg.sender === 'user' ? '👤 User' : '🤖 Bot'}
-                          </Text>
-                          <Text style={dynamicStyles.messageText}>{msg.message}</Text>
-                          <Text style={dynamicStyles.messageTime}>
-                            {formatTimestamp(msg.timestamp)}
-                          </Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-
-                  {/* Admin Notes */}
-                  <View style={dynamicStyles.modalSection}>
-                    <Text style={dynamicStyles.sectionTitle}>Admin Notes</Text>
-                    <TextInput
-                      style={dynamicStyles.textArea}
-                      value={adminNotes}
-                      onChangeText={setAdminNotes}
-                      placeholder="Add notes about this conversation..."
-                      multiline
-                      numberOfLines={4}
-                    />
-                  </View>
-
-                  {/* Actions */}
-                  <View style={dynamicStyles.actionButtons}>
-                    {selectedConversation.status === 'active' && (
-                      <TouchableOpacity
-                        style={[dynamicStyles.actionButton, dynamicStyles.closeButton]}
-                        onPress={() => handleUpdateStatus('closed')}
-                      >
-                        <Ionicons name="checkmark-circle" size={20} color="#FFF" />
-                        <Text style={dynamicStyles.actionButtonText}>Close Conversation</Text>
-                      </TouchableOpacity>
-                    )}
-                    {selectedConversation.status === 'closed' && (
-                      <TouchableOpacity
-                        style={[dynamicStyles.actionButton, dynamicStyles.archiveButton]}
-                        onPress={() => handleUpdateStatus('archived')}
-                      >
-                        <Ionicons name="archive" size={20} color="#FFF" />
-                        <Text style={dynamicStyles.actionButtonText}>Archive</Text>
-                      </TouchableOpacity>
-                    )}
-                    <TouchableOpacity
-                      style={[dynamicStyles.actionButton, dynamicStyles.deleteButton]}
-                      onPress={() => handleDeleteConversation(selectedConversation._id)}
-                    >
-                      <Ionicons name="trash" size={20} color="#FFF" />
-                      <Text style={dynamicStyles.actionButtonText}>Delete</Text>
-                    </TouchableOpacity>
-                  </View>
-                </>
-              )}
+            {/* Messages */}
+            <ScrollView
+              ref={scrollRef}
+              style={S.msgList}
+              contentContainerStyle={S.msgListContent}
+              showsVerticalScrollIndicator={false}
+            >
+              {activeConv?.messages?.map((msg, i) => (
+                <View key={i} style={[S.bubble, msg.sender === 'user' ? S.userBubble : S.botBubble]}>
+                  <Text style={S.bubbleSender}>{msg.sender === 'user' ? '👤 User' : '🤖 Bot'}</Text>
+                  <Text style={S.bubbleText}>{msg.message}</Text>
+                  <Text style={S.bubbleTime}>{fmtTime(msg.timestamp)}</Text>
+                </View>
+              ))}
             </ScrollView>
+
+            {/* Admin Reply Input */}
+            <View style={S.replyBar}>
+              <TextInput
+                style={S.replyInput}
+                placeholder="Type a reply as bot..."
+                value={adminInput}
+                onChangeText={setAdminInput}
+                multiline
+                placeholderTextColor="#94A3B8"
+              />
+              <TouchableOpacity
+                style={[S.sendBtn, (!adminInput.trim() || sending) && S.sendBtnDisabled]}
+                onPress={sendAdminMessage}
+                disabled={!adminInput.trim() || sending}
+              >
+                {sending ? <ActivityIndicator size="small" color="#FFF" /> : <Ionicons name="send" size={18} color="#FFF" />}
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -496,402 +346,81 @@ const AdminFreejobwalaChatScreen = ({ navigation }) => {
   );
 };
 
-const getStyles = (isMobile, isTablet) => StyleSheet.create({
-  scrollContainer: {
-    flex: 1,
-    backgroundColor: '#F5F6FA',
-  },
-  container: {
-    padding: isMobile ? 12 : isTablet ? 16 : 20,
-  },
-  headerSection: {
-    marginBottom: isMobile ? 16 : isTablet ? 18 : 20,
-  },
-  pageTitle: {
-    fontSize: isMobile ? 22 : isTablet ? 26 : 28,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  pageSubtitle: {
-    fontSize: isMobile ? 12 : isTablet ? 13 : 14,
-    color: '#666',
-    marginTop: 4,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    gap: 15,
-    marginBottom: 20,
-    flexWrap: 'wrap',
-  },
-  statCard: {
-    flex: 1,
-    minWidth: 150,
-    backgroundColor: '#FFF',
-    borderRadius: 12,
-    padding: 20,
-    alignItems: 'center',
-    ...(Platform.OS === 'web' ? {
-      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-    } : {
-      elevation: 2,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-    }),
-  },
-  statNumber: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#333',
-    marginTop: 8,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 4,
-  },
-  searchSection: {
-    marginBottom: 20,
-  },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFF',
-    borderRadius: 8,
-    padding: 12,
-    gap: 10,
-    ...(Platform.OS === 'web' ? {
-      boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
-    } : {
-      elevation: 2,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.1,
-      shadowRadius: 2,
-    }),
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-    color: '#333',
-  },
-  filtersSection: {
-    marginBottom: 15,
-  },
-  filtersLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 10,
-  },
-  filtersScroll: {
-    marginBottom: 5,
-  },
-  filterChip: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    backgroundColor: '#FFF',
-    marginRight: 10,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-  },
-  filterChipActive: {
-    backgroundColor: '#4A90E2',
-    borderColor: '#4A90E2',
-  },
-  filterChipText: {
-    fontSize: 13,
-    color: '#666',
-    fontWeight: '600',
-  },
-  filterChipTextActive: {
-    color: '#FFF',
-  },
-  resultsSection: {
-    marginBottom: 15,
-  },
-  resultsText: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '600',
-  },
-  loadingContainer: {
-    padding: 40,
-    alignItems: 'center',
-    backgroundColor: '#FFF',
-    borderRadius: 12,
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 14,
-    color: '#666',
-  },
-  convCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 15,
-    ...(Platform.OS === 'web' ? {
-      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-    } : {
-      elevation: 2,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-    }),
-  },
-  convHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 15,
-  },
-  userInfo: {
-    flex: 1,
-    marginRight: 10,
-  },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  userName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  unreadBadge: {
-    backgroundColor: '#E74C3C',
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  unreadText: {
-    color: '#FFF',
-    fontSize: 11,
-    fontWeight: 'bold',
-  },
-  userEmail: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 5,
-  },
-  userPhone: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 3,
-  },
-  badges: {
-    alignItems: 'flex-end',
-  },
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-  },
-  activeBadge: {
-    backgroundColor: 'rgba(39, 174, 96, 0.1)',
-  },
-  closedBadge: {
-    backgroundColor: 'rgba(149, 165, 166, 0.1)',
-  },
-  archivedBadge: {
-    backgroundColor: 'rgba(52, 73, 94, 0.1)',
-  },
-  statusBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#666',
-    textTransform: 'capitalize',
-  },
-  convMeta: {
-    flexDirection: 'row',
-    gap: 15,
-    marginBottom: 15,
-  },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  metaText: {
-    fontSize: 12,
-    color: '#999',
-  },
-  lastMessage: {
-    backgroundColor: '#F9F9F9',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 15,
-  },
-  lastMessageLabel: {
-    fontSize: 11,
-    color: '#999',
-    marginBottom: 5,
-  },
-  lastMessageText: {
-    fontSize: 13,
-    color: '#666',
-  },
-  viewButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#4A90E2',
-    paddingVertical: 12,
-    borderRadius: 8,
-    gap: 8,
-  },
-  viewButtonText: {
-    color: '#FFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  emptyState: {
-    paddingVertical: 60,
-    alignItems: 'center',
-    backgroundColor: '#FFF',
-    borderRadius: 12,
-  },
-  emptyStateText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#666',
-    marginTop: 15,
-  },
-  emptyStateSubtext: {
-    fontSize: 14,
-    color: '#999',
-    marginTop: 5,
-  },
-  // Modal Styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: '#FFF',
-    borderRadius: 12,
-    width: '90%',
-    maxWidth: 600,
-    maxHeight: '85%',
-    ...(Platform.OS === 'web' ? {
-      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.25)',
-    } : {
-      elevation: 5,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.25,
-      shadowRadius: 4,
-    }),
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEE',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  modalBody: {
-    maxHeight: 500,
-  },
-  modalSection: {
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 12,
-  },
-  sectionText: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 8,
-  },
-  messagesContainer: {
-    gap: 10,
-  },
-  messageBubble: {
-    padding: 12,
-    borderRadius: 12,
-    maxWidth: '85%',
-  },
-  userMessage: {
-    backgroundColor: '#E3F2FD',
-    alignSelf: 'flex-end',
-  },
-  botMessage: {
-    backgroundColor: '#F5F5F5',
-    alignSelf: 'flex-start',
-  },
-  messageSender: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    color: '#666',
-    marginBottom: 5,
-  },
-  messageText: {
-    fontSize: 14,
-    color: '#333',
-    marginBottom: 5,
-  },
-  messageTime: {
-    fontSize: 10,
-    color: '#999',
-    textAlign: 'right',
-  },
-  textArea: {
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 14,
-    color: '#333',
-    textAlignVertical: 'top',
-    minHeight: 80,
-  },
-  actionButtons: {
-    padding: 20,
-    gap: 10,
-  },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 8,
-    gap: 8,
-  },
-  closeButton: {
-    backgroundColor: '#27AE60',
-  },
-  archiveButton: {
-    backgroundColor: '#95A5A6',
-  },
-  deleteButton: {
-    backgroundColor: '#E74C3C',
-  },
-  actionButtonText: {
-    color: '#FFF',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-});
+const S = StyleSheet.create({
+  scroll: { flex: 1, backgroundColor: LIGHT_BG },
+  container: { padding: 20 },
+  pageHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 },
+  pageTitle: { fontSize: 22, fontWeight: '700', color: '#1E293B' },
+  pageSub: { fontSize: 13, color: '#64748B', marginTop: 2 },
+  headerActions: { flexDirection: 'row', gap: 10, alignItems: 'center' },
+  refreshBtn: { width: 36, height: 36, borderRadius: 8, backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center' },
+  templateBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: INDIGO, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 },
+  templateBtnText: { color: '#FFF', fontSize: 13, fontWeight: '600' },
 
-const styles = StyleSheet.create({});
+  statsRow: { flexDirection: 'row', gap: 12, marginBottom: 20, flexWrap: 'wrap' },
+  statCard: { flex: 1, minWidth: 120, backgroundColor: '#FFF', borderRadius: 12, padding: 16, alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0' },
+  statIcon: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  statNum: { fontSize: 24, fontWeight: '700', color: '#1E293B' },
+  statLabel: { fontSize: 12, color: '#64748B', marginTop: 2 },
+
+  searchRow: { marginBottom: 12 },
+  searchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: '#E2E8F0', gap: 8 },
+  searchInput: { flex: 1, fontSize: 14, color: '#1E293B' },
+  filterRow: { marginBottom: 14 },
+  chip: { paddingVertical: 7, paddingHorizontal: 16, borderRadius: 20, backgroundColor: '#FFF', marginRight: 8, borderWidth: 1, borderColor: '#E2E8F0' },
+  chipActive: { backgroundColor: INDIGO, borderColor: INDIGO },
+  chipText: { fontSize: 13, color: '#64748B', fontWeight: '500' },
+  chipTextActive: { color: '#FFF', fontWeight: '600' },
+  resultCount: { fontSize: 13, color: '#64748B', marginBottom: 14 },
+
+  center: { padding: 40, alignItems: 'center' },
+  empty: { padding: 60, alignItems: 'center', backgroundColor: '#FFF', borderRadius: 12 },
+  emptyText: { fontSize: 16, color: '#94A3B8', marginTop: 12 },
+
+  convCard: { backgroundColor: '#FFF', borderRadius: 12, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#E2E8F0' },
+  convTop: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+  avatar: { width: 42, height: 42, borderRadius: 21, backgroundColor: INDIGO + '20', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  avatarText: { fontSize: 18, fontWeight: '700', color: INDIGO },
+  convInfo: { flex: 1 },
+  convName: { fontSize: 15, fontWeight: '600', color: '#1E293B' },
+  convMeta: { fontSize: 12, color: '#64748B', marginTop: 2 },
+  statusPill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
+  statusDot: { width: 6, height: 6, borderRadius: 3 },
+  statusText: { fontSize: 11, fontWeight: '600', textTransform: 'capitalize' },
+  lastMsg: { fontSize: 13, color: '#64748B', backgroundColor: '#F8FAFF', padding: 10, borderRadius: 8, marginBottom: 10 },
+  convFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  msgCount: { fontSize: 12, color: '#94A3B8' },
+  openBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: INDIGO, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 },
+  openBtnText: { color: '#FFF', fontSize: 13, fontWeight: '600' },
+
+  // Chat Modal
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+  chatModal: { width: '92%', maxWidth: 600, height: '80%', backgroundColor: '#FFF', borderRadius: 16, overflow: 'hidden', ...(Platform.OS === 'web' ? { boxShadow: '0 8px 32px rgba(0,0,0,0.2)' } : { elevation: 8 }) },
+  chatHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, backgroundColor: INDIGO },
+  chatHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  chatAvatar: { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
+  chatAvatarText: { fontSize: 16, fontWeight: '700', color: '#FFF' },
+  chatName: { fontSize: 15, fontWeight: '700', color: '#FFF' },
+  chatSub: { fontSize: 11, color: 'rgba(255,255,255,0.75)', marginTop: 1 },
+  chatHeaderRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  closeConvBtn: { backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6 },
+  closeConvText: { color: '#FFF', fontSize: 12, fontWeight: '600' },
+  deleteConvBtn: { width: 32, height: 32, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
+  closeChatBtn: { width: 32, height: 32, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
+
+  msgList: { flex: 1, backgroundColor: '#F8FAFF' },
+  msgListContent: { padding: 16, gap: 10 },
+  bubble: { maxWidth: '80%', padding: 12, borderRadius: 12, marginBottom: 4 },
+  userBubble: { alignSelf: 'flex-end', backgroundColor: '#EEF2FF', borderBottomRightRadius: 4 },
+  botBubble: { alignSelf: 'flex-start', backgroundColor: '#FFF', borderBottomLeftRadius: 4, borderWidth: 1, borderColor: '#E2E8F0' },
+  bubbleSender: { fontSize: 10, fontWeight: '700', color: '#94A3B8', marginBottom: 4 },
+  bubbleText: { fontSize: 14, color: '#1E293B', lineHeight: 20 },
+  bubbleTime: { fontSize: 10, color: '#94A3B8', marginTop: 4, textAlign: 'right' },
+
+  replyBar: { flexDirection: 'row', alignItems: 'flex-end', padding: 12, borderTopWidth: 1, borderTopColor: '#E2E8F0', gap: 10, backgroundColor: '#FFF' },
+  replyInput: { flex: 1, borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, fontSize: 14, color: '#1E293B', maxHeight: 100 },
+  sendBtn: { width: 42, height: 42, borderRadius: 10, backgroundColor: INDIGO, alignItems: 'center', justifyContent: 'center' },
+  sendBtnDisabled: { opacity: 0.4 },
+});
 
 export default AdminFreejobwalaChatScreen;

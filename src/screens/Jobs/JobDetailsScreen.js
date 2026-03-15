@@ -210,185 +210,172 @@ const JobDetailsScreen = ({ route, navigation }) => {
   return (
     <View style={dynamicStyles.container}>
       <Header />
-      
+
       <View style={dynamicStyles.contentWrapper}>
-        <ScrollView 
+        {/* ── Main Column ── */}
+        <ScrollView
           contentContainerStyle={dynamicStyles.scrollContent}
           style={dynamicStyles.leftScrollView}
           showsVerticalScrollIndicator={false}
         >
           <View style={dynamicStyles.mainColumn}>
-            {/* Header Section with Gradient */}
-            <View style={dynamicStyles.headerCard}>
-              <View style={dynamicStyles.headerTop}>
-                <View style={dynamicStyles.companyBadge}>
-                  <View style={dynamicStyles.companyIconContainer}>
-                    <Ionicons name="business" size={24} color={colors.primary} />
-                  </View>
-                  {companyName && (
-                    <Text style={dynamicStyles.company}>{companyName}</Text>
-                  )}
+
+            {/* ── Hero Card ── */}
+            <View style={dynamicStyles.heroCard}>
+              {/* Company row */}
+              <View style={dynamicStyles.companyRow}>
+                <View style={dynamicStyles.companyLogo}>
+                  <Ionicons name="business" size={22} color="#4F46E5" />
                 </View>
+                {companyName && <Text style={dynamicStyles.companyName}>{companyName}</Text>}
               </View>
 
-              <Text style={dynamicStyles.title}>{jobTitle}</Text>
+              {/* Title */}
+              <Text style={dynamicStyles.jobTitle}>{jobTitle}</Text>
 
-              <View style={dynamicStyles.details}>
+              {/* Meta pills */}
+              <View style={dynamicStyles.metaRow}>
                 {job.location && (
-                  <View style={dynamicStyles.detailBadge}>
-                    <View style={[dynamicStyles.detailIconContainer, dynamicStyles.locationIcon]}>
-                      <Ionicons name="location" size={18} color="#ffffff" />
-                    </View>
-                    <Text style={dynamicStyles.detailText}>{formatLocation(job.location)}</Text>
+                  <View style={[dynamicStyles.metaPill, dynamicStyles.metaBlue]}>
+                    <Ionicons name="location-outline" size={13} color="#3B82F6" />
+                    <Text style={[dynamicStyles.metaText, { color: '#3B82F6' }]}>{formatLocation(job.location)}</Text>
                   </View>
                 )}
-                
                 {experienceText && (
-                  <View style={dynamicStyles.detailBadge}>
-                    <View style={[dynamicStyles.detailIconContainer, dynamicStyles.experienceIcon]}>
-                      <Ionicons name="briefcase" size={18} color="#ffffff" />
-                    </View>
-                    <Text style={dynamicStyles.detailText}>{experienceText}</Text>
+                  <View style={[dynamicStyles.metaPill, dynamicStyles.metaPurple]}>
+                    <Ionicons name="briefcase-outline" size={13} color="#7C3AED" />
+                    <Text style={[dynamicStyles.metaText, { color: '#7C3AED' }]}>{experienceText}</Text>
                   </View>
                 )}
-                
                 {salaryText && (
-                  <View style={dynamicStyles.detailBadge}>
-                    <View style={[dynamicStyles.detailIconContainer, dynamicStyles.salaryIcon]}>
-                      <Ionicons name="cash" size={18} color="#ffffff" />
-                    </View>
-                    <Text style={dynamicStyles.detailText}>{salaryText}</Text>
+                  <View style={[dynamicStyles.metaPill, dynamicStyles.metaGreen]}>
+                    <Ionicons name="cash-outline" size={13} color="#059669" />
+                    <Text style={[dynamicStyles.metaText, { color: '#059669' }]}>{salaryText}</Text>
                   </View>
                 )}
-                
                 {job.jobType && (
-                  <View style={dynamicStyles.detailBadge}>
-                    <View style={[dynamicStyles.detailIconContainer, dynamicStyles.jobTypeIcon]}>
-                      <Ionicons name="time" size={18} color="#ffffff" />
-                    </View>
-                    <Text style={dynamicStyles.detailText}>{job.jobType}</Text>
+                  <View style={[dynamicStyles.metaPill, dynamicStyles.metaAmber]}>
+                    <Ionicons name="time-outline" size={13} color="#D97706" />
+                    <Text style={[dynamicStyles.metaText, { color: '#D97706' }]}>{job.jobType}</Text>
                   </View>
                 )}
               </View>
+
+              {/* Divider + quick info grid */}
+              <View style={dynamicStyles.divider} />
+              <View style={dynamicStyles.infoGrid}>
+                {job.department && (
+                  <View style={dynamicStyles.infoItem}>
+                    <Text style={dynamicStyles.infoLabel}>Department</Text>
+                    <Text style={dynamicStyles.infoValue}>{job.department}</Text>
+                  </View>
+                )}
+                {job.industry && (
+                  <View style={dynamicStyles.infoItem}>
+                    <Text style={dynamicStyles.infoLabel}>Industry</Text>
+                    <Text style={dynamicStyles.infoValue}>{job.industry}</Text>
+                  </View>
+                )}
+                {job.educationLevel && (
+                  <View style={dynamicStyles.infoItem}>
+                    <Text style={dynamicStyles.infoLabel}>Education</Text>
+                    <Text style={dynamicStyles.infoValue}>{job.educationLevel}</Text>
+                  </View>
+                )}
+                {job.openings && (
+                  <View style={dynamicStyles.infoItem}>
+                    <Text style={dynamicStyles.infoLabel}>Openings</Text>
+                    <Text style={dynamicStyles.infoValue}>{job.openings}</Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Mobile apply button */}
+              {!showSidebarLayout && (
+                <TouchableOpacity style={dynamicStyles.applyBtnMobile} onPress={handleApply} activeOpacity={0.85}>
+                  <Text style={dynamicStyles.applyBtnText}>Apply Now</Text>
+                  <Ionicons name="arrow-forward" size={17} color="#fff" />
+                </TouchableOpacity>
+              )}
             </View>
 
-            {/* Job Description Section */}
+            {/* ── Job Description ── */}
             {job.description && (
               <View style={dynamicStyles.sectionCard}>
                 <View style={dynamicStyles.sectionHeader}>
-                  <Ionicons name="document-text" size={24} color={colors.primary} />
+                  <View style={dynamicStyles.sectionBar} />
                   <Text style={dynamicStyles.sectionTitle}>Job Description</Text>
                 </View>
                 <Text style={dynamicStyles.sectionText}>{job.description}</Text>
               </View>
             )}
 
-            {/* Requirements Section */}
+            {/* ── Requirements ── */}
             {job.requirements && (
               <View style={dynamicStyles.sectionCard}>
                 <View style={dynamicStyles.sectionHeader}>
-                  <Ionicons name="checkmark-circle" size={24} color={colors.primary} />
+                  <View style={dynamicStyles.sectionBar} />
                   <Text style={dynamicStyles.sectionTitle}>Requirements</Text>
                 </View>
                 <Text style={dynamicStyles.sectionText}>{job.requirements}</Text>
               </View>
             )}
 
-            {/* Skills Section */}
+            {/* ── Skills ── */}
             {jobSkills && jobSkills.length > 0 && (
               <View style={dynamicStyles.sectionCard}>
                 <View style={dynamicStyles.sectionHeader}>
-                  <Ionicons name="code-slash" size={24} color={colors.primary} />
-                  <Text style={dynamicStyles.sectionTitle}>Required Skills</Text>
+                  <View style={dynamicStyles.sectionBar} />
+                  <Text style={dynamicStyles.sectionTitle}>Key Skills</Text>
                 </View>
-                <View style={dynamicStyles.skills}>
-                  {jobSkills.map((skill, index) => (
-                    <View key={index} style={dynamicStyles.skillBadge}>
-                      <Text style={dynamicStyles.skillText}>{skill}</Text>
+                <View style={dynamicStyles.skillsWrap}>
+                  {jobSkills.map((skill, i) => (
+                    <View key={i} style={dynamicStyles.skillChip}>
+                      <Text style={dynamicStyles.skillChipText}>{skill}</Text>
                     </View>
                   ))}
                 </View>
               </View>
             )}
 
-            {/* Benefits Section */}
+            {/* ── Benefits ── */}
             {benefits && (
               <View style={dynamicStyles.sectionCard}>
                 <View style={dynamicStyles.sectionHeader}>
-                  <Ionicons name="gift" size={24} color={colors.primary} />
+                  <View style={dynamicStyles.sectionBar} />
                   <Text style={dynamicStyles.sectionTitle}>Benefits</Text>
                 </View>
                 <Text style={dynamicStyles.sectionText}>{benefits}</Text>
               </View>
             )}
 
-            {/* Apply Button Section - Mobile Only */}
-            {!showSidebarLayout && (
-              <View style={dynamicStyles.actionBar}>
-                <View style={dynamicStyles.actionInfo}>
-                  <Text style={dynamicStyles.actionTitle}>Ready to apply?</Text>
-                  <Text style={dynamicStyles.actionSubtitle}>Submit your application now</Text>
-                </View>
-                <TouchableOpacity style={dynamicStyles.applyButton} onPress={handleApply} activeOpacity={0.8}>
-                  <Text style={dynamicStyles.applyButtonText}>Apply Now</Text>
-                  <Ionicons name="arrow-forward" size={20} color={colors.textWhite} />
-                </TouchableOpacity>
-              </View>
-            )}
-
-            {/* Similar Jobs - Mobile */}
+            {/* ── Mobile Similar Jobs ── */}
             {!showSidebarLayout && similarJobs.length > 0 && (
-              <View style={dynamicStyles.mobileSimilarJobs}>
-                <View style={dynamicStyles.mobileSimilarJobsHeader}>
-                  <Ionicons name="briefcase" size={22} color={colors.primary} />
-                  <Text style={dynamicStyles.mobileSimilarJobsTitle}>Similar Jobs</Text>
+              <View style={dynamicStyles.sectionCard}>
+                <View style={dynamicStyles.sectionHeader}>
+                  <View style={dynamicStyles.sectionBar} />
+                  <Text style={dynamicStyles.sectionTitle}>Similar Jobs</Text>
                 </View>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={dynamicStyles.mobileSimilarJobsScroll}>
-                  {similarJobs.map((similarJob) => {
-                    const similarJobTitle = similarJob.title || similarJob.jobTitle || 'Untitled Job';
-                    const similarCompanyName = similarJob.company?.name || similarJob.companyName;
-                    const similarSalary = similarJob.salary ? formatSimilarJobSalary(similarJob.salary) : (similarJob.salaryMin || similarJob.salaryMax) ? `${api.formatIndianCurrency(similarJob.salaryMin || 0)} - ${api.formatIndianCurrency(similarJob.salaryMax || 0)}` : 'Not disclosed';
-                    const similarLocation = similarJob.location ? formatSimilarJobLocation(similarJob.location) : 'Location not specified';
-                    
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  {similarJobs.map((sj) => {
+                    const sjTitle = sj.title || sj.jobTitle || 'Untitled';
+                    const sjCompany = sj.company?.name || sj.companyName;
+                    const sjSalary = sj.salary ? formatSimilarJobSalary(sj.salary) : 'Not disclosed';
+                    const sjLocation = sj.location ? formatSimilarJobLocation(sj.location) : '';
                     return (
-                      <TouchableOpacity
-                        key={similarJob._id}
-                        style={dynamicStyles.mobileSimilarJobCard}
-                        onPress={() => handleSimilarJobClick(similarJob._id)}
-                        activeOpacity={0.8}
-                      >
-                        <View style={dynamicStyles.similarJobHeader}>
-                          <View style={dynamicStyles.similarJobIconContainer}>
-                            <Ionicons name="briefcase" size={18} color={colors.primary} />
-                          </View>
-                          <View style={dynamicStyles.similarJobHeaderText}>
-                            <Text style={dynamicStyles.similarJobTitle} numberOfLines={2}>
-                              {similarJobTitle}
-                            </Text>
-                            {similarCompanyName && (
-                              <Text style={dynamicStyles.similarJobCompany} numberOfLines={1}>
-                                {similarCompanyName}
-                              </Text>
-                            )}
-                          </View>
+                      <TouchableOpacity key={sj._id} style={dynamicStyles.mobileSJCard} onPress={() => handleSimilarJobClick(sj._id)} activeOpacity={0.8}>
+                        <View style={dynamicStyles.sjIconWrap}>
+                          <Ionicons name="briefcase" size={16} color="#4F46E5" />
                         </View>
-                        <View style={dynamicStyles.similarJobDetails}>
-                          <View style={dynamicStyles.similarJobDetail}>
-                            <Ionicons name="location" size={14} color={colors.textSecondary} />
-                            <Text style={dynamicStyles.similarJobDetailText} numberOfLines={1}>
-                              {similarLocation}
-                            </Text>
-                          </View>
-                          <View style={dynamicStyles.similarJobDetail}>
-                            <Ionicons name="cash" size={14} color={colors.success || '#10B981'} />
-                            <Text style={dynamicStyles.similarJobDetailText} numberOfLines={1}>
-                              {similarSalary}
-                            </Text>
-                          </View>
+                        <Text style={dynamicStyles.sjTitle} numberOfLines={2}>{sjTitle}</Text>
+                        {sjCompany && <Text style={dynamicStyles.sjCompany} numberOfLines={1}>{sjCompany}</Text>}
+                        <View style={dynamicStyles.sjMeta}>
+                          {sjLocation ? <><Ionicons name="location-outline" size={12} color="#64748B" /><Text style={dynamicStyles.sjMetaText}>{sjLocation}</Text></> : null}
                         </View>
-                        <View style={dynamicStyles.similarJobFooter}>
-                          <Text style={dynamicStyles.viewJobText}>View Job</Text>
-                          <Ionicons name="chevron-forward" size={16} color={colors.primary} />
+                        <Text style={dynamicStyles.sjSalary}>{sjSalary}</Text>
+                        <View style={dynamicStyles.sjFooter}>
+                          <Text style={dynamicStyles.sjViewJob}>View Job</Text>
+                          <Ionicons name="chevron-forward" size={14} color="#4F46E5" />
                         </View>
                       </TouchableOpacity>
                     );
@@ -396,79 +383,60 @@ const JobDetailsScreen = ({ route, navigation }) => {
                 </ScrollView>
               </View>
             )}
+
           </View>
         </ScrollView>
 
-        {/* Sidebar - Similar Jobs */}
+        {/* ── Sidebar (web only) ── */}
         {showSidebarLayout && (
           <View style={dynamicStyles.sidebar}>
-            {/* Apply Button for Web */}
+
+            {/* Apply card */}
             <View style={dynamicStyles.applyCard}>
-              <Text style={dynamicStyles.applyCardTitle}>Interested in this role?</Text>
-              <TouchableOpacity style={dynamicStyles.applyButtonWeb} onPress={handleApply} activeOpacity={0.8}>
-                <Text style={dynamicStyles.applyButtonText}>Apply Now</Text>
-                <Ionicons name="arrow-forward" size={20} color={colors.textWhite} />
+              <Text style={dynamicStyles.applyCardLabel}>Interested in this role?</Text>
+              <TouchableOpacity style={dynamicStyles.applyBtnWeb} onPress={handleApply} activeOpacity={0.85}>
+                <Text style={dynamicStyles.applyBtnText}>Apply Now</Text>
+                <Ionicons name="arrow-forward" size={17} color="#fff" />
               </TouchableOpacity>
             </View>
 
-            {/* Similar Jobs */}
+            {/* Similar jobs */}
             {similarJobs.length > 0 && (
-              <View style={dynamicStyles.similarJobsContainer}>
-                <View style={dynamicStyles.sidebarHeader}>
-                  <Ionicons name="briefcase" size={22} color={colors.primary} />
-                  <Text style={dynamicStyles.sidebarTitle}>Similar Jobs</Text>
+              <View style={dynamicStyles.similarCard}>
+                <View style={dynamicStyles.sectionHeader}>
+                  <View style={dynamicStyles.sectionBar} />
+                  <Text style={dynamicStyles.sectionTitle}>Similar Jobs</Text>
                 </View>
-                <ScrollView style={dynamicStyles.similarJobsScroll} showsVerticalScrollIndicator={false}>
-                  {similarJobs.map((similarJob) => {
-                    const similarJobTitle = similarJob.title || similarJob.jobTitle || 'Untitled Job';
-                    const similarCompanyName = similarJob.company?.name || similarJob.companyName;
-                    const similarSalary = similarJob.salary ? formatSimilarJobSalary(similarJob.salary) : (similarJob.salaryMin || similarJob.salaryMax) ? `${api.formatIndianCurrency(similarJob.salaryMin || 0)} - ${api.formatIndianCurrency(similarJob.salaryMax || 0)}` : 'Not disclosed';
-                    const similarLocation = similarJob.location ? formatSimilarJobLocation(similarJob.location) : 'Location not specified';
-                    
-                    return (
-                      <TouchableOpacity
-                        key={similarJob._id}
-                        style={dynamicStyles.similarJobCard}
-                        onPress={() => handleSimilarJobClick(similarJob._id)}
-                        activeOpacity={0.8}
-                      >
-                        <View style={dynamicStyles.similarJobHeader}>
-                          <View style={dynamicStyles.similarJobIconContainer}>
-                            <Ionicons name="briefcase" size={18} color={colors.primary} />
-                          </View>
-                          <View style={dynamicStyles.similarJobHeaderText}>
-                            <Text style={dynamicStyles.similarJobTitle} numberOfLines={2}>
-                              {similarJobTitle}
-                            </Text>
-                            {similarCompanyName && (
-                              <Text style={dynamicStyles.similarJobCompany} numberOfLines={1}>
-                                {similarCompanyName}
-                              </Text>
-                            )}
-                          </View>
+                {similarJobs.map((sj) => {
+                  const sjTitle = sj.title || sj.jobTitle || 'Untitled';
+                  const sjCompany = sj.company?.name || sj.companyName;
+                  const sjSalary = sj.salary ? formatSimilarJobSalary(sj.salary) : 'Not disclosed';
+                  const sjLocation = sj.location ? formatSimilarJobLocation(sj.location) : '';
+                  return (
+                    <TouchableOpacity key={sj._id} style={dynamicStyles.sjCard} onPress={() => handleSimilarJobClick(sj._id)} activeOpacity={0.8}>
+                      <View style={dynamicStyles.sjRow}>
+                        <View style={dynamicStyles.sjIconWrap}>
+                          <Ionicons name="briefcase" size={16} color="#4F46E5" />
                         </View>
-                        <View style={dynamicStyles.similarJobDetails}>
-                          <View style={dynamicStyles.similarJobDetail}>
-                            <Ionicons name="location" size={14} color={colors.textSecondary} />
-                            <Text style={dynamicStyles.similarJobDetailText} numberOfLines={1}>
-                              {similarLocation}
-                            </Text>
-                          </View>
-                          <View style={dynamicStyles.similarJobDetail}>
-                            <Ionicons name="cash" size={14} color={colors.success || '#10B981'} />
-                            <Text style={dynamicStyles.similarJobDetailText} numberOfLines={1}>
-                              {similarSalary}
-                            </Text>
-                          </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={dynamicStyles.sjTitle} numberOfLines={2}>{sjTitle}</Text>
+                          {sjCompany && <Text style={dynamicStyles.sjCompany} numberOfLines={1}>{sjCompany}</Text>}
                         </View>
-                        <View style={dynamicStyles.similarJobFooter}>
-                          <Text style={dynamicStyles.viewJobText}>View Job</Text>
-                          <Ionicons name="chevron-forward" size={16} color={colors.primary} />
-                        </View>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
+                      </View>
+                      <View style={dynamicStyles.sjMeta}>
+                        {sjLocation ? <><Ionicons name="location-outline" size={12} color="#64748B" /><Text style={dynamicStyles.sjMetaText}>{sjLocation}</Text></> : null}
+                      </View>
+                      <View style={dynamicStyles.sjMeta}>
+                        <Ionicons name="cash-outline" size={12} color="#059669" />
+                        <Text style={[dynamicStyles.sjMetaText, { color: '#059669' }]}>{sjSalary}</Text>
+                      </View>
+                      <View style={dynamicStyles.sjFooter}>
+                        <Text style={dynamicStyles.sjViewJob}>View Job</Text>
+                        <Ionicons name="chevron-forward" size={14} color="#4F46E5" />
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             )}
           </View>
@@ -509,388 +477,163 @@ const staticStyles = StyleSheet.create({
 const getStyles = (showSidebarLayout, width) => {
   const isMobile = width <= 480;
   const isSmallScreen = width <= 600;
-  
+
   return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.background,
-    },
+    container: { flex: 1, backgroundColor: '#F1F5F9' },
     contentWrapper: {
       flex: 1,
       flexDirection: showSidebarLayout ? 'row' : 'column',
-      backgroundColor: colors.background,
+      backgroundColor: '#F1F5F9',
     },
-    leftScrollView: {
-      flex: 1,
-    },
+    leftScrollView: { flex: 1 },
     scrollContent: {
-      padding: isMobile ? spacing.md : isSmallScreen ? spacing.lg : spacing.xl,
-      paddingBottom: spacing.xxl,
-      gap: spacing.lg,
+      padding: isMobile ? 12 : 20,
+      paddingBottom: 40,
+      maxWidth: showSidebarLayout ? 820 : '100%',
+    },
+    mainColumn: { width: '100%' },
+
+    // Hero Card
+    heroCard: {
+      backgroundColor: '#fff',
+      borderRadius: 14,
+      padding: isMobile ? 16 : 24,
+      borderWidth: 1,
+      borderColor: '#E2E8F0',
+      shadowColor: '#64748B',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.06,
+      shadowRadius: 8,
+      elevation: 2,
+      marginBottom: 14,
+    },
+    companyRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
+    companyLogo: {
+      width: 44, height: 44, borderRadius: 10,
+      backgroundColor: '#EEF2FF', justifyContent: 'center', alignItems: 'center',
+      borderWidth: 1, borderColor: '#C7D2FE',
+    },
+    companyName: { fontSize: 15, fontWeight: '600', color: '#1E293B' },
+    jobTitle: {
+      fontSize: isMobile ? 22 : isSmallScreen ? 26 : 30,
+      fontWeight: '800', color: '#0F172A',
+      lineHeight: isMobile ? 30 : 38,
+      marginBottom: 16, letterSpacing: -0.3,
+    },
+    metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
+    metaPill: {
+      flexDirection: 'row', alignItems: 'center', gap: 5,
+      paddingHorizontal: 10, paddingVertical: 5,
+      borderRadius: 20, borderWidth: 1,
+    },
+    metaBlue: { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' },
+    metaPurple: { backgroundColor: '#F5F3FF', borderColor: '#DDD6FE' },
+    metaGreen: { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0' },
+    metaAmber: { backgroundColor: '#FFFBEB', borderColor: '#FDE68A' },
+    metaText: { fontSize: 12, fontWeight: '600' },
+    divider: { height: 1, backgroundColor: '#F1F5F9', marginBottom: 16 },
+    infoGrid: { flexDirection: 'row', flexWrap: 'wrap' },
+    infoItem: { width: '50%', paddingVertical: 8, paddingRight: 12 },
+    infoLabel: {
+      fontSize: 11, fontWeight: '700', color: '#94A3B8',
+      textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 3,
+    },
+    infoValue: { fontSize: 14, fontWeight: '600', color: '#1E293B' },
+    applyBtnMobile: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+      backgroundColor: '#4F46E5', borderRadius: 10, paddingVertical: 13, marginTop: 16,
+      shadowColor: '#4F46E5', shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25, shadowRadius: 12, elevation: 4,
+    },
+    applyBtnText: { fontSize: 15, fontWeight: '700', color: '#fff' },
+
+    // Section Cards
+    sectionCard: {
+      backgroundColor: '#fff', borderRadius: 14,
+      padding: isMobile ? 16 : 22,
+      borderWidth: 1, borderColor: '#E2E8F0',
+      shadowColor: '#64748B', shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05, shadowRadius: 6, elevation: 1, marginBottom: 14,
+    },
+    sectionHeader: {
+      flexDirection: 'row', alignItems: 'center', gap: 10,
+      marginBottom: 14, paddingBottom: 12,
+      borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
+    },
+    sectionBar: { width: 4, height: 20, borderRadius: 2, backgroundColor: '#4F46E5' },
+    sectionTitle: { fontSize: 16, fontWeight: '700', color: '#0F172A', letterSpacing: 0.1 },
+    sectionText: { fontSize: 14, color: '#334155', lineHeight: 24 },
+
+    // Skills
+    skillsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    skillChip: {
+      backgroundColor: '#EEF2FF', borderWidth: 1, borderColor: '#C7D2FE',
+      paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20,
+    },
+    skillChipText: { fontSize: 13, fontWeight: '600', color: '#4338CA' },
+
+    // Sidebar
+    sidebar: {
+      width: showSidebarLayout ? 340 : '100%',
+      backgroundColor: '#F1F5F9',
+      borderLeftWidth: showSidebarLayout ? 1 : 0,
+      borderLeftColor: '#E2E8F0',
+      padding: 16,
       ...(showSidebarLayout && {
-        alignItems: 'flex-start',
-        maxWidth: 800,
+        position: 'sticky', top: 0,
+        height: '100vh', maxHeight: '100vh', overflowY: 'auto',
       }),
     },
-    mainColumn: {
-      width: '100%',
-      maxWidth: showSidebarLayout ? 800 : '100%',
+    applyCard: {
+      backgroundColor: '#fff', borderRadius: 14, padding: 20,
+      borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 14,
+      shadowColor: '#64748B', shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
     },
-  // Header Card Styles
-  headerCard: {
-    width: '100%',
-    backgroundColor: colors.cardBackground,
-    borderRadius: isMobile ? borderRadius.lg : borderRadius.xl,
-    padding: isMobile ? spacing.md : spacing.xl,
-    ...shadows.md,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    marginBottom: spacing.md,
-  },
-  headerTop: {
-    marginBottom: spacing.lg,
-  },
-  companyBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  companyIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.primaryLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.primaryLight,
-  },
-  title: {
-    ...typography.h1,
-    color: colors.text,
-    marginBottom: isMobile ? spacing.md : spacing.lg,
-    lineHeight: isMobile ? 28 : 40,
-    fontSize: isMobile ? 22 : isSmallScreen ? 26 : showSidebarLayout ? 36 : 32,
-  },
-  company: {
-    ...typography.h5,
-    color: colors.text,
-    fontWeight: '600',
-    fontSize: 16,
-  },
-  // Detail Badges
-  details: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.md,
-    marginTop: spacing.md,
-  },
-  detailBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.background,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    ...shadows.xs,
-  },
-  detailIconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: borderRadius.md,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  locationIcon: {
-    backgroundColor: '#3B82F6',
-  },
-  experienceIcon: {
-    backgroundColor: '#8B5CF6',
-  },
-  salaryIcon: {
-    backgroundColor: '#10B981',
-  },
-  jobTypeIcon: {
-    backgroundColor: '#F59E0B',
-  },
-  detailText: {
-    ...typography.body1,
-    color: colors.text,
-    fontWeight: '500',
-    fontSize: 15,
-  },
-  // Section Cards
-  sectionCard: {
-    width: '100%',
-    backgroundColor: colors.cardBackground,
-    borderRadius: isMobile ? borderRadius.lg : borderRadius.xl,
-    padding: isMobile ? spacing.md : spacing.xl,
-    ...shadows.md,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    marginBottom: isMobile ? spacing.md : spacing.lg,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
-    paddingBottom: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
-  },
-  sectionTitle: {
-    ...typography.h4,
-    color: colors.text,
-    fontWeight: '700',
-    fontSize: 20,
-  },
-  sectionText: {
-    ...typography.body1,
-    color: colors.text,
-    lineHeight: 28,
-    fontSize: 16,
-  },
-  // Skills
-  skills: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.md,
-  },
-  skillBadge: {
-    backgroundColor: colors.primaryLight,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.full,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    ...shadows.xs,
-  },
-  skillText: {
-    ...typography.body2,
-    color: colors.primary,
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  // Action Bar (Mobile)
-  actionBar: {
-    width: '100%',
-    backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.xl,
-    padding: spacing.xl,
-    flexDirection: 'column',
-    gap: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    ...shadows.md,
-    marginTop: spacing.md,
-  },
-  actionInfo: {
-    gap: spacing.xs,
-  },
-  actionTitle: {
-    ...typography.h4,
-    color: colors.text,
-    fontWeight: '700',
-  },
-  actionSubtitle: {
-    ...typography.body2,
-    color: colors.textSecondary,
-  },
-  applyButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.primary,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
-    borderRadius: borderRadius.md,
-    ...shadows.sm,
-    width: '100%',
-  },
-  applyButtonText: {
-    ...typography.button,
-    color: colors.textWhite,
-    fontWeight: '700',
-    fontSize: 16,
-  },
-  // Sidebar Styles (Web)
-  sidebar: {
-    width: showSidebarLayout ? 400 : '100%',
-    backgroundColor: colors.background,
-    borderLeftWidth: showSidebarLayout ? 1 : 0,
-    borderLeftColor: colors.borderLight,
-    padding: spacing.lg,
-    ...(showSidebarLayout && {
-      position: 'sticky',
-      top: 0,
-      height: '100vh',
-      maxHeight: '100vh',
-      overflowY: 'auto',
-    }),
-  },
-  // Apply Card (Web Sidebar)
-  applyCard: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.xl,
-    padding: spacing.xl,
-    ...shadows.md,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    marginBottom: spacing.lg,
-  },
-  applyCardTitle: {
-    ...typography.h5,
-    color: colors.text,
-    fontWeight: '700',
-    marginBottom: spacing.md,
-    textAlign: 'center',
-  },
-  applyButtonWeb: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.primary,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
-    borderRadius: borderRadius.md,
-    ...shadows.sm,
-    width: '100%',
-  },
-  // Similar Jobs Container
-  similarJobsContainer: {
-    flex: 1,
-  },
-  sidebarHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  sidebarTitle: {
-    ...typography.h4,
-    color: colors.text,
-    fontWeight: '700',
-    fontSize: 20,
-  },
-  similarJobsScroll: {
-    flex: 1,
-  },
-  // Similar Job Card
-  similarJobCard: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.xl,
-    padding: spacing.lg,
-    marginBottom: spacing.md,
-    ...shadows.md,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    ...(isWebPlatform && {
-      cursor: 'pointer',
-      transition: 'all 0.3s ease',
-    }),
-  },
-  similarJobHeader: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    marginBottom: spacing.md,
-  },
-  similarJobIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.primaryLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-    flexShrink: 0,
-  },
-  similarJobHeaderText: {
-    flex: 1,
-    gap: spacing.xs,
-  },
-  similarJobTitle: {
-    ...typography.h6,
-    color: colors.text,
-    fontWeight: '700',
-    fontSize: 16,
-    lineHeight: 22,
-  },
-  similarJobCompany: {
-    ...typography.body2,
-    color: colors.textSecondary,
-    fontSize: 13,
-  },
-  similarJobDetails: {
-    gap: spacing.xs,
-    marginBottom: spacing.md,
-    paddingTop: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderLight,
-  },
-  similarJobDetail: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  similarJobDetailText: {
-    ...typography.caption,
-    color: colors.text,
-    fontSize: 13,
-    flex: 1,
-  },
-  similarJobFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: spacing.sm,
-    marginTop: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderLight,
-  },
-  viewJobText: {
-    ...typography.body2,
-    color: colors.primary,
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  // Mobile Similar Jobs
-  mobileSimilarJobs: {
-    width: '100%',
-    marginTop: spacing.lg,
-  },
-  mobileSimilarJobsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-    paddingHorizontal: spacing.xs,
-  },
-  mobileSimilarJobsTitle: {
-    ...typography.h4,
-    color: colors.text,
-    fontWeight: '700',
-    fontSize: 20,
-  },
-  mobileSimilarJobsScroll: {
-    marginHorizontal: -spacing.xs,
-  },
-  mobileSimilarJobCard: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.xl,
-    padding: isMobile ? spacing.md : spacing.lg,
-    marginLeft: spacing.md,
-    marginRight: spacing.xs,
-    width: isMobile ? 280 : 320,
-    ...shadows.md,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-  },
-})};
+    applyCardLabel: {
+      fontSize: 14, fontWeight: '700', color: '#0F172A',
+      textAlign: 'center', marginBottom: 14,
+    },
+    applyBtnWeb: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+      backgroundColor: '#4F46E5', borderRadius: 10, paddingVertical: 13,
+      shadowColor: '#4F46E5', shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25, shadowRadius: 12, elevation: 4,
+    },
+    similarCard: {
+      backgroundColor: '#fff', borderRadius: 14, padding: 18,
+      borderWidth: 1, borderColor: '#E2E8F0',
+      shadowColor: '#64748B', shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05, shadowRadius: 6, elevation: 1,
+    },
+
+    // Similar Job Card (sidebar)
+    sjCard: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+    sjRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 8 },
+    sjIconWrap: {
+      width: 34, height: 34, borderRadius: 8,
+      backgroundColor: '#EEF2FF', justifyContent: 'center', alignItems: 'center', flexShrink: 0,
+    },
+    sjTitle: { fontSize: 14, fontWeight: '700', color: '#0F172A', lineHeight: 20, marginBottom: 2 },
+    sjCompany: { fontSize: 12, color: '#64748B', fontWeight: '500' },
+    sjMeta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 },
+    sjMetaText: { fontSize: 12, color: '#64748B' },
+    sjSalary: { fontSize: 12, fontWeight: '600', color: '#059669', marginBottom: 8 },
+    sjFooter: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    sjViewJob: { fontSize: 13, fontWeight: '700', color: '#4F46E5' },
+
+    // Mobile Similar Job Card
+    mobileSJCard: {
+      backgroundColor: '#fff', borderRadius: 12, padding: 14,
+      marginRight: 12, width: isMobile ? 240 : 280,
+      borderWidth: 1, borderColor: '#E2E8F0',
+      shadowColor: '#64748B', shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05, shadowRadius: 6, elevation: 1,
+    },
+
+    // keep these so old references don't crash (unused but harmless)
+    container2: {},
+  });
+};
 
 export default JobDetailsScreen;
-

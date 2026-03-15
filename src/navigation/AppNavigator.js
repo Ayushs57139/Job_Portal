@@ -117,6 +117,7 @@ import ServicesScreen from '../screens/Services/ServicesScreen';
 import BlogsScreen from '../screens/Blogs/BlogsScreen';
 import BlogDetailScreen from '../screens/Blogs/BlogDetailScreen';
 import CreateBlogScreen from '../screens/Blogs/CreateBlogScreen';
+import FAQScreen from '../screens/FAQ/FAQScreen';
 import SocialUpdatesScreen from '../screens/SocialUpdates/SocialUpdatesScreen';
 import PostDetailScreen from '../screens/SocialUpdates/PostDetailScreen';
 import CreateSocialPostScreen from '../screens/SocialUpdates/CreateSocialPostScreen';
@@ -828,6 +829,11 @@ const AppNavigator = () => {
           name="CreateBlog" 
           component={CreateBlogScreen}
           options={{ title: 'Write Blog' }}
+        />
+        <Stack.Screen 
+          name="FAQs" 
+          component={FAQScreen}
+          options={{ title: 'FAQ', headerShown: false }}
         />
         <Stack.Screen 
           name="SocialUpdates" 

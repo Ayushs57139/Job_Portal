@@ -10,7 +10,6 @@ import {
   TouchableOpacity,
   Dimensions,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, typography, spacing, borderRadius, shadows } from '../../styles/theme';
 import Header from '../../components/Header';
@@ -189,12 +188,7 @@ const CompaniesScreen = () => {
         }
       >
         {/* Hero Section */}
-        <LinearGradient
-          colors={['#FFFFFF', '#FFFFFF']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={dynamicStyles.heroSection}
-        >
+        <View style={dynamicStyles.heroSection}>
           <Text style={dynamicStyles.heroTitle}>Top Companies</Text>
           <Text style={dynamicStyles.heroSubtitle}>
             Discover opportunities from leading companies and organizations
@@ -213,7 +207,7 @@ const CompaniesScreen = () => {
               <Text style={dynamicStyles.heroStatLabel}>Avg. rating</Text>
             </View>
           </View>
-        </LinearGradient>
+        </View>
 
         {/* Search Section */}
         <View style={dynamicStyles.searchSection}>
@@ -378,23 +372,20 @@ const CompaniesScreen = () => {
           <View style={dynamicStyles.companiesSection}>
             <View style={dynamicStyles.companiesGrid}>
               {filteredCompanies.map((company, index) => (
-                <React.Fragment key={company._id}>
-                  <View style={dynamicStyles.companyCardWrapper}>
-                    <CompanyCard company={company} />
-                  </View>
-                  {/* Show ad after every 6 companies */}
-                  {(index + 1) % 6 === 0 && index < filteredCompanies.length - 1 && (
-                    <View style={[dynamicStyles.companyCardWrapper, { width: '100%' }]}>
-                      <AdvertisementWidget 
-                        position="content-middle" 
-                        page="companies"
-                        containerStyle={dynamicStyles.adContainer}
-                      />
-                    </View>
-                  )}
-                </React.Fragment>
+                <View key={company._id} style={dynamicStyles.companyCardWrapper}>
+                  <CompanyCard company={company} />
+                </View>
               ))}
             </View>
+
+            {/* Ads injected between rows, outside the flex-wrap grid */}
+            {filteredCompanies.length > 6 && (
+              <AdvertisementWidget
+                position="content-middle"
+                page="companies"
+                containerStyle={dynamicStyles.adContainer}
+              />
+            )}
             
             {/* Advertisement - Bottom of companies section */}
             {filteredCompanies.length > 3 && (
@@ -486,8 +477,7 @@ const getStyles = (
     paddingVertical: isMobile ? spacing.xl : spacing.xxl,
     paddingHorizontal: isMobile ? horizontalPadding : (isTabletDevice ? spacing.lg : spacing.xl),
     alignItems: 'center',
-    borderBottomLeftRadius: borderRadius.xl,
-    borderBottomRightRadius: borderRadius.xl,
+    backgroundColor: '#EEF2FF',
     maxWidth: isDesktopDevice ? (isLargeDesktop ? 1600 : isDesktop ? 1400 : 1200) : '100%',
     alignSelf: 'center',
     width: '100%',

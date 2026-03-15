@@ -9,11 +9,15 @@ import {
   Alert,
   Modal,
   FlatList,
+  Platform,
+  Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { shadows } from '../../styles/theme';
 import api from '../../config/api';
+
+const isWeb = Platform.OS === 'web';
 
 const REFERRAL_SOURCES = [
   'Freejobwala YouTube Channel',
@@ -174,88 +178,66 @@ const EmployerRegisterScreen = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
-      <LinearGradient
-        colors={['#f8fafc', '#e0e7ff', '#f1f5f9']}
-        style={styles.backgroundGradient}
-      >
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-          {/* Logo */}
-          <TouchableOpacity 
-            style={styles.logoContainer}
-            onPress={() => navigation.navigate('Home')}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.logoText}>
-              <Text style={styles.logoPrimary}>Free</Text>
-              <Text style={styles.logoJob}>job</Text>
-              <Text style={styles.logoWala}>wala</Text>
-            </Text>
-          </TouchableOpacity>
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      {/* ── NAVBAR ── */}
+      <View style={styles.navbar}>
+        <TouchableOpacity onPress={() => navigation.navigate('Home')} activeOpacity={0.8}>
+          <Text style={styles.logoText}>
+            <Text style={styles.logoPrimary}>Free</Text>
+            <Text style={styles.logoJob}>job</Text>
+            <Text style={styles.logoWala}>wala</Text>
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.navLoginBtn}
+          onPress={() => navigation.navigate('EmployerOptions')}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.navLoginBtnText}>Login</Text>
+        </TouchableOpacity>
+      </View>
 
-          {/* Header */}
-          <View style={styles.headerSection}>
-            <View style={styles.iconCircle}>
-              <Ionicons 
-                name={employerType === 'company' ? 'business' : 'people'} 
-                size={32} 
-                color={employerType === 'company' ? '#2c3e50' : '#6366f1'} 
+      {/* ── HERO HEADER ── */}
+      <LinearGradient colors={['#0f172a', '#1e1b4b', '#0f172a']} style={styles.hero}>
+        <View style={styles.iconCircle}>
+          <Ionicons
+            name={employerType === 'company' ? 'business' : 'people'}
+            size={32}
+            color={employerType === 'company' ? '#a5b4fc' : '#c4b5fd'}
+          />
+        </View>
+        <Text style={styles.heroTitle}>Employer Registration</Text>
+        <Text style={styles.heroSubtitle}>
+          {employerType === 'company'
+            ? "Let's Get Started, Tell Us about Your Company"
+            : "Let's Get Started, Tell Us about Your Consultancy"}
+        </Text>
+
+        {/* Type selector */}
+        <View style={styles.typeSelectorContainer}>
+          {['company', 'consultancy'].map(t => (
+            <TouchableOpacity
+              key={t}
+              style={[styles.typeOpt, employerType === t && styles.typeOptActive]}
+              onPress={() => setEmployerType(t)}
+              activeOpacity={0.8}
+            >
+              <Ionicons
+                name={t === 'company' ? 'business' : 'people'}
+                size={18}
+                color={employerType === t ? '#ffffff' : '#94a3b8'}
               />
-            </View>
-            <Text style={styles.headerTitle}>Employer Registration</Text>
-            <Text style={styles.headerSubtitle}>
-              {employerType === 'company' 
-                ? "Let's Get Started, Tell Us about Your Company"
-                : "Let's Get Started, Tell Us about Your Consultancy"}
-            </Text>
-            
-            {/* Employer Type Selection */}
-            <View style={styles.typeSelectorContainer}>
-              <TouchableOpacity
-                style={styles.typeOptionWrapper}
-                onPress={() => setEmployerType('company')}
-                activeOpacity={0.8}
-              >
-                {employerType === 'company' ? (
-                  <LinearGradient
-                    colors={['#2c3e50', '#34495e']}
-                    style={styles.typeOptionActive}
-                  >
-                    <Ionicons name="business" size={22} color="#fff" />
-                    <Text style={styles.typeOptionTextActive}>Company</Text>
-                  </LinearGradient>
-                ) : (
-                  <View style={styles.typeOption}>
-                    <Ionicons name="business" size={22} color="#64748b" />
-                    <Text style={styles.typeOptionText}>Company</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
+              <Text style={[styles.typeOptTxt, employerType === t && styles.typeOptTxtActive]}>
+                {t === 'company' ? 'Company' : 'Consultancy'}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </LinearGradient>
 
-              <TouchableOpacity
-                style={styles.typeOptionWrapper}
-                onPress={() => setEmployerType('consultancy')}
-                activeOpacity={0.8}
-              >
-                {employerType === 'consultancy' ? (
-                  <LinearGradient
-                    colors={['#6366f1', '#8b5cf6']}
-                    style={styles.typeOptionActive}
-                  >
-                    <Ionicons name="people" size={22} color="#fff" />
-                    <Text style={styles.typeOptionTextActive}>Consultancy</Text>
-                  </LinearGradient>
-                ) : (
-                  <View style={styles.typeOption}>
-                    <Ionicons name="people" size={22} color="#64748b" />
-                    <Text style={styles.typeOptionText}>Consultancy</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <View style={styles.formContainer}>
+      {/* ── FORM CARD ── */}
+      <View style={styles.cardOuter}>
+        <View style={styles.formContainer}>
             {/* Personal Information Section */}
             <View style={styles.sectionHeader}>
               <Ionicons name="person-outline" size={24} color={employerType === 'company' ? '#2c3e50' : '#6366f1'} />
@@ -601,355 +583,144 @@ const EmployerRegisterScreen = ({ navigation }) => {
               </TouchableOpacity>
             </View>
           </View>
-        </ScrollView>
-      </LinearGradient>
-    </View>
+        </View>
+      </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
+  container: { flex: 1, backgroundColor: '#f8fafc' },
+
+  // Navbar
+  navbar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingVertical: 14, backgroundColor: '#ffffff',
+    borderBottomWidth: 1, borderBottomColor: '#e2e8f0',
+    ...(isWeb ? { position: 'sticky', top: 0, zIndex: 100 } : {}),
   },
-  backgroundGradient: {
-    flex: 1,
+  logoText: { fontSize: 24, fontWeight: '800' },
+  logoPrimary: { color: '#3b82f6' },
+  logoJob: { color: '#f97316' },
+  logoWala: { color: '#1e293b' },
+  navLoginBtn: {
+    borderWidth: 1, borderColor: '#e2e8f0', paddingHorizontal: 18,
+    paddingVertical: 8, borderRadius: 8,
   },
-  scrollContent: {
-    paddingBottom: 40,
-  },
-  logoContainer: {
-    position: 'absolute',
-    top: 32,
-    left: 20,
-    zIndex: 10,
-    paddingTop: 8,
-    paddingHorizontal: 8,
-  },
-  logoText: {
-    fontSize: 32,
-    fontWeight: '800',
-    letterSpacing: -0.5,
-  },
-  logoPrimary: {
-    color: '#3b82f6',
-  },
-  logoJob: {
-    color: '#FF6B35',
-  },
-  logoWala: {
-    color: '#1e293b',
-  },
-  headerSection: {
+  navLoginBtnText: { fontSize: 14, color: '#1e293b', fontWeight: '600' },
+
+  // Hero
+  hero: {
+    paddingTop: 40, paddingBottom: 40, paddingHorizontal: 20,
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 100,
-    paddingBottom: 32,
-    maxWidth: 900,
-    alignSelf: 'center',
-    width: '100%',
   },
   iconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#ffffff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 20,
-    ...shadows.lg,
-    borderWidth: 3,
-    borderColor: '#e0e7ff',
+    width: 72, height: 72, borderRadius: 36, backgroundColor: 'rgba(255,255,255,0.12)',
+    alignItems: 'center', justifyContent: 'center', marginBottom: 16,
+    borderWidth: 2, borderColor: 'rgba(165,180,252,0.4)',
   },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#1e293b',
-    marginBottom: 8,
-    textAlign: 'center',
-    letterSpacing: -0.5,
+  heroTitle: {
+    fontSize: 26, fontWeight: '800', color: '#ffffff', marginBottom: 6, textAlign: 'center',
   },
-  headerSubtitle: {
-    fontSize: 15,
-    color: '#64748b',
-    textAlign: 'center',
-    marginBottom: 24,
-    lineHeight: 22,
-    paddingHorizontal: 20,
+  heroSubtitle: {
+    fontSize: 14, color: '#a5b4fc', textAlign: 'center', marginBottom: 24, lineHeight: 20,
   },
   typeSelectorContainer: {
-    flexDirection: 'row',
-    gap: 12,
-    width: '100%',
-    maxWidth: 400,
-    backgroundColor: '#f8fafc',
-    padding: 6,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
+    flexDirection: 'row', gap: 10, backgroundColor: 'rgba(255,255,255,0.08)',
+    padding: 5, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
   },
-  typeOptionWrapper: {
-    flex: 1,
+  typeOpt: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingVertical: 11, paddingHorizontal: 24, borderRadius: 10,
   },
-  typeOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-  },
-  typeOptionActive: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 12,
+  typeOptActive: {
+    backgroundColor: '#6366f1',
     ...shadows.md,
   },
-  typeOptionText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#64748b',
-  },
-  typeOptionTextActive: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#ffffff',
-  },
+  typeOptTxt: { fontSize: 14, fontWeight: '600', color: '#94a3b8' },
+  typeOptTxtActive: { color: '#ffffff', fontWeight: '700' },
+
+  // Card
+  cardOuter: { paddingHorizontal: 16, paddingTop: 24, paddingBottom: 40 },
   formContainer: {
-    backgroundColor: '#ffffff',
-    marginHorizontal: 16,
-    marginTop: 0,
-    marginBottom: 16,
-    borderRadius: 24,
-    padding: 28,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 4,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    maxWidth: 900,
-    alignSelf: 'center',
-    width: '100%',
+    backgroundColor: '#ffffff', borderRadius: 20, padding: 24,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1, shadowRadius: 16, elevation: 5,
+    borderWidth: 1, borderColor: '#e2e8f0',
+    maxWidth: 900, alignSelf: 'center', width: '100%',
   },
+
   sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 24,
-    marginTop: 8,
-    paddingBottom: 16,
-    borderBottomWidth: 2,
-    borderBottomColor: '#f1f5f9',
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    marginBottom: 20, marginTop: 4, paddingBottom: 14,
+    borderBottomWidth: 1, borderBottomColor: '#f1f5f9',
   },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1e293b',
-    letterSpacing: -0.3,
-  },
-  labelContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  labelIcon: {
-    marginRight: 8,
-  },
-  row: {
-    flexDirection: 'row',
-    gap: 16,
-    marginBottom: 16,
-  },
-  halfInput: {
-    flex: 1,
-  },
-  fullInput: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1e293b',
-  },
+  sectionTitle: { fontSize: 18, fontWeight: '700', color: '#1e293b' },
+  labelContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  labelIcon: { marginRight: 6 },
+  row: { flexDirection: 'row', gap: 14, marginBottom: 14 },
+  halfInput: { flex: 1 },
+  fullInput: { marginBottom: 14 },
+  label: { fontSize: 13, fontWeight: '600', color: '#1e293b' },
   inputWrapper: {
-    borderWidth: 2,
-    borderColor: '#e2e8f0',
-    borderRadius: 12,
-    backgroundColor: '#ffffff',
-    paddingHorizontal: 4,
+    borderWidth: 1.5, borderColor: '#e2e8f0', borderRadius: 10,
+    backgroundColor: '#ffffff', paddingHorizontal: 2,
   },
-  inputWrapperError: {
-    borderColor: '#ef4444',
-    backgroundColor: '#fef2f2',
-  },
-  input: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 15,
-    color: '#1e293b',
-  },
-  errorContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 8,
-  },
-  helperText: {
-    fontSize: 12,
-    color: '#6366f1',
-    marginTop: 4,
-  },
-  errorText: {
-    fontSize: 13,
-    color: '#ef4444',
-    fontWeight: '500',
-  },
-  checkboxRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 8,
-  },
-  checkboxLabel: {
-    fontSize: 13,
-    color: '#475569',
-    flex: 1,
-  },
-  link: {
-    color: '#6366f1',
-    textDecorationLine: 'underline',
-  },
+  inputWrapperError: { borderColor: '#ef4444', backgroundColor: '#fef2f2' },
+  input: { paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, color: '#1e293b' },
+  errorContainer: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 6 },
+  helperText: { fontSize: 12, color: '#6366f1', marginTop: 4 },
+  errorText: { fontSize: 12, color: '#ef4444', fontWeight: '500' },
+  checkboxRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 },
+  checkboxLabel: { fontSize: 13, color: '#475569', flex: 1 },
+  link: { color: '#6366f1', textDecorationLine: 'underline' },
   pickerContainer: {
-    borderWidth: 2,
-    borderColor: '#e2e8f0',
-    borderRadius: 12,
-    backgroundColor: '#ffffff',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    borderWidth: 1.5, borderColor: '#e2e8f0', borderRadius: 10,
+    backgroundColor: '#ffffff', flexDirection: 'row',
+    justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 14, paddingVertical: 12,
   },
-  pickerText: {
-    fontSize: 15,
-    color: '#94a3b8',
-  },
-  pickerTextSelected: {
-    fontSize: 15,
-    color: '#1e293b',
-  },
+  pickerText: { fontSize: 14, color: '#94a3b8' },
+  pickerTextSelected: { fontSize: 14, color: '#1e293b' },
   registerButtonWrapper: {
-    marginTop: 24,
-    marginBottom: 16,
-    borderRadius: 12,
-    overflow: 'hidden',
-    ...shadows.md,
+    marginTop: 20, marginBottom: 14, borderRadius: 10,
+    overflow: 'hidden', ...shadows.md,
   },
   registerButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    paddingVertical: 16,
-    borderRadius: 12,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 10, paddingVertical: 15, borderRadius: 10,
   },
-  registerButtonDisabled: {
-    opacity: 0.6,
-  },
-  registerButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-  },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-    gap: 12,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#e2e8f0',
-  },
-  dividerText: {
-    fontSize: 14,
-    color: '#94a3b8',
-    fontWeight: '500',
-  },
+  registerButtonDisabled: { opacity: 0.6 },
+  registerButtonText: { color: '#ffffff', fontSize: 15, fontWeight: '700', letterSpacing: 0.3 },
+  divider: { flexDirection: 'row', alignItems: 'center', marginBottom: 14, gap: 10 },
+  dividerLine: { flex: 1, height: 1, backgroundColor: '#e2e8f0' },
+  dividerText: { fontSize: 13, color: '#94a3b8', fontWeight: '500' },
   loginContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 6,
-    flexWrap: 'wrap',
+    flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
+    gap: 4, flexWrap: 'wrap',
   },
-  loginText: {
-    fontSize: 14,
-    color: '#64748b',
-  },
-  loginLink: {
-    fontSize: 14,
-    color: '#6366f1',
-    fontWeight: '700',
-    textDecorationLine: 'underline',
-  },
+  loginText: { fontSize: 14, color: '#64748b' },
+  loginLink: { fontSize: 14, color: '#6366f1', fontWeight: '700', textDecorationLine: 'underline' },
   modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center', alignItems: 'center', padding: 20,
   },
   modalContent: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    width: '100%',
-    maxWidth: 500,
-    maxHeight: '80%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
+    backgroundColor: '#ffffff', borderRadius: 14, width: '100%',
+    maxWidth: 500, maxHeight: '80%',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25, shadowRadius: 10, elevation: 6,
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    padding: 18, borderBottomWidth: 1, borderBottomColor: '#e2e8f0',
   },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1e293b',
-  },
+  modalTitle: { fontSize: 16, fontWeight: '700', color: '#1e293b' },
   modalOption: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    padding: 14, borderBottomWidth: 1, borderBottomColor: '#f1f5f9',
   },
-  modalOptionText: {
-    fontSize: 15,
-    color: '#1e293b',
-    flex: 1,
-  },
-  modalOptionTextSelected: {
-    fontWeight: '600',
-  },
+  modalOptionText: { fontSize: 14, color: '#1e293b', flex: 1 },
+  modalOptionTextSelected: { fontWeight: '600', color: '#6366f1' },
 });
 
 export default EmployerRegisterScreen;

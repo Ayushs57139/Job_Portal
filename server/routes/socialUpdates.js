@@ -724,10 +724,6 @@ router.post('/:postId/comment/:commentId/reply', auth, async (req, res) => {
     console.error('Error adding reply:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
-});  } catch (error) {
-    console.error('Error reposting:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
 });
 
 // @route   GET /api/social-updates/user/:userId

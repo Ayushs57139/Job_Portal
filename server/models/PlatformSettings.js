@@ -268,6 +268,38 @@ const platformSettingsSchema = new mongoose.Schema({
           default: 'sandbox',
           enum: ['sandbox', 'live']
         }
+      },
+      paytm: {
+        enabled: { type: Boolean, default: false },
+        merchantId: { type: String, default: '', trim: true },
+        merchantKey: { type: String, default: '' },
+        website: { type: String, default: 'WEBSTAGING', trim: true },
+        callbackUrl: { type: String, default: '', trim: true },
+        testMode: { type: Boolean, default: true }
+      },
+      phonepe: {
+        enabled: { type: Boolean, default: false },
+        merchantId: { type: String, default: '', trim: true },
+        saltKey: { type: String, default: '' },
+        saltIndex: { type: String, default: '1', trim: true },
+        callbackUrl: { type: String, default: '', trim: true },
+        testMode: { type: Boolean, default: true }
+      },
+      upi: {
+        enabled: { type: Boolean, default: false },
+        vpa: { type: String, default: '', trim: true },
+        merchantName: { type: String, default: '', trim: true },
+        description: { type: String, default: '', trim: true }
+      },
+      creditCard: {
+        enabled: { type: Boolean, default: false },
+        provider: { type: String, default: 'razorpay', trim: true },
+        note: { type: String, default: 'Credit card payments are processed via the selected gateway', trim: true }
+      },
+      debitCard: {
+        enabled: { type: Boolean, default: false },
+        provider: { type: String, default: 'razorpay', trim: true },
+        note: { type: String, default: 'Debit card payments are processed via the selected gateway', trim: true }
       }
     },
     refundPolicy: {
@@ -348,6 +380,92 @@ const platformSettingsSchema = new mongoose.Schema({
       newApplication: { type: Boolean, default: false },
       systemErrors: { type: Boolean, default: true },
       paymentReceived: { type: Boolean, default: true }
+    }
+  },
+
+  // API Keys Settings
+  apiKeys: {
+    // Google Maps
+    googleMaps: {
+      enabled: { type: Boolean, default: false },
+      apiKey: { type: String, default: '', trim: true },
+      note: { type: String, default: 'Used for location autocomplete and maps display' }
+    },
+    // OAuth - Google
+    googleOAuth: {
+      enabled: { type: Boolean, default: false },
+      clientId: { type: String, default: '', trim: true },
+      clientSecret: { type: String, default: '' },
+      callbackUrl: { type: String, default: '', trim: true }
+    },
+    // OAuth - Facebook
+    facebookOAuth: {
+      enabled: { type: Boolean, default: false },
+      appId: { type: String, default: '', trim: true },
+      appSecret: { type: String, default: '' },
+      callbackUrl: { type: String, default: '', trim: true }
+    },
+    // OAuth - LinkedIn
+    linkedinOAuth: {
+      enabled: { type: Boolean, default: false },
+      clientId: { type: String, default: '', trim: true },
+      clientSecret: { type: String, default: '' },
+      callbackUrl: { type: String, default: '', trim: true }
+    },
+    // Email Login (JWT)
+    emailLogin: {
+      enabled: { type: Boolean, default: true },
+      jwtSecret: { type: String, default: '', trim: true },
+      jwtExpiresIn: { type: String, default: '7d', trim: true }
+    },
+    // Mobile OTP Login
+    mobileOtp: {
+      enabled: { type: Boolean, default: false },
+      provider: { type: String, default: 'msg91', enum: ['msg91', 'twilio', 'fast2sms'] },
+      apiKey: { type: String, default: '' },
+      senderId: { type: String, default: '', trim: true },
+      templateId: { type: String, default: '', trim: true },
+      otpExpiry: { type: Number, default: 10 } // minutes
+    },
+    // WhatsApp API
+    whatsapp: {
+      enabled: { type: Boolean, default: false },
+      provider: { type: String, default: 'wati', enum: ['wati', 'twilio', 'meta', 'interakt'] },
+      apiKey: { type: String, default: '' },
+      apiUrl: { type: String, default: '', trim: true },
+      phoneNumberId: { type: String, default: '', trim: true },
+      accessToken: { type: String, default: '' },
+      webhookVerifyToken: { type: String, default: '', trim: true }
+    },
+    // Arattai API (Chat)
+    arattai: {
+      enabled: { type: Boolean, default: false },
+      apiKey: { type: String, default: '' },
+      apiUrl: { type: String, default: '', trim: true },
+      appId: { type: String, default: '', trim: true },
+      region: { type: String, default: 'in', trim: true }
+    },
+    // Firebase (Push Notifications)
+    firebase: {
+      enabled: { type: Boolean, default: false },
+      projectId: { type: String, default: '', trim: true },
+      serverKey: { type: String, default: '' },
+      vapidKey: { type: String, default: '', trim: true }
+    },
+    // Cloudinary (Media Storage)
+    cloudinary: {
+      enabled: { type: Boolean, default: false },
+      cloudName: { type: String, default: '', trim: true },
+      apiKey: { type: String, default: '', trim: true },
+      apiSecret: { type: String, default: '' }
+    },
+    // AWS S3
+    awsS3: {
+      enabled: { type: Boolean, default: false },
+      accessKeyId: { type: String, default: '', trim: true },
+      secretAccessKey: { type: String, default: '' },
+      region: { type: String, default: 'ap-south-1', trim: true },
+      bucketName: { type: String, default: '', trim: true }
     }
   },
 

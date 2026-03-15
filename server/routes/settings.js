@@ -48,6 +48,21 @@ router.get('/', auth, requireAdmin, async (req, res) => {
     if (sanitizedSettings.notifications?.sms?.authToken) {
       sanitizedSettings.notifications.sms.authToken = '****';
     }
+    // Sanitize API keys secrets
+    if (sanitizedSettings.apiKeys) {
+      const mask = (obj, ...keys) => { if (obj) keys.forEach(k => { if (obj[k]) obj[k] = '****'; }); };
+      mask(sanitizedSettings.apiKeys.googleOAuth, 'clientSecret');
+      mask(sanitizedSettings.apiKeys.facebookOAuth, 'appSecret');
+      mask(sanitizedSettings.apiKeys.linkedinOAuth, 'clientSecret');
+      mask(sanitizedSettings.apiKeys.emailLogin, 'jwtSecret');
+      mask(sanitizedSettings.apiKeys.mobileOtp, 'apiKey');
+      mask(sanitizedSettings.apiKeys.whatsapp, 'apiKey', 'accessToken');
+      mask(sanitizedSettings.apiKeys.arattai, 'apiKey');
+      mask(sanitizedSettings.apiKeys.firebase, 'serverKey');
+      mask(sanitizedSettings.apiKeys.cloudinary, 'apiSecret');
+      mask(sanitizedSettings.apiKeys.awsS3, 'secretAccessKey');
+      mask(sanitizedSettings.apiKeys.googleMaps, 'apiKey');
+    }
     
     res.json({
       success: true,
@@ -346,6 +361,45 @@ router.post('/reset', [auth, requireAdmin], async (req, res) => {
     });
   } catch (error) {
     console.error('Reset settings error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// @route   PUT /api/settings/api-keys
+// @desc    Update API key settings
+// @access  Private (Admin)
+router.put('/api-keys', [auth, requireAdmin], async (req, res) => {
+  try {
+    const settings = await PlatformSettings.getSettings();
+    if (!settings.apiKeys) settings.apiKeys = {};
+
+    const allowed = [
+      'googleMaps', 'googleOAuth', 'facebookOAuth', 'linkedinOAuth',
+      'emailLogin', 'mobileOtp', 'whatsapp', 'arattai',
+      'firebase', 'cloudinary', 'awsS3'
+    ];
+
+    allowed.forEach(key => {
+      if (req.body[key] !== undefined) {
+        // Don't overwrite secrets if sent as '****'
+        const incoming = req.body[key];
+        const existing = settings.apiKeys[key] || {};
+        const merged = { ...existing };
+        Object.keys(incoming).forEach(field => {
+          if (incoming[field] !== '****') merged[field] = incoming[field];
+        });
+        settings.apiKeys[key] = merged;
+      }
+    });
+
+    settings.lastUpdatedBy = req.user._id;
+    settings.version += 1;
+    settings.markModified('apiKeys');
+    await settings.save();
+
+    res.json({ success: true, message: 'API settings saved successfully.' });
+  } catch (error) {
+    console.error('Update API keys error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });

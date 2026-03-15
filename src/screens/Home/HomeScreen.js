@@ -8,6 +8,7 @@ import {
   TextInput,
   Dimensions,
   FlatList,
+  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, typography, shadows } from '../../styles/theme';
@@ -19,6 +20,7 @@ import Footer from '../../components/Footer';
 import AdvertisementWidget from '../../components/AdvertisementWidget';
 import PopularSearches from '../../components/PopularSearches';
 import TrendingJobRoles from '../../components/TrendingJobRoles';
+import JobAlertFormScreen from '../Jobs/JobAlertFormScreen';
 import api from '../../config/api';
 import { keySkillsOptions } from '../../data/jobPostFormConfig';
 import { DEPARTMENTS_DATA } from '../../data/departmentsData';
@@ -61,6 +63,8 @@ const HomeScreen = ({ navigation }) => {
   const [topCompanies, setTopCompanies] = useState([]);
   const [careerBlogs, setCareerBlogs] = useState([]);
   const [upcomingEvents, setUpcomingEvents] = useState([]);
+  const [homeFaqs, setHomeFaqs] = useState([]);
+  const [openFaqId, setOpenFaqId] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [locationQuery, setLocationQuery] = useState('');
   const [experience, setExperience] = useState('Select experience');
@@ -71,6 +75,7 @@ const HomeScreen = ({ navigation }) => {
   const [searchFilter, setSearchFilter] = useState('');
   const [selectedSkills, setSelectedSkills] = useState([]);
   const [companyFilter, setCompanyFilter] = useState('All industries');
+  const [showJobAlertModal, setShowJobAlertModal] = useState(false);
 
   const experienceOptions = [
     'Fresher',
@@ -187,6 +192,23 @@ const HomeScreen = ({ navigation }) => {
     loadHomeData();
   }, []);
 
+  // Load FAQs independently so they always show even if loadHomeData partially fails
+  useEffect(() => {
+    const loadFAQs = async () => {
+      try {
+        const baseURL = api.baseURL;
+        const res = await fetch(`${baseURL}/faqs?limit=8`);
+        const data = await res.json();
+        if (data.success && data.data && data.data.length > 0) {
+          setHomeFaqs(data.data.slice(0, 8));
+        }
+      } catch (e) {
+        console.warn('FAQ load error:', e.message);
+      }
+    };
+    loadFAQs();
+  }, []);
+
   const loadHomeData = async () => {
     try {
       setLoading(true);
@@ -274,6 +296,20 @@ const HomeScreen = ({ navigation }) => {
         console.error('Error loading events:', error);
         setUpcomingEvents([]);
       }
+
+      // Load FAQs for home page - fully dynamic from API
+      try {
+        const faqsResponse = await fetch(`${api.baseURL}/faqs?limit=8`);
+        const faqsData = await faqsResponse.json();
+        if (faqsData.success && faqsData.data && faqsData.data.length > 0) {
+          setHomeFaqs(faqsData.data.slice(0, 8));
+        } else {
+          setHomeFaqs([]);
+        }
+      } catch (error) {
+        console.error('Error loading FAQs:', error);
+        setHomeFaqs([]);
+      }
     } catch (error) {
       console.error('Error loading home data:', error);
       // On error, ensure all data is cleared
@@ -303,7 +339,11 @@ const HomeScreen = ({ navigation }) => {
 
   const renderHeroSection = () => (
     <View style={dynamicStyles.hero}>
-      <Text style={dynamicStyles.heroTitle}>Find your dream job now</Text>
+      <View style={dynamicStyles.heroBadge}>
+        <Ionicons name="flash" size={13} color={colors.primary} />
+        <Text style={dynamicStyles.heroBadgeText}>India's #1 Free Job Portal</Text>
+      </View>
+      <Text style={dynamicStyles.heroTitle}>Find Your{'\n'}Dream Job Now</Text>
       <Text style={dynamicStyles.heroSubtitle}>5 lakh+ jobs for you to explore</Text>
 
       {/* Search Container */}
@@ -589,7 +629,7 @@ const HomeScreen = ({ navigation }) => {
         <View style={dynamicStyles.jobAlertContainer}>
           <TouchableOpacity
             style={dynamicStyles.jobAlertButton}
-            onPress={() => navigation.navigate('JobAlertForm')}
+            onPress={() => setShowJobAlertModal(true)}
           >
             <Ionicons name="notifications" size={isPhone ? 18 : 20} color={colors.textWhite} />
             <Text style={dynamicStyles.jobAlertButtonText}>Job Alert</Text>
@@ -605,12 +645,17 @@ const HomeScreen = ({ navigation }) => {
   const renderLatestJobs = () => (
     <View style={dynamicStyles.section}>
       <View style={dynamicStyles.sectionHeader}>
-        <View>
-          <Text style={dynamicStyles.sectionTitle}>Latest Jobs to Apply</Text>
-          <Text style={dynamicStyles.sectionSubtitle}>
-            Discover the newest opportunities from top companies
-          </Text>
+        <View style={dynamicStyles.sectionTitleWrap}>
+          <View style={dynamicStyles.sectionAccent} />
+          <View>
+            <Text style={dynamicStyles.sectionTitle}>Latest Jobs</Text>
+            <Text style={dynamicStyles.sectionSubtitle}>Newest opportunities from top companies</Text>
+          </View>
         </View>
+        <TouchableOpacity style={dynamicStyles.viewAllButton} onPress={() => navigation.navigate('Jobs')}>
+          <Text style={dynamicStyles.viewAllText}>View All</Text>
+          <Ionicons name="arrow-forward" size={14} color={colors.primary} />
+        </TouchableOpacity>
       </View>
 
       {loading ? (
@@ -648,11 +693,12 @@ const HomeScreen = ({ navigation }) => {
     return (
     <View style={[dynamicStyles.section, dynamicStyles.companySection]}>
       <View style={dynamicStyles.sectionHeader}>
-        <View>
-          <Text style={dynamicStyles.sectionTitle}>Top Companies Hiring Right Now</Text>
-          <Text style={dynamicStyles.sectionSubtitle}>
-            Join thousands of professionals at leading companies
-          </Text>
+        <View style={dynamicStyles.sectionTitleWrap}>
+          <View style={dynamicStyles.sectionAccent} />
+          <View>
+            <Text style={dynamicStyles.sectionTitle}>Top Companies Hiring</Text>
+            <Text style={dynamicStyles.sectionSubtitle}>Join leading companies across India</Text>
+          </View>
         </View>
       </View>
 
@@ -677,19 +723,11 @@ const HomeScreen = ({ navigation }) => {
           return (
             <TouchableOpacity
               key={filter}
-              style={[
-                dynamicStyles.companyFilterChip,
-                isActive && dynamicStyles.companyFilterChipActive,
-              ]}
+              style={[dynamicStyles.companyFilterChip, isActive && dynamicStyles.companyFilterChipActive]}
               onPress={() => setCompanyFilter(filter)}
               activeOpacity={0.8}
             >
-              <Text
-                style={[
-                  dynamicStyles.companyFilterText,
-                  isActive && dynamicStyles.companyFilterTextActive,
-                ]}
-              >
+              <Text style={[dynamicStyles.companyFilterText, isActive && dynamicStyles.companyFilterTextActive]}>
                 {filter}
               </Text>
             </TouchableOpacity>
@@ -700,11 +738,7 @@ const HomeScreen = ({ navigation }) => {
       {loading ? (
         <Text style={dynamicStyles.loadingText}>Loading companies...</Text>
       ) : filteredCompanies.length > 0 ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={dynamicStyles.companyCarousel}
-        >
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={dynamicStyles.companyCarousel}>
           {filteredCompanies.map((company) => (
             <CompanyCard key={company._id} company={company} />
           ))}
@@ -719,24 +753,21 @@ const HomeScreen = ({ navigation }) => {
   const renderCareerInsights = () => (
     <View style={dynamicStyles.section}>
       <View style={dynamicStyles.sectionHeader}>
-        <View>
-          <Text style={dynamicStyles.sectionTitle}>Career Insights & Tips</Text>
-          <Text style={dynamicStyles.sectionSubtitle}>
-            Stay updated with the latest career advice and industry trends
-          </Text>
+        <View style={dynamicStyles.sectionTitleWrap}>
+          <View style={dynamicStyles.sectionAccent} />
+          <View>
+            <Text style={dynamicStyles.sectionTitle}>Career Insights</Text>
+            <Text style={dynamicStyles.sectionSubtitle}>Latest career advice and industry trends</Text>
+          </View>
         </View>
       </View>
 
       {loading ? (
         <Text style={dynamicStyles.loadingText}>Loading blogs...</Text>
       ) : careerBlogs.length > 0 ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={dynamicStyles.horizontalScroll}
-        >
-          {careerBlogs.map((blog) => (
-            <BlogCard key={blog._id} blog={blog} />
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={dynamicStyles.horizontalScroll}>
+          {careerBlogs.map((blog, idx) => (
+            <BlogCard key={blog._id} blog={blog} index={idx} />
           ))}
         </ScrollView>
       ) : (
@@ -748,18 +779,16 @@ const HomeScreen = ({ navigation }) => {
   const renderJobEvents = () => (
     <View style={dynamicStyles.section}>
       <View style={dynamicStyles.sectionHeader}>
-        <View>
-          <Text style={dynamicStyles.sectionTitle}>Upcoming Job Events</Text>
-          <Text style={dynamicStyles.sectionSubtitle}>
-            Join job fairs, recruitment drives, and career workshops
-          </Text>
+        <View style={dynamicStyles.sectionTitleWrap}>
+          <View style={dynamicStyles.sectionAccent} />
+          <View>
+            <Text style={dynamicStyles.sectionTitle}>Upcoming Job Events</Text>
+            <Text style={dynamicStyles.sectionSubtitle}>Job fairs, drives & career workshops</Text>
+          </View>
         </View>
-        <TouchableOpacity
-          style={dynamicStyles.viewAllButton}
-          onPress={() => navigation.navigate('JobEvents')}
-        >
+        <TouchableOpacity style={dynamicStyles.viewAllButton} onPress={() => navigation.navigate('JobEvents')}>
           <Text style={dynamicStyles.viewAllText}>View All</Text>
-          <Ionicons name="arrow-forward" size={16} color={colors.primary} />
+          <Ionicons name="arrow-forward" size={14} color={colors.primary} />
         </TouchableOpacity>
       </View>
 
@@ -779,50 +808,31 @@ const HomeScreen = ({ navigation }) => {
             >
               <View style={dynamicStyles.eventHeader}>
                 <View style={dynamicStyles.eventIconContainer}>
-                  <Ionicons name="calendar" size={24} color={colors.primary} />
+                  <Ionicons name="calendar" size={20} color={colors.primary} />
                 </View>
                 <View style={dynamicStyles.eventStatusBadge}>
-                  <Text style={dynamicStyles.eventStatusText}>
-                    {event.status.toUpperCase()}
-                  </Text>
+                  <Text style={dynamicStyles.eventStatusText}>{event.status.toUpperCase()}</Text>
                 </View>
               </View>
-              
-              <Text style={dynamicStyles.eventTitle} numberOfLines={2}>
-                {event.title}
-              </Text>
-              
-              <Text style={dynamicStyles.eventDescription} numberOfLines={2}>
-                {event.description}
-              </Text>
-              
+              <Text style={dynamicStyles.eventTitle} numberOfLines={2}>{event.title}</Text>
+              <Text style={dynamicStyles.eventDescription} numberOfLines={2}>{event.description}</Text>
               <View style={dynamicStyles.eventDetails}>
                 <View style={dynamicStyles.eventDetailItem}>
-                  <Ionicons name="calendar-outline" size={14} color={colors.textSecondary} />
+                  <Ionicons name="calendar-outline" size={13} color={colors.textSecondary} />
                   <Text style={dynamicStyles.eventDetailText}>
-                    {new Date(event.startDate).toLocaleDateString('en-IN', {
-                      day: '2-digit',
-                      month: 'short',
-                      year: 'numeric',
-                    })}
+                    {new Date(event.startDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                   </Text>
                 </View>
                 <View style={dynamicStyles.eventDetailItem}>
-                  <Ionicons name="location-outline" size={14} color={colors.textSecondary} />
-                  <Text style={dynamicStyles.eventDetailText} numberOfLines={1}>
-                    {event.city || 'N/A'}
-                  </Text>
+                  <Ionicons name="location-outline" size={13} color={colors.textSecondary} />
+                  <Text style={dynamicStyles.eventDetailText} numberOfLines={1}>{event.city || 'N/A'}</Text>
                 </View>
               </View>
-              
               <View style={dynamicStyles.eventFooter}>
-                <Text style={dynamicStyles.eventOrganizer} numberOfLines={1}>
-                  <Ionicons name="business-outline" size={12} color={colors.textSecondary} />
-                  {' '}{event.organizerName}
-                </Text>
+                <Text style={dynamicStyles.eventOrganizer} numberOfLines={1}>{event.organizerName}</Text>
                 <TouchableOpacity style={dynamicStyles.eventButton}>
-                  <Text style={dynamicStyles.eventButtonText}>View Details</Text>
-                  <Ionicons name="arrow-forward" size={12} color="#FFF" />
+                  <Text style={dynamicStyles.eventButtonText}>Details</Text>
+                  <Ionicons name="arrow-forward" size={11} color="#FFF" />
                 </TouchableOpacity>
               </View>
             </TouchableOpacity>
@@ -834,9 +844,61 @@ const HomeScreen = ({ navigation }) => {
     </View>
   );
 
+  const renderFAQ = () => {
+    if (homeFaqs.length === 0) return null;
+    return (
+      <View style={dynamicStyles.faqSection}>
+      <View style={dynamicStyles.sectionHeader}>
+          <View style={dynamicStyles.sectionTitleWrap}>
+            <View style={dynamicStyles.sectionAccent} />
+            <View>
+              <Text style={dynamicStyles.sectionTitle}>Frequently Asked Questions</Text>
+              <Text style={dynamicStyles.sectionSubtitle}>Everything you need to know about Freejobwala</Text>
+            </View>
+          </View>
+          <TouchableOpacity style={dynamicStyles.viewAllButton} onPress={() => navigation.navigate('FAQs')}>
+            <Text style={dynamicStyles.viewAllText}>View All</Text>
+            <Ionicons name="arrow-forward" size={14} color={colors.primary} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={dynamicStyles.faqGrid}>
+          {homeFaqs.map((faq) => (
+            <TouchableOpacity
+              key={faq._id}
+              style={[dynamicStyles.faqItem, openFaqId === faq._id && dynamicStyles.faqItemOpen]}
+              onPress={() => setOpenFaqId(openFaqId === faq._id ? null : faq._id)}
+              activeOpacity={0.8}
+            >
+              <View style={dynamicStyles.faqRow}>
+                <View style={dynamicStyles.faqIconWrap}>
+                  <Ionicons name="help-circle" size={18} color={colors.primary} />
+                </View>
+                <Text style={dynamicStyles.faqQuestion} numberOfLines={openFaqId === faq._id ? 0 : 2}>
+                  {faq.question}
+                </Text>
+                <Ionicons
+                  name={openFaqId === faq._id ? 'chevron-up' : 'chevron-down'}
+                  size={18}
+                  color="#94A3B8"
+                />
+              </View>
+              {openFaqId === faq._id && (
+                <Text style={dynamicStyles.faqAnswer}>{faq.answer}</Text>
+              )}
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+    );
+  };
+
   const renderResumeCTA = () => (
     <View style={dynamicStyles.resumeSection}>
       <View style={dynamicStyles.resumeCTA}>
+        <View style={dynamicStyles.resumeIconWrap}>
+          <Ionicons name="document-text" size={28} color={colors.primary} />
+        </View>
         <Text style={dynamicStyles.resumeTitle}>Need help with your resume?</Text>
         <Text style={dynamicStyles.resumeSubtitle}>
           Get professional assistance to create a standout resume
@@ -845,7 +907,7 @@ const HomeScreen = ({ navigation }) => {
           style={dynamicStyles.resumeButton}
           onPress={() => navigation.navigate('ResumeBuilder')}
         >
-          <Ionicons name="document-text" size={20} color={colors.textWhite} />
+          <Ionicons name="document-text" size={18} color="#FFF" />
           <Text style={dynamicStyles.resumeButtonText}>Build Resume</Text>
         </TouchableOpacity>
       </View>
@@ -855,6 +917,48 @@ const HomeScreen = ({ navigation }) => {
   return (
     <View style={dynamicStyles.container}>
       <Header />
+
+      {/* Job Alert Modal */}
+      <Modal
+        visible={showJobAlertModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowJobAlertModal(false)}
+      >
+        <View style={jobAlertModalStyles.overlay}>
+          <TouchableOpacity
+            style={jobAlertModalStyles.backdrop}
+            activeOpacity={1}
+            onPress={() => setShowJobAlertModal(false)}
+          />
+          <View style={jobAlertModalStyles.sheet}>
+            {/* Modal header bar */}
+            <View style={jobAlertModalStyles.sheetHeader}>
+              <View style={jobAlertModalStyles.sheetHeaderLeft}>
+                <View style={jobAlertModalStyles.sheetIconBox}>
+                  <Ionicons name="notifications" size={18} color="#fff" />
+                </View>
+                <View>
+                  <Text style={jobAlertModalStyles.sheetTitle}>Create Job Alert</Text>
+                  <Text style={jobAlertModalStyles.sheetSubtitle}>Get notified when matching jobs are posted</Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                style={jobAlertModalStyles.closeBtn}
+                onPress={() => setShowJobAlertModal(false)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="close" size={18} color="#fff" />
+              </TouchableOpacity>
+            </View>
+            {/* Render the form screen inside the modal */}
+            <JobAlertFormScreen
+              navigation={{ goBack: () => setShowJobAlertModal(false) }}
+              isModal
+            />
+          </View>
+        </View>
+      </Modal>
       
       <ScrollView
         style={dynamicStyles.scrollView}
@@ -902,6 +1006,8 @@ const HomeScreen = ({ navigation }) => {
         {renderCareerInsights()}
 
         {renderJobEvents()}
+
+        {renderFAQ()}
         
         {/* Advertisement - Bottom Content */}
         <AdvertisementWidget 
@@ -953,32 +1059,47 @@ const getStyles = (
     }),
   },
   hero: {
-    backgroundColor: colors.cardBackground,
-    paddingVertical: isXsPhone ? spacing.md : isSmallPhone ? spacing.lg : isMobile ? spacing.xl : isTabletDevice ? spacing.xxl : spacing.xxl * 1.25,
+    backgroundColor: '#EEF2FF',
+    paddingVertical: isXsPhone ? spacing.lg : isSmallPhone ? spacing.xl : isMobile ? spacing.xxl : isTabletDevice ? spacing.xxl * 1.2 : spacing.xxl * 1.5,
     paddingHorizontal: horizontalPadding,
     alignItems: 'center',
     maxWidth: maxWidth,
     alignSelf: 'center',
     width: '100%',
   },
+  heroBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: colors.primary + '30',
+    paddingHorizontal: spacing.md,
+    paddingVertical: 5,
+    borderRadius: borderRadius.full,
+    marginBottom: spacing.md,
+  },
+  heroBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.primary,
+    letterSpacing: 0.3,
+  },
   heroTitle: {
-    fontSize: isXsPhone ? 20 : isSmallPhone ? 22 : isMobile ? 26 : isSmallTablet ? 30 : isTabletDevice ? 36 : isSmallLaptop ? 40 : 48,
-    fontWeight: '700',
-    color: '#2D3748',
+    fontSize: isXsPhone ? 26 : isSmallPhone ? 30 : isMobile ? 34 : isSmallTablet ? 38 : isTabletDevice ? 44 : isSmallLaptop ? 52 : 60,
+    fontWeight: '800',
+    color: '#0F172A',
     textAlign: 'center',
-    marginBottom: isXsPhone ? 6 : spacing.sm,
-    paddingHorizontal: isMobile ? spacing.xs : 0,
-    lineHeight: isXsPhone ? 26 : isSmallPhone ? 28 : isMobile ? 32 : isTabletDevice ? 42 : 56,
-    maxWidth: '100%',
+    marginBottom: spacing.sm,
+    lineHeight: isXsPhone ? 32 : isSmallPhone ? 36 : isMobile ? 42 : isTabletDevice ? 52 : 70,
+    letterSpacing: -1,
   },
   heroSubtitle: {
-    ...typography.h5,
     fontSize: isXsPhone ? 13 : isSmallPhone ? 14 : isMobile ? 15 : isTabletDevice ? 16 : 18,
-    color: colors.textSecondary,
+    color: '#475569',
     textAlign: 'center',
-    marginBottom: isXsPhone ? spacing.md : isMobile ? spacing.lg : spacing.xl,
-    paddingHorizontal: isMobile ? spacing.xs : 0,
-    maxWidth: '100%',
+    marginBottom: isXsPhone ? spacing.lg : isMobile ? spacing.xl : spacing.xxl,
+    fontWeight: '400',
   },
   searchContainer: {
     width: '100%',
@@ -995,12 +1116,12 @@ const getStyles = (
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.cardBackground,
+    backgroundColor: '#FFFFFF',
     borderRadius: borderRadius.md,
     paddingHorizontal: isPhone ? spacing.sm : (isMobile ? spacing.sm : spacing.md),
     gap: isPhone ? spacing.xs : spacing.sm,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: '#CBD5E1',
     height: isPhone ? 44 : (isMobile ? 46 : (isTablet ? 48 : 50)),
     minWidth: 0,
   },
@@ -1014,7 +1135,7 @@ const getStyles = (
     flex: 1,
     ...typography.body1,
     fontSize: isPhone ? 14 : typography.body1.fontSize,
-    color: colors.text,
+    color: '#0F172A',
     outlineStyle: 'none',
     minWidth: 0,
   },
@@ -1028,25 +1149,23 @@ const getStyles = (
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: colors.cardBackground,
+    backgroundColor: '#FFFFFF',
     borderRadius: borderRadius.md,
     paddingHorizontal: isPhone ? spacing.sm : (isMobile ? spacing.sm : spacing.md),
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: '#CBD5E1',
     height: isPhone ? 44 : (isMobile ? 46 : (isTablet ? 48 : 50)),
     minWidth: 0,
   },
   experienceText: {
     ...typography.body1,
     fontSize: isPhone ? 14 : typography.body1.fontSize,
-    color: colors.text,
+    color: '#0F172A',
     flex: 1,
-    ...(isPhone && {
-      marginRight: spacing.xs,
-    }),
+    ...(isPhone && { marginRight: spacing.xs }),
   },
   placeholderText: {
-    color: colors.textLight,
+    color: '#94A3B8',
   },
   dropdownBackdrop: {
     position: 'absolute',
@@ -1170,18 +1289,18 @@ const getStyles = (
     paddingHorizontal: isPhone ? spacing.xs : 0,
   },
   popularTag: {
-    backgroundColor: colors.background,
+    backgroundColor: '#FFFFFF',
     paddingHorizontal: isPhone ? spacing.sm : spacing.md,
     paddingVertical: isPhone ? spacing.xs : spacing.sm,
-    borderRadius: borderRadius.sm,
+    borderRadius: borderRadius.full,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: '#CBD5E1',
     maxWidth: isPhone ? '48%' : undefined,
   },
   popularTagText: {
     ...typography.body2,
     fontSize: isPhone ? 12 : typography.body2.fontSize,
-    color: colors.textSecondary,
+    color: '#475569',
   },
   jobAlertContainer: {
     marginTop: isPhone ? spacing.md : spacing.lg,
@@ -1196,19 +1315,18 @@ const getStyles = (
     paddingVertical: isPhone ? spacing.sm : spacing.md,
     paddingHorizontal: isPhone ? spacing.md : spacing.xl,
     borderRadius: borderRadius.md,
-    ...shadows.md,
     zIndex: 1,
     elevation: 1,
   },
   jobAlertButtonText: {
     ...typography.button,
     fontSize: isPhone ? 14 : typography.button.fontSize,
-    color: colors.textWhite,
+    color: '#FFFFFF',
   },
   jobAlertSubtext: {
     ...typography.body2,
     fontSize: isPhone ? 12 : typography.body2.fontSize,
-    color: colors.textSecondary,
+    color: '#64748B',
     marginTop: spacing.sm,
     textAlign: 'center',
     maxWidth: isPhone ? '100%' : 400,
@@ -1222,24 +1340,49 @@ const getStyles = (
     alignSelf: 'center',
   },
   sectionHeader: {
-    marginBottom: isXsPhone ? spacing.md : isMobile ? spacing.lg : spacing.xl,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: isXsPhone ? spacing.md : isMobile ? spacing.lg : spacing.xl,
+  },
+  sectionTitleWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    flex: 1,
+  },
+  sectionAccent: {
+    width: 4,
+    height: isXsPhone ? 28 : isMobile ? 32 : 38,
+    backgroundColor: colors.primary,
+    borderRadius: 2,
+    flexShrink: 0,
   },
   sectionTitle: {
-    fontSize: isXsPhone ? 18 : isSmallPhone ? 20 : isMobile ? 22 : isSmallTablet ? 24 : isTabletDevice ? 28 : isSmallLaptop ? 32 : 36,
+    fontSize: isXsPhone ? 17 : isSmallPhone ? 18 : isMobile ? 20 : isSmallTablet ? 22 : isTabletDevice ? 24 : isSmallLaptop ? 26 : 28,
     fontWeight: '700',
-    color: '#2D3748',
-    textAlign: 'center',
-    marginBottom: spacing.xs,
-    paddingHorizontal: isMobile ? spacing.xs : 0,
-    lineHeight: isXsPhone ? 24 : isSmallPhone ? 26 : isMobile ? 28 : isTabletDevice ? 34 : 44,
+    color: '#0F172A',
+    letterSpacing: -0.3,
   },
   sectionSubtitle: {
-    ...typography.body1,
-    fontSize: isXsPhone ? 12 : isSmallPhone ? 13 : isMobile ? 14 : 16,
+    fontSize: isXsPhone ? 11 : isSmallPhone ? 12 : isMobile ? 13 : 14,
     color: colors.textSecondary,
-    textAlign: 'center',
-    paddingHorizontal: isMobile ? spacing.xs : 0,
+    marginTop: 2,
+    fontWeight: '400',
+  },
+  viewAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.sm,
+    backgroundColor: colors.primary + '10',
+  },
+  viewAllText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.primary,
   },
   jobsGrid: {
     flexDirection: isMobile ? 'column' : 'row',
@@ -1279,45 +1422,55 @@ const getStyles = (
   },
   resumeSection: {
     paddingHorizontal: isPhone ? spacing.sm : (isMobile ? spacing.md : spacing.lg),
-    paddingVertical: isPhone ? spacing.lg : (isMobile ? spacing.xl : spacing.xxl),
-    backgroundColor: '#10B981',
+    paddingVertical: isPhone ? spacing.xl : (isMobile ? spacing.xxl : spacing.xxl),
+    backgroundColor: '#F8FAFC',
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
   resumeCTA: {
-    maxWidth: 1200,
+    maxWidth: 600,
     width: '100%',
     alignSelf: 'center',
     alignItems: 'center',
   },
+  resumeIconWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: borderRadius.xl,
+    backgroundColor: colors.primary + '12',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
   resumeTitle: {
-    fontSize: isPhone ? 20 : (isMobile ? 22 : (isTablet ? 24 : 32)),
+    fontSize: isPhone ? 20 : (isMobile ? 22 : 26),
     fontWeight: '700',
-    color: colors.textWhite,
+    color: '#0F172A',
     textAlign: 'center',
     marginBottom: spacing.sm,
-    paddingHorizontal: isPhone ? spacing.sm : (isMobile ? spacing.md : 0),
-    lineHeight: isPhone ? 28 : undefined,
+    letterSpacing: -0.3,
   },
   resumeSubtitle: {
-    ...typography.h6,
-    fontSize: isPhone ? 14 : typography.h6.fontSize,
-    color: colors.textWhite,
+    fontSize: isPhone ? 14 : 15,
+    color: colors.textSecondary,
     textAlign: 'center',
-    marginBottom: isPhone ? spacing.md : spacing.lg,
-    paddingHorizontal: isPhone ? spacing.sm : 0,
+    marginBottom: isPhone ? spacing.lg : spacing.xl,
+    lineHeight: 22,
   },
   resumeButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: isPhone ? spacing.xs : spacing.sm,
-    backgroundColor: colors.textWhite,
+    gap: spacing.sm,
+    backgroundColor: colors.primary,
     paddingVertical: isPhone ? spacing.sm : spacing.md,
-    paddingHorizontal: isPhone ? spacing.md : spacing.xl,
+    paddingHorizontal: isPhone ? spacing.lg : spacing.xxl,
     borderRadius: borderRadius.md,
+    ...(isWeb && { boxShadow: '0 4px 14px rgba(37,99,235,0.3)' }),
   },
   resumeButtonText: {
-    ...typography.button,
-    fontSize: isPhone ? 14 : typography.button.fontSize,
-    color: '#10B981',
+    fontSize: isPhone ? 14 : 15,
+    fontWeight: '600',
+    color: '#FFF',
   },
   adContainer: {
     paddingVertical: isPhone ? spacing.md : spacing.lg,
@@ -1326,38 +1479,35 @@ const getStyles = (
     backgroundColor: colors.background,
   },
   companySection: {
-    backgroundColor: isWeb ? '#F8FAFF' : colors.cardBackground,
-    borderRadius: isPhone ? borderRadius.lg : borderRadius.xl,
-    ...(isWeb && {
-      boxShadow: '0 20px 60px rgba(15, 23, 42, 0.08)',
-    }),
+    backgroundColor: '#F8FAFC',
   },
   companyStatsRow: {
-    flexDirection: isPhone ? 'column' : 'row',
-    gap: isPhone ? spacing.sm : spacing.md,
-    marginTop: spacing.md,
+    flexDirection: isPhone ? 'row' : 'row',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
     marginBottom: spacing.lg,
   },
   companyStatCard: {
     flex: 1,
-    backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.lg,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
     padding: spacing.md,
     borderWidth: 1,
-    borderColor: '#E4E7FB',
-    ...(isWeb && {
-      backdropFilter: 'blur(8px)',
-    }),
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
   },
   companyStatValue: {
-    fontSize: isPhone ? 20 : 26,
-    fontWeight: '700',
-    color: '#1E1B4B',
-    marginBottom: spacing.xs,
+    fontSize: isPhone ? 20 : 24,
+    fontWeight: '800',
+    color: colors.primary,
+    marginBottom: 2,
+    letterSpacing: -0.5,
   },
   companyStatLabel: {
-    ...typography.body2,
-    color: colors.textSecondary,
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: '500',
+    textAlign: 'center',
   },
   companyFilterRow: {
     flexDirection: 'row',
@@ -1367,38 +1517,40 @@ const getStyles = (
   },
   companyFilterChip: {
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.lg,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.full,
     borderWidth: 1,
-    borderColor: '#E4E7FB',
+    borderColor: colors.border,
     backgroundColor: colors.cardBackground,
   },
   companyFilterChipActive: {
-    backgroundColor: '#EEF2FF',
-    borderColor: '#C7D2FE',
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   companyFilterText: {
-    ...typography.body2,
+    fontSize: 13,
     color: colors.textSecondary,
     fontWeight: '500',
   },
   companyFilterTextActive: {
-    color: '#4338CA',
+    color: '#FFF',
+    fontWeight: '600',
   },
   companyCarousel: {
     paddingRight: spacing.lg,
     gap: spacing.md,
+    paddingBottom: 4,
   },
   // Event Card Styles
   eventCard: {
-    width: isMobile ? 280 : isTablet ? 320 : 340,
+    width: isMobile ? 260 : isTablet ? 300 : 320,
     backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.xl,
     padding: spacing.lg,
     marginRight: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,
-    ...shadows.sm,
+    ...(isWeb && { boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }),
   },
   eventHeader: {
     flexDirection: 'row',
@@ -1407,42 +1559,43 @@ const getStyles = (
     marginBottom: spacing.md,
   },
   eventIconContainer: {
-    width: 48,
-    height: 48,
+    width: 40,
+    height: 40,
     borderRadius: borderRadius.md,
-    backgroundColor: colors.primary + '15',
+    backgroundColor: colors.primary + '12',
     justifyContent: 'center',
     alignItems: 'center',
   },
   eventStatusBadge: {
-    backgroundColor: colors.success + '20',
+    backgroundColor: '#DCFCE7',
     paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: borderRadius.sm,
+    paddingVertical: 3,
+    borderRadius: borderRadius.full,
   },
   eventStatusText: {
     fontSize: 10,
     fontWeight: '700',
-    color: colors.success,
+    color: '#16A34A',
+    letterSpacing: 0.5,
   },
   eventTitle: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: '700',
-    color: colors.text,
-    marginBottom: spacing.sm,
-    lineHeight: 24,
+    color: '#0F172A',
+    marginBottom: spacing.xs,
+    lineHeight: 22,
   },
   eventDescription: {
-    fontSize: 14,
+    fontSize: 13,
     color: colors.textSecondary,
     marginBottom: spacing.md,
-    lineHeight: 20,
+    lineHeight: 19,
   },
   eventDetails: {
     flexDirection: 'row',
     gap: spacing.md,
     marginBottom: spacing.md,
-    paddingTop: spacing.md,
+    paddingTop: spacing.sm,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
@@ -1460,7 +1613,7 @@ const getStyles = (
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: spacing.md,
+    paddingTop: spacing.sm,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
@@ -1469,21 +1622,142 @@ const getStyles = (
     color: colors.textSecondary,
     flex: 1,
     marginRight: spacing.sm,
+    fontWeight: '500',
   },
   eventButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 3,
     backgroundColor: colors.primary,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 5,
     borderRadius: borderRadius.sm,
   },
   eventButtonText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
     color: '#FFF',
+  },
+
+  // FAQ Section Styles
+  faqSection: {
+    paddingVertical: isXsPhone ? spacing.md : isSmallPhone ? spacing.lg : isMobile ? spacing.xl : isTabletDevice ? spacing.xl : spacing.xxl,
+    paddingHorizontal: horizontalPadding,
+    backgroundColor: '#F8FAFC',
+    width: '100%',
+    maxWidth: maxWidth,
+    alignSelf: 'center',
+  },
+  faqGrid: {
+    gap: spacing.xs,
+  },
+  faqItem: {
+    backgroundColor: colors.cardBackground,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...(isWeb && { boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }),
+  },
+  faqItemOpen: {
+    borderColor: colors.primary + '30',
+    backgroundColor: '#FAFBFF',
+  },
+  faqRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  faqIconWrap: {
+    width: 30,
+    height: 30,
+    borderRadius: borderRadius.sm,
+    backgroundColor: colors.primary + '12',
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexShrink: 0,
+  },
+  faqQuestion: {
+    flex: 1,
+    fontSize: isMobile ? 14 : 15,
+    fontWeight: '600',
+    color: '#0F172A',
+    lineHeight: 22,
+  },
+  faqAnswer: {
+    fontSize: isMobile ? 13 : 14,
+    color: colors.textSecondary,
+    lineHeight: 21,
+    marginTop: spacing.sm,
+    paddingLeft: 42,
   },
 })};
 
 export default HomeScreen;
+
+const jobAlertModalStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(10, 15, 40, 0.72)',
+  },
+  backdrop: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+  },
+  sheet: {
+    width: '92%',
+    maxWidth: 700,
+    maxHeight: '92%',
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#1E1B4B',
+    shadowOffset: { width: 0, height: 32 },
+    shadowOpacity: 0.28,
+    shadowRadius: 64,
+    elevation: 32,
+    zIndex: 1,
+  },
+  sheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
+    paddingVertical: 18,
+    backgroundColor: '#4F46E5',
+  },
+  sheetHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  sheetIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sheetTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: 0.2,
+  },
+  sheetSubtitle: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.72)',
+    marginTop: 1,
+  },
+  closeBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+});

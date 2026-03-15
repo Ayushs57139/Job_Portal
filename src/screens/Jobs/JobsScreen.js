@@ -57,8 +57,7 @@ const getStyles = (
     paddingVertical: isMobile ? spacing.xl : spacing.xxl,
     paddingHorizontal: isMobile ? horizontalPadding : (isTabletDevice ? spacing.lg : spacing.xl),
     alignItems: 'center',
-    borderBottomLeftRadius: borderRadius.xl,
-    borderBottomRightRadius: borderRadius.xl,
+    backgroundColor: '#EEF2FF',
     maxWidth: isDesktopDevice ? 1600 : '100%',
     alignSelf: 'center',
     width: '100%',
@@ -75,6 +74,7 @@ const getStyles = (
     maxWidth: isDesktopDevice ? 1400 : '100%',
     alignSelf: 'center',
     width: '100%',
+    backgroundColor: '#FFF',
   },
   heroTitle: {
     fontSize: isMobile ? 26 : (isTablet ? 32 : 42),

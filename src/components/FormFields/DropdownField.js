@@ -90,90 +90,104 @@ const DropdownField = ({
         onRequestClose={() => setModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.modalOverlayTouchable}
             activeOpacity={1}
             onPress={() => setModalVisible(false)}
           />
           <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
+            {/* Header */}
+            <View style={styles.modalHeader}>
+              <View style={styles.modalHeaderLeft}>
+                <View style={styles.modalIconBox}>
+                  <Ionicons name="list" size={14} color="#4F46E5" />
+                </View>
                 <Text style={styles.modalTitle}>{label || 'Select an option'}</Text>
-                <TouchableOpacity 
-                  onPress={() => setModalVisible(false)}
-                  style={styles.closeButton}
-                >
-                  <Ionicons name="close" size={22} color="#64748b" />
-                </TouchableOpacity>
               </View>
+              <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeButton}>
+                <Ionicons name="close" size={16} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
 
+            {/* Search */}
+            <View style={styles.searchWrapper}>
               <View style={styles.searchContainer}>
-                <Ionicons name="search" size={18} color="#94a3b8" style={styles.searchIcon} />
+                <Ionicons name="search-outline" size={15} color="#9CA3AF" style={styles.searchIcon} />
                 <TextInput
                   style={styles.searchInput}
-                  placeholder="Search..."
+                  placeholder="Search options..."
                   value={searchQuery}
                   onChangeText={setSearchQuery}
-                  placeholderTextColor="#94a3b8"
+                  placeholderTextColor="#9CA3AF"
+                  autoFocus={false}
                 />
-              </View>
-
-              {allowAddNew && (
-                <TouchableOpacity
-                  style={styles.addNewButton}
-                  onPress={() => setShowAddNew(!showAddNew)}
-                >
-                  <Ionicons name="add-circle-outline" size={18} color="#4f46e5" />
-                  <Text style={styles.addNewButtonText}>Add New Option</Text>
-                </TouchableOpacity>
-              )}
-
-              {showAddNew && (
-                <View style={styles.addNewContainer}>
-                  <TextInput
-                    style={styles.addNewInput}
-                    placeholder="Enter new option"
-                    value={newOptionText}
-                    onChangeText={setNewOptionText}
-                    placeholderTextColor="#94a3b8"
-                  />
-                  <TouchableOpacity style={styles.addNewSubmit} onPress={handleAddNew}>
-                    <Text style={styles.addNewSubmitText}>Add</Text>
+                {searchQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+                    <Ionicons name="close-circle" size={15} color="#9CA3AF" />
                   </TouchableOpacity>
-                </View>
-              )}
+                )}
+              </View>
+            </View>
 
-              <ScrollView 
-                style={styles.optionsList}
-                nestedScrollEnabled
-                showsVerticalScrollIndicator={true}
-              >
-                {filteredOptions.map((option, index) => (
+            {/* Add new */}
+            {allowAddNew && (
+              <TouchableOpacity style={styles.addNewButton} onPress={() => setShowAddNew(!showAddNew)}>
+                <Ionicons name={showAddNew ? 'remove-circle-outline' : 'add-circle-outline'} size={15} color="#4F46E5" />
+                <Text style={styles.addNewButtonText}>{showAddNew ? 'Cancel' : 'Add new option'}</Text>
+              </TouchableOpacity>
+            )}
+            {showAddNew && (
+              <View style={styles.addNewContainer}>
+                <TextInput
+                  style={styles.addNewInput}
+                  placeholder="Type new option..."
+                  value={newOptionText}
+                  onChangeText={setNewOptionText}
+                  placeholderTextColor="#9CA3AF"
+                />
+                <TouchableOpacity style={styles.addNewSubmit} onPress={handleAddNew}>
+                  <Text style={styles.addNewSubmitText}>Add</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Count */}
+            <View style={styles.countRow}>
+              <Text style={styles.countText}>
+                {filteredOptions.length} option{filteredOptions.length !== 1 ? 's' : ''}
+              </Text>
+            </View>
+
+            {/* Options list */}
+            <ScrollView style={styles.optionsList} nestedScrollEnabled showsVerticalScrollIndicator={false}>
+              {filteredOptions.map((option, index) => {
+                const isSelected = value?.value === option.value;
+                return (
                   <TouchableOpacity
                     key={option.value || index}
-                    style={[
-                      styles.option,
-                      value?.value === option.value && styles.optionSelected
-                    ]}
+                    style={[styles.option, isSelected && styles.optionSelected]}
                     onPress={() => handleSelect(option)}
-                    activeOpacity={0.7}
+                    activeOpacity={0.6}
                   >
-                    <Text style={[
-                      styles.optionText,
-                      value?.value === option.value && styles.optionTextSelected
-                    ]}>
+                    <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>
                       {option.label}
                     </Text>
-                    {value?.value === option.value && (
-                      <Ionicons name="checkmark-circle" size={20} color="#4f46e5" />
+                    {isSelected && (
+                      <View style={styles.checkBadge}>
+                        <Ionicons name="checkmark" size={11} color="#fff" />
+                      </View>
                     )}
                   </TouchableOpacity>
-                ))}
-                {filteredOptions.length === 0 && (
-                  <View style={styles.noResultsContainer}>
-                    <Text style={styles.noResultsText}>No results found</Text>
-                  </View>
-                )}
-              </ScrollView>
+                );
+              })}
+              {filteredOptions.length === 0 && (
+                <View style={styles.emptyState}>
+                  <Ionicons name="search-outline" size={28} color="#E5E7EB" />
+                  <Text style={styles.emptyText}>No results for "{searchQuery}"</Text>
+                </View>
+              )}
+              <View style={{ height: 8 }} />
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -230,148 +244,184 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: spacing.lg,
+    padding: 20,
   },
   modalOverlayTouchable: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(15, 23, 42, 0.45)',
   },
   modalContent: {
     backgroundColor: '#ffffff',
     borderRadius: 16,
     width: '100%',
-    maxWidth: 500,
-    maxHeight: '80%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 8,
+    maxWidth: 480,
+    maxHeight: '78%',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.18,
+    shadowRadius: 40,
+    elevation: 20,
     zIndex: 1,
+    overflow: 'hidden',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: spacing.lg,
-    paddingBottom: spacing.md,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    borderBottomColor: '#F3F4F6',
+  },
+  modalHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  modalIconBox: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: '#EEF2FF',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   modalTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1e293b',
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#111827',
     flex: 1,
   },
   closeButton: {
-    padding: spacing.xs,
-    marginLeft: spacing.md,
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: '#F9FAFB',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
+  },
+  searchWrapper: {
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 10,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    margin: spacing.lg,
-    marginTop: spacing.md,
-    marginBottom: spacing.md,
-    backgroundColor: '#f8fafc',
-    borderRadius: 12,
-    paddingHorizontal: spacing.md,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: '#E5E7EB',
+    gap: 8,
   },
-  searchIcon: {
-    marginRight: spacing.sm,
-  },
+  searchIcon: {},
   searchInput: {
     flex: 1,
-    paddingVertical: spacing.sm + 2,
-    fontSize: 15,
-    color: '#1e293b',
+    fontSize: 14,
+    color: '#111827',
+    padding: 0,
   },
   addNewButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.md,
-    padding: spacing.sm,
+    gap: 6,
+    marginHorizontal: 16,
+    marginBottom: 10,
+    paddingVertical: 6,
   },
   addNewButtonText: {
-    marginLeft: spacing.sm,
-    color: '#4f46e5',
+    color: '#4F46E5',
     fontWeight: '600',
-    fontSize: 14,
+    fontSize: 13,
   },
   addNewContainer: {
     flexDirection: 'row',
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.md,
-    gap: spacing.sm,
+    marginHorizontal: 16,
+    marginBottom: 10,
+    gap: 8,
   },
   addNewInput: {
     flex: 1,
-    backgroundColor: '#f8fafc',
-    borderRadius: 12,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    fontSize: 15,
-    color: '#1e293b',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 14,
+    color: '#111827',
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: '#E5E7EB',
   },
   addNewSubmit: {
-    backgroundColor: '#4f46e5',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: 12,
+    backgroundColor: '#4F46E5',
+    paddingHorizontal: 16,
+    borderRadius: 8,
     justifyContent: 'center',
   },
   addNewSubmitText: {
-    color: '#ffffff',
+    color: '#fff',
     fontWeight: '600',
-    fontSize: 14,
+    fontSize: 13,
+  },
+  countRow: {
+    paddingHorizontal: 20,
+    paddingBottom: 6,
+  },
+  countText: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   optionsList: {
-    maxHeight: 300,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.md,
+    maxHeight: 320,
+    paddingHorizontal: 10,
   },
   option: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
+    paddingVertical: 11,
+    paddingHorizontal: 12,
     borderRadius: 8,
-    marginVertical: 2,
+    marginVertical: 1,
   },
   optionSelected: {
-    backgroundColor: '#eef2ff',
-    borderBottomColor: 'transparent',
+    backgroundColor: '#EEF2FF',
   },
   optionText: {
-    fontSize: 15,
-    color: '#1e293b',
+    fontSize: 14,
+    color: '#374151',
     flex: 1,
+    lineHeight: 20,
   },
   optionTextSelected: {
-    color: '#4f46e5',
+    color: '#4F46E5',
     fontWeight: '600',
   },
-  noResultsContainer: {
-    paddingVertical: spacing.xl,
+  checkBadge: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#4F46E5',
+    justifyContent: 'center',
     alignItems: 'center',
+    marginLeft: 8,
   },
-  noResultsText: {
+  emptyState: {
+    paddingVertical: 36,
+    alignItems: 'center',
+    gap: 8,
+  },
+  emptyText: {
+    fontSize: 13,
+    color: '#9CA3AF',
     textAlign: 'center',
-    color: '#64748b',
-    fontSize: 14,
   },
 });
 

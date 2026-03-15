@@ -389,6 +389,7 @@ app.post('/api/employer/login', async (req, res) => {
 app.use('/api/resume', require('./routes/resume'));
 app.use('/api/jobs', require('./routes/jobs'));
 app.use('/api/blogs', require('./routes/blogs'));
+app.use('/api/faqs', require('./routes/faqs')); // FAQ management routes
 app.use('/api/users', require('./routes/users'));
 app.use('/api/payments', require('./routes/payments'));
 app.use('/api/applications', require('./routes/applications'));
@@ -724,6 +725,47 @@ io.on('connection', (socket) => {
   } else if (socket.user.userType === 'jobseeker') {
     socket.join('jobseeker_room');
   }
+
+  // ── Chatbot socket events ──────────────────────────────────────────────────
+
+  // User joins their chatbot session room (called from ChatbotWidget)
+  socket.on('join_chatbot_session', (sessionId) => {
+    socket.join(`chatbot_${sessionId}`);
+  });
+
+  // Admin joins a chatbot session to monitor/reply
+  socket.on('admin_join_chatbot', (sessionId) => {
+    if (socket.user?.userType === 'admin' || socket.user?.userType === 'superadmin') {
+      socket.join(`chatbot_${sessionId}`);
+    }
+  });
+
+  // Admin sends a message directly to a chatbot session
+  socket.on('admin_chatbot_message', async (data) => {
+    try {
+      const { sessionId, message } = data;
+      if (!sessionId || !message) return;
+      const ChatbotConversation = require('./models/ChatbotConversation');
+      const conversation = await ChatbotConversation.findOne({ sessionId });
+      if (!conversation) return;
+      await conversation.addMessage('bot', message);
+      io.to(`chatbot_${sessionId}`).emit('chatbot_admin_message', {
+        sessionId, message, sender: 'bot', timestamp: new Date()
+      });
+    } catch (err) {
+      logger.error('admin_chatbot_message error', err);
+    }
+  });
+
+  // Typing indicators for chatbot
+  socket.on('chatbot_typing_start', (sessionId) => {
+    socket.to(`chatbot_${sessionId}`).emit('chatbot_admin_typing', { sessionId });
+  });
+  socket.on('chatbot_typing_stop', (sessionId) => {
+    socket.to(`chatbot_${sessionId}`).emit('chatbot_admin_stopped_typing', { sessionId });
+  });
+
+  // ── End chatbot socket events ──────────────────────────────────────────────
 
   // Handle joining conversation rooms
   socket.on('join_conversation', (conversationId) => {

@@ -1,44 +1,40 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
-  ActivityIndicator,
-  RefreshControl,
-  Dimensions,
-  Alert,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  TextInput, ActivityIndicator, RefreshControl, Alert,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { colors, typography, spacing, borderRadius, shadows } from '../../styles/theme';
+import { colors, spacing, borderRadius } from '../../styles/theme';
 import Header from '../../components/Header';
 import api from '../../config/api';
 import { useResponsive } from '../../utils/responsive';
 
-// Safely get Platform - lazy evaluation
 const getPlatform = () => {
   try {
     const { Platform } = require('react-native');
-    if (Platform && typeof Platform.OS !== 'undefined') {
-      return Platform;
-    }
+    if (Platform && typeof Platform.OS !== 'undefined') return Platform;
   } catch (e) {}
   return { OS: 'android' };
 };
-
 const isWeb = getPlatform().OS === 'web';
+
+const CATEGORY_COLORS = {
+  'Career Tips': '#F59E0B',
+  'Interview Prep': '#10B981',
+  'Workplace Trends': '#8B5CF6',
+  'Resume Writing': '#3B82F6',
+  'Job Search': '#EF4444',
+  'Industry News': '#6366F1',
+  'Salary Negotiation': '#EC4899',
+  'Networking': '#0EA5E9',
+};
 
 const BlogsScreen = ({ navigation }) => {
   const responsive = useResponsive();
   const isPhone = responsive.width <= 480;
-  const isMobile = responsive.isMobile;
   const isTablet = responsive.isTablet;
   const isDesktop = responsive.isDesktop;
-  const dynamicStyles = getStyles(isPhone, isMobile, isTablet, isDesktop, responsive.width);
+
   const [blogs, setBlogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -48,24 +44,19 @@ const BlogsScreen = ({ navigation }) => {
   const [pagination, setPagination] = useState(null);
 
   const categories = [
-    { id: 'all', label: 'All', icon: 'apps' },
-    { id: 'Career Tips', label: 'Career Tips', icon: 'bulb' },
-    { id: 'Interview Prep', label: 'Interview', icon: 'people' },
-    { id: 'Workplace Trends', label: 'Trends', icon: 'trending-up' },
-    { id: 'Resume Writing', label: 'Resume', icon: 'document-text' },
-    { id: 'Job Search', label: 'Job Search', icon: 'search' },
-    { id: 'Industry News', label: 'News', icon: 'newspaper' },
+    { id: 'all', label: 'All', icon: 'apps-outline' },
+    { id: 'Career Tips', label: 'Career Tips', icon: 'bulb-outline' },
+    { id: 'Interview Prep', label: 'Interview', icon: 'people-outline' },
+    { id: 'Workplace Trends', label: 'Trends', icon: 'trending-up-outline' },
+    { id: 'Resume Writing', label: 'Resume', icon: 'document-text-outline' },
+    { id: 'Job Search', label: 'Job Search', icon: 'search-outline' },
+    { id: 'Industry News', label: 'News', icon: 'newspaper-outline' },
   ];
 
   useEffect(() => {
     loadUser();
     loadBlogs();
-    
-    // Auto-refresh every 30 seconds
-    const interval = setInterval(() => {
-      loadBlogs();
-    }, 30000);
-    
+    const interval = setInterval(loadBlogs, 30000);
     return () => clearInterval(interval);
   }, [selectedCategory, searchQuery]);
 
@@ -73,37 +64,21 @@ const BlogsScreen = ({ navigation }) => {
     try {
       const userData = await api.getCurrentUserFromStorage();
       setUser(userData);
-    } catch (error) {
-      console.error('Error loading user:', error);
-    }
+    } catch (error) {}
   };
 
   const loadBlogs = async () => {
     try {
       setLoading(true);
-      const params = {
-        page: 1,
-        limit: 20,
-        sortBy: 'publishedAt',
-        sortOrder: 'desc',
-      };
-
-      if (selectedCategory !== 'all') {
-        params.category = selectedCategory;
-      }
-
-      if (searchQuery) {
-        params.search = searchQuery;
-      }
-
+      const params = { page: 1, limit: 20, sortBy: 'publishedAt', sortOrder: 'desc' };
+      if (selectedCategory !== 'all') params.category = selectedCategory;
+      if (searchQuery) params.search = searchQuery;
       const response = await api.getBlogs(params);
-
       if (response.success) {
         setBlogs(response.blogs);
         setPagination(response.pagination);
       }
     } catch (error) {
-      console.error('Error loading blogs:', error);
       Alert.alert('Error', 'Failed to load blogs');
     } finally {
       setLoading(false);
@@ -111,226 +86,137 @@ const BlogsScreen = ({ navigation }) => {
     }
   };
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    loadBlogs();
-  };
+  const onRefresh = () => { setRefreshing(true); loadBlogs(); };
 
   const handleDeleteBlog = async (blogId) => {
-    Alert.alert(
-      'Delete Blog',
-      'Are you sure you want to delete this blog?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const response = await api.request(`/blogs/${blogId}`, {
-                method: 'DELETE'
-              });
-              if (response.success) {
-                Alert.alert('Success', 'Blog deleted successfully');
-                loadBlogs();
-              }
-            } catch (error) {
-              console.error('Error deleting blog:', error);
-              Alert.alert('Error', error.message || 'Failed to delete blog');
-            }
-          },
+    Alert.alert('Delete Blog', 'Are you sure you want to delete this blog?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete', style: 'destructive',
+        onPress: async () => {
+          try {
+            const response = await api.request(`/blogs/${blogId}`, { method: 'DELETE' });
+            if (response.success) { Alert.alert('Success', 'Blog deleted successfully'); loadBlogs(); }
+          } catch (error) {
+            Alert.alert('Error', error.message || 'Failed to delete blog');
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
 
-  const canCreateBlog = () => {
-    if (!user) return false;
-    return ['admin', 'superadmin', 'company', 'consultancy'].includes(user.userType);
-  };
-
+  const canCreateBlog = () => user && ['admin', 'superadmin', 'company', 'consultancy'].includes(user.userType);
   const canEditBlog = (blog) => {
     if (!user) return false;
-    const isAdmin = user.userType === 'admin' || user.userType === 'superadmin';
-    const isOwner = blog.authorId === user._id;
-    return isAdmin || isOwner;
+    return user.userType === 'admin' || user.userType === 'superadmin' || blog.authorId === user._id;
   };
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     const now = new Date();
-    const diffTime = Math.abs(now - date);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
+    const diffDays = Math.ceil(Math.abs(now - date) / (1000 * 60 * 60 * 24));
     if (diffDays === 1) return 'Today';
     if (diffDays === 2) return 'Yesterday';
     if (diffDays <= 7) return `${diffDays - 1} days ago`;
     if (diffDays <= 30) return `${Math.floor(diffDays / 7)} weeks ago`;
-    if (diffDays <= 365) return `${Math.floor(diffDays / 30)} months ago`;
     return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
   };
 
-  const getCategoryColor = (category) => {
-    const categoryColors = {
-      'Career Tips': ['#FF6B6B', '#FF8E53'],
-      'Interview Prep': ['#4ECDC4', '#44A08D'],
-      'Workplace Trends': ['#A8EDEA', '#FED6E3'],
-      'Resume Writing': ['#FFD89B', '#19547B'],
-      'Job Search': ['#FF9A9E', '#FECFEF'],
-      'Industry News': ['#30CFD0', '#330867'],
-      'Salary Negotiation': ['#FBD786', '#F7971E'],
-      'Networking': ['#C471ED', '#F64F59'],
-      'Professional Development': ['#FFECD2', '#FCB69F'],
-      'Work-Life Balance': ['#A1C4FD', '#C2E9FB'],
-    };
-    return categoryColors[category] || ['#667EEA', '#764BA2'];
+  const getCategoryColor = (cat) => CATEGORY_COLORS[cat] || colors.primary;
+
+  const navigateToBlog = (blog) => {
+    const params = blog.slug ? { slug: blog.slug } : { blogId: blog._id };
+    navigation.navigate('BlogDetail', params);
   };
 
   const renderBlogCard = (blog, index) => {
-    const categoryColors = getCategoryColor(blog.category);
+    const catColor = getCategoryColor(blog.category);
     const canEdit = canEditBlog(blog);
 
     return (
       <TouchableOpacity
         key={blog._id}
-        style={[dynamicStyles.blogCard, { opacity: loading ? 0 : 1 }]}
-        onPress={() => {
-          try {
-            const params = blog.slug 
-              ? { slug: blog.slug } 
-              : { blogId: blog._id };
-            console.log('Navigating to BlogDetail with params:', params);
-            navigation.navigate('BlogDetail', params);
-          } catch (error) {
-            console.error('Navigation error:', error);
-          }
-        }}
-        activeOpacity={0.8}
+        style={styles.blogCard}
+        onPress={() => navigateToBlog(blog)}
+        activeOpacity={0.85}
       >
-        <LinearGradient
-          colors={categoryColors}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={dynamicStyles.blogHeader}
-        >
-          <View style={dynamicStyles.blogHeaderContent}>
+        {/* Color strip */}
+        <View style={[styles.cardStrip, { backgroundColor: catColor + '15' }]}>
+          <View style={[styles.cardStripIcon, { backgroundColor: catColor + '20', borderColor: catColor + '30' }]}>
+            <Ionicons name="newspaper-outline" size={20} color={catColor} />
+          </View>
+          <View style={styles.cardStripRight}>
             {blog.featured && (
-              <View style={dynamicStyles.featuredBadge}>
-                <LinearGradient
-                  colors={['#FFD700', '#FFA500']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={dynamicStyles.featuredBadgeGradient}
-                >
-                  <Ionicons name="star" size={isPhone ? 10 : 12} color="#fff" />
-                  <Text style={dynamicStyles.featuredText}>Featured</Text>
-                </LinearGradient>
+              <View style={styles.featuredBadge}>
+                <Ionicons name="star" size={10} color="#F59E0B" />
+                <Text style={styles.featuredText}>Featured</Text>
               </View>
             )}
-            <View style={dynamicStyles.categoryBadge}>
-              <Text style={dynamicStyles.categoryText}>{blog.category}</Text>
+            <View style={[styles.catBadge, { backgroundColor: catColor }]}>
+              <Text style={styles.catBadgeText}>{blog.category || 'Article'}</Text>
             </View>
           </View>
-          <View style={dynamicStyles.blogHeaderIcon}>
-            <Ionicons name="newspaper-outline" size={isPhone ? 28 : 32} color="rgba(255,255,255,0.3)" />
-          </View>
-        </LinearGradient>
+        </View>
 
-        <View style={dynamicStyles.blogContent}>
-          <Text style={dynamicStyles.blogTitle} numberOfLines={2}>
-            {blog.title}
-          </Text>
-          <Text style={dynamicStyles.blogExcerpt} numberOfLines={3}>
-            {blog.excerpt || 'Read this insightful article to learn more...'}
-          </Text>
+        {/* Content */}
+        <View style={styles.cardContent}>
+          <Text style={styles.blogTitle} numberOfLines={2}>{blog.title}</Text>
+          {blog.excerpt ? (
+            <Text style={styles.blogExcerpt} numberOfLines={2}>{blog.excerpt}</Text>
+          ) : null}
 
           {blog.tags && blog.tags.length > 0 && (
-            <View style={dynamicStyles.tagsContainer}>
-              {blog.tags.slice(0, 3).map((tag, tagIndex) => (
-                <View key={tagIndex} style={dynamicStyles.tag}>
-                  <Text style={dynamicStyles.tagText}>#{tag}</Text>
+            <View style={styles.tagsRow}>
+              {blog.tags.slice(0, 3).map((tag, i) => (
+                <View key={i} style={styles.tag}>
+                  <Text style={styles.tagText}>#{tag}</Text>
                 </View>
               ))}
             </View>
           )}
 
-          <View style={dynamicStyles.blogMeta}>
-            <View style={dynamicStyles.metaLeft}>
-              <View style={dynamicStyles.metaItem}>
-                <View style={dynamicStyles.metaIconContainer}>
-                  <Ionicons name="person-circle" size={isPhone ? 12 : 14} color={colors.primary} />
-                </View>
-                <Text style={dynamicStyles.metaText}>{blog.author || 'Admin'}</Text>
+          <View style={styles.cardMeta}>
+            <View style={styles.metaLeft}>
+              <View style={styles.metaItem}>
+                <Ionicons name="person-outline" size={12} color="#94A3B8" />
+                <Text style={styles.metaText}>{blog.author || 'Admin'}</Text>
               </View>
-              <View style={dynamicStyles.metaItem}>
-                <View style={dynamicStyles.metaIconContainer}>
-                  <Ionicons name="time-outline" size={isPhone ? 12 : 14} color={colors.primary} />
-                </View>
-                <Text style={dynamicStyles.metaText}>{blog.readTime || '5 min'}</Text>
+              <View style={styles.metaItem}>
+                <Ionicons name="time-outline" size={12} color="#94A3B8" />
+                <Text style={styles.metaText}>{blog.readTime || '5 min'}</Text>
               </View>
-            </View>
-            <View style={dynamicStyles.metaRight}>
-              <View style={dynamicStyles.metaItem}>
-                <View style={dynamicStyles.metaIconContainer}>
-                  <Ionicons name="eye-outline" size={isPhone ? 12 : 14} color={colors.primary} />
-                </View>
-                <Text style={dynamicStyles.metaText}>{blog.views || 0}</Text>
+              <View style={styles.metaItem}>
+                <Ionicons name="eye-outline" size={12} color="#94A3B8" />
+                <Text style={styles.metaText}>{blog.views || 0}</Text>
               </View>
             </View>
+            <Text style={styles.dateText}>{formatDate(blog.publishedAt || blog.createdAt)}</Text>
           </View>
 
-          <View style={dynamicStyles.blogFooter}>
-            <View style={dynamicStyles.dateContainer}>
-              <Ionicons name="calendar-outline" size={isPhone ? 10 : 12} color={colors.textLight} />
-              <Text style={dynamicStyles.dateText}>
-                {formatDate(blog.publishedAt || blog.createdAt)}
-              </Text>
-            </View>
-            <View style={dynamicStyles.footerActions}>
-              <TouchableOpacity
-                style={dynamicStyles.readMoreButton}
-                onPress={(e) => {
-                  try {
-                    if (e && e.stopPropagation) {
-                      e.stopPropagation();
-                    }
-                    const params = blog.slug 
-                      ? { slug: blog.slug } 
-                      : { blogId: blog._id };
-                    console.log('Read More - Navigating to BlogDetail with params:', params);
-                    navigation.navigate('BlogDetail', params);
-                  } catch (error) {
-                    console.error('Read More navigation error:', error);
-                  }
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={dynamicStyles.readMoreText}>Read More</Text>
-                <Ionicons name="arrow-forward" size={isPhone ? 10 : 12} color={colors.primary} />
-              </TouchableOpacity>
-              {canEdit && (
-                <View style={dynamicStyles.actionButtons}>
-                  <TouchableOpacity
-                    style={dynamicStyles.actionButton}
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      navigation.navigate('CreateBlog', { blog });
-                    }}
-                  >
-                    <Ionicons name="create-outline" size={isPhone ? 16 : 18} color={colors.primary} />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={dynamicStyles.actionButton}
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      handleDeleteBlog(blog._id);
-                    }}
-                  >
-                    <Ionicons name="trash-outline" size={isPhone ? 16 : 18} color={colors.error} />
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
+          <View style={styles.cardFooter}>
+            <TouchableOpacity
+              style={styles.readMoreBtn}
+              onPress={(e) => { if (e && e.stopPropagation) e.stopPropagation(); navigateToBlog(blog); }}
+            >
+              <Text style={styles.readMoreText}>Read More</Text>
+              <Ionicons name="arrow-forward" size={12} color={colors.primary} />
+            </TouchableOpacity>
+            {canEdit && (
+              <View style={styles.actionBtns}>
+                <TouchableOpacity
+                  style={styles.actionBtn}
+                  onPress={(e) => { e.stopPropagation(); navigation.navigate('CreateBlog', { blog }); }}
+                >
+                  <Ionicons name="create-outline" size={16} color={colors.primary} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.actionBtn}
+                  onPress={(e) => { e.stopPropagation(); handleDeleteBlog(blog._id); }}
+                >
+                  <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         </View>
       </TouchableOpacity>
@@ -338,177 +224,107 @@ const BlogsScreen = ({ navigation }) => {
   };
 
   return (
-    <View style={dynamicStyles.container}>
+    <View style={styles.container}>
       <Header />
-
       <ScrollView
-        style={dynamicStyles.scrollView}
-        contentContainerStyle={dynamicStyles.scrollContent}
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}
       >
-        {/* Hero Section */}
-        <View style={dynamicStyles.heroSection}>
-          <Text style={dynamicStyles.heroTitle}>Latest Blogs & Articles</Text>
-          <Text style={dynamicStyles.heroSubtitle}>
-            Discover career insights, tips, and industry trends
-          </Text>
-          <View style={dynamicStyles.heroStatsRow}>
-            <View style={dynamicStyles.heroStatCard}>
-              <Text style={dynamicStyles.heroStatValue}>{pagination?.totalBlogs || blogs.length}</Text>
-              <Text style={dynamicStyles.heroStatLabel}>Total Articles</Text>
+        {/* Hero */}
+        <View style={styles.hero}>
+          <Text style={styles.heroTitle}>Blogs & Articles</Text>
+          <Text style={styles.heroSubtitle}>Discover career insights, tips, and industry trends</Text>
+          <View style={styles.heroStats}>
+            <View style={styles.heroStatItem}>
+              <Text style={styles.heroStatValue}>{pagination?.totalBlogs || blogs.length}</Text>
+              <Text style={styles.heroStatLabel}>Articles</Text>
             </View>
-            <View style={dynamicStyles.heroStatCard}>
-              <Text style={dynamicStyles.heroStatValue}>
-                {blogs.filter(blog => blog.featured).length}
-              </Text>
-              <Text style={dynamicStyles.heroStatLabel}>Featured</Text>
+            <View style={styles.heroStatDivider} />
+            <View style={styles.heroStatItem}>
+              <Text style={styles.heroStatValue}>{blogs.filter(b => b.featured).length}</Text>
+              <Text style={styles.heroStatLabel}>Featured</Text>
             </View>
-            <View style={dynamicStyles.heroStatCard}>
-              <Text style={dynamicStyles.heroStatValue}>
-                {categories.length - 1}
-              </Text>
-              <Text style={dynamicStyles.heroStatLabel}>Categories</Text>
+            <View style={styles.heroStatDivider} />
+            <View style={styles.heroStatItem}>
+              <Text style={styles.heroStatValue}>{categories.length - 1}</Text>
+              <Text style={styles.heroStatLabel}>Categories</Text>
             </View>
           </View>
         </View>
 
-        {/* Search Bar */}
-        <LinearGradient
-          colors={['#667EEA', '#764BA2', '#F093FB']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={dynamicStyles.searchContainerGradient}
-        >
-          <View style={dynamicStyles.searchContainer}>
-            <View style={dynamicStyles.searchRow}>
-              <View style={dynamicStyles.searchInputWrapper}>
-                <View style={dynamicStyles.searchIconWrapper}>
-                  <Ionicons name="search" size={isPhone ? 18 : (isMobile ? 20 : (isTablet ? 22 : 24))} color={colors.primary} />
-                </View>
-                <TextInput
-                  style={dynamicStyles.searchInput}
-                  placeholder={isPhone ? "Search blogs..." : "Search blogs, topics, or keywords..."}
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                  placeholderTextColor={colors.textLight}
-                />
-                {searchQuery.length > 0 && (
-                  <TouchableOpacity 
-                    onPress={() => setSearchQuery('')}
-                    style={dynamicStyles.clearButton}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name="close-circle" size={isPhone ? 20 : 22} color={colors.textSecondary} />
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              {canCreateBlog() && (
-                <TouchableOpacity
-                  style={dynamicStyles.createButton}
-                  onPress={() => navigation.navigate('CreateBlog')}
-                  activeOpacity={0.8}
-                >
-                  <LinearGradient
-                    colors={['#667EEA', '#764BA2']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={dynamicStyles.createButtonGradient}
-                  >
-                    <Ionicons name="add-circle" size={isPhone ? 20 : 22} color="#fff" />
-                    <Text style={dynamicStyles.createButtonText}>Write Blog</Text>
-                  </LinearGradient>
+        {/* Search + Create */}
+        <View style={styles.searchSection}>
+          <View style={styles.searchRow}>
+            <View style={styles.searchBox}>
+              <Ionicons name="search-outline" size={18} color="#94A3B8" />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search blogs, topics..."
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholderTextColor="#94A3B8"
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                  <Ionicons name="close-circle" size={18} color="#94A3B8" />
                 </TouchableOpacity>
               )}
             </View>
+            {canCreateBlog() && (
+              <TouchableOpacity style={styles.createBtn} onPress={() => navigation.navigate('CreateBlog')}>
+                <Ionicons name="add" size={18} color="#FFF" />
+                <Text style={styles.createBtnText}>Write Blog</Text>
+              </TouchableOpacity>
+            )}
           </View>
-        </LinearGradient>
-
-        {/* Categories */}
-        <View style={dynamicStyles.categoriesWrapper}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={dynamicStyles.categoriesScroll}
-            contentContainerStyle={dynamicStyles.categoriesContent}
-          >
-            {categories.map((category) => {
-              const isActive = selectedCategory === category.id;
-              return (
-                <TouchableOpacity
-                  key={category.id}
-                  style={[
-                    dynamicStyles.categoryChip,
-                    isActive && dynamicStyles.categoryChipActive,
-                  ]}
-                  onPress={() => setSelectedCategory(category.id)}
-                  activeOpacity={0.7}
-                >
-                  {isActive ? (
-                    <LinearGradient
-                      colors={['#667EEA', '#764BA2']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={dynamicStyles.categoryChipGradient}
-                    >
-                      <Ionicons
-                        name={category.icon}
-                        size={isPhone ? 18 : 20}
-                        color="#fff"
-                      />
-                      <Text style={dynamicStyles.categoryChipTextActive}>
-                        {category.label}
-                      </Text>
-                    </LinearGradient>
-                  ) : (
-                    <View style={dynamicStyles.categoryChipInactive}>
-                      <View style={dynamicStyles.categoryIconContainer}>
-                        <Ionicons
-                          name={category.icon}
-                          size={isPhone ? 18 : 20}
-                          color={colors.primary}
-                        />
-                      </View>
-                      <Text style={dynamicStyles.categoryChipText}>
-                        {category.label}
-                      </Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
         </View>
 
-        {/* Blogs List */}
-        <View style={dynamicStyles.blogsSection}>
+        {/* Category chips */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.categoriesContent}
+          style={styles.categoriesScroll}
+        >
+          {categories.map((cat) => {
+            const isActive = selectedCategory === cat.id;
+            return (
+              <TouchableOpacity
+                key={cat.id}
+                style={[styles.catChip, isActive && styles.catChipActive]}
+                onPress={() => setSelectedCategory(cat.id)}
+              >
+                <Ionicons name={cat.icon} size={14} color={isActive ? '#FFF' : '#64748B'} />
+                <Text style={[styles.catChipText, isActive && styles.catChipTextActive]}>{cat.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        {/* Results */}
+        <View style={styles.resultsSection}>
           {loading ? (
-            <View style={dynamicStyles.loadingContainer}>
+            <View style={styles.loadingBox}>
               <ActivityIndicator size="large" color={colors.primary} />
-              <Text style={dynamicStyles.loadingText}>Loading blogs...</Text>
+              <Text style={styles.loadingText}>Loading blogs...</Text>
             </View>
           ) : blogs.length === 0 ? (
-            <View style={dynamicStyles.emptyContainer}>
-              <Ionicons name="document-text-outline" size={isPhone ? 56 : (isMobile ? 60 : 64)} color={colors.textLight} />
-              <Text style={dynamicStyles.emptyText}>No blogs found</Text>
-              <Text style={dynamicStyles.emptySubtext}>
+            <View style={styles.emptyBox}>
+              <View style={styles.emptyIconBox}>
+                <Ionicons name="document-text-outline" size={48} color={colors.primary} />
+              </View>
+              <Text style={styles.emptyTitle}>No blogs found</Text>
+              <Text style={styles.emptySubtitle}>
                 {searchQuery ? 'Try a different search term' : 'Be the first to write a blog!'}
               </Text>
             </View>
           ) : (
             <>
-              <View style={dynamicStyles.resultsHeader}>
-                <View style={dynamicStyles.resultsHeaderContent}>
-                  <Ionicons name="library-outline" size={isPhone ? 20 : 24} color={colors.primary} />
-                  <Text style={dynamicStyles.resultsText}>
-                    {pagination?.totalBlogs || blogs.length} {blogs.length === 1 ? 'Blog' : 'Blogs'} Found
-                  </Text>
-                </View>
+              <View style={styles.sectionHeader}>
+                <View style={styles.sectionAccent} />
+                <Text style={styles.sectionTitle}>{pagination?.totalBlogs || blogs.length} {blogs.length === 1 ? 'Blog' : 'Blogs'} Found</Text>
               </View>
-              <View style={dynamicStyles.blogsGrid}>
+              <View style={styles.blogsGrid}>
                 {blogs.map((blog, index) => renderBlogCard(blog, index))}
               </View>
             </>
@@ -519,461 +335,139 @@ const BlogsScreen = ({ navigation }) => {
   );
 };
 
-const getStyles = (isPhone, isMobile, isTablet, isDesktop, width) => {
-  // Safely get Platform - lazy evaluation
-const getPlatform = () => {
-  try {
-    const { Platform } = require('react-native');
-    if (Platform && typeof Platform.OS !== 'undefined') {
-      return Platform;
-    }
-  } catch (e) {}
-  return { OS: 'android' };
-};
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
 
-const isWeb = getPlatform().OS === 'web';
-  return StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: spacing.xxl,
-  },
-  heroSection: {
-    paddingVertical: isMobile ? spacing.xl : spacing.xxl,
-    paddingHorizontal: isMobile ? spacing.md : spacing.lg,
+  hero: {
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 20,
+    paddingTop: 32,
+    paddingBottom: 32,
     alignItems: 'center',
-    ...(isWeb && {
-      marginHorizontal: spacing.lg,
-      marginBottom: spacing.lg,
-    }),
   },
-  heroTitle: {
-    fontSize: isMobile ? 26 : (isTablet ? 32 : 42),
-    fontWeight: '700',
-    color: colors.text,
-    textAlign: 'center',
-    marginBottom: spacing.sm,
-    paddingHorizontal: isMobile ? spacing.md : 0,
+  heroTitle: { fontSize: 26, fontWeight: '700', color: '#0F172A', marginBottom: 6, textAlign: 'center' },
+  heroSubtitle: { fontSize: 14, color: '#64748B', marginBottom: 20, textAlign: 'center' },
+  heroStats: { flexDirection: 'row', alignItems: 'center', gap: 0 },
+  heroStatItem: { alignItems: 'center', paddingHorizontal: 20 },
+  heroStatValue: { fontSize: 22, fontWeight: '800', color: '#0F172A' },
+  heroStatLabel: { fontSize: 12, color: '#64748B', marginTop: 2 },
+  heroStatDivider: { width: 1, height: 32, backgroundColor: '#C7D2FE' },
+
+  searchSection: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    backgroundColor: '#FFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
   },
-  heroSubtitle: {
-    fontSize: isWeb ? 18 : 16,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    opacity: 0.9,
-    marginBottom: spacing.sm,
+  searchRow: { flexDirection: 'row', gap: 10, alignItems: 'center' },
+  searchBox: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: '#F8FAFC', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 11,
+    borderWidth: 1, borderColor: '#E2E8F0',
   },
-  heroStatsRow: {
-    flexDirection: isPhone ? 'column' : 'row',
-    gap: spacing.md,
-    width: '100%',
-    maxWidth: 900,
-    marginTop: spacing.lg,
+  searchInput: { flex: 1, fontSize: 14, color: '#0F172A' },
+  createBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: colors.primary, paddingHorizontal: 16, paddingVertical: 11, borderRadius: 10,
   },
-  heroStatCard: {
-    flex: 1,
-    backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.lg,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    ...shadows.sm,
+  createBtnText: { fontSize: 14, fontWeight: '600', color: '#FFF' },
+
+  categoriesScroll: { backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  categoriesContent: { paddingHorizontal: 16, paddingVertical: 12, gap: 8 },
+  catChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
+    backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0',
   },
-  heroStatValue: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  heroStatLabel: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    marginTop: spacing.xs / 2,
-  },
-  searchContainerGradient: {
-    marginHorizontal: isPhone ? spacing.sm : spacing.lg,
-    marginTop: -spacing.xl,
-    borderRadius: borderRadius.xl,
-    ...shadows.lg,
-    padding: 0,
-  },
-  searchContainer: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.xl,
-    padding: isPhone ? spacing.md : (isMobile ? spacing.lg : isTablet ? spacing.xl : spacing.xl + spacing.sm),
-    gap: isPhone ? spacing.sm : spacing.md,
-    maxWidth: isDesktop ? 1400 : '100%',
+  catChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  catChipText: { fontSize: 13, color: '#64748B', fontWeight: '500' },
+  catChipTextActive: { color: '#FFF', fontWeight: '600' },
+
+  resultsSection: {
+    padding: 16,
+    maxWidth: isWeb ? 1200 : '100%',
     alignSelf: 'center',
     width: '100%',
   },
-  searchRow: {
-    flexDirection: isPhone ? 'column' : (isMobile ? 'column' : 'row'),
-    gap: isPhone ? spacing.sm : (isMobile ? spacing.md : spacing.lg),
-    alignItems: 'stretch',
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },
+  sectionAccent: { width: 4, height: 20, backgroundColor: colors.primary, borderRadius: 2 },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#0F172A' },
+
+  loadingBox: { alignItems: 'center', paddingVertical: 60 },
+  loadingText: { marginTop: 12, fontSize: 14, color: '#64748B' },
+
+  emptyBox: { alignItems: 'center', paddingVertical: 60 },
+  emptyIconBox: {
+    width: 96, height: 96, borderRadius: 48,
+    backgroundColor: '#EEF2FF', justifyContent: 'center', alignItems: 'center', marginBottom: 16,
   },
-  searchInputWrapper: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.background,
-    borderRadius: borderRadius.xl,
-    paddingHorizontal: 0,
-    paddingVertical: 0,
-    borderWidth: 0,
-    gap: 0,
-    ...shadows.sm,
-    overflow: 'hidden',
-  },
-  searchIconWrapper: {
-    paddingHorizontal: spacing.md + spacing.xs,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.primaryLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  searchInput: {
-    flex: 1,
-    ...typography.body1,
-    color: colors.text,
-    fontSize: isPhone ? 14 : 16,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-  },
-  clearButton: {
-    padding: spacing.sm,
-    marginRight: spacing.xs,
-    borderRadius: borderRadius.full,
-  },
-  createButton: {
-    borderRadius: borderRadius.xl,
-    overflow: 'hidden',
-    ...shadows.md,
-    alignSelf: isPhone ? 'stretch' : 'center',
-  },
-  createButtonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md + spacing.xs,
-    gap: spacing.sm,
-  },
-  createButtonText: {
-    ...typography.button,
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: isPhone ? 14 : 16,
-  },
-  categoriesWrapper: {
-    marginVertical: spacing.lg,
-    backgroundColor: colors.background,
-    paddingVertical: spacing.md + spacing.xs,
-  },
-  categoriesScroll: {
-    marginBottom: 0,
-  },
-  categoriesContent: {
-    paddingHorizontal: spacing.lg,
-    gap: spacing.md + spacing.xs,
-  },
-  categoryChip: {
-    borderRadius: borderRadius.full,
-    overflow: 'hidden',
-    ...shadows.sm,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-  },
-  categoryChipActive: {
-    ...shadows.md,
-    borderWidth: 0,
-  },
-  categoryChipGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md + spacing.xs,
-    gap: spacing.sm,
-  },
-  categoryChipInactive: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md + spacing.xs,
-    gap: spacing.sm,
-    backgroundColor: colors.cardBackground,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-  },
-  categoryIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadows.xs,
-  },
-  categoryChipText: {
-    ...typography.body2,
-    color: colors.text,
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  categoryChipTextActive: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  blogsSection: {
-    paddingHorizontal: isWeb ? spacing.xl : spacing.lg,
-    ...(isWeb && {
-      maxWidth: 1400,
-      alignSelf: 'center',
-      width: '100%',
-    }),
-  },
-  resultsHeader: {
-    marginBottom: spacing.lg,
-    marginTop: spacing.sm,
-  },
-  resultsHeaderContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  resultsText: {
-    ...typography.h5,
-    color: colors.text,
-    fontWeight: '700',
-  },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: '#0F172A', marginBottom: 6 },
+  emptySubtitle: { fontSize: 14, color: '#64748B' },
+
   blogsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.lg,
-    justifyContent: 'center',
+    gap: 14,
+    justifyContent: isWeb ? 'flex-start' : 'center',
   },
+
   blogCard: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.xl,
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
     overflow: 'hidden',
-    ...shadows.lg,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    transform: [{ scale: 1 }],
-    width: isPhone ? '100%' : isMobile ? '48%' : isTablet ? '47%' : '46%',
-    ...(isWeb && isDesktop && {
-      maxWidth: 550,
-      minWidth: 480,
-    }),
+    width: isWeb ? 'calc(50% - 7px)' : '100%',
+    ...(isWeb && { boxShadow: '0 1px 4px rgba(15,23,42,0.06)', minWidth: 300 }),
   },
-  blogHeader: {
-    height: 120,
-    padding: spacing.lg,
-    position: 'relative',
+  cardStrip: {
+    height: 72, flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'space-between', paddingHorizontal: 14,
   },
-  blogHeaderContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    zIndex: 2,
+  cardStripIcon: {
+    width: 44, height: 44, borderRadius: 22, borderWidth: 1,
+    justifyContent: 'center', alignItems: 'center',
   },
-  blogHeaderIcon: {
-    position: 'absolute',
-    right: -15,
-    bottom: -15,
-    opacity: 0.2,
-  },
+  cardStripRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   featuredBadge: {
-    alignSelf: 'flex-start',
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: '#FEF3C7', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 20,
   },
-  featuredBadgeGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.full,
-    gap: spacing.xs,
-    ...shadows.sm,
+  featuredText: { fontSize: 10, fontWeight: '700', color: '#92400E' },
+  catBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
+  catBadgeText: { fontSize: 10, fontWeight: '700', color: '#FFF' },
+
+  cardContent: { padding: 14 },
+  blogTitle: { fontSize: 15, fontWeight: '700', color: '#0F172A', lineHeight: 22, marginBottom: 6 },
+  blogExcerpt: { fontSize: 13, color: '#64748B', lineHeight: 19, marginBottom: 10 },
+
+  tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 },
+  tag: { backgroundColor: '#F1F5F9', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
+  tagText: { fontSize: 11, color: '#64748B' },
+
+  cardMeta: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingVertical: 10, borderTopWidth: 1, borderTopColor: '#F1F5F9', marginBottom: 10,
   },
-  featuredText: {
-    ...typography.caption,
-    color: '#fff',
-    fontWeight: '800',
-    fontSize: 10,
+  metaLeft: { flexDirection: 'row', gap: 12 },
+  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  metaText: { fontSize: 11, color: '#94A3B8' },
+  dateText: { fontSize: 11, color: '#94A3B8' },
+
+  cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  readMoreBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6,
+    backgroundColor: '#EEF2FF',
   },
-  categoryBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.full,
-    ...shadows.sm,
+  readMoreText: { fontSize: 12, fontWeight: '600', color: colors.primary },
+  actionBtns: { flexDirection: 'row', gap: 8 },
+  actionBtn: {
+    width: 32, height: 32, borderRadius: 8,
+    backgroundColor: '#F8FAFC', justifyContent: 'center', alignItems: 'center',
+    borderWidth: 1, borderColor: '#E2E8F0',
   },
-  categoryText: {
-    ...typography.caption,
-    color: colors.text,
-    fontWeight: '800',
-    fontSize: 10,
-  },
-  blogContent: {
-    padding: spacing.lg,
-  },
-  blogTitle: {
-    ...typography.h4,
-    color: colors.text,
-    marginBottom: spacing.md,
-    fontWeight: '700',
-    fontSize: 20,
-    lineHeight: 26,
-  },
-  blogExcerpt: {
-    ...typography.body2,
-    color: colors.textSecondary,
-    lineHeight: 22,
-    marginBottom: spacing.md,
-    fontSize: 14,
-  },
-  blogMeta: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderLight,
-    marginTop: spacing.sm,
-    marginBottom: spacing.sm,
-  },
-  metaLeft: {
-    flexDirection: 'row',
-    gap: spacing.lg,
-  },
-  metaRight: {
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  metaIconContainer: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  metaText: {
-    ...typography.caption,
-    color: colors.text,
-    fontWeight: '600',
-    fontSize: 11,
-  },
-  blogFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: spacing.sm,
-  },
-  dateContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  dateText: {
-    ...typography.caption,
-    color: colors.textLight,
-    fontWeight: '500',
-    fontSize: 11,
-  },
-  footerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  readMoreButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.primaryLight,
-    zIndex: 10,
-    ...(isWeb && {
-      cursor: 'pointer',
-    }),
-  },
-  readMoreText: {
-    ...typography.body2,
-    color: colors.primary,
-    fontWeight: '700',
-    fontSize: 11,
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  actionButton: {
-    padding: spacing.sm,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.background,
-  },
-  tagsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  tag: {
-    backgroundColor: colors.primaryLight,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.full,
-    borderWidth: 1,
-    borderColor: colors.primary,
-  },
-  tagText: {
-    ...typography.caption,
-    color: colors.primary,
-    fontWeight: '700',
-    fontSize: 10,
-  },
-  loadingContainer: {
-    padding: spacing.xxl,
-    alignItems: 'center',
-  },
-  loadingText: {
-    ...typography.body1,
-    color: colors.textSecondary,
-    marginTop: spacing.md,
-  },
-  emptyContainer: {
-    padding: spacing.xxl + spacing.lg,
-    alignItems: 'center',
-    backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.xl,
-    margin: spacing.lg,
-    ...shadows.md,
-  },
-  emptyText: {
-    ...typography.h4,
-    color: colors.text,
-    marginTop: spacing.lg,
-    fontWeight: '700',
-  },
-  emptySubtext: {
-    ...typography.body2,
-    color: colors.textSecondary,
-    marginTop: spacing.sm,
-    textAlign: 'center',
-  },
-  });
-};
+});
 
 export default BlogsScreen;

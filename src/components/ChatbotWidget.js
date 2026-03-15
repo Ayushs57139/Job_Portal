@@ -47,6 +47,9 @@ const ChatbotWidget = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
+  const [suggestedReplies, setSuggestedReplies] = useState([]);
+  const [adminTyping, setAdminTyping] = useState(false);
+  const socketRef = useRef(null);
   const scrollViewRef = useRef(null);
   const inputRef = useRef(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -55,6 +58,44 @@ const ChatbotWidget = () => {
     loadUserAndSession();
     startPulseAnimation();
   }, []);
+
+  // Connect to socket when sessionId is available
+  useEffect(() => {
+    if (!sessionId) return;
+    try {
+      const io = require('socket.io-client').default || require('socket.io-client');
+      const baseURL = API_URL.replace('/api', '');
+      const sock = io(baseURL, {
+        transports: ['websocket', 'polling'],
+        reconnection: true,
+        timeout: 10000,
+      });
+      socketRef.current = sock;
+
+      sock.on('connect', () => {
+        sock.emit('join_chatbot_session', sessionId);
+      });
+
+      sock.on('chatbot_admin_message', (data) => {
+        if (data.sessionId === sessionId) {
+          addBotMessage(data.message);
+          setAdminTyping(false);
+        }
+      });
+
+      sock.on('chatbot_admin_typing', (data) => {
+        if (data.sessionId === sessionId) setAdminTyping(true);
+      });
+
+      sock.on('chatbot_admin_stopped_typing', (data) => {
+        if (data.sessionId === sessionId) setAdminTyping(false);
+      });
+
+      return () => { sock.disconnect(); };
+    } catch (e) {
+      // socket.io-client not available or error — graceful degradation
+    }
+  }, [sessionId]);
 
   useEffect(() => {
     // Reload conversation when user changes
@@ -288,6 +329,7 @@ const ChatbotWidget = () => {
         // Simulate typing delay for better UX
         setTimeout(() => {
           addBotMessage(data.botResponse);
+          setSuggestedReplies(data.suggestedReplies || []);
           setIsTyping(false);
           setLoading(false);
           // Reload conversation to sync with server
@@ -510,6 +552,22 @@ const ChatbotWidget = () => {
                         </View>
                       )}
 
+                      {adminTyping && !isTyping && (
+                        <View style={[dynamicStyles.messageBubble, dynamicStyles.botBubble]}>
+                          <View style={dynamicStyles.botAvatarSmall}>
+                            <Ionicons name="person" size={isPhone ? 12 : 14} color="#FFF" />
+                          </View>
+                          <View style={dynamicStyles.messageContent}>
+                            <View style={dynamicStyles.typingIndicator}>
+                              <View style={[dynamicStyles.typingDot, dynamicStyles.dot1]} />
+                              <View style={[dynamicStyles.typingDot, dynamicStyles.dot2]} />
+                              <View style={[dynamicStyles.typingDot, dynamicStyles.dot3]} />
+                            </View>
+                            <Text style={{ fontSize: 9, color: colors.textLight, marginTop: 2 }}>Admin is typing...</Text>
+                          </View>
+                        </View>
+                      )}
+
                       {error && (
                         <View style={dynamicStyles.errorContainer}>
                           <Ionicons name="alert-circle" size={isPhone ? 14 : 16} color={colors.error} />
@@ -525,17 +583,31 @@ const ChatbotWidget = () => {
                         showsHorizontalScrollIndicator={false}
                         contentContainerStyle={dynamicStyles.quickActionsContent}
                       >
-                        {quickActions.map((action) => (
-                          <TouchableOpacity
-                            key={action.id}
-                            style={dynamicStyles.quickActionButton}
-                            onPress={() => handleQuickAction(action.label)}
-                            disabled={loading}
-                          >
-                            <Ionicons name={action.icon} size={isPhone ? 14 : 16} color={colors.primary} />
-                            <Text style={dynamicStyles.quickActionText}>{action.label}</Text>
-                          </TouchableOpacity>
-                        ))}
+                        {/* Dynamic suggested replies from last bot response */}
+                        {suggestedReplies.length > 0
+                          ? suggestedReplies.map((reply, i) => (
+                              <TouchableOpacity
+                                key={`sr-${i}`}
+                                style={dynamicStyles.quickActionButton}
+                                onPress={() => handleQuickAction(reply)}
+                                disabled={loading}
+                              >
+                                <Ionicons name="arrow-forward-circle-outline" size={isPhone ? 14 : 16} color={colors.primary} />
+                                <Text style={dynamicStyles.quickActionText}>{reply}</Text>
+                              </TouchableOpacity>
+                            ))
+                          : quickActions.map((action) => (
+                              <TouchableOpacity
+                                key={action.id}
+                                style={dynamicStyles.quickActionButton}
+                                onPress={() => handleQuickAction(action.label)}
+                                disabled={loading}
+                              >
+                                <Ionicons name={action.icon} size={isPhone ? 14 : 16} color={colors.primary} />
+                                <Text style={dynamicStyles.quickActionText}>{action.label}</Text>
+                              </TouchableOpacity>
+                            ))
+                        }
                       </ScrollView>
                     </View>
 

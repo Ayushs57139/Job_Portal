@@ -1,34 +1,20 @@
 import React, { useState, useRef } from 'react';
 import {
-  View,
-  ScrollView,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  useWindowDimensions,
+  View, ScrollView, Text, StyleSheet, TouchableOpacity,
+  Alert, KeyboardAvoidingView, Platform, useWindowDimensions,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, borderRadius, typography, shadows } from '../styles/theme';
 import api from '../config/api';
 import { formSteps } from '../data/jobPostFormConfig';
 import { INDUSTRIES_DATA, getSubIndustries } from '../data/industriesData';
 import { DEPARTMENTS_DATA, getSubDepartments } from '../data/departmentsData';
 import {
   BASIC_EDUCATION_LEVELS,
-  ITI_COURSE_OPTIONS,
-  ITI_SPECIALIZATION_OPTIONS,
-  DIPLOMA_COURSE_OPTIONS,
-  DIPLOMA_SPECIALIZATION_OPTIONS,
-  GRADUATE_COURSE_OPTIONS,
-  GRADUATE_SPECIALIZATION_OPTIONS,
-  POST_GRADUATE_COURSE_OPTIONS,
-  POST_GRADUATE_SPECIALIZATION_OPTIONS,
-  DOCTORATE_COURSE_OPTIONS,
-  DOCTORATE_SPECIALIZATION_OPTIONS,
+  ITI_COURSE_OPTIONS, ITI_SPECIALIZATION_OPTIONS,
+  DIPLOMA_COURSE_OPTIONS, DIPLOMA_SPECIALIZATION_OPTIONS,
+  GRADUATE_COURSE_OPTIONS, GRADUATE_SPECIALIZATION_OPTIONS,
+  POST_GRADUATE_COURSE_OPTIONS, POST_GRADUATE_SPECIALIZATION_OPTIONS,
+  DOCTORATE_COURSE_OPTIONS, DOCTORATE_SPECIALIZATION_OPTIONS,
 } from '../data/educationData';
 import Input from './Input';
 import DropdownField from './FormFields/DropdownField';
@@ -38,313 +24,166 @@ import CheckboxField from './FormFields/CheckboxField';
 import TimePickerField from './FormFields/TimePickerField';
 import WeekDaysField from './FormFields/WeekDaysField';
 import QuestionBuilderField from './FormFields/QuestionBuilderField';
-import Button from './Button';
 
-const MultiStepJobPostForm = ({ onSubmit, initialData = {}, onCancel, onChange, initialStep = 0, enableAutosave = false, autosaveKey = null }) => {
+const fieldHasValue = (v) => {
+  if (v === null || v === undefined || v === '') return false;
+  if (Array.isArray(v)) return v.length > 0;
+  if (typeof v === 'boolean') return true;
+  return true;
+};
+
+const MultiStepJobPostForm = ({
+  onSubmit, initialData = {}, onCancel, onChange,
+  initialStep = 0, enableAutosave = false, autosaveKey = null,
+}) => {
   const [currentStep, setCurrentStep] = useState(initialStep || 0);
   const [formData, setFormData] = useState(initialData);
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [optionsUpdateKey, setOptionsUpdateKey] = useState(0); // Force re-render when options change
+  const [optionsUpdateKey, setOptionsUpdateKey] = useState(0);
   const scrollViewRef = useRef(null);
-  const { width: viewportWidth } = useWindowDimensions();
-  const isMobile = viewportWidth < 768;
-  const isTablet = viewportWidth >= 768 && viewportWidth < 1180;
-  const isLargeDesktop = viewportWidth >= 1440;
-  const sidebarWidth = isMobile ? '100%' : isLargeDesktop ? 360 : isTablet ? 280 : 320;
+  const { width: vw } = useWindowDimensions();
+  const isMobile = vw < 768;
 
   const currentStepData = formSteps[currentStep];
   const isLastStep = currentStep === formSteps.length - 1;
   const isFirstStep = currentStep === 0;
 
-  // Notify changes and autosave
-  const notifyChange = async (nextData, nextStep = currentStep) => {
-    if (onChange) {
-      try { onChange(nextData, nextStep); } catch (_) {}
+  // Progressive reveal
+  const getVisibleFields = (fields, data) => {
+    const visible = [];
+    for (let i = 0; i < fields.length; i++) {
+      const f = fields[i];
+      if (f.dependsOn && !data[f.dependsOn]) continue;
+      if (f.dependsOn && f.showWhen) {
+        const pv = data[f.dependsOn];
+        const pvk = typeof pv === 'object' && pv?.value ? pv.value : pv;
+        if (pvk !== f.showWhen) continue;
+      }
+      if (visible.length === 0) { visible.push(f); continue; }
+      const prevReqFilled = visible.filter(x => x.required).every(x => fieldHasValue(data[x.name]));
+      if (!prevReqFilled) break;
+      const prev = visible[visible.length - 1];
+      if (f.required) {
+        visible.push(f);
+      } else {
+        if (fieldHasValue(data[prev.name]) || !prev.required) visible.push(f);
+        else break;
+      }
     }
+    return visible;
+  };
+
+  const notifyChange = async (nextData, nextStep = currentStep) => {
+    if (onChange) { try { onChange(nextData, nextStep); } catch (_) {} }
     if (enableAutosave && autosaveKey) {
       try {
-        const payload = { formData: nextData, currentStep: nextStep, updatedAt: Date.now() };
-        // Defer import to avoid cyclic deps
         const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
-        await AsyncStorage.setItem(autosaveKey, JSON.stringify(payload));
-      } catch (e) {
-        // ignore autosave errors
-      }
+        await AsyncStorage.setItem(autosaveKey, JSON.stringify({ formData: nextData, currentStep: nextStep, updatedAt: Date.now() }));
+      } catch (_) {}
     }
   };
 
-  // Update form field value
-  const handleFieldChange = (fieldName, value) => {
+  const handleFieldChange = (name, value) => {
     setFormData((prev) => {
-      const next = { ...prev, [fieldName]: value };
+      const next = { ...prev, [name]: value };
       notifyChange(next);
       return next;
     });
-    
-    // Clear error for this field
-    if (errors[fieldName]) {
-      setErrors((prev) => {
-        const newErrors = { ...prev };
-        delete newErrors[fieldName];
-        return newErrors;
-      });
-    }
-
-    // Clear dependent fields when parent field changes
-    if (fieldName === 'industries') {
-      setFormData((prev) => ({ ...prev, subIndustries: [] }));
-    }
-    if (fieldName === 'departments') {
-      setFormData((prev) => ({ ...prev, subDepartments: [] }));
-    }
-    if (fieldName === 'educationLevel') {
-      setFormData((prev) => ({ ...prev, course: [], specialization: [] }));
-    }
-    if (fieldName === 'course') {
-      setFormData((prev) => ({ ...prev, specialization: [] }));
-    }
-    if (fieldName === 'disabilityStatus') {
-      setFormData((prev) => ({ ...prev, disabilityTypes: [] }));
-    }
+    if (errors[name]) setErrors(p => { const e = { ...p }; delete e[name]; return e; });
+    if (name === 'industries') setFormData(p => ({ ...p, subIndustries: [] }));
+    if (name === 'departments') setFormData(p => ({ ...p, subDepartments: [] }));
+    if (name === 'educationLevel') setFormData(p => ({ ...p, course: [], specialization: [] }));
+    if (name === 'course') setFormData(p => ({ ...p, specialization: [] }));
+    if (name === 'disabilityStatus') setFormData(p => ({ ...p, disabilityTypes: [] }));
   };
 
-  // Get dynamic options for dependent fields
+  const norm = (s) => s ? s.toLowerCase().trim().replace(/\s+/g, '_').replace(/\//g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '') : '';
+
   const getDynamicOptions = (field) => {
-    // Helper function to normalize strings for comparison
-    const normalizeValue = (str) => {
-      if (!str) return '';
-      // Convert to lowercase, replace spaces and slashes with underscore, remove consecutive underscores
-      return str
-        .toLowerCase()
-        .trim()
-        .replace(/\s+/g, '_')  // Replace spaces with underscore
-        .replace(/\//g, '_')    // Replace slashes with underscore
-        .replace(/_+/g, '_')    // Replace consecutive underscores with single
-        .replace(/^_|_$/g, ''); // Remove leading/trailing underscores
-    };
-
-    // Handle sub-industries based on selected industries
-    if (field.name === 'subIndustries' && field.dependsOn === 'industries') {
-      const selectedIndustries = formData.industries || [];
-      if (selectedIndustries.length === 0) {
-        return [];
-      }
-      
-      console.log('Selected industry values:', selectedIndustries);
-      
-      // Get industry labels from values
-      const industryLabels = [];
-      selectedIndustries.forEach(item => {
-        const industry = INDUSTRIES_DATA.find(ind => {
-          const normalizedName = normalizeValue(ind.industry);
-          const itemValue = typeof item === 'string' ? item : item.value;
-          console.log(`Comparing: "${normalizedName}" === "${itemValue}"`);
-          return normalizedName === itemValue;
-        });
-        if (industry) {
-          industryLabels.push(industry.industry);
-        }
-      });
-
-      console.log('Industry labels found:', industryLabels);
-
-      // Get sub-industries for selected industries
-      const subIndustries = getSubIndustries(industryLabels);
-      console.log('Sub-industries returned:', subIndustries);
-      
-      return subIndustries.map(subInd => ({
-        value: normalizeValue(subInd),
-        label: subInd,
-      }));
+    if (field.name === 'subIndustries') {
+      const sel = formData.industries || [];
+      if (!sel.length) return [];
+      const labels = sel.map(item => {
+        const ind = INDUSTRIES_DATA.find(i => norm(i.industry) === (typeof item === 'string' ? item : item.value));
+        return ind ? ind.industry : null;
+      }).filter(Boolean);
+      return getSubIndustries(labels).map(s => ({ value: norm(s), label: s }));
     }
-
-    // Handle sub-departments based on selected departments
-    if (field.name === 'subDepartments' && field.dependsOn === 'departments') {
-      const selectedDepartments = formData.departments || [];
-      if (selectedDepartments.length === 0) {
-        return [];
-      }
-      
-      console.log('Selected department values:', selectedDepartments);
-      
-      // Get department labels from values
-      const departmentLabels = [];
-      selectedDepartments.forEach(item => {
-        const department = DEPARTMENTS_DATA.find(dept => {
-          const normalizedName = normalizeValue(dept.department);
-          const itemValue = typeof item === 'string' ? item : item.value;
-          console.log(`Comparing: "${normalizedName}" === "${itemValue}"`);
-          return normalizedName === itemValue;
-        });
-        if (department) {
-          departmentLabels.push(department.department);
-        }
-      });
-
-      console.log('Department labels found:', departmentLabels);
-
-      // Get sub-departments for selected departments
-      const subDepartments = getSubDepartments(departmentLabels);
-      console.log('Sub-departments returned:', subDepartments);
-      
-      return subDepartments.map(subDept => ({
-        value: normalizeValue(subDept),
-        label: subDept,
-      }));
+    if (field.name === 'subDepartments') {
+      const sel = formData.departments || [];
+      if (!sel.length) return [];
+      const labels = sel.map(item => {
+        const d = DEPARTMENTS_DATA.find(x => norm(x.department) === (typeof item === 'string' ? item : item.value));
+        return d ? d.department : null;
+      }).filter(Boolean);
+      return getSubDepartments(labels).map(s => ({ value: norm(s), label: s }));
     }
-
-    // Handle course options based on selected education levels
-    if (field.name === 'course' && field.dependsOn === 'educationLevel') {
-      const selectedLevels = formData.educationLevel || [];
-      if (selectedLevels.length === 0) {
-        return [];
-      }
-
-      // Check if only basic education levels are selected
-      const levelLabels = selectedLevels.map(item => {
-        const itemValue = typeof item === 'string' ? item : item.value;
-        return itemValue.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+    if (field.name === 'course') {
+      const sel = formData.educationLevel || [];
+      if (!sel.length) return [];
+      const lvls = sel.map(item => {
+        const v = typeof item === 'string' ? item : item.value;
+        return v.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
       });
-
-      const onlyBasicEducation = levelLabels.every(level => BASIC_EDUCATION_LEVELS.includes(level));
-      if (onlyBasicEducation) {
-        return [];
-      }
-
-      // Collect course options based on selected levels
-      let courseOptions = [];
-      levelLabels.forEach(level => {
-        if (level === 'ITI') {
-          courseOptions = [...courseOptions, ...ITI_COURSE_OPTIONS];
-        } else if (level === 'Diploma') {
-          courseOptions = [...courseOptions, ...DIPLOMA_COURSE_OPTIONS];
-        } else if (level === 'Graduate') {
-          courseOptions = [...courseOptions, ...GRADUATE_COURSE_OPTIONS];
-        } else if (level === 'Post Graduate') {
-          courseOptions = [...courseOptions, ...POST_GRADUATE_COURSE_OPTIONS];
-        } else if (level === 'Doctorate') {
-          courseOptions = [...courseOptions, ...DOCTORATE_COURSE_OPTIONS];
-        }
+      if (lvls.every(l => BASIC_EDUCATION_LEVELS.includes(l))) return [];
+      let opts = [];
+      lvls.forEach(l => {
+        if (l === 'ITI') opts = [...opts, ...ITI_COURSE_OPTIONS];
+        else if (l === 'Diploma') opts = [...opts, ...DIPLOMA_COURSE_OPTIONS];
+        else if (l === 'Graduate') opts = [...opts, ...GRADUATE_COURSE_OPTIONS];
+        else if (l === 'Post Graduate') opts = [...opts, ...POST_GRADUATE_COURSE_OPTIONS];
+        else if (l === 'Doctorate') opts = [...opts, ...DOCTORATE_COURSE_OPTIONS];
       });
-
-      // Remove duplicates
-      courseOptions = [...new Set(courseOptions)];
-      
-      return courseOptions.map(course => ({
-        value: course.toLowerCase().replace(/\s+/g, '_').replace(/\//g, '_').replace(/\./g, '').replace(/\(/g, '').replace(/\)/g, ''),
-        label: course,
-      }));
+      return [...new Set(opts)].map(c => ({ value: c.toLowerCase().replace(/[\s/.()\[\]]/g, '_').replace(/_+/g, '_'), label: c }));
     }
-
-    // Handle specialization options based on selected courses
-    if (field.name === 'specialization' && field.dependsOn === 'course') {
-      const selectedCourses = formData.course || [];
-      if (selectedCourses.length === 0) {
-        return [];
-      }
-
-      // Get course labels from values
-      const courseLabels = selectedCourses.map(item => {
-        const itemValue = typeof item === 'string' ? item : item.value;
-        return itemValue.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ').replace(/_/g, ' ');
+    if (field.name === 'specialization') {
+      const sel = formData.course || [];
+      if (!sel.length) return [];
+      const cls = sel.map(item => {
+        const v = typeof item === 'string' ? item : item.value;
+        return v.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
       });
-
-      // Collect specialization options based on selected courses
-      let specializationOptions = [];
-      courseLabels.forEach(course => {
-        // Check if course belongs to ITI
-        if (ITI_COURSE_OPTIONS.includes(course)) {
-          specializationOptions = [...specializationOptions, ...ITI_SPECIALIZATION_OPTIONS];
-        }
-        // Check if course belongs to Diploma
-        else if (DIPLOMA_COURSE_OPTIONS.includes(course)) {
-          specializationOptions = [...specializationOptions, ...DIPLOMA_SPECIALIZATION_OPTIONS];
-        }
-        // Check if course belongs to Graduate
-        else if (GRADUATE_COURSE_OPTIONS.includes(course)) {
-          specializationOptions = [...specializationOptions, ...GRADUATE_SPECIALIZATION_OPTIONS];
-        }
-        // Check if course belongs to Post Graduate
-        else if (POST_GRADUATE_COURSE_OPTIONS.includes(course)) {
-          specializationOptions = [...specializationOptions, ...POST_GRADUATE_SPECIALIZATION_OPTIONS];
-        }
-        // Check if course belongs to Doctorate
-        else if (DOCTORATE_COURSE_OPTIONS.includes(course)) {
-          specializationOptions = [...specializationOptions, ...DOCTORATE_SPECIALIZATION_OPTIONS];
-        }
+      let opts = [];
+      cls.forEach(c => {
+        if (ITI_COURSE_OPTIONS.includes(c)) opts = [...opts, ...ITI_SPECIALIZATION_OPTIONS];
+        else if (DIPLOMA_COURSE_OPTIONS.includes(c)) opts = [...opts, ...DIPLOMA_SPECIALIZATION_OPTIONS];
+        else if (GRADUATE_COURSE_OPTIONS.includes(c)) opts = [...opts, ...GRADUATE_SPECIALIZATION_OPTIONS];
+        else if (POST_GRADUATE_COURSE_OPTIONS.includes(c)) opts = [...opts, ...POST_GRADUATE_SPECIALIZATION_OPTIONS];
+        else if (DOCTORATE_COURSE_OPTIONS.includes(c)) opts = [...opts, ...DOCTORATE_SPECIALIZATION_OPTIONS];
       });
-
-      // Remove duplicates
-      specializationOptions = [...new Set(specializationOptions)];
-      
-      return specializationOptions.map(spec => ({
-        value: spec.toLowerCase().replace(/\s+/g, '_').replace(/\//g, '_').replace(/\./g, '').replace(/\(/g, '').replace(/\)/g, '').replace(/&/g, 'and').replace(/'/g, ''),
-        label: spec,
-      }));
+      return [...new Set(opts)].map(s => ({ value: s.toLowerCase().replace(/[\s/.()\[\]&']/g, '_').replace(/_+/g, '_'), label: s }));
     }
-
     return field.options || [];
   };
 
-  // Validate current step
   const validateCurrentStep = () => {
-    const newErrors = {};
-    const currentFields = currentStepData.fields;
-
-    currentFields.forEach((field) => {
-      // Skip validation if field depends on another field that is false
-      if (field.dependsOn && !formData[field.dependsOn]) {
-        return;
+    const errs = {};
+    currentStepData.fields.forEach(f => {
+      if (f.dependsOn && !formData[f.dependsOn]) return;
+      if (f.dependsOn && f.showWhen) {
+        const pv = formData[f.dependsOn];
+        const pvk = typeof pv === 'object' && pv?.value ? pv.value : pv;
+        if (pvk !== f.showWhen) return;
       }
-
-      // Skip validation if field has a showWhen condition that doesn't match
-      if (field.dependsOn && field.showWhen) {
-        const parentValue = formData[field.dependsOn];
-        const parentValueKey = typeof parentValue === 'object' && parentValue?.value 
-          ? parentValue.value 
-          : parentValue;
-        
-        if (parentValueKey !== field.showWhen) {
-          return;
-        }
+      if (f.required) {
+        const v = formData[f.name];
+        if (!v || (Array.isArray(v) && !v.length) || v === '') errs[f.name] = `${f.label} is required`;
       }
-
-      if (field.required) {
-        const value = formData[field.name];
-        
-        if (!value || (Array.isArray(value) && value.length === 0) || value === '') {
-          newErrors[field.name] = `${field.label} is required`;
-        }
-      }
-
-      // Additional validation for specific field types
-      if (field.type === 'email' && formData[field.name]) {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(formData[field.name])) {
-          newErrors[field.name] = 'Please enter a valid email address';
-        }
-      }
-
-      if (field.type === 'tel' && formData[field.name]) {
-        const phoneRegex = /^[0-9]{10}$/;
-        if (!phoneRegex.test(formData[field.name].replace(/[^0-9]/g, ''))) {
-          newErrors[field.name] = 'Please enter a valid phone number';
-        }
-      }
+      if (f.type === 'email' && formData[f.name] && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData[f.name]))
+        errs[f.name] = 'Please enter a valid email address';
+      if (f.type === 'tel' && formData[f.name] && !/^[0-9]{10}$/.test(formData[f.name].replace(/[^0-9]/g, '')))
+        errs[f.name] = 'Please enter a valid phone number';
     });
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
   };
 
-  // Navigate to next step
   const handleNext = () => {
     if (validateCurrentStep()) {
-      if (isLastStep) {
-        handleSubmit();
-      } else {
-        setCurrentStep((prev) => prev + 1);
+      if (isLastStep) handleSubmit();
+      else {
+        setCurrentStep(p => p + 1);
         notifyChange(formData, currentStep + 1);
         scrollViewRef.current?.scrollTo({ y: 0, animated: false });
       }
@@ -353,480 +192,233 @@ const MultiStepJobPostForm = ({ onSubmit, initialData = {}, onCancel, onChange, 
     }
   };
 
-  // Navigate to previous step
   const handlePrevious = () => {
     if (!isFirstStep) {
-      setCurrentStep((prev) => {
-        const next = prev - 1;
-        notifyChange(formData, next);
-        return next;
-      });
+      setCurrentStep(p => { const n = p - 1; notifyChange(formData, n); return n; });
       scrollViewRef.current?.scrollTo({ y: 0, animated: false });
     }
   };
 
-  // Jump to specific step
-  const jumpToStep = (stepIndex) => {
-    setCurrentStep(stepIndex);
+  const jumpToStep = (idx) => {
+    setCurrentStep(idx);
     scrollViewRef.current?.scrollTo({ y: 0, animated: false });
   };
 
-  // Submit form
   const handleSubmit = async () => {
-    if (!validateCurrentStep()) {
-      Alert.alert('Validation Error', 'Please fill in all required fields correctly.');
-      return;
-    }
-
+    if (!validateCurrentStep()) { Alert.alert('Validation Error', 'Please fill in all required fields correctly.'); return; }
     setIsSubmitting(true);
-    try {
-      console.log('Form submission started with data:', formData);
-      await onSubmit(formData);
-      console.log('Form submission completed successfully');
-    } catch (error) {
-      console.error('Form submission error:', error);
-      Alert.alert('Error', error.message || 'Failed to submit form. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
+    try { await onSubmit(formData); }
+    catch (e) { Alert.alert('Error', e.message || 'Failed to submit. Please try again.'); }
+    finally { setIsSubmitting(false); }
   };
 
-  // Render individual field based on type
   const renderField = (field) => {
-    // Skip field if it depends on another field that is false
-    if (field.dependsOn && !formData[field.dependsOn]) {
-      return null;
-    }
-
-    // Skip field if it has a showWhen condition that doesn't match
+    if (field.dependsOn && !formData[field.dependsOn]) return null;
     if (field.dependsOn && field.showWhen) {
-      const parentValue = formData[field.dependsOn];
-      const parentValueKey = typeof parentValue === 'object' && parentValue?.value 
-        ? parentValue.value 
-        : parentValue;
-      
-      if (parentValueKey !== field.showWhen) {
-        return null;
-      }
+      const pv = formData[field.dependsOn];
+      const pvk = typeof pv === 'object' && pv?.value ? pv.value : pv;
+      if (pvk !== field.showWhen) return null;
     }
-
-    const commonProps = {
-      label: field.label,
-      value: formData[field.name] || '',
-      error: errors[field.name],
-      required: field.required,
-      icon: field.icon,
-      placeholder: field.placeholder,
-      disabled: field.disabled,
+    const cp = {
+      label: field.label, value: formData[field.name] || '',
+      error: errors[field.name], required: field.required,
+      placeholder: field.placeholder, disabled: field.disabled,
     };
-
     switch (field.type) {
-      case 'text':
-      case 'email':
-      case 'tel':
-      case 'number':
-        return (
-          <Input
-            key={field.name}
-            {...commonProps}
-            onChangeText={(value) => handleFieldChange(field.name, value)}
-            keyboardType={
-              field.type === 'number' ? 'numeric' :
-              field.type === 'tel' ? 'phone-pad' :
-              field.type === 'email' ? 'email-address' : 'default'
-            }
-          />
-        );
-
+      case 'text': case 'email': case 'tel': case 'number':
+        return <Input key={field.name} {...cp} onChangeText={v => handleFieldChange(field.name, v)}
+          keyboardType={field.type === 'number' ? 'numeric' : field.type === 'tel' ? 'phone-pad' : field.type === 'email' ? 'email-address' : 'default'} />;
       case 'textarea':
-        return (
-          <Input
-            key={field.name}
-            {...commonProps}
-            onChangeText={(value) => handleFieldChange(field.name, value)}
-            multiline
-            numberOfLines={field.numberOfLines || 6}
-          />
-        );
-
+        return <Input key={field.name} {...cp} onChangeText={v => handleFieldChange(field.name, v)} multiline numberOfLines={field.numberOfLines || 6} />;
       case 'dropdown':
+        return <DropdownField key={field.name} {...cp} value={formData[field.name]} options={field.options || []}
+          onSelect={v => handleFieldChange(field.name, v)} allowAddNew={field.allowAddNew}
+          onAddNew={nv => { const o = { value: nv.toLowerCase().replace(/\s+/g, '_'), label: nv }; field.options?.push(o); handleFieldChange(field.name, o); }} />;
+      case 'multiselect': {
+        const opts = [...(field.dependsOn ? getDynamicOptions(field) : (field.options || []))];
+        const parentOk = field.dependsOn ? (formData[field.dependsOn] && formData[field.dependsOn].length > 0) : true;
+        if (field.dependsOn && (!parentOk || !opts.length)) return null;
         return (
-          <DropdownField
-            key={field.name}
-            {...commonProps}
-            value={formData[field.name]}
-            options={field.options || []}
-            onSelect={(value) => handleFieldChange(field.name, value)}
-            allowAddNew={field.allowAddNew}
-            onAddNew={(newValue) => {
-              const newOption = { value: newValue.toLowerCase().replace(/\s+/g, '_'), label: newValue };
-              field.options.push(newOption);
-              handleFieldChange(field.name, newOption);
-            }}
-          />
-        );
-
-      case 'multiselect':
-        // Get dynamic options for dependent fields or use static options
-        // Create a new array reference to ensure React detects changes
-        const baseOptions = field.dependsOn ? getDynamicOptions(field) : (field.options || []);
-        const multiselectOptions = [...baseOptions]; // Create new array reference
-        
-        // Check if parent field has selections for dependent fields
-        const parentHasSelections = field.dependsOn ? 
-          (formData[field.dependsOn] && formData[field.dependsOn].length > 0) : true;
-        
-        // Don't render dependent field if parent has no selections or no options available
-        if (field.dependsOn && (!parentHasSelections || multiselectOptions.length === 0)) {
-          return null;
-        }
-
-        return (
-          <MultiSelectField
-            key={field.name}
-            {...commonProps}
-            value={formData[field.name] || []}
-            options={multiselectOptions}
-            onSelect={(value) => handleFieldChange(field.name, value)}
-            maxSelections={field.maxSelections}
-            allowAddNew={field.allowAddNew}
-            onAddNew={async (newValue) => {
+          <MultiSelectField key={field.name} {...cp} value={formData[field.name] || []} options={opts}
+            onSelect={v => handleFieldChange(field.name, v)} maxSelections={field.maxSelections} allowAddNew={field.allowAddNew}
+            onAddNew={async nv => {
               try {
-                let newOption = null;
-                
-                // Call appropriate API based on field name
+                let o = null;
                 if (field.name === 'keySkills') {
-                  const response = await api.addKeySkill(newValue);
-                  if (response.success || response.keySkill) {
-                    // Create the option with proper normalization
-                    newOption = { value: newValue.toLowerCase().replace(/\s+/g, '_').replace(/\//g, '_').replace(/\(/g, '').replace(/\)/g, ''), label: newValue };
-                    if (field.options) {
-                      field.options.push(newOption);
-                    }
-                    // Force component re-render to include new option
-                    setOptionsUpdateKey(prev => prev + 1);
-                    // Select the new option immediately
-                    const currentValue = formData[field.name] || [];
-                    const isAlreadySelected = currentValue.some(v => v.value === newOption.value);
-                    if (!isAlreadySelected) {
-                      handleFieldChange(field.name, [...currentValue, newOption]);
-                      // Show success after a brief delay to ensure state updates
-                      setTimeout(() => {
-                        Alert.alert('Success', 'Key skill added successfully');
-                      }, 100);
-                    } else {
-                      Alert.alert('Success', 'Key skill added successfully');
-                    }
+                  const r = await api.addKeySkill(nv);
+                  if (r.success || r.keySkill) {
+                    o = { value: nv.toLowerCase().replace(/\s+/g, '_').replace(/\//g, '_').replace(/[()]/g, ''), label: nv };
+                    field.options?.push(o); setOptionsUpdateKey(p => p + 1);
+                    const cur = formData[field.name] || [];
+                    if (!cur.some(x => x.value === o.value)) { handleFieldChange(field.name, [...cur, o]); setTimeout(() => Alert.alert('Success', 'Key skill added'), 100); }
                   }
                 } else if (field.name === 'jobRoles') {
-                  const response = await api.addJobRole(newValue);
-                  if (response.success || response.jobRole) {
-                    // Create the option with proper normalization
-                    newOption = { value: newValue.toLowerCase().replace(/\s+/g, '_').replace(/\//g, '_').replace(/\(/g, '').replace(/\)/g, '').replace(/-/g, '_'), label: newValue };
-                    if (field.options) {
-                      field.options.push(newOption);
-                    }
-                    // Force component re-render to include new option
-                    setOptionsUpdateKey(prev => prev + 1);
-                    // Select the new option immediately
-                    const currentValue = formData[field.name] || [];
-                    const isAlreadySelected = currentValue.some(v => v.value === newOption.value);
-                    if (!isAlreadySelected) {
-                      handleFieldChange(field.name, [...currentValue, newOption]);
-                      // Show success after a brief delay to ensure state updates
-                      setTimeout(() => {
-                        Alert.alert('Success', 'Job role added successfully');
-                      }, 100);
-                    } else {
-                      Alert.alert('Success', 'Job role added successfully');
-                    }
+                  const r = await api.addJobRole(nv);
+                  if (r.success || r.jobRole) {
+                    o = { value: nv.toLowerCase().replace(/\s+/g, '_').replace(/\//g, '_').replace(/[()]/g, '').replace(/-/g, '_'), label: nv };
+                    field.options?.push(o); setOptionsUpdateKey(p => p + 1);
+                    const cur = formData[field.name] || [];
+                    if (!cur.some(x => x.value === o.value)) { handleFieldChange(field.name, [...cur, o]); setTimeout(() => Alert.alert('Success', 'Job role added'), 100); }
                   }
                 } else {
-                  // For other multiselect fields
-                  newOption = { value: newValue.toLowerCase().replace(/\s+/g, '_'), label: newValue };
-                  if (field.options) {
-                    field.options.push(newOption);
-                  }
-                  // Force component re-render to include new option
-                  setOptionsUpdateKey(prev => prev + 1);
-                  // Select the new option immediately
-                  const currentValue = formData[field.name] || [];
-                  const isAlreadySelected = currentValue.some(v => v.value === newOption.value);
-                  if (!isAlreadySelected) {
-                    handleFieldChange(field.name, [...currentValue, newOption]);
-                  }
+                  o = { value: nv.toLowerCase().replace(/\s+/g, '_'), label: nv };
+                  field.options?.push(o); setOptionsUpdateKey(p => p + 1);
+                  const cur = formData[field.name] || [];
+                  if (!cur.some(x => x.value === o.value)) handleFieldChange(field.name, [...cur, o]);
                 }
-              } catch (error) {
-                console.error('Error adding new item:', error);
-                Alert.alert('Error', error.message || 'Failed to add new item. Please try again.');
-              }
-            }}
-          />
+              } catch (e) { Alert.alert('Error', e.message || 'Failed to add item.'); }
+            }} />
         );
-
+      }
       case 'autocomplete':
-        return (
-          <AutoCompleteField
-            key={field.name}
-            {...commonProps}
-            value={formData[field.name] || ''}
-            suggestions={field.suggestions || []}
-            onChangeText={(value) => handleFieldChange(field.name, value)}
-            onSelect={(value) => handleFieldChange(field.name, value.label)}
-            allowAddNew={field.allowAddNew}
-            onAddNew={async (newValue) => {
-              // Always update the field value immediately
-              handleFieldChange(field.name, newValue);
-              
-              // Optionally try to add to master list (but don't block if it fails)
-              try {
-                if (field.name === 'companyName') {
-                  await api.addCompany(newValue);
-                } else if (field.name === 'jobTitle') {
-                  await api.addJobTitle(newValue);
-                }
-              } catch (error) {
-                // Silently ignore - value is already set in form
-              }
-            }}
-            multiline={field.multiline}
-            numberOfLines={field.numberOfLines}
-          />
-        );
-
+        return <AutoCompleteField key={field.name} {...cp} value={formData[field.name] || ''} suggestions={field.suggestions || []}
+          onChangeText={v => handleFieldChange(field.name, v)} onSelect={v => handleFieldChange(field.name, v.label)}
+          allowAddNew={field.allowAddNew} onAddNew={async nv => {
+            handleFieldChange(field.name, nv);
+            try {
+              if (field.name === 'companyName') await api.addCompany(nv);
+              else if (field.name === 'jobTitle') await api.addJobTitle(nv);
+            } catch (_) {}
+          }} multiline={field.multiline} numberOfLines={field.numberOfLines} />;
       case 'checkbox':
-        return (
-          <CheckboxField
-            key={field.name}
-            label={field.label}
-            value={formData[field.name] || false}
-            onToggle={(value) => handleFieldChange(field.name, value)}
-            error={errors[field.name]}
-            description={field.description}
-          />
-        );
-
+        return <CheckboxField key={field.name} label={field.label} value={formData[field.name] || false}
+          onToggle={v => handleFieldChange(field.name, v)} error={errors[field.name]} description={field.description} />;
       case 'time':
-        return (
-          <TimePickerField
-            key={field.name}
-            {...commonProps}
-            value={formData[field.name]}
-            onSelect={(value) => handleFieldChange(field.name, value)}
-          />
-        );
-
+        return <TimePickerField key={field.name} {...cp} value={formData[field.name]} onSelect={v => handleFieldChange(field.name, v)} />;
       case 'weekdays':
-        return (
-          <WeekDaysField
-            key={field.name}
-            label={field.label}
-            value={formData[field.name] || []}
-            onSelect={(value) => handleFieldChange(field.name, value)}
-            error={errors[field.name]}
-            required={field.required}
-          />
-        );
-
+        return <WeekDaysField key={field.name} label={field.label} value={formData[field.name] || []}
+          onSelect={v => handleFieldChange(field.name, v)} error={errors[field.name]} required={field.required} />;
       case 'questionbuilder':
-        return (
-          <QuestionBuilderField
-            key={field.name}
-            label={field.label}
-            value={formData[field.name] || []}
-            onSelect={(value) => handleFieldChange(field.name, value)}
-            error={errors[field.name]}
-            required={field.required}
-          />
-        );
-
+        return <QuestionBuilderField key={field.name} label={field.label} value={formData[field.name] || []}
+          onSelect={v => handleFieldChange(field.name, v)} error={errors[field.name]} required={field.required} />;
       case 'date':
-        return (
-          <Input
-            key={field.name}
-            {...commonProps}
-            onChangeText={(value) => handleFieldChange(field.name, value)}
-            placeholder="YYYY-MM-DD"
-          />
-        );
-
-      default:
-        return null;
+        return <Input key={field.name} {...cp} onChangeText={v => handleFieldChange(field.name, v)} placeholder="YYYY-MM-DD" />;
+      default: return null;
     }
   };
 
-  // Render left sidebar with steps
+  // ── Sidebar ──────────────────────────────────────────────
   const renderSidebar = () => {
     if (isMobile) {
       return (
-        <View style={styles.mobileStepsWrapper}>
-          <View style={styles.mobileStepsHeader}>
-            <View style={styles.sidebarTitleContainer}>
-              <Ionicons name="briefcase" size={22} color="#4f46e5" style={styles.sidebarTitleIcon} />
-              <Text style={styles.sidebarTitle}>Post a job</Text>
-            </View>
-            <Text style={styles.mobileStepProgress}>
-              Step {currentStep + 1} of {formSteps.length}
-            </Text>
-          </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.mobileStepChips}
-          >
-            {formSteps.map((step, index) => (
-              <TouchableOpacity
-                key={index}
-                style={[
-                  styles.mobileStepChip,
-                  index === currentStep && styles.mobileStepChipActive,
-                  index < currentStep && styles.mobileStepChipCompleted,
-                ]}
-                onPress={() => jumpToStep(index)}
-                activeOpacity={0.8}
-              >
-                <Text
-                  style={[
-                    styles.mobileStepChipText,
-                    index === currentStep && styles.mobileStepChipTextActive,
-                  ]}
-                >
-                  {step.title}
-                </Text>
-              </TouchableOpacity>
+        <View style={S.mobileSidebar}>
+          <Text style={S.mobileTitle}>Post a Job</Text>
+          <View style={S.mobileDots}>
+            {formSteps.map((_, idx) => (
+              <View key={idx} style={[S.mobileDot, idx === currentStep && S.mobileDotActive, idx < currentStep && S.mobileDotDone]} />
             ))}
-          </ScrollView>
+          </View>
+          <Text style={S.mobileStepLabel}>Step {currentStep + 1}/{formSteps.length} — {currentStepData.title}</Text>
         </View>
       );
     }
-
     return (
-      <LinearGradient
-        colors={['#ffffff', '#f8fafc', '#f1f5f9']}
-        style={[styles.sidebar, { width: sidebarWidth }]}
-      >
-        <View style={styles.sidebarHeader}>
-          <View style={styles.sidebarTitleContainer}>
-            <Ionicons name="briefcase" size={24} color="#4f46e5" style={styles.sidebarTitleIcon} />
-            <Text style={styles.sidebarTitle}>Post a job</Text>
-          </View>
+      <View style={S.sidebar}>
+        <View style={S.sidebarTop}>
+          <Text style={S.sidebarTitle}>Post a Job</Text>
+          <Text style={S.sidebarMeta}>{currentStep + 1} of {formSteps.length} steps</Text>
         </View>
-        <ScrollView style={styles.stepsListScroll} contentContainerStyle={styles.stepsList}>
-          {formSteps.map((step, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.stepItem}
-              onPress={() => jumpToStep(index)}
-              activeOpacity={0.7}
-            >
-              <View style={styles.stepItemContent}>
-                <View style={styles.stepConnector}>
-                  {index > 0 && (
-                    <View
-                      style={[
-                        styles.stepConnectorLineTop,
-                        index <= currentStep && styles.stepConnectorLineActive,
-                      ]}
-                    />
-                  )}
-                  <View
-                    style={[
-                      styles.stepCircle,
-                      index === currentStep && styles.stepCircleActive,
-                      index < currentStep && styles.stepCircleCompleted,
-                    ]}
-                  >
-                    {index < currentStep && (
-                      <Ionicons name="checkmark" size={14} color="#ffffff" />
-                    )}
+        <View style={S.stepList}>
+          {formSteps.map((step, idx) => {
+            const active = idx === currentStep;
+            const done = idx < currentStep;
+            return (
+              <TouchableOpacity key={idx} style={S.stepRow} onPress={() => jumpToStep(idx)} activeOpacity={0.7}>
+                <View style={S.stepLeft}>
+                  {idx > 0 && <View style={[S.lineTop, done && S.lineDone, active && S.lineActive]} />}
+                  <View style={[S.dot, active && S.dotActive, done && S.dotDone]}>
+                    {done
+                      ? <Ionicons name="checkmark" size={9} color="#fff" />
+                      : <View style={[S.dotCore, active && S.dotCoreActive]} />
+                    }
                   </View>
-                  {index < formSteps.length - 1 && (
-                    <View
-                      style={[
-                        styles.stepConnectorLineBottom,
-                        index < currentStep && styles.stepConnectorLineActive,
-                      ]}
-                    />
-                  )}
+                  {idx < formSteps.length - 1 && <View style={[S.lineBottom, done && S.lineDone]} />}
                 </View>
-                <Text
-                  style={[
-                    styles.stepItemLabel,
-                    index === currentStep && styles.stepItemLabelActive,
-                  ]}
-                >
-                  {step.title}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </LinearGradient>
+                <View style={S.stepText}>
+                  <Text style={[S.stepName, active && S.stepNameActive, done && S.stepNameDone]}>{step.title}</Text>
+                  {active && <Text style={S.stepStatus}>In progress</Text>}
+                  {done && <Text style={S.stepStatusDone}>Completed</Text>}
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
     );
   };
 
+  // ── Compute visible fields ────────────────────────────────
+  const visibleFields = getVisibleFields(currentStepData.fields, formData);
+  const totalEligible = currentStepData.fields.filter(f => {
+    if (f.dependsOn && !formData[f.dependsOn]) return false;
+    if (f.dependsOn && f.showWhen) {
+      const pv = formData[f.dependsOn];
+      const pvk = typeof pv === 'object' && pv?.value ? pv.value : pv;
+      if (pvk !== f.showWhen) return false;
+    }
+    return true;
+  }).length;
+  const filledCount = visibleFields.filter(f => fieldHasValue(formData[f.name])).length;
+  const hasMore = visibleFields.length < totalEligible;
+
   return (
-    <View style={styles.container}>
-      <KeyboardAvoidingView
-        style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
-      >
-        <View style={[styles.mainLayout, isMobile && styles.mainLayoutMobile]}>
+    <View style={S.root}>
+      <KeyboardAvoidingView style={S.kav} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}>
+        <View style={[S.layout, isMobile && S.layoutMobile]}>
           {renderSidebar()}
-          <View style={[styles.contentArea, isMobile && styles.contentAreaMobile]}>
-            <ScrollView
-              ref={scrollViewRef}
-              style={[styles.scrollView, isMobile && styles.scrollViewMobile]}
-              contentContainerStyle={[styles.scrollContent, isMobile && styles.scrollContentMobile]}
-              showsVerticalScrollIndicator={true}
-            >
-              <View style={[styles.header, isMobile && styles.headerMobile]}>
-                <View style={styles.headerContent}>
-                  <Text style={styles.headerTitle}>{currentStepData.title}</Text>
+
+          <View style={S.main}>
+            <ScrollView ref={scrollViewRef} style={S.scroll} contentContainerStyle={S.scrollContent} showsVerticalScrollIndicator={false}>
+
+              {/* Step header */}
+              <View style={S.stepHeader}>
+                <View style={S.stepHeaderLeft}>
+                  <Text style={S.stepBadge}>Step {currentStep + 1}</Text>
+                  <Text style={S.stepTitle}>{currentStepData.title}</Text>
+                  {currentStepData.description && <Text style={S.stepDesc}>{currentStepData.description}</Text>}
                 </View>
                 {onCancel && (
-                  <TouchableOpacity onPress={onCancel} style={styles.closeButton}>
-                    <Ionicons name="close" size={24} color="#64748b" />
+                  <TouchableOpacity onPress={onCancel} style={S.closeBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Ionicons name="close" size={18} color="#9CA3AF" />
                   </TouchableOpacity>
                 )}
               </View>
 
-              <View
-                style={[
-                  styles.formContainer,
-                  isMobile && styles.formContainerMobile,
-                  isTablet && styles.formContainerTablet,
-                ]}
-              >
-                {currentStepData.fields.map((field) => renderField(field))}
-              </View>
-
-              <View style={[styles.footer, isMobile && styles.footerMobile]}>
-                <View style={[styles.buttonRow, isMobile && styles.buttonRowMobile]}>
-                  {!isFirstStep && (
-                    <TouchableOpacity
-                      style={[styles.secondaryButton, isMobile && styles.secondaryButtonMobile]}
-                      onPress={handlePrevious}
-                    >
-                      <Ionicons name="arrow-back" size={20} color="#4f46e5" />
-                      <Text style={styles.secondaryButtonText}>Previous</Text>
-                    </TouchableOpacity>
-                  )}
-
-                  <Button
-                    title={isLastStep ? 'Submit Job Post' : 'Next'}
-                    onPress={handleNext}
-                    loading={isSubmitting}
-                    style={[
-                      styles.primaryButton,
-                      isFirstStep && styles.fullWidthButton,
-                      isMobile && styles.primaryButtonMobile,
-                    ]}
-                    icon={isLastStep ? 'checkmark-circle-outline' : 'arrow-forward'}
-                  />
+              {/* Form card */}
+              <View style={S.formCard}>
+                {/* Progress */}
+                <View style={S.progressRow}>
+                  <Text style={S.progressText}>{filledCount} of {totalEligible} fields filled</Text>
+                  <View style={S.progressTrack}>
+                    <View style={[S.progressFill, { width: `${totalEligible > 0 ? (filledCount / totalEligible) * 100 : 0}%` }]} />
+                  </View>
                 </View>
+
+                {visibleFields.map(f => renderField(f))}
+
+                {hasMore && (
+                  <View style={S.revealHint}>
+                    <Ionicons name="chevron-down" size={13} color="#9CA3AF" />
+                    <Text style={S.revealHintText}>Fill the fields above to reveal more</Text>
+                  </View>
+                )}
               </View>
+
+              {/* Navigation */}
+              <View style={S.navRow}>
+                {!isFirstStep
+                  ? <TouchableOpacity style={S.backBtn} onPress={handlePrevious}>
+                      <Ionicons name="arrow-back" size={15} color="#4F46E5" />
+                      <Text style={S.backText}>Back</Text>
+                    </TouchableOpacity>
+                  : <View />
+                }
+                <TouchableOpacity style={[S.nextBtn, isSubmitting && S.nextBtnDisabled]} onPress={handleNext} disabled={isSubmitting}>
+                  <Text style={S.nextText}>{isLastStep ? 'Submit' : 'Next'}</Text>
+                  <Ionicons name={isLastStep ? 'checkmark' : 'arrow-forward'} size={15} color="#fff" />
+                </TouchableOpacity>
+              </View>
+
             </ScrollView>
           </View>
         </View>
@@ -835,315 +427,211 @@ const MultiStepJobPostForm = ({ onSubmit, initialData = {}, onCancel, onChange, 
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f1f5f9',
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  mainLayout: {
-    flex: 1,
-    flexDirection: 'row',
-  },
-  mainLayoutMobile: {
-    flexDirection: 'column',
-  },
+const S = StyleSheet.create({
+  root: { flex: 1, backgroundColor: '#fff' },
+  kav: { flex: 1 },
+  layout: { flex: 1, flexDirection: 'row' },
+  layoutMobile: { flexDirection: 'column' },
+
+  // ── Sidebar ──────────────────────────────────────────────
   sidebar: {
-    width: 300,
+    width: 220,
+    backgroundColor: '#fff',
     borderRightWidth: 1,
-    borderRightColor: '#e2e8f0',
-    ...shadows.md,
+    borderRightColor: '#F3F4F6',
+    paddingTop: 32,
   },
-  mobileStepsWrapper: {
-    backgroundColor: '#ffffff',
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
-    ...shadows.sm,
-  },
-  mobileStepsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.md,
-  },
-  mobileStepProgress: {
-    color: '#475569',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  mobileStepChips: {
-    paddingRight: spacing.md,
-  },
-  mobileStepChip: {
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: 999,
-    backgroundColor: '#f8fafc',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    marginRight: spacing.sm,
-  },
-  mobileStepChipActive: {
-    backgroundColor: 'rgba(79, 70, 229, 0.15)',
-    borderColor: '#4f46e5',
-  },
-  mobileStepChipCompleted: {
-    backgroundColor: 'rgba(16, 185, 129, 0.12)',
-    borderColor: '#10b981',
-  },
-  mobileStepChipText: {
-    color: '#475569',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  mobileStepChipTextActive: {
-    color: '#4f46e5',
-  },
-  sidebarHeader: {
-    padding: spacing.xl + 4,
-    paddingBottom: spacing.lg + 4,
-    borderBottomWidth: 2,
-    borderBottomColor: '#e2e8f0',
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
-  },
-  sidebarTitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  sidebarTitleIcon: {
-    marginRight: spacing.sm,
+  sidebarTop: {
+    paddingHorizontal: 24,
+    marginBottom: 28,
   },
   sidebarTitle: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#1e293b',
-    letterSpacing: -0.5,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 4,
   },
-  stepsListScroll: {
-    flex: 1,
+  sidebarMeta: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    fontWeight: '500',
   },
-  stepsList: {
-    padding: spacing.md,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.xl,
+  stepList: {
+    paddingHorizontal: 20,
   },
-  stepItem: {
-    marginBottom: 0,
-    paddingVertical: spacing.sm + 2,
-    paddingHorizontal: spacing.xs,
-    borderRadius: 12,
-    marginHorizontal: spacing.xs,
-  },
-  stepItemContent: {
+  stepRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
+    minHeight: 52,
   },
-  stepConnector: {
-    width: 28,
+  stepLeft: {
+    width: 24,
     alignItems: 'center',
-    marginRight: spacing.md,
+    marginRight: 12,
     position: 'relative',
   },
-  stepConnectorLineTop: {
-    width: 3,
-    height: 24,
-    backgroundColor: '#e2e8f0',
+  lineTop: {
     position: 'absolute',
-    top: -24,
-    left: 12,
-    borderRadius: 2,
-  },
-  stepConnectorLineBottom: {
-    width: 3,
-    height: 24,
-    backgroundColor: '#e2e8f0',
-    position: 'absolute',
-    bottom: -24,
-    left: 12,
-    borderRadius: 2,
-  },
-  stepConnectorLineActive: {
-    backgroundColor: '#4f46e5',
-  },
-  stepCircle: {
-    width: 26,
+    top: -26,
+    width: 2,
     height: 26,
-    borderRadius: 13,
-    backgroundColor: '#f1f5f9',
-    borderWidth: 3,
-    borderColor: '#cbd5e1',
+    backgroundColor: '#E5E7EB',
+  },
+  lineBottom: {
+    position: 'absolute',
+    top: 22,
+    width: 2,
+    height: 30,
+    backgroundColor: '#E5E7EB',
+  },
+  lineDone: { backgroundColor: '#4F46E5' },
+  lineActive: { backgroundColor: '#4F46E5' },
+  dot: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#D1D5DB',
+    backgroundColor: '#fff',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1,
-    ...shadows.sm,
+    marginTop: 2,
   },
-  stepCircleActive: {
-    backgroundColor: '#4f46e5',
-    borderColor: '#4f46e5',
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    ...shadows.md,
+  dotActive: { borderColor: '#4F46E5', backgroundColor: '#4F46E5' },
+  dotDone: { borderColor: '#4F46E5', backgroundColor: '#4F46E5' },
+  dotCore: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#D1D5DB' },
+  dotCoreActive: { backgroundColor: '#fff' },
+  stepText: { flex: 1, paddingTop: 2, paddingBottom: 16 },
+  stepName: { fontSize: 13, color: '#6B7280', fontWeight: '500', lineHeight: 18 },
+  stepNameActive: { color: '#111827', fontWeight: '700' },
+  stepNameDone: { color: '#4F46E5', fontWeight: '600' },
+  stepStatus: { fontSize: 11, color: '#4F46E5', marginTop: 2 },
+  stepStatusDone: { fontSize: 11, color: '#10B981', marginTop: 2 },
+
+  // ── Mobile sidebar ────────────────────────────────────────
+  mobileSidebar: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
   },
-  stepCircleCompleted: {
-    backgroundColor: '#10b981',
-    borderColor: '#10b981',
-    ...shadows.sm,
-  },
-  stepItemLabel: {
-    flex: 1,
-    fontSize: 14,
-    color: '#64748b',
-    fontWeight: '500',
-    lineHeight: 20,
-  },
-  stepItemLabelActive: {
-    color: '#4f46e5',
-    fontWeight: '700',
-    fontSize: 15,
-  },
-  contentArea: {
-    flex: 1,
-    backgroundColor: '#f1f5f9',
-  },
-  contentAreaMobile: {
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.xl,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollViewMobile: {
-    paddingBottom: spacing.xl,
-  },
-  scrollContent: {
-    flexGrow: 1,
-  },
-  scrollContentMobile: {
-    paddingBottom: spacing.xl * 1.5,
-  },
-  header: {
+  mobileTitle: { fontSize: 15, fontWeight: '700', color: '#111827', marginBottom: 8 },
+  mobileDots: { flexDirection: 'row', gap: 6, marginBottom: 6 },
+  mobileDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#E5E7EB' },
+  mobileDotActive: { backgroundColor: '#4F46E5', width: 20 },
+  mobileDotDone: { backgroundColor: '#10B981' },
+  mobileStepLabel: { fontSize: 12, color: '#6B7280' },
+
+  // ── Main content ──────────────────────────────────────────
+  main: { flex: 1, backgroundColor: '#FAFAFA' },
+  scroll: { flex: 1 },
+  scrollContent: { paddingBottom: 40 },
+
+  // ── Step header ───────────────────────────────────────────
+  stepHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    padding: spacing.xl + 4,
-    paddingTop: spacing.xl + 12,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 0,
-    ...shadows.lg,
+    paddingHorizontal: 32,
+    paddingTop: 32,
+    paddingBottom: 20,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
   },
-  headerMobile: {
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.lg,
-    paddingTop: spacing.xl,
-    gap: spacing.md,
-    borderRadius: 0,
-    shadowColor: 'transparent',
-    shadowOpacity: 0,
-    elevation: 0,
+  stepHeaderLeft: { flex: 1 },
+  stepBadge: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#4F46E5',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: 6,
   },
-  headerContent: {
-    flex: 1,
+  stepTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#111827',
+    letterSpacing: -0.3,
+    marginBottom: 4,
   },
-  headerTitle: {
-    ...typography.h4,
-    fontSize: 30,
-    fontWeight: '800',
-    color: '#1e293b',
-    letterSpacing: -0.5,
-    lineHeight: 36,
+  stepDesc: { fontSize: 13, color: '#6B7280', lineHeight: 18 },
+  closeBtn: {
+    padding: 6,
+    borderRadius: 6,
+    backgroundColor: '#F9FAFB',
+    marginLeft: 12,
   },
-  closeButton: {
-    padding: spacing.sm,
-    borderRadius: 8,
-    backgroundColor: '#f1f5f9',
-  },
-  formContainer: {
-    padding: spacing.xl + 8,
-    backgroundColor: '#ffffff',
-    margin: spacing.lg + 4,
-    marginTop: spacing.lg,
-    borderRadius: 20,
-    ...shadows.lg,
+
+  // ── Form card ─────────────────────────────────────────────
+  formCard: {
+    backgroundColor: '#fff',
+    marginHorizontal: 24,
+    marginTop: 20,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: '#F3F4F6',
+    padding: 28,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
-  formContainerMobile: {
-    marginHorizontal: 0,
-    marginVertical: spacing.md,
-    padding: spacing.lg,
-    borderRadius: 16,
-  },
-  formContainerTablet: {
-    marginHorizontal: spacing.lg,
-  },
-  footer: {
-    padding: spacing.xl + 8,
-    backgroundColor: '#ffffff',
-    margin: spacing.lg + 4,
-    marginTop: spacing.lg + 4,
-    marginBottom: spacing.xl,
-    borderRadius: 20,
-    ...shadows.lg,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-  },
-  footerMobile: {
-    marginHorizontal: 0,
-    padding: spacing.lg,
-    borderRadius: 16,
-    shadowColor: 'transparent',
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    gap: spacing.md + 4,
-    maxWidth: 800,
-    alignSelf: 'center',
-    width: '100%',
-  },
-  buttonRowMobile: {
-    flexDirection: 'column',
-    gap: spacing.md,
-    maxWidth: '100%',
-  },
-  secondaryButton: {
-    flex: 1,
+
+  // ── Progress ──────────────────────────────────────────────
+  progressRow: { marginBottom: 24, gap: 6 },
+  progressText: { fontSize: 12, color: '#9CA3AF', fontWeight: '500' },
+  progressTrack: { height: 2, backgroundColor: '#F3F4F6', borderRadius: 1, overflow: 'hidden' },
+  progressFill: { height: 2, backgroundColor: '#4F46E5', borderRadius: 1 },
+
+  // ── Reveal hint ───────────────────────────────────────────
+  revealHint: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.md + 6,
-    paddingHorizontal: spacing.lg + 4,
-    backgroundColor: '#ffffff',
-    borderWidth: 2,
-    borderColor: '#4f46e5',
-    borderRadius: 14,
-    gap: spacing.xs,
-    ...shadows.md,
+    gap: 5,
+    marginTop: 20,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#F9FAFB',
   },
-  secondaryButtonMobile: {
-    width: '100%',
+  revealHintText: { fontSize: 12, color: '#9CA3AF', fontStyle: 'italic' },
+
+  // ── Navigation ────────────────────────────────────────────
+  navRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginHorizontal: 24,
+    marginTop: 16,
+    paddingHorizontal: 4,
   },
-  secondaryButtonText: {
-    ...typography.button,
-    color: '#4f46e5',
-    fontWeight: '600',
-    fontSize: 16,
+  backBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#fff',
   },
-  primaryButton: {
-    flex: 1,
+  backText: { fontSize: 14, color: '#4F46E5', fontWeight: '600' },
+  nextBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 11,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    backgroundColor: '#4F46E5',
   },
-  fullWidthButton: {
-    flex: 1,
-  },
-  primaryButtonMobile: {
-    width: '100%',
-  },
+  nextBtnDisabled: { opacity: 0.6 },
+  nextText: { fontSize: 14, color: '#fff', fontWeight: '600' },
+  navSpacer: { flex: 1 },
 });
 
 export default MultiStepJobPostForm;

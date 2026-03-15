@@ -1,35 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Dimensions,
-  ActivityIndicator,
-  Alert,
-  Platform,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  ActivityIndicator, Alert, Platform,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, typography, spacing, borderRadius, shadows } from '../../styles/theme';
+import { colors, spacing, borderRadius } from '../../styles/theme';
 import Header from '../../components/Header';
 import api from '../../config/api';
 import { useResponsive } from '../../utils/responsive';
 
-const { width } = Dimensions.get('window');
 const isWebPlatform = Platform.OS === 'web';
 
-// Predefined gradient colors for packages (no blue)
-const gradientColors = [
-  ['#667eea', '#764ba2'], // Modern Purple to Deep Purple
-  ['#f093fb', '#f5576c'], // Vibrant Pink to Coral
-  ['#ff6b6b', '#ee5a6f'], // Coral Red to Deep Pink
-  ['#43e97b', '#38f9d7'], // Fresh Green to Turquoise
-  ['#fa709a', '#fee140'], // Pink to Golden Yellow
-  ['#ff9a56', '#ff6a88'], // Warm Orange to Pink
-  ['#a8edea', '#fed6e3'], // Soft Teal to Pink
-  ['#ffecd2', '#fcb69f'], // Cream to Peach
+const ACCENT_COLORS = [
+  '#6366F1', '#8B5CF6', '#EC4899', '#10B981', '#F59E0B', '#EF4444', '#0EA5E9', '#14B8A6',
 ];
 
 const PackagesScreen = () => {
@@ -37,201 +20,139 @@ const PackagesScreen = () => {
   const [loading, setLoading] = useState(true);
   const [employerPackages, setEmployerPackages] = useState([]);
   const [candidatePackages, setCandidatePackages] = useState([]);
-  
-  // Responsive handling
+
   const responsive = useResponsive();
-  const screenWidth = responsive.width;
-  const isPhone = screenWidth <= 480;
-  const isSmallPhone = screenWidth <= 375;
-  const isMobile = screenWidth <= 600;
-  const isTablet = screenWidth > 600 && screenWidth <= 1024;
-  const isDesktop = screenWidth > 1024;
-  
-  // Dynamic styles
-  const dynamicStyles = getDynamicStyles(isPhone, isSmallPhone, isMobile, isTablet, isDesktop, screenWidth);
+  const { width } = responsive;
+  const isMobile = width <= 600;
+  const isDesktop = width > 1024;
 
   useEffect(() => {
     fetchPackages();
-    
-    // Auto-refresh every 30 seconds
-    const interval = setInterval(() => {
-      fetchPackages();
-    }, 30000);
-    
+    const interval = setInterval(fetchPackages, 30000);
     return () => clearInterval(interval);
   }, []);
 
   const fetchPackages = async () => {
     try {
       setLoading(true);
-      
-      // Fetch employer packages (using public endpoint, no auth required)
-      const employerData = await api.request(`/packages?packageType=employer&isActive=true`);
-      
-      // Fetch candidate packages (using public endpoint, no auth required)
-      const candidateData = await api.request(`/packages?packageType=candidate&isActive=true`);
-      
+      const [employerData, candidateData] = await Promise.all([
+        api.request('/packages?packageType=employer&isActive=true'),
+        api.request('/packages?packageType=candidate&isActive=true'),
+      ]);
+
       if (employerData.success) {
-        // Transform backend data to frontend format
-        const transformedEmployer = employerData.packages.map((pkg, index) => ({
-          id: pkg._id,
-          title: pkg.name,
-          subtitle: pkg.description.substring(0, 50) + (pkg.description.length > 50 ? '...' : ''),
-          price: pkg.price === 0 ? 'FREE' : `${pkg.currency === 'INR' ? '₹' : '$'}${pkg.price.toLocaleString()}`,
-          popular: pkg.isFeatured,
-          gradientColors: gradientColors[index % gradientColors.length],
-          period: `${pkg.periodValue} ${pkg.period}`,
-          gstApplicable: pkg.gstApplicable,
-          supportIncluded: pkg.supportIncluded,
-          supportDetails: pkg.supportDetails,
-          features: pkg.features.map(feature => ({
-            icon: getIconForFeature(feature.name),
-            label: feature.name,
-            value: feature.value,
-            isPositive: feature.included,
-            isNegative: !feature.included,
-          })),
-        }));
-        setEmployerPackages(transformedEmployer);
+        setEmployerPackages(employerData.packages.map((pkg, i) => transformPackage(pkg, i)));
       }
-      
       if (candidateData.success) {
-        // Transform backend data to frontend format
-        const transformedCandidate = candidateData.packages.map((pkg, index) => ({
-          id: pkg._id,
-          title: pkg.name,
-          subtitle: pkg.description.substring(0, 50) + (pkg.description.length > 50 ? '...' : ''),
-          price: pkg.price === 0 ? 'FREE' : `${pkg.currency === 'INR' ? '₹' : '$'}${pkg.price.toLocaleString()}`,
-          gradientColors: gradientColors[(index + 3) % gradientColors.length],
-          period: `${pkg.periodValue} ${pkg.period}`,
-          gstApplicable: pkg.gstApplicable,
-          supportIncluded: pkg.supportIncluded,
-          supportDetails: pkg.supportDetails,
-          features: pkg.features.map(feature => ({
-            icon: getIconForFeature(feature.name),
-            label: feature.name,
-            value: feature.value,
-            isPositive: feature.included,
-            isNegative: !feature.included,
-          })),
-        }));
-        setCandidatePackages(transformedCandidate);
+        setCandidatePackages(candidateData.packages.map((pkg, i) => transformPackage(pkg, i + 3)));
       }
     } catch (error) {
-      console.error('Fetch packages error:', error);
       Alert.alert('Error', 'Failed to load packages. Please try again later.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Helper function to get appropriate icon for feature
-  const getIconForFeature = (featureName) => {
-    const lowerName = featureName.toLowerCase();
-    if (lowerName.includes('user') || lowerName.includes('superuser')) return 'person';
-    if (lowerName.includes('subuser') || lowerName.includes('sub user')) return 'people-outline';
-    if (lowerName.includes('job post')) return 'briefcase';
-    if (lowerName.includes('featured')) return 'star';
-    if (lowerName.includes('candidate') || lowerName.includes('applies')) return 'people';
-    if (lowerName.includes('expiry') || lowerName.includes('time')) return 'time';
-    if (lowerName.includes('cv') || lowerName.includes('resume')) return 'document-text';
-    if (lowerName.includes('invite') || lowerName.includes('mail') || lowerName.includes('email')) return 'mail';
-    if (lowerName.includes('chat') || lowerName.includes('support')) return 'chatbubble';
-    if (lowerName.includes('validity') || lowerName.includes('period')) return 'calendar';
-    if (lowerName.includes('priority') || lowerName.includes('boost')) return 'trophy';
-    if (lowerName.includes('attention') || lowerName.includes('view')) return 'eye';
-    if (lowerName.includes('highlight')) return 'flash';
-    if (lowerName.includes('chance') || lowerName.includes('increase')) return 'trending-up';
-    if (lowerName.includes('referral') || lowerName.includes('gift')) return 'gift';
-    return 'checkmark-circle';
+  const transformPackage = (pkg, index) => ({
+    id: pkg._id,
+    title: pkg.name,
+    subtitle: pkg.description.substring(0, 60) + (pkg.description.length > 60 ? '...' : ''),
+    price: pkg.price === 0 ? 'FREE' : `${pkg.currency === 'INR' ? '₹' : '$'}${pkg.price.toLocaleString()}`,
+    isFree: pkg.price === 0,
+    popular: pkg.isFeatured,
+    accentColor: ACCENT_COLORS[index % ACCENT_COLORS.length],
+    period: `${pkg.periodValue} ${pkg.period}`,
+    gstApplicable: pkg.gstApplicable,
+    supportIncluded: pkg.supportIncluded,
+    supportDetails: pkg.supportDetails,
+    features: pkg.features.map((f) => ({
+      icon: getIconForFeature(f.name),
+      label: f.name,
+      value: f.value,
+      included: f.included,
+    })),
+  });
+
+  const getIconForFeature = (name) => {
+    const n = name.toLowerCase();
+    if (n.includes('user') || n.includes('superuser')) return 'person-outline';
+    if (n.includes('subuser')) return 'people-outline';
+    if (n.includes('job post')) return 'briefcase-outline';
+    if (n.includes('featured')) return 'star-outline';
+    if (n.includes('candidate') || n.includes('applies')) return 'people-outline';
+    if (n.includes('expiry') || n.includes('time')) return 'time-outline';
+    if (n.includes('cv') || n.includes('resume')) return 'document-text-outline';
+    if (n.includes('invite') || n.includes('mail') || n.includes('email')) return 'mail-outline';
+    if (n.includes('chat') || n.includes('support')) return 'chatbubble-outline';
+    if (n.includes('validity') || n.includes('period')) return 'calendar-outline';
+    if (n.includes('priority') || n.includes('boost')) return 'trophy-outline';
+    if (n.includes('highlight')) return 'flash-outline';
+    if (n.includes('referral') || n.includes('gift')) return 'gift-outline';
+    return 'checkmark-circle-outline';
   };
 
-  const renderFeatureItem = (feature) => (
-    <View key={feature.label} style={dynamicStyles.featureItem}>
-      <View style={styles.featureLeft}>
-        <Ionicons
-          name={feature.icon}
-          size={isPhone ? 16 : 18}
-          color={feature.isNegative ? colors.error : feature.isPositive ? colors.success : colors.success}
-        />
-        <Text style={dynamicStyles.featureLabel}>{feature.label}</Text>
-      </View>
-      <Text
-        style={[
-          dynamicStyles.featureValue,
-          feature.isNegative && styles.featureValueNegative,
-          feature.isPositive && styles.featureValuePositive,
-        ]}
-      >
-        {feature.value}
-      </Text>
-    </View>
-  );
-
-  const renderPackageCard = (pkg, isCandidatePackage = false) => (
-    <View style={dynamicStyles.packageCard}>
-      <LinearGradient
-        colors={pkg.gradientColors}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={dynamicStyles.packageHeader}
-      >
+  const renderPackageCard = (pkg, isCandidate = false) => (
+    <View key={pkg.id} style={[styles.pkgCard, isMobile && styles.pkgCardMobile]}>
+      {/* Card header */}
+      <View style={[styles.pkgHeader, { borderTopColor: pkg.accentColor }]}>
         {pkg.popular && (
-          <View style={dynamicStyles.popularBadge}>
-            <Ionicons name="star" size={isPhone ? 10 : 12} color="#fff" />
-            <Text style={dynamicStyles.popularText}>POPULAR</Text>
+          <View style={[styles.popularBadge, { backgroundColor: pkg.accentColor }]}>
+            <Ionicons name="star" size={10} color="#FFF" />
+            <Text style={styles.popularText}>POPULAR</Text>
           </View>
         )}
-        <Text style={dynamicStyles.packageTitle}>{pkg.title}</Text>
-        <Text style={dynamicStyles.packageSubtitle}>{pkg.subtitle}</Text>
-        <View style={styles.priceContainer}>
-          <Text style={dynamicStyles.packagePrice}>{pkg.price}</Text>
-          {pkg.price !== 'FREE' && pkg.gstApplicable && (
-            <Text style={dynamicStyles.gstText}>*GST As Applicable</Text>
+        <View style={[styles.pkgIconBox, { backgroundColor: pkg.accentColor + '15' }]}>
+          <Ionicons name={isCandidate ? 'person-circle-outline' : 'business-outline'} size={28} color={pkg.accentColor} />
+        </View>
+        <Text style={styles.pkgTitle}>{pkg.title}</Text>
+        <Text style={styles.pkgSubtitle}>{pkg.subtitle}</Text>
+        <View style={styles.priceRow}>
+          <Text style={[styles.pkgPrice, { color: pkg.accentColor }]}>{pkg.price}</Text>
+          {!pkg.isFree && pkg.gstApplicable && (
+            <Text style={styles.gstNote}>+GST</Text>
           )}
         </View>
         {pkg.period && (
-          <View style={styles.periodContainer}>
-            <Ionicons name="time-outline" size={isPhone ? 12 : 14} color="rgba(255,255,255,0.9)" />
-            <Text style={dynamicStyles.periodText}>Valid for {pkg.period}</Text>
+          <View style={styles.periodRow}>
+            <Ionicons name="time-outline" size={13} color="#64748B" />
+            <Text style={styles.periodText}>Valid for {pkg.period}</Text>
           </View>
         )}
-      </LinearGradient>
-
-      <View style={dynamicStyles.featuresContainer}>
-        {pkg.features && pkg.features.map(renderFeatureItem)}
       </View>
 
-      {pkg.supportIncluded && pkg.supportDetails && (
-        <View style={dynamicStyles.supportContainer}>
-          <View style={styles.supportHeader}>
-            <Ionicons name="chatbubble-ellipses" size={isPhone ? 16 : 20} color={colors.success} />
-            <Text style={dynamicStyles.supportTitle}>Support Included</Text>
+      {/* Features */}
+      <View style={styles.pkgFeatures}>
+        {pkg.features.map((f) => (
+          <View key={f.label} style={styles.featureRow}>
+            <View style={styles.featureLeft}>
+              <Ionicons
+                name={f.icon}
+                size={15}
+                color={f.included ? '#10B981' : '#EF4444'}
+              />
+              <Text style={styles.featureLabel}>{f.label}</Text>
+            </View>
+            <Text style={[styles.featureValue, { color: f.included ? '#10B981' : '#EF4444' }]}>
+              {f.value}
+            </Text>
           </View>
-          <Text style={dynamicStyles.supportDescription}>{pkg.supportDetails}</Text>
+        ))}
+      </View>
+
+      {/* Support */}
+      {pkg.supportIncluded && pkg.supportDetails && (
+        <View style={styles.supportBox}>
+          <Ionicons name="chatbubble-ellipses-outline" size={15} color="#10B981" />
+          <Text style={styles.supportText}>{pkg.supportDetails}</Text>
         </View>
       )}
 
-      <TouchableOpacity style={dynamicStyles.selectButton}>
-        <LinearGradient
-          colors={pkg.gradientColors}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={dynamicStyles.selectButtonGradient}
-        >
-          <Text style={dynamicStyles.selectButtonText}>
-            {isCandidatePackage 
-              ? 'Boost My Profile' 
-              : pkg.price === 'FREE' 
-                ? 'Get Started' 
-                : 'Choose Plan'}
-          </Text>
-          <Ionicons 
-            name={isCandidatePackage ? "rocket" : "arrow-forward"} 
-            size={isPhone ? 16 : 18} 
-            color="#fff" 
-          />
-        </LinearGradient>
+      {/* CTA */}
+      <TouchableOpacity style={[styles.pkgBtn, { backgroundColor: pkg.accentColor }]}>
+        <Text style={styles.pkgBtnText}>
+          {isCandidate ? 'Boost My Profile' : pkg.isFree ? 'Get Started' : 'Choose Plan'}
+        </Text>
+        <Ionicons name={isCandidate ? 'rocket-outline' : 'arrow-forward'} size={16} color="#FFF" />
       </TouchableOpacity>
     </View>
   );
@@ -240,722 +161,266 @@ const PackagesScreen = () => {
     return (
       <View style={styles.container}>
         <Header />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.success} />
+        <View style={styles.loadingBox}>
+          <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>Loading packages...</Text>
         </View>
       </View>
     );
   }
 
+  const packages = selectedTab === 'employer' ? employerPackages : candidatePackages;
+
   return (
     <View style={styles.container}>
       <Header />
-      
-      <ScrollView 
-        style={styles.scrollView}
-        contentContainerStyle={dynamicStyles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Hero Section */}
-        <View style={dynamicStyles.heroSection}>
-          <Ionicons name="ribbon" size={isPhone ? 36 : 48} color={colors.success} />
-          <Text style={dynamicStyles.heroTitle}>Choose Your Perfect Package</Text>
-          <Text style={dynamicStyles.heroSubtitle}>
-            Unlock premium features and grow your career or business
-          </Text>
+      <ScrollView showsVerticalScrollIndicator={false}>
+
+        {/* Hero */}
+        <View style={styles.hero}>
+          <Text style={styles.heroTitle}>Choose Your Plan</Text>
+          <Text style={styles.heroSubtitle}>Unlock premium features and grow your career or business</Text>
         </View>
 
-        {/* Tab Selector */}
-        <View style={dynamicStyles.tabContainer}>
-          <TouchableOpacity
-            style={[dynamicStyles.tab, selectedTab === 'employer' && styles.tabActive]}
-            onPress={() => setSelectedTab('employer')}
-          >
-            <Ionicons
-              name="business"
-              size={isPhone ? 16 : 20}
-              color={selectedTab === 'employer' ? '#fff' : colors.success}
-            />
-            <Text style={[dynamicStyles.tabText, selectedTab === 'employer' && styles.tabTextActive]}>
-              For Employers
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[dynamicStyles.tab, selectedTab === 'candidate' && styles.tabActive]}
-            onPress={() => setSelectedTab('candidate')}
-          >
-            <Ionicons
-              name="person"
-              size={isPhone ? 16 : 20}
-              color={selectedTab === 'candidate' ? '#fff' : colors.success}
-            />
-            <Text style={[dynamicStyles.tabText, selectedTab === 'candidate' && styles.tabTextActive]}>
-              For Candidates
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Packages Section */}
-        <View style={dynamicStyles.packagesSection}>
-          {selectedTab === 'employer' ? (
-            <>
-              <Text style={dynamicStyles.sectionTitle}>Employer Packages</Text>
-              <Text style={dynamicStyles.sectionSubtitle}>
-                Choose the perfect plan to find and hire top talent
-              </Text>
-              {employerPackages.length > 0 ? (
-                <View style={dynamicStyles.packagesGrid}>
-                  {employerPackages.map((pkg) => (
-                    <View key={pkg.id} style={dynamicStyles.packageCardWrapper}>
-                      {renderPackageCard(pkg, false)}
-                    </View>
-                  ))}
-                </View>
-              ) : (
-                <View style={styles.emptyContainer}>
-                  <Ionicons name="cube-outline" size={isPhone ? 48 : 64} color="#ccc" />
-                  <Text style={styles.emptyText}>No packages available</Text>
-                  <Text style={styles.emptySubtext}>
-                    Check back later for employer packages
-                  </Text>
-                </View>
-              )}
-            </>
-          ) : (
-            <>
-              <Text style={dynamicStyles.sectionTitle}>Candidate Packages</Text>
-              <Text style={dynamicStyles.sectionSubtitle}>
-                Boost your profile visibility and get noticed by recruiters
-              </Text>
-              {candidatePackages.length > 0 ? (
-                <View style={dynamicStyles.packagesGrid}>
-                  {candidatePackages.map((pkg) => (
-                    <View key={pkg.id} style={dynamicStyles.packageCardWrapper}>
-                      {renderPackageCard(pkg, true)}
-                    </View>
-                  ))}
-                </View>
-              ) : (
-                <View style={styles.emptyContainer}>
-                  <Ionicons name="cube-outline" size={isPhone ? 48 : 64} color="#ccc" />
-                  <Text style={styles.emptyText}>No packages available</Text>
-                  <Text style={styles.emptySubtext}>
-                    Check back later for candidate packages
-                  </Text>
-                </View>
-              )}
-            </>
-          )}
-        </View>
-
-        {/* Referral Program Section */}
-        {selectedTab === 'candidate' && (
-          <View style={dynamicStyles.referralSection}>
-            <LinearGradient
-              colors={['#ff9a56', '#ff6a88']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={dynamicStyles.referralGradient}
-            >
-              <Ionicons name="gift" size={isPhone ? 36 : 48} color="#fff" />
-              <Text style={dynamicStyles.referralTitle}>🎁 Referral Program</Text>
-              <Text style={dynamicStyles.referralSubtitle}>
-                Refer 20 Job Seekers & Get Profile Booster Package FREE!
-              </Text>
-              <Text style={dynamicStyles.referralDescription}>
-                Share with your friends and network. When 20 of them join our platform and create profiles, you'll receive a FREE Profile Booster Package worth ₹499!
-              </Text>
-              <TouchableOpacity style={dynamicStyles.referralButton}>
-                <LinearGradient
-                  colors={['rgba(255, 255, 255, 0.3)', 'rgba(255, 255, 255, 0.1)']}
-                  style={dynamicStyles.referralButtonGradient}
+        {/* Tab switcher */}
+        <View style={styles.tabWrapper}>
+          <View style={styles.tabBar}>
+            {[
+              { id: 'employer', label: 'For Employers', icon: 'business-outline' },
+              { id: 'candidate', label: 'For Candidates', icon: 'person-outline' },
+            ].map((tab) => {
+              const isActive = selectedTab === tab.id;
+              return (
+                <TouchableOpacity
+                  key={tab.id}
+                  style={[styles.tab, isActive && styles.tabActive]}
+                  onPress={() => setSelectedTab(tab.id)}
                 >
-                  <Ionicons name="share-social" size={isPhone ? 16 : 20} color="#fff" />
-                  <Text style={dynamicStyles.referralButtonText}>Invite Friends Now</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </LinearGradient>
+                  <Ionicons name={tab.icon} size={16} color={isActive ? '#FFF' : '#64748B'} />
+                  <Text style={[styles.tabText, isActive && styles.tabTextActive]}>{tab.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* Section header */}
+        <View style={styles.sectionHeaderRow}>
+          <View style={styles.sectionAccent} />
+          <View>
+            <Text style={styles.sectionTitle}>
+              {selectedTab === 'employer' ? 'Employer Packages' : 'Candidate Packages'}
+            </Text>
+            <Text style={styles.sectionSubtitle}>
+              {selectedTab === 'employer'
+                ? 'Find and hire top talent with the right plan'
+                : 'Boost your profile visibility and get noticed by recruiters'}
+            </Text>
+          </View>
+        </View>
+
+        {/* Packages grid */}
+        {packages.length > 0 ? (
+          <View style={[styles.pkgGrid, isMobile && styles.pkgGridMobile]}>
+            {packages.map((pkg) => renderPackageCard(pkg, selectedTab === 'candidate'))}
+          </View>
+        ) : (
+          <View style={styles.emptyBox}>
+            <View style={styles.emptyIconBox}>
+              <Ionicons name="cube-outline" size={48} color={colors.primary} />
+            </View>
+            <Text style={styles.emptyText}>No packages available</Text>
+            <Text style={styles.emptySubtext}>Check back later</Text>
           </View>
         )}
 
-        {/* Footer Info */}
-        <View style={dynamicStyles.footerInfo}>
-          <View style={dynamicStyles.infoCard}>
-            <Ionicons name="shield-checkmark" size={isPhone ? 24 : 32} color={colors.success} />
-            <Text style={dynamicStyles.infoTitle}>Secure Payment</Text>
-            <Text style={dynamicStyles.infoText}>All transactions are encrypted and secure</Text>
+        {/* Referral section (candidate only) */}
+        {selectedTab === 'candidate' && (
+          <View style={styles.referralCard}>
+            <View style={styles.referralLeft}>
+              <View style={styles.referralIconBox}>
+                <Ionicons name="gift-outline" size={28} color="#F59E0B" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.referralTitle}>Referral Program</Text>
+                <Text style={styles.referralDesc}>
+                  Refer 20 Job Seekers & Get Profile Booster Package FREE!
+                </Text>
+              </View>
+            </View>
+            <TouchableOpacity style={styles.referralBtn}>
+              <Ionicons name="share-social-outline" size={16} color="#FFF" />
+              <Text style={styles.referralBtnText}>Invite Friends</Text>
+            </TouchableOpacity>
           </View>
-          <View style={dynamicStyles.infoCard}>
-            <Ionicons name="headset" size={isPhone ? 24 : 32} color={colors.success} />
-            <Text style={dynamicStyles.infoTitle}>24/7 Support</Text>
-            <Text style={dynamicStyles.infoText}>We're here to help you succeed</Text>
-          </View>
-          <View style={dynamicStyles.infoCard}>
-            <Ionicons name="refresh" size={isPhone ? 24 : 32} color={colors.warning} />
-            <Text style={dynamicStyles.infoTitle}>Flexible Plans</Text>
-            <Text style={dynamicStyles.infoText}>Upgrade or downgrade anytime</Text>
-          </View>
+        )}
+
+        {/* Footer trust badges */}
+        <View style={[styles.trustRow, isMobile && styles.trustRowMobile]}>
+          {[
+            { icon: 'shield-checkmark-outline', title: 'Secure Payment', desc: 'All transactions are encrypted' },
+            { icon: 'headset-outline', title: '24/7 Support', desc: "We're here to help you succeed" },
+            { icon: 'refresh-outline', title: 'Flexible Plans', desc: 'Upgrade or downgrade anytime' },
+          ].map((item) => (
+            <View key={item.title} style={styles.trustCard}>
+              <Ionicons name={item.icon} size={24} color={colors.primary} />
+              <Text style={styles.trustTitle}>{item.title}</Text>
+              <Text style={styles.trustDesc}>{item.desc}</Text>
+            </View>
+          ))}
         </View>
+
       </ScrollView>
     </View>
   );
 };
 
-// Dynamic styles based on screen size
-const getDynamicStyles = (isPhone, isSmallPhone, isMobile, isTablet, isDesktop, screenWidth) => ({
-  scrollContent: {
-    paddingBottom: spacing.xxl,
-    paddingHorizontal: isPhone ? spacing.sm : 0,
-  },
-  heroSection: {
-    padding: isPhone ? spacing.lg : spacing.xxl,
-    paddingTop: isPhone ? spacing.xl : spacing.xxl + spacing.xl,
-    paddingBottom: isPhone ? spacing.xl : spacing.xxl + spacing.xl,
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  loadingBox: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
+  loadingText: { marginTop: 12, fontSize: 15, color: '#64748B' },
+
+  hero: {
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 20,
+    paddingTop: 32,
+    paddingBottom: 32,
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: isPhone ? spacing.md : spacing.xl,
-    backgroundColor: colors.cardBackground,
-    marginHorizontal: isPhone ? spacing.sm : spacing.lg,
-    borderRadius: isPhone ? borderRadius.lg : borderRadius.xl,
-    ...shadows.md,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
   },
-  heroTitle: {
-    ...typography.h2,
-    color: colors.text,
-    marginTop: spacing.md,
-    textAlign: 'center',
-    fontWeight: '800',
-    fontSize: isSmallPhone ? 20 : isPhone ? 22 : isTablet ? 28 : 32,
-  },
-  heroSubtitle: {
-    ...typography.body1,
-    color: colors.textSecondary,
-    marginTop: spacing.sm,
-    textAlign: 'center',
-    maxWidth: 500,
-    fontSize: isPhone ? 13 : 15,
-    paddingHorizontal: isPhone ? spacing.sm : 0,
-  },
-  tabContainer: {
+  heroTitle: { fontSize: 26, fontWeight: '700', color: '#0F172A', marginBottom: 8, textAlign: 'center' },
+  heroSubtitle: { fontSize: 14, color: '#64748B', textAlign: 'center', lineHeight: 22 },
+
+  tabWrapper: { paddingHorizontal: 16, paddingVertical: 16 },
+  tabBar: {
     flexDirection: 'row',
-    margin: isPhone ? spacing.sm : spacing.lg,
-    backgroundColor: colors.cardBackground,
-    borderRadius: isPhone ? borderRadius.lg : borderRadius.xl,
-    padding: spacing.xs,
-    ...shadows.md,
+    backgroundColor: '#FFF',
+    borderRadius: 10,
+    padding: 4,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: '#E2E8F0',
   },
   tab: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: isPhone ? spacing.sm : spacing.md,
-    paddingHorizontal: isPhone ? spacing.sm : spacing.lg,
-    borderRadius: borderRadius.md,
-    gap: isPhone ? spacing.xs : spacing.sm,
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8, paddingVertical: 10, borderRadius: 8,
   },
-  tabText: {
-    ...typography.body1,
-    fontWeight: '600',
-    color: colors.success,
-    fontSize: isSmallPhone ? 12 : isPhone ? 13 : 15,
+  tabActive: { backgroundColor: colors.primary },
+  tabText: { fontSize: 14, fontWeight: '600', color: '#64748B' },
+  tabTextActive: { color: '#FFF' },
+
+  sectionHeaderRow: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 12,
+    paddingHorizontal: 16, marginBottom: 16,
   },
-  packagesSection: {
-    paddingHorizontal: isPhone ? spacing.sm : spacing.lg,
-    maxWidth: isDesktop ? 1400 : '100%',
-    alignSelf: 'center',
-    width: '100%',
+  sectionAccent: { width: 4, height: 44, backgroundColor: colors.primary, borderRadius: 2, marginTop: 2 },
+  sectionTitle: { fontSize: 18, fontWeight: '700', color: '#0F172A', marginBottom: 4 },
+  sectionSubtitle: { fontSize: 13, color: '#64748B' },
+
+  pkgGrid: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: 14,
+    paddingHorizontal: 16, paddingBottom: 8,
+    justifyContent: 'flex-start',
   },
-  packagesGrid: {
-    flexDirection: isMobile ? 'column' : 'row',
-    flexWrap: 'wrap',
-    gap: isPhone ? spacing.md : spacing.lg,
-    justifyContent: 'center',
-  },
-  packageCardWrapper: {
-    width: isPhone ? '100%' : 
-           isMobile ? '100%' : 
-           isTablet ? (screenWidth > 900 ? '48%' : '100%') : 
-           isDesktop ? '31%' : 
-           '100%',
-    flexBasis: isDesktop ? '31%' : undefined,
-    flexGrow: 0,
-    flexShrink: 0,
-    maxWidth: isDesktop ? 400 : undefined,
-  },
-  sectionTitle: {
-    ...typography.h3,
-    color: colors.text,
-    marginBottom: spacing.sm,
-    marginTop: isPhone ? spacing.md : spacing.xl,
-    textAlign: 'center',
-    fontWeight: '800',
-    fontSize: isSmallPhone ? 22 : isPhone ? 24 : isTablet ? 28 : 32,
-  },
-  sectionSubtitle: {
-    ...typography.body1,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: isPhone ? spacing.md : spacing.xl,
-    fontSize: isPhone ? 13 : 15,
-    lineHeight: isPhone ? 20 : 24,
-    paddingHorizontal: isPhone ? spacing.sm : 0,
-  },
-  packageCard: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: isPhone ? borderRadius.lg : borderRadius.xl,
-    marginBottom: 0,
-    overflow: 'hidden',
-    ...shadows.lg,
+  pkgGridMobile: { flexDirection: 'column' },
+
+  pkgCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: colors.borderLight,
-    height: '100%',
-    flexDirection: 'column',
+    borderColor: '#E2E8F0',
+    overflow: 'hidden',
+    width: isWebPlatform ? 'calc(33.33% - 10px)' : '100%',
+    minWidth: 280,
+    ...(isWebPlatform && { boxShadow: '0 2px 8px rgba(15,23,42,0.07)' }),
   },
-  packageHeader: {
-    padding: isPhone ? spacing.md : spacing.lg,
+  pkgCardMobile: { width: '100%' },
+
+  pkgHeader: {
+    padding: 20,
+    borderTopWidth: 4,
+    borderTopColor: '#6366F1',
     position: 'relative',
   },
   popularBadge: {
-    position: 'absolute',
-    top: isPhone ? spacing.sm : spacing.md,
-    right: isPhone ? spacing.sm : spacing.md,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    paddingHorizontal: isPhone ? spacing.sm : spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.full,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
+    position: 'absolute', top: 12, right: 12,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20,
   },
-  popularText: {
-    ...typography.caption,
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: isPhone ? 9 : 11,
+  popularText: { fontSize: 10, fontWeight: '700', color: '#FFF' },
+  pkgIconBox: {
+    width: 52, height: 52, borderRadius: 14,
+    justifyContent: 'center', alignItems: 'center', marginBottom: 12,
   },
-  packageTitle: {
-    ...typography.h3,
-    color: '#fff',
-    marginBottom: spacing.xs,
-    fontSize: isSmallPhone ? 18 : isPhone ? 20 : isTablet ? 24 : 26,
-  },
-  packageSubtitle: {
-    ...typography.body2,
-    color: 'rgba(255, 255, 255, 0.9)',
-    marginBottom: isPhone ? spacing.sm : spacing.md,
-    fontSize: isSmallPhone ? 11 : isPhone ? 12 : 14,
-  },
-  packagePrice: {
-    ...typography.h1,
-    color: '#fff',
-    fontWeight: '800',
-    fontSize: isSmallPhone ? 24 : isPhone ? 28 : isTablet ? 36 : 40,
-  },
-  gstText: {
-    ...typography.caption,
-    color: 'rgba(255, 255, 255, 0.8)',
-    marginTop: spacing.xs,
-    fontSize: isPhone ? 10 : 12,
-  },
-  periodText: {
-    ...typography.caption,
-    color: 'rgba(255, 255, 255, 0.9)',
-    fontWeight: '600',
-    fontSize: isPhone ? 11 : 13,
-  },
-  featuresContainer: {
-    padding: isPhone ? spacing.sm : spacing.lg,
-    backgroundColor: colors.background,
-    flex: 1,
-  },
-  featureItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: isPhone ? spacing.xs : spacing.sm,
-    paddingHorizontal: spacing.xs,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
-  },
-  featureLabel: {
-    ...typography.body2,
-    color: colors.text,
-    flex: 1,
-    fontSize: isPhone ? 12 : 14,
-  },
-  featureValue: {
-    ...typography.body2,
-    fontWeight: '600',
-    color: colors.text,
-    fontSize: isPhone ? 12 : 14,
-  },
-  supportContainer: {
-    margin: isPhone ? spacing.sm : spacing.lg,
-    marginTop: 0,
-    padding: isPhone ? spacing.sm : spacing.md,
-    backgroundColor: colors.background,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    borderLeftWidth: 4,
-    borderLeftColor: colors.success,
-  },
-  supportTitle: {
-    ...typography.body1,
-    fontWeight: '600',
-    color: colors.text,
-    fontSize: isPhone ? 13 : 15,
-  },
-  supportDescription: {
-    ...typography.body2,
-    color: colors.textSecondary,
-    lineHeight: isPhone ? 18 : 20,
-    fontSize: isPhone ? 12 : 14,
-  },
-  selectButton: {
-    margin: isPhone ? spacing.sm : spacing.lg,
-    marginTop: 0,
-    borderRadius: isPhone ? borderRadius.lg : borderRadius.xl,
-    overflow: 'hidden',
-    ...shadows.md,
-  },
-  selectButtonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: isPhone ? spacing.sm : spacing.md,
-    gap: spacing.sm,
-  },
-  selectButtonText: {
-    ...typography.button,
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: isPhone ? 13 : 15,
-  },
-  referralSection: {
-    marginHorizontal: isPhone ? spacing.sm : spacing.lg,
-    marginVertical: isPhone ? spacing.md : spacing.xl,
-    borderRadius: isPhone ? borderRadius.lg : borderRadius.xl,
-    overflow: 'hidden',
-    ...shadows.lg,
-  },
-  referralGradient: {
-    padding: isPhone ? spacing.lg : spacing.xxl,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  referralTitle: {
-    ...typography.h3,
-    color: '#fff',
-    marginTop: spacing.md,
-    marginBottom: spacing.sm,
-    textAlign: 'center',
-    fontWeight: '700',
-    fontSize: isSmallPhone ? 20 : isPhone ? 22 : 28,
-  },
-  referralSubtitle: {
-    ...typography.h6,
-    color: '#fff',
-    marginBottom: spacing.md,
-    textAlign: 'center',
-    fontWeight: '600',
-    fontSize: isPhone ? 14 : 18,
-  },
-  referralDescription: {
-    ...typography.body1,
-    color: 'rgba(255, 255, 255, 0.95)',
-    textAlign: 'center',
-    marginBottom: isPhone ? spacing.md : spacing.xl,
-    lineHeight: isPhone ? 20 : 24,
-    paddingHorizontal: isPhone ? 0 : spacing.md,
-    fontSize: isPhone ? 13 : 16,
-  },
-  referralButton: {
-    borderRadius: borderRadius.lg,
-    overflow: 'hidden',
-    ...shadows.md,
-  },
-  referralButtonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: isPhone ? spacing.lg : spacing.xxl,
-    paddingVertical: isPhone ? spacing.sm : spacing.md,
-    gap: spacing.sm,
-  },
-  referralButtonText: {
-    ...typography.button,
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: isPhone ? 14 : 16,
-  },
-  footerInfo: {
-    flexDirection: isMobile ? 'column' : 'row',
-    paddingHorizontal: isPhone ? spacing.sm : spacing.lg,
-    paddingTop: isPhone ? spacing.md : spacing.xl,
-    gap: isPhone ? spacing.md : spacing.lg,
-  },
-  infoCard: {
-    flex: 1,
-    backgroundColor: colors.cardBackground,
-    padding: isPhone ? spacing.md : spacing.xl,
-    borderRadius: isPhone ? borderRadius.lg : borderRadius.xl,
-    alignItems: 'center',
-    ...shadows.md,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-  },
-  infoTitle: {
-    ...typography.h6,
-    color: colors.text,
-    marginTop: isPhone ? spacing.sm : spacing.md,
-    marginBottom: spacing.xs,
-    fontSize: isPhone ? 14 : 16,
-  },
-  infoText: {
-    ...typography.body2,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    fontSize: isPhone ? 12 : 14,
-  },
-});
+  pkgTitle: { fontSize: 18, fontWeight: '700', color: '#0F172A', marginBottom: 4 },
+  pkgSubtitle: { fontSize: 13, color: '#64748B', marginBottom: 14, lineHeight: 18 },
+  priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6, marginBottom: 8 },
+  pkgPrice: { fontSize: 32, fontWeight: '800' },
+  gstNote: { fontSize: 12, color: '#94A3B8' },
+  periodRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  periodText: { fontSize: 12, color: '#64748B' },
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
+  pkgFeatures: {
+    paddingHorizontal: 16, paddingVertical: 12,
+    borderTopWidth: 1, borderTopColor: '#F1F5F9',
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing.xl,
+  featureRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F8FAFC',
   },
-  loadingText: {
-    ...typography.body1,
-    color: colors.textSecondary,
-    marginTop: spacing.md,
+  featureLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
+  featureLabel: { fontSize: 13, color: '#334155', flex: 1 },
+  featureValue: { fontSize: 13, fontWeight: '600' },
+
+  supportBox: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 8,
+    marginHorizontal: 16, marginBottom: 12, padding: 12,
+    backgroundColor: '#F0FDF4', borderRadius: 8,
+    borderLeftWidth: 3, borderLeftColor: '#10B981',
   },
-  scrollView: {
-    flex: 1,
+  supportText: { fontSize: 12, color: '#166534', flex: 1, lineHeight: 18 },
+
+  pkgBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8, margin: 16, marginTop: 4, paddingVertical: 13, borderRadius: 10,
   },
-  scrollContent: {
-    paddingBottom: spacing.xxl,
+  pkgBtnText: { fontSize: 14, fontWeight: '700', color: '#FFF' },
+
+  emptyBox: { alignItems: 'center', paddingVertical: 60 },
+  emptyIconBox: {
+    width: 96, height: 96, borderRadius: 48,
+    backgroundColor: '#EEF2FF', justifyContent: 'center', alignItems: 'center', marginBottom: 16,
   },
-  heroSection: {
-    padding: spacing.xxl,
-    paddingTop: spacing.xxl + spacing.xl,
-    paddingBottom: spacing.xxl + spacing.xl,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.xl,
-    backgroundColor: colors.cardBackground,
-    marginHorizontal: spacing.lg,
-    borderRadius: borderRadius.xl,
-    ...shadows.md,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
+  emptyText: { fontSize: 18, fontWeight: '700', color: '#0F172A', marginBottom: 6 },
+  emptySubtext: { fontSize: 14, color: '#64748B' },
+
+  referralCard: {
+    marginHorizontal: 16, marginVertical: 16,
+    backgroundColor: '#FFFBEB', borderRadius: 14, padding: 18,
+    borderWidth: 1, borderColor: '#FDE68A',
+    flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap',
   },
-  heroTitle: {
-    ...typography.h2,
-    color: colors.text,
-    marginTop: spacing.md,
-    textAlign: 'center',
-    fontWeight: '800',
+  referralLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, minWidth: 200 },
+  referralIconBox: {
+    width: 52, height: 52, borderRadius: 14,
+    backgroundColor: '#FEF3C7', justifyContent: 'center', alignItems: 'center',
   },
-  heroSubtitle: {
-    ...typography.body1,
-    color: colors.textSecondary,
-    marginTop: spacing.sm,
-    textAlign: 'center',
-    maxWidth: 500,
+  referralTitle: { fontSize: 15, fontWeight: '700', color: '#0F172A', marginBottom: 4 },
+  referralDesc: { fontSize: 13, color: '#64748B', lineHeight: 18 },
+  referralBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: '#F59E0B', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8,
   },
-  tabContainer: {
-    flexDirection: 'row',
-    margin: spacing.lg,
-    backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.xl,
-    padding: spacing.xs,
-    ...shadows.md,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
+  referralBtnText: { fontSize: 13, fontWeight: '700', color: '#FFF' },
+
+  trustRow: {
+    flexDirection: 'row', gap: 12, paddingHorizontal: 16, paddingBottom: 32, paddingTop: 8,
   },
-  tab: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    borderRadius: borderRadius.md,
-    gap: spacing.sm,
+  trustRowMobile: { flexDirection: 'column' },
+  trustCard: {
+    flex: 1, backgroundColor: '#FFF', borderRadius: 12, padding: 16,
+    alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0',
   },
-  tabActive: {
-    backgroundColor: colors.success,
-  },
-  tabText: {
-    ...typography.body1,
-    fontWeight: '600',
-    color: colors.success,
-  },
-  tabTextActive: {
-    color: '#fff',
-  },
-  // These styles are now handled by dynamicStyles - keeping minimal fallbacks
-  priceContainer: {
-    marginTop: spacing.xs,
-  },
-  featureLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    flex: 1,
-  },
-  featureLabel: {
-    ...typography.body2,
-    color: colors.text,
-    flex: 1,
-  },
-  featureValue: {
-    ...typography.body2,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  featureValueNegative: {
-    color: colors.error,
-  },
-  featureValuePositive: {
-    color: colors.success,
-  },
-  referralContainer: {
-    margin: spacing.lg,
-    padding: spacing.lg,
-    backgroundColor: colors.background,
-    borderRadius: borderRadius.md,
-    borderWidth: 2,
-    borderColor: colors.warning,
-  },
-  referralHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    marginBottom: spacing.sm,
-  },
-  referralTitle: {
-    ...typography.h6,
-    color: colors.text,
-    flex: 1,
-  },
-  referralDescription: {
-    ...typography.body2,
-    color: colors.textSecondary,
-    lineHeight: 20,
-  },
-  // selectButton, selectButtonGradient, selectButtonText, footerInfo, infoCard, infoTitle, infoText 
-  // are now handled by dynamicStyles
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.xxl * 2,
-    paddingHorizontal: spacing.lg,
-  },
-  emptyText: {
-    ...typography.h5,
-    color: colors.textSecondary,
-    marginTop: spacing.md,
-    textAlign: 'center',
-  },
-  emptySubtext: {
-    ...typography.body2,
-    color: colors.textSecondary,
-    marginTop: spacing.sm,
-    textAlign: 'center',
-  },
-  periodContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    marginTop: spacing.sm,
-  },
-  periodText: {
-    ...typography.caption,
-    color: 'rgba(255, 255, 255, 0.9)',
-    fontWeight: '600',
-  },
-  // supportContainer is now handled by dynamicStyles
-  supportHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.xs,
-  },
-  supportDescription: {
-    ...typography.body2,
-    color: colors.textSecondary,
-    lineHeight: 20,
-  },
-  referralSection: {
-    marginHorizontal: spacing.lg,
-    marginVertical: spacing.xl,
-    borderRadius: borderRadius.lg,
-    overflow: 'hidden',
-    ...shadows.lg,
-  },
-  referralGradient: {
-    padding: spacing.xxl,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  referralTitle: {
-    ...typography.h3,
-    color: '#fff',
-    marginTop: spacing.md,
-    marginBottom: spacing.sm,
-    textAlign: 'center',
-    fontWeight: '700',
-  },
-  referralSubtitle: {
-    ...typography.h6,
-    color: '#fff',
-    marginBottom: spacing.md,
-    textAlign: 'center',
-    fontWeight: '600',
-  },
-  referralDescription: {
-    ...typography.body1,
-    color: 'rgba(255, 255, 255, 0.95)',
-    textAlign: 'center',
-    marginBottom: spacing.xl,
-    lineHeight: 24,
-    paddingHorizontal: spacing.md,
-  },
-  referralButton: {
-    borderRadius: borderRadius.lg,
-    overflow: 'hidden',
-    ...shadows.md,
-  },
-  referralButtonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: spacing.xxl,
-    paddingVertical: spacing.md,
-    gap: spacing.sm,
-  },
-  referralButtonText: {
-    ...typography.button,
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 16,
-  },
+  trustTitle: { fontSize: 14, fontWeight: '700', color: '#0F172A', marginTop: 10, marginBottom: 4, textAlign: 'center' },
+  trustDesc: { fontSize: 12, color: '#64748B', textAlign: 'center' },
 });
 
 export default PackagesScreen;
-

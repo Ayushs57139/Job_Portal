@@ -1,45 +1,121 @@
 const express = require('express');
 const router = express.Router();
 const ChatbotConversation = require('../models/ChatbotConversation');
+const ChatbotTemplate = require('../models/ChatbotTemplate');
 const { v4: uuidv4 } = require('uuid');
-const { auth } = require('../middleware/auth');
+const { auth, adminAuth } = require('../middleware/auth');
 
-// @route   POST /api/chatbot/start
-// @desc    Start a new chatbot conversation
-// @access  Public (with optional auth)
+// ─── Helper: decode JWT without throwing ────────────────────────────────────
+function decodeToken(req) {
+  try {
+    con
+    if (!token) return null;
+    const jwt = require('jsonwebtoken');
+    return jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+  } catch { return null; }
+}
+
+// ─── Dynamic bot response (DB templates first, then fallback) ───────────────
+async function generateBotResponse(userMessage, conversationContext = '', messageCount = 0, req = null) {
+  const msg = userMessage.toLowerCase().trim();
+
+  // 1. Try DB templates first (sorted by priority desc)
+  try {
+    const templates = await ChatbotTemplate.find({ isActive: true }).sort({ priority: -1 });
+    for (const tpl of templates) {
+    .triggerKeywords.some(kw => msg.includes(kw));
+      if (matched) {
+        let response = tpl.responseText;
+
+        // Attach dynamic data if configured
+        if (tpl.attachDynamicData && tpl.attachDynamicData !== 'none') {
+          const dynamicSnippet = await fetchDynamicSnippet(tpl.attachDynamicData);
+          if (dynamicSnippet) response += '\n\n' + dynamicSnippet;
+        }
+
+        return {
+          text: response,
+          suggestedReplies: tpl.suggestedReplies || [],
+          templateId: tpl._id
+        };
+      }
+    }
+  } catch (err) {
+    console.error('Template lookup error:', err);
+  }
+
+  // 2. Fallback static responses
+  return { text: staticFallback(msg, conversationContext, messageCount), suggestedReplies: [] };
+}
+
+async function fetchDynamicSnippet(type) {
+  try {
+    if (type === 'jobs') {
+      const Job = require('../models/Job');
+      const jobs = await Job.find({ status: 'active' }).sort({ createdAt: -1 }).limit(3).select('title companyName location');
+      if (!jobs.lengl;
+      return '🔥 Latest Jobs:\n' + jobs.map(j => `• ${j.title} at ${j.companyName || 'Company'} — ${j.location || ''}`).join('\n');
+    }
+    if (type === 'packages') {
+      const Package = require('../models/Package');
+      const pkgs = await Package.find({ isActive: true }).limit(3).select('name price features');
+      if (!pkgs.length) return null;
+   kages:\n' + pkgs.map(p => `• ${p.name} — ₹${p.price}`).join('\n');
+    }
+    if (type === 'companies') {
+      const Company = require('../models/Company');
+      const companies = await Company.find({ isActive: true }).limit(3).select('name industry');
+      if (!companies.length) return null;
+      return '🏢 Top Companies Hiring:\n' + companies.map(c => `• ${c.name} (${c.industry || 'Various'})`).join('\n');
+    }
+  } catch (err) {
+    console.error('Dynamic snippet error:', err);
+  }
+  return null;
+}
+
+function staticFallback(message, context, messageCount) {
+  if (message.match(/\b(hi|hello|hey|namaste)\b/))
+    return "Hello! Welcome to Free Job Wala! 👋\n\nI can help you with:\n• Finding jobs\n• Application process\n• Resume tips\n• Company information\n\nHow can I assist you today?";
+  if (message.match(/\b(job|jobs|vacancy|opening|search|find)\b/))
+    rw openings\n\nWhat type of job are you looking for?";
+  if (message.match(/\b(apply|application|how to apply)\b/))
+    return "Applying is easy! 📝\n\n1. Browse and select a job\n2. Click 'Apply Now'\n3. Fill in your details\n4. Upload your resume\n5. Submit!\n\nTip: A complete profile improves your chances!";
+  if (message.match(/\b(resume|cv|profile)\b/))
+    return "Your resume is key! 📄\n\nTips:\n• Keep it concise (1-2 pase our Resume Builder in your profile section!";
+  if (message.match(/\b(alert|notification|notify)\b/))
+    return "Job alerts keep you updated! 🔔\n\n1. Go to 'Create Job Alert'\n2. Set your preferences\n3. Choose frequency\n4. Get instant notifications!\n\nNever miss an opportunity!";
+  if (message.match(/\b(package|price|cost|plan|subscription)\b/))
+    return "Job seeking is FREE! 🎉\n\n✅ Freeavailable. Contact us for details!";
+  if (message.match(/\b(contact|support|help|email|phone)\b/))
+    return "We're here to help! 📞\n\n• Email: support@freejobwala.com\n• Chat: Right here! (24/7)\n\nWhat do you need help with?";
+  if (message.match(/\b(thank|thanks)\b/))
+    return "You're welcome! 😊 Is there anything else I can help you with?";
+  if (message.match(/\b(bye|goodbye|see you)\b/))
+    return "Goodbye! 👋 Good luck with your job search! 🍀";
+  if (messageCount > 10)
+    return "I appreciate your engagement! 🤖\n\nTo help you better, could you tell me:\n• What's your main goal?\n• What industry interests you?\n\nThis helps me give targeted assistance!";
+  return "I'm here to help! 🤖\n\nI can assist with:\n• Job searching\n• Application process\n• Resume tips\n• Interview preparation\n• Profile completion\n\nFeel free to ask anything!";
+}
+
+// ─── PUBLIC ROUTES ───────────────────────────────────────────────────────────
+
+// POST /api/chatbot/start
 router.post('/start', async (req, res) => {
   try {
-    const { guestName, guestEmail, guestPhone, userAgent, platform } = req.body;
-    
-    // Try to get user from token if provided
-    let userId = null;
-    try {
-      const token = req.headers.authorization?.replace('Bearer ', '');
-      if (token) {
-        const jwt = require('jsonwebtoken');
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-        userId = decoded.userId;
-      }
-    } catch (err) {
-      // Token invalid or not provided, continue as guest
-    }
-    
-    // Check if user already has an active conversation
+    nst { guestName, guestEmail, guestPhone, userAgent, platform } = req.body;
+    const decoded = decodeToken(req);
+    const userId = decoded?.userId || null;
+
     let conversation = null;
     if (userId) {
-      conversation = await ChatbotConversation.findOne({
-        userId,
-        status: 'active'
-      }).sort({ lastActivity: -1 });
+      conversation = await ChatbotConversation.findOne({ userId, status: 'active' }).sort({ lastActivity: -1 });
     }
-    
-    // If no active conversation, create new one
+
     if (!conversation) {
-      const sessionId = uuidv4();
-      
       conversation = new ChatbotConversation({
-        sessionId,
-        userId: userId || null,
+        sessionId: uuidv4(),
+        userId,
         guestName: guestName || 'Guest',
         guestEmail: guestEmail || null,
         guestPhone: guestPhone || null,
@@ -48,66 +124,60 @@ router.post('/start', async (req, res) => {
         ipAddress: req.ip || req.connection.remoteAddress,
         messages: []
       });
-      
       await conversation.save();
     }
-    
-    res.status(201).json({
-      success: true,
-      sessionId: conversation.sessionId,
-      message: 'Conversation started'
-    });
+
+    res.status(201).json({ success: true, sessionId: conversation.sessionId, conversationId: conversation._id });
   } catch (error) {
     console.error('Start conversation error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 
-// @route   POST /api/chatbot/message
-// @desc    Send a message in the conversation
-// @access  Public (with optional auth)
+// POST /api/chatbot/message
 router.post('/message', async (req, res) => {
   try {
     const { sessionId, message, sender = 'user' } = req.body;
-    
-    if (!sessionId || !message) {
+    if (!sessionId || !message)
       return res.status(400).json({ success: false, message: 'Session ID and message are required' });
-    }
-    
+
     let conversation = await ChatbotConversation.findOne({ sessionId });
-    
-    if (!conversation) {
+    if (!conversation)
       return res.status(404).json({ success: false, message: 'Conversation not found' });
+
+    // Link user if authenticated
+    const decoded = decodeToken(req);
+    if (decoded?.userId && !conversation.userId) {
+      conversation.userId = decoded.userId;
+      await conversation.save();
     }
-    
-    // Try to link with authenticated user if not already linked
-    try {
-      const token = req.headers.authorization?.replace('Bearer ', '');
-      if (token && !conversation.userId) {
-        const jwt = require('jsonwebtoken');
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-        conversation.userId = decoded.userId;
-        await conversation.save();
-      }
-    } catch (err) {
-      // Token invalid or not provided, continue
-    }
-    
-    // Add user message
+
     await conversation.addMessage(sender, message);
-    
-    // Generate dynamic bot response based on conversation context
-    const conversationContext = conversation.messages.slice(-5).map(m => m.message).join(' ');
-    const botResponse = generateBotResponse(message, conversationContext, conversation.messages.length);
-    await conversation.addMessage('bot', botResponse);
-    
-    // Reload conversation to get updated messages
+
+    const context = conversation.messages.slice(-5).map(m => m.message).join(' ');
+    const botResult = await generateBotResponse(message, context, conversation.messages.length, req);
+    await conversation.addMessage('bot', botResult.text);
+
+    // Emit to admin room via socket.io
+    const io = req.app.get('io');
+    if (io) {
+      io.to('admin_room').emit('chatbot_new_message', {
+        conversationId: conversation._id,
+        sessionId: conversation.sessionId,
+        guestName: conversation.guestName,
+        userMessage: message,
+        botResponse: botResult.text,
+        timestamp: new Date()
+      });
+    }
+
     conversation = await ChatbotConversation.findOne({ sessionId });
-    
+
     res.json({
       success: true,
       messages: conversation.messages,
-      botResponse
+      botResponse: botResult.text,
+      suggestedReplies: botResult.suggestedReplies || []
     });
   } catch (error) {
     console.error('Send message error:', error);
@@ -115,174 +185,138 @@ router.post('/message', async (req, res) => {
   }
 });
 
-// @route   GET /api/chatbot/conversation/:sessionId
-// @desc    Get conversation by session ID
-// @access  Public (with optional auth)
+// GET /api/chatbot/conversation/:sessionId
 router.get('/conversation/:sessionId', async (req, res) => {
   try {
-    const conversation = await ChatbotConversation.findOne({ 
-      sessionId: req.params.sessionId 
-    }).populate('userId', 'firstName lastName email');
-    
-    if (!conversation) {
+    const conversation = await ChatbotConversation.findOne({ sessionId: req.params.sessionId })
+      .populate('userId', 'firstName lastName email');
+    if (!conversation)
       return res.status(404).json({ success: false, message: 'Conversation not found' });
+
+    const decoded = decodeToken(req);
+    if (decoded?.userId && !conversation.userId) {
+      conversation.userId = decoded.userId;
+      await conversation.save();
     }
-    
-    // Try to link with authenticated user if not already linked
-    try {
-      const token = req.headers.authorization?.replace('Bearer ', '');
-      if (token && !conversation.userId) {
-        const jwt = require('jsonwebtoken');
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-        conversation.userId = decoded.userId;
-        await conversation.save();
-      }
-    } catch (err) {
-      // Token invalid or not provided, continue
-    }
-    
-    res.json({
-      success: true,
-      conversation
-    });
+
+    res.json({ success: true, conversation });
   } catch (error) {
     console.error('Get conversation error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 
-// Enhanced dynamic bot response generator
-function generateBotResponse(userMessage, conversationContext = '', messageCount = 0) {
-  const message = userMessage.toLowerCase().trim();
-  const context = conversationContext.toLowerCase();
-  
-  // Greetings
-  if (message.match(/\b(hi|hello|hey|good morning|good afternoon|good evening|namaste|namaskar)\b/)) {
-    const greetings = [
-      "Hello! Welcome to Free Job Wala! 👋 How can I assist you today? I can help you with:\n\n• Finding jobs\n• Application process\n• Company information\n• Resume tips\n• Any other queries",
-      "Hi there! 👋 Great to see you on Free Job Wala! I'm here to help you with your job search journey. What can I assist you with today?",
-      "Hello! 👋 Welcome! I'm your job search assistant. I can help you find jobs, improve your resume, and guide you through the application process. How can I help?"
-    ];
-    return greetings[Math.floor(Math.random() * greetings.length)];
+// GET /api/chatbot/suggestions?type=jobs|packages|companies
+router.get('/suggestions', async (req, res) => {
+  try {
+    const { type = 'jobs' } = req.query;
+    const snippet = await fetchDynamicSnippet(type);
+    res.json({ success: true, snippet });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error' });
   }
-  
-  // Job search related
-  if (message.match(/\b(job|jobs|position|opening|vacancy|vacancies|search|find|looking for|need job)\b/)) {
-    const responses = [
-      "Great! I can help you find jobs. 🎯\n\nWe have thousands of job openings across various sectors. You can:\n\n• Browse all jobs on our Jobs page\n• Filter by location, industry, or experience\n• Create job alerts for new openings\n• Apply directly through our platform\n\nWould you like me to guide you through the job search process?",
-      "Excellent! 🎯 Finding the right job is important. Here's how you can search:\n\n• Use our advanced search filters\n• Browse by industry or location\n• Set up job alerts for instant notifications\n• Save jobs for later\n\nWhat type of job are you looking for?",
-      "Perfect! 🎯 We have a wide range of job opportunities. You can:\n\n• Search by job title, skills, or keywords\n• Filter by salary, experience, or location\n• View detailed job descriptions\n• Apply with just one click\n\nTell me what kind of role you're interested in!"
-    ];
-    return responses[Math.floor(Math.random() * responses.length)];
+});
+
+// ─── TEMPLATE ROUTES (Admin) ─────────────────────────────────────────────────
+
+// GET /api/chatbot/templates
+router.get('/templates', adminAuth, async (req, res) => {
+  try {
+    const templates = await ChatbotTemplate.find().sort({ priority: -1, createdAt: -1 });
+    res.json({ success: true, templates });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error' });
   }
-  
-  // Application related
-  if (message.match(/\b(apply|application|how to apply|submit|application process)\b/)) {
-    const responses = [
-      "Applying for jobs is easy! 📝\n\nHere's how:\n\n1. Browse and select a job\n2. Click on 'Apply Now'\n3. Fill in your details\n4. Upload your resume\n5. Submit your application\n\nTip: Make sure your profile is complete for better chances!",
-      "Great question! 📝 Here's the simple application process:\n\n1. Find a job that matches your profile\n2. Click 'Apply Now' button\n3. Complete the application form\n4. Upload your updated resume\n5. Submit and track your application\n\nPro tip: Keep your profile updated to apply faster!",
-      "Applying is straightforward! 📝\n\nSteps:\n1. Select a job posting\n2. Review job requirements\n3. Click 'Apply Now'\n4. Fill required information\n5. Upload resume and submit\n\nRemember: A complete profile increases your chances!"
-    ];
-    return responses[Math.floor(Math.random() * responses.length)];
+});
+
+// POST /api/chatbot/templates
+router.post('/templates', adminAuth, async (req, res) => {
+  try {
+    const { triggerKeywords, responseText, category, suggestedReplies, attachDynamicData, priority } = req.body;
+    if (!responseText)
+      return res.status(400).json({ success: false, message: 'responseText is required' });
+
+    const temptTemplate({
+      triggerKeywords: Array.isArray(triggerKeywords) ? triggerKeywords : (triggerKeywords || '').split(',').map(k => k.trim()).filter(Boolean),
+      responseText,
+      category: category || 'general',
+      suggestedReplies: Array.isArray(suggestedReplies) ? suggestedReplies : [],
+      attachDynamicData: attachDynamicData || 'none',
+      priority: priority || 0,
+      createdBy: req.user?._id
+    });
+
+    await template.save();
+    res.status(201).json({ success: true, template });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error' });
   }
-  
-  // Resume/CV related
-  if (message.match(/\b(resume|cv|curriculum vitae|profile|resume tips|improve resume)\b/)) {
-    const responses = [
-      "Your resume is very important! 📄\n\nTips for a great resume:\n\n• Keep it concise (1-2 pages)\n• Highlight key achievements\n• Use action words\n• Include relevant skills\n• Proofread for errors\n\nYou can also use our resume builder tool in your profile section!",
-      "Resume tips! 📄 Here's what makes a standout resume:\n\n• Clear, professional format\n• Quantify your achievements\n• Tailor it to the job description\n• Include keywords from job postings\n• Keep it updated and error-free\n\nWant to know more about any specific aspect?",
-      "Great question! 📄 A strong resume should:\n\n• Be well-organized and easy to read\n• Showcase your achievements with numbers\n• Match the job requirements\n• Include relevant skills and certifications\n• Be free of typos and grammatical errors\n\nNeed help with a specific section?"
-    ];
-    return responses[Math.floor(Math.random() * responses.length)];
+});
+
+// PUT /api/chatbot/templates/:id
+router.put('/templates/:id', adminAuth, async (req, res) => {
+  try {
+    const { triggerKeywords, responseText, category, suggestedReplies, attachDynamicData, priority, isActive } = req.body;
+    const update = {
+      responseText,
+      category,
+      suggestedReplies: Array.isArray(suggestedReplies) ? suggestedReplies : [],
+      attachDynamicData,
+      priority,
+      isActive
+    };
+    if (triggerKeywords !== undefined) {
+      update.triggerKeywords = Array.isArray(triggerKeywords) ? triggerKeywords : triggerKeywords.split(',').map(k => k.trim()).filter(Boolean);
+    }
+
+    const template = await ChatbotTemplate.findByIdAndUpdate(req.params.id, update, { new: true });
+    if (!template) return res.status(404).json({ success: false, message: 'Template not found' });
+    res.json({ success: true, template });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error' });
   }
-  
-  // Job alerts
-  if (message.match(/\b(job alert|alert|notification|notify|create alert|set alert)\b/)) {
-    return "Job alerts are super helpful! 🔔\n\nCreate alerts to:\n\n• Get notified about new jobs matching your criteria\n• Never miss an opportunity\n• Save time on daily searches\n• Receive personalized recommendations\n\nTo create an alert:\n1. Go to 'Create Job Alert'\n2. Set your preferences (location, skills, etc.)\n3. Choose alert frequency\n4. Get instant notifications!\n\nWould you like help setting one up?";
+});
+
+// DELETE /api/chatbot/templates/:id
+router.delete('/templates/:id', adminAuth, async (req, res) => {
+  try {
+    await ChatbotTemplate.findByIdAndDelete(req.params.id);
+    res.json({ success: true, message: 'Template deleted' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error' });
   }
-  
-  // Company related
-  if (message.match(/\b(company|companies|employer|employers|organization|org)\b/)) {
-    return "We work with top companies and consultancies! 🏢\n\nYou can:\n\n• View company profiles\n• See active job postings\n• Check company reviews\n• Connect directly with recruiters\n• Learn about company culture\n\nAre you looking for a specific company or industry?";
+});
+ {
+      io.to(`chatbot_${sessionId}`).emit('chatbot_admin_message', {
+        sessionId,
+        message,
+        sender: 'bot',
+        timestamp: new Date()
+      });
+    }
+
+    res.json({ success: true, message: 'Message sent' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error' });
   }
-  
-  // Profile related
-  if (message.match(/\b(profile|update profile|edit profile|complete profile|profile help)\b/)) {
-    return "Your profile is your professional identity! 👤\n\nTo create a complete profile:\n\n• Add your work experience\n• List your skills and certifications\n• Upload your resume\n• Add your education details\n• Include a professional summary\n\nA complete profile helps:\n• Get better job matches\n• Attract recruiters\n• Apply faster to jobs\n• Increase visibility\n\nNeed help updating any section?";
-  }
-  
-  // Registration/Login
-  if (message.match(/\b(register|signup|sign up|login|log in|account|create account|sign in)\b/)) {
-    return "Creating an account is quick and easy! 🔐\n\nBenefits of registration:\n\n• Save job searches\n• Apply with one click\n• Get personalized job recommendations\n• Track your applications\n• Access exclusive features\n• Create multiple job alerts\n\nClick on 'Register' or 'Login' at the top to get started! It takes less than 2 minutes!";
-  }
-  
-  // Contact/Support
-  if (message.match(/\b(contact|support|help|assistance|email|phone|call|reach|get in touch)\b/)) {
-    return "We're here to help! 📞\n\nYou can reach us through:\n\n• Email: support@freejobwala.com\n• Phone: +91 1800-XXX-XXXX\n• Chat: Right here! (Available 24/7)\n• Social Media: @freejobwala\n\nOur support team is available 24/7 to assist you with:\n• Account issues\n• Application problems\n• Technical support\n• General queries\n\nWhat do you need help with?";
-  }
-  
-  // Pricing/Packages
-  if (message.match(/\b(price|pricing|cost|fee|package|plan|subscription|free|paid)\b/)) {
-    return "Job seeking is FREE on our platform! 🎉\n\nFor Job Seekers:\n• ✅ Free registration\n• ✅ Free job applications\n• ✅ Free job alerts\n• ✅ Free profile creation\n• ✅ Free resume upload\n\nFor Employers:\n• Multiple packages available\n• Post unlimited jobs\n• Access to candidate database\n• Featured job listings\n\nContact us for employer packages!";
-  }
-  
-  // Interview related
-  if (message.match(/\b(interview|preparation|prepare|interview tips|interview questions)\b/)) {
-    return "Interview preparation is key! 💼\n\nHere are some tips:\n\n• Research the company thoroughly\n• Review the job description\n• Prepare common questions\n• Practice your answers\n• Prepare questions to ask\n• Dress professionally\n• Arrive on time\n• Follow up after the interview\n\nGood luck with your interviews! 🍀";
-  }
-  
-  // Skills related
-  if (message.match(/\b(skill|skills|learn|training|course|certification)\b/)) {
-    return "Skills are essential! 🎓\n\nTo improve your skills:\n\n• Identify in-demand skills in your field\n• Take online courses\n• Get certifications\n• Practice regularly\n• Add skills to your profile\n• Highlight skills in your resume\n\nPopular skills employers look for:\n• Technical skills (varies by industry)\n• Communication skills\n• Problem-solving\n• Team collaboration\n• Leadership\n\nWhat skills are you looking to develop?";
-  }
-  
-  // Thank you
-  if (message.match(/\b(thank|thanks|appreciate|grateful|thankful)\b/)) {
-    const thanks = [
-      "You're welcome! 😊 Is there anything else I can help you with today?",
-      "Happy to help! 😊 Feel free to ask if you need anything else. Good luck with your job search!",
-      "My pleasure! 😊 Let me know if you have any other questions. Wishing you success!"
-    ];
-    return thanks[Math.floor(Math.random() * thanks.length)];
-  }
-  
-  // Goodbye
-  if (message.match(/\b(bye|goodbye|see you|later|farewell|good night)\b/)) {
-    return "Goodbye! 👋 Thank you for chatting with us. Feel free to come back anytime if you need assistance. Good luck with your job search! 🍀";
-  }
-  
-  // Questions about the platform
-  if (message.match(/\b(what|how|when|where|why|can i|is it|does|do you)\b/)) {
-    return "Great question! 🤔\n\nI can help you understand:\n\n• How to use our platform\n• Job search features\n• Application process\n• Profile setup\n• Job alerts\n• Company information\n\nCould you be more specific about what you'd like to know? I'm here to help!";
-  }
-  
-  // Context-aware responses based on conversation history
-  if (context.includes('job') || context.includes('apply') || context.includes('application')) {
-    return "I see you're interested in jobs! 🎯\n\nLet me help you further:\n\n• Search for jobs by location, skills, or industry\n• Learn about the application process\n• Get tips for successful applications\n• Set up job alerts for new opportunities\n\nWhat specific aspect would you like to know more about?";
-  }
-  
-  if (context.includes('resume') || context.includes('cv') || context.includes('profile')) {
-    return "Great! Let's work on your profile! 📄\n\nI can help you with:\n\n• Resume writing tips\n• Profile optimization\n• Highlighting your skills\n• Making your profile stand out\n• Formatting and presentation\n\nWhat would you like to improve in your resume or profile?";
-  }
-  
-  if (context.includes('company') || context.includes('employer')) {
-    return "Company information is important! 🏢\n\nI can help you:\n\n• Find company profiles\n• Research employers\n• Understand company culture\n• Check active job postings\n• Connect with recruiters\n\nWhich company are you interested in?";
-  }
-  
-  // Default response with suggestions
-  const suggestions = [
-    "I understand! 🤖\n\nI'm here to help you with:\n\n• Job search and applications\n• Company information\n• Resume tips and profile help\n• Job alerts setup\n• Platform navigation\n• Interview preparation\n\nCould you please provide more details about what you're looking for? Or try one of our quick actions!",
-    "Thank you for your message! 🤖\n\nLet me help you better. I can assist with:\n\n• Finding the right jobs\n• Improving your resume\n• Setting up job alerts\n• Understanding the application process\n• Company research\n• Profile optimization\n\nWhat specific help do you need?",
-    "I'm here to help! 🤖\n\nI can guide you on:\n\n• Job searching strategies\n• Application best practices\n• Resume writing tips\n• Interview preparation\n• Profile completion\n• Using platform features\n\nFeel free to ask me anything, or use the quick action buttons below!"
-  ];
-  
-  // Vary response based on message count to keep conversation engaging
-  if (messageCount > 10) {
-    return "I appreciate your continued engagement! 🤖\n\nYou've asked several questions. To help you better, could you tell me:\n\n• What's your main goal? (Finding a job, improving profile, etc.)\n• What industry or role interests you?\n• Do you have any specific concerns?\n\nThis will help me provide more targeted assistance!";
-  }
-  
-  return suggestions[Math.floor(Math.random() * suggestions.length)];
-}
+});
 
 module.exports = router;
+ res) => {
+  try {
+    const { sessionId, message } = req.body;
+    if (!sessionId || !message)
+      return res.status(400).json({ success: false, message: 'sessionId and message required' });
 
+    let conversation = await ChatbotConversation.findOne({ sessionId });
+    if (!conversation)
+      return res.status(404).json({ success: false, message: 'Conversation not found' });
+
+    await conversation.addMessage('bot', message);
+
+    // Emit to the specific session room
+    const io = req.app.get('io');
+    if (io)
+// ─── ADMIN SEND MESSAGE to user ──────────────────────────────────────────────
+// POST /api/chatbot/admin/send
+router.post('/admin/send', adminAuth, async (req,

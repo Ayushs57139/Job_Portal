@@ -17,6 +17,7 @@ import AdminApplicationDetailsScreen from '../screens/Admin/AdminApplicationDeta
 import AdminRoleManagementScreen from '../screens/Admin/AdminRoleManagementScreen';
 import AdminTeamLimitsScreen from '../screens/Admin/AdminTeamLimitsScreen';
 import AdminBlogsScreen from '../screens/Admin/AdminBlogsScreen';
+import AdminFAQsScreen from '../screens/Admin/AdminFAQsScreen';
 import AdminVerificationScreen from '../screens/Admin/AdminVerificationScreen';
 import AdminKYCScreen from '../screens/Admin/AdminKYCManagementScreen';
 import AdminSalesEnquiryScreen from '../screens/Admin/AdminSalesEnquiryScreen';
@@ -34,6 +35,8 @@ import AdminLoginSecurityScreen from '../screens/Admin/AdminLoginSecurityScreen'
 import AdminSocialUpdatesScreen from '../screens/Admin/AdminSocialUpdatesScreen';
 import AdminPackageManagementScreen from '../screens/Admin/AdminPackageManagementScreen';
 import AdminRazorpayIntegrationScreen from '../screens/Admin/AdminRazorpayIntegrationScreen';
+import AdminPaymentOptionsScreen from '../screens/Admin/AdminPaymentOptionsScreen';
+import AdminApiSettingsScreen from '../screens/Admin/AdminApiSettingsScreen';
 import AdminAdvertisementManagementScreen from '../screens/Admin/AdminAdvertisementManagementScreen';
 import AdminLiveChatSupportScreen from '../screens/Admin/AdminLiveChatSupportScreen';
 import AdminResumeSearchScreen from '../screens/Admin/AdminResumeSearchScreen';
@@ -44,6 +47,7 @@ import AdminCandidateDetailsScreen from '../screens/Admin/AdminCandidateDetailsS
 import AdminEditCandidateScreen from '../screens/Admin/AdminEditCandidateScreen';
 import AdminHomepageScreen from '../screens/Admin/AdminHomepageScreen';
 import AdminFreejobwalaChatScreen from '../screens/Admin/AdminFreejobwalaChatScreen';
+import AdminChatTemplatesScreen from '../screens/Admin/AdminChatTemplatesScreen';
 import AdminLogoManagementScreen from '../screens/Admin/AdminLogoManagementScreen';
 import AdminPostJobScreen from '../screens/Admin/AdminPostJobScreen';
 import AdminJobEventsScreen from '../screens/Admin/AdminJobEventsScreen';
@@ -151,6 +155,11 @@ const AdminNavigator = () => {
           options={{ title: 'Blogs Management', headerShown: false }}
         />
         <Stack.Screen 
+          name="AdminFAQs" 
+          component={AdminFAQsScreen}
+          options={{ title: 'FAQ Management', headerShown: false }}
+        />
+        <Stack.Screen 
           name="AdminVerification" 
           component={AdminVerificationScreen}
           options={{ title: 'Verification', headerShown: false }}
@@ -236,6 +245,16 @@ const AdminNavigator = () => {
           options={{ title: 'Razorpay Integration', headerShown: false }}
         />
         <Stack.Screen 
+          name="AdminPaymentOptions" 
+          component={AdminPaymentOptionsScreen}
+          options={{ title: 'Payment Options', headerShown: false }}
+        />
+        <Stack.Screen 
+          name="AdminApiSettings" 
+          component={AdminApiSettingsScreen}
+          options={{ title: 'API Management', headerShown: false }}
+        />
+        <Stack.Screen 
           name="AdminAdvertisementManagement" 
           component={AdminAdvertisementManagementScreen}
           options={{ title: 'Advertisement Management', headerShown: false }}
@@ -296,6 +315,11 @@ const AdminNavigator = () => {
           name="AdminFreejobwalaChat" 
           component={AdminFreejobwalaChatScreen}
           options={{ title: 'Freejobwala Chat', headerShown: false }}
+        />
+        <Stack.Screen 
+          name="AdminChatTemplates" 
+          component={AdminChatTemplatesScreen}
+          options={{ title: 'Chat Templates', headerShown: false }}
         />
         <Stack.Screen 
           name="AdminLogoManagement" 

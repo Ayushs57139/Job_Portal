@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Alert,
   ActivityIndicator,
   Platform,
+  Modal as RNModal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
@@ -23,7 +24,7 @@ import {
 import { INDUSTRIES_DATA, getIndustries, getSubIndustries } from '../../data/industriesData';
 import { DEPARTMENTS_DATA, getDepartments, getSubDepartments } from '../../data/departmentsData';
 
-const JobAlertFormScreen = ({ navigation }) => {
+const JobAlertFormScreen = ({ navigation, isModal = false }) => {
   // Form state
   const [formData, setFormData] = useState({
     jobTitle: '',
@@ -53,21 +54,10 @@ const JobAlertFormScreen = ({ navigation }) => {
   const [departmentsOptions, setDepartmentsOptions] = useState([]);
   const [subDepartmentsOptions, setSubDepartmentsOptions] = useState([]);
 
-  // Dropdowns state
-  const [showDropdown, setShowDropdown] = useState({
-    presentJobStatus: false,
-    experienceLevel: false,
-    totalExperience: false,
-    alertFrequency: false,
-    jobTitle: false,
-    industries: false,
-    subIndustries: false,
-    departments: false,
-    subDepartments: false,
-    location: false,
-    jobRoles: false,
-    keySkills: false,
-  });
+  // Floating dropdown portal state
+  const [activeDropdown, setActiveDropdown] = useState(null); // { field, options, anchor, isMulti, maxLength, isAutoComplete }
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, width: 0 });
+  const triggerRefs = useRef({});
 
   // Dropdown options
   const presentJobStatusOptions = ['Working', 'Not Working', 'Internship', 'Apprenticeship'];
@@ -486,640 +476,476 @@ const JobAlertFormScreen = ({ navigation }) => {
     }
   };
 
-  const renderDropdown = (field, options, placeholder) => {
-    const getIcon = () => {
-      if (placeholder.toLowerCase().includes('status')) return 'briefcase-outline';
-      if (placeholder.toLowerCase().includes('experience')) return 'time-outline';
-      if (placeholder.toLowerCase().includes('frequency') || placeholder.toLowerCase().includes('receive')) return 'notifications-outline';
-      return 'list-outline';
-    };
+  // Open a floating dropdown by measuring the trigger button position
+  const openFloatingDropdown = (field, options, isMulti = false, maxLength = 1, isAutoComplete = false) => {
+    const ref = triggerRefs.current[field];
+    if (ref && ref.measure) {
+      ref.measure((x, y, width, height, pageX, pageY) => {
+        setDropdownPos({ top: pageY + height + 4, left: pageX, width });
+        setActiveDropdown({ field, options, isMulti, maxLength, isAutoComplete });
+      });
+    } else {
+      setActiveDropdown({ field, options, isMulti, maxLength, isAutoComplete });
+    }
+  };
 
+  const closeFloatingDropdown = () => setActiveDropdown(null);
+
+  // Floating dropdown modal — renders above everything, no clipping issues
+  const renderFloatingDropdown = () => {
+    if (!activeDropdown) return null;
+    const { field, options, isMulti, maxLength, isAutoComplete } = activeDropdown;
     return (
-      <>
-        {showDropdown[field] && (
-          <TouchableOpacity
-            style={styles.dropdownBackdrop}
-            activeOpacity={1}
-            onPress={() => setShowDropdown({ ...showDropdown, [field]: false })}
-          />
-        )}
-        <View style={[styles.fieldContainer, showDropdown[field] && styles.fieldContainerActive]}>
-          <View style={styles.labelContainer}>
-            <Ionicons name={getIcon()} size={16} color={colors.primary} style={styles.labelIcon} />
-            <Text style={styles.label}>
-              {placeholder} <Text style={styles.required}>*</Text>
-            </Text>
+      <RNModal transparent visible animationType="none" onRequestClose={closeFloatingDropdown}>
+        <TouchableOpacity style={DD.overlay} activeOpacity={1} onPress={closeFloatingDropdown} />
+        <View style={[DD.panel, Platform.OS === 'web' && { position: 'fixed', top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width }]}>
+          <View style={DD.panelHeader}>
+            <Text style={DD.panelTitle}>{field.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase())}</Text>
+            <TouchableOpacity onPress={closeFloatingDropdown} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Ionicons name="close" size={18} color="#64748B" />
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity
-            style={[styles.dropdown, showDropdown[field] && styles.dropdownActive]}
-            onPress={() => setShowDropdown({ ...showDropdown, [field]: !showDropdown[field] })}
-          >
-            <Ionicons name={getIcon()} size={22} color={colors.primary} style={styles.dropdownIcon} />
-            <Text style={[styles.dropdownText, !formData[field] && styles.placeholderText]}>
-              {formData[field] || `Select ${placeholder}`}
-            </Text>
-            <Ionicons
-              name={showDropdown[field] ? 'chevron-up' : 'chevron-down'}
-              size={20}
-              color={colors.primary}
-            />
-          </TouchableOpacity>
-        {showDropdown[field] && (
-          <View style={styles.dropdownMenu}>
-            <ScrollView style={styles.dropdownScroll} nestedScrollEnabled>
-              {options.map((option, index) => (
+          <ScrollView style={DD.list} showsVerticalScrollIndicator={false} nestedScrollEnabled>
+            {options.map((opt, i) => {
+              const val = isAutoComplete ? opt.value : opt;
+              const label = isAutoComplete ? opt.label : opt;
+              const isSel = isMulti
+                ? formData[field]?.includes(val)
+                : formData[field] === val;
+              const isDisabled = isMulti && formData[field]?.length >= maxLength && !isSel;
+              return (
                 <TouchableOpacity
-                  key={index}
-                  style={styles.dropdownOption}
+                  key={i}
+                  style={[DD.item, isSel && DD.itemActive, isDisabled && DD.itemDisabled]}
+                  disabled={isDisabled}
                   onPress={() => {
-                    handleInputChange(field, option);
-                    setShowDropdown({ ...showDropdown, [field]: false });
+                    if (isMulti) {
+                      handleMultiSelectToggle(field, val, maxLength);
+                    } else {
+                      handleInputChange(field, val);
+                      closeFloatingDropdown();
+                    }
                   }}
                 >
-                  <Text style={styles.dropdownOptionText}>{option}</Text>
+                  <Text style={[DD.itemText, isSel && DD.itemTextActive, isDisabled && DD.itemTextDisabled]}>{label}</Text>
+                  {isSel && (
+                    <View style={DD.check}>
+                      <Ionicons name="checkmark" size={11} color="#fff" />
+                    </View>
+                  )}
                 </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        )}
-        </View>
-      </>
-    );
-  };
-
-  const renderTextInput = (field, placeholder, keyboardType = 'default') => {
-    const getIcon = () => {
-      if (placeholder.toLowerCase().includes('email')) return 'mail-outline';
-      if (placeholder.toLowerCase().includes('mobile') || placeholder.toLowerCase().includes('phone')) return 'call-outline';
-      if (placeholder.toLowerCase().includes('salary')) return 'cash-outline';
-      if (placeholder.toLowerCase().includes('location') || placeholder.toLowerCase().includes('city')) return 'location-outline';
-      if (placeholder.toLowerCase().includes('name')) return 'text-outline';
-      return 'create-outline';
-    };
-
-    return (
-      <View style={styles.fieldContainer}>
-        <View style={styles.labelContainer}>
-          <Ionicons name={getIcon()} size={16} color={colors.primary} style={styles.labelIcon} />
-          <Text style={styles.label}>
-            {placeholder} <Text style={styles.required}>*</Text>
-          </Text>
-        </View>
-        <View style={styles.inputWrapper}>
-          <Ionicons name={getIcon()} size={22} color={colors.primary} style={styles.inputIcon} />
-          <TextInput
-            style={styles.textInput}
-            placeholder={`Enter ${placeholder}`}
-            value={formData[field]}
-            onChangeText={(value) => handleInputChange(field, value)}
-            keyboardType={keyboardType}
-            placeholderTextColor={colors.textLight}
-          />
-        </View>
-      </View>
-    );
-  };
-
-  const renderAutoCompleteDropdown = (field, placeholder, options, maxLength = 1, required = true) => {
-    const getIcon = () => {
-      if (placeholder.toLowerCase().includes('job title') || placeholder.toLowerCase().includes('designation')) return 'briefcase-outline';
-      if (placeholder.toLowerCase().includes('industry')) return 'business-outline';
-      if (placeholder.toLowerCase().includes('department')) return 'folder-outline';
-      if (placeholder.toLowerCase().includes('role')) return 'person-outline';
-      if (placeholder.toLowerCase().includes('skill')) return 'star-outline';
-      return 'search-outline';
-    };
-
-    return (
-      <>
-        {showDropdown[field] && (
-          <TouchableOpacity
-            style={styles.dropdownBackdrop}
-            activeOpacity={1}
-            onPress={() => setShowDropdown({ ...showDropdown, [field]: false })}
-          />
-        )}
-        <View style={[styles.fieldContainer, showDropdown[field] && styles.fieldContainerActive]}>
-          <View style={styles.labelContainer}>
-            <Ionicons name={getIcon()} size={16} color={colors.primary} style={styles.labelIcon} />
-            <Text style={styles.label}>
-              {placeholder} {required && <Text style={styles.required}>*</Text>}
-              {maxLength > 1 && <Text style={styles.maxItems}> (Max {maxLength})</Text>}
-            </Text>
-          </View>
-        
-        {/* Selected Items */}
-        {maxLength > 1 && formData[field] && formData[field].length > 0 && (
-          <View style={styles.selectedItemsContainer}>
-            {formData[field].map((value, index) => {
-              const option = options.find(opt => opt.value === value);
-              return (
-                <View key={index} style={styles.selectedItem}>
-                  <Text style={styles.selectedItemText}>{option ? option.label : value}</Text>
-                  <TouchableOpacity onPress={() => removeMultiSelectItem(field, value)}>
-                    <Ionicons name="close-circle" size={20} color={colors.error} />
-                  </TouchableOpacity>
-                </View>
               );
             })}
-          </View>
-        )}
-
-        {/* Dropdown */}
-        <TouchableOpacity
-          style={[styles.dropdown, showDropdown[field] && styles.dropdownActive]}
-          onPress={() => setShowDropdown({ ...showDropdown, [field]: !showDropdown[field] })}
-        >
-          <Ionicons name={getIcon()} size={22} color={colors.primary} style={styles.dropdownIcon} />
-          <Text style={[styles.dropdownText, (!formData[field] || (Array.isArray(formData[field]) && formData[field].length === 0)) && styles.placeholderText]}>
-            {maxLength === 1 
-              ? (formData[field] ? (options.find(opt => opt.value === formData[field])?.label || formData[field]) : `Type or Select ${placeholder}`)
-              : `Type or Select ${placeholder}`
-            }
-          </Text>
-          <Ionicons
-            name={showDropdown[field] ? 'chevron-up' : 'chevron-down'}
-            size={20}
-            color={colors.primary}
-          />
-        </TouchableOpacity>
-        
-        {showDropdown[field] && (
-          <View style={styles.dropdownMenu}>
-            <ScrollView style={styles.dropdownScroll} nestedScrollEnabled>
-              {options.map((option, index) => {
-                const isSelected = maxLength === 1 
-                  ? formData[field] === option.value
-                  : formData[field].includes(option.value);
-                
-                return (
-                  <TouchableOpacity
-                    key={index}
-                    style={[styles.dropdownOption, isSelected && styles.dropdownOptionSelected]}
-                    onPress={() => {
-                      if (maxLength === 1) {
-                        handleInputChange(field, option.value);
-                        setShowDropdown({ ...showDropdown, [field]: false });
-                      } else {
-                        handleMultiSelectToggle(field, option.value, maxLength);
-                      }
-                    }}
-                    disabled={maxLength > 1 && formData[field].length >= maxLength && !isSelected}
-                  >
-                    <Text style={[styles.dropdownOptionText, isSelected && styles.dropdownOptionTextSelected]}>
-                      {option.label}
-                    </Text>
-                    {maxLength > 1 && isSelected && (
-                      <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </View>
-        )}
+          </ScrollView>
+          {isMulti && (
+            <TouchableOpacity style={DD.doneBtn} onPress={closeFloatingDropdown}>
+              <Text style={DD.doneBtnText}>Done ({formData[field]?.length || 0} selected)</Text>
+            </TouchableOpacity>
+          )}
         </View>
-      </>
+      </RNModal>
     );
   };
 
-  return (
-    <View style={styles.container}>
-      <Header />
-      
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={Platform.OS === 'web'}
+  const renderDropdown = (field, options, label, isRequired = true) => (
+    <View style={S.field}>
+      <Text style={S.label}>{label}{isRequired && <Text style={S.req}> *</Text>}</Text>
+      <TouchableOpacity
+        ref={r => { triggerRefs.current[field] = r; }}
+        style={[S.select, activeDropdown?.field === field && S.selectOpen]}
+        onPress={() => activeDropdown?.field === field ? closeFloatingDropdown() : openFloatingDropdown(field, options)}
       >
-        <View style={styles.headerSection}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Ionicons name="arrow-back" size={24} color={colors.primary} />
-          </TouchableOpacity>
-          <View style={styles.titleContainer}>
-            <View style={styles.iconContainer}>
-              <Ionicons name="notifications-circle" size={32} color={colors.primary} />
-            </View>
-            <Text style={styles.title}>Create Job Alert</Text>
-            <Text style={styles.subtitle}>
-              Set up your job preferences and get notified when matching jobs are posted
-            </Text>
-          </View>
+        <Text style={[S.selectText, !formData[field] && S.placeholder]}>
+          {formData[field] || `Select ${label}`}
+        </Text>
+        <Ionicons name={activeDropdown?.field === field ? 'chevron-up' : 'chevron-down'} size={16} color="#6B7280" />
+      </TouchableOpacity>
+    </View>
+  );
+
+  const renderTextInput = (field, label, keyboardType = 'default', isRequired = true) => (
+    <View style={S.field}>
+      <Text style={S.label}>{label}{isRequired && <Text style={S.req}> *</Text>}</Text>
+      <TextInput
+        style={S.input}
+        placeholder={`Enter ${label}`}
+        value={formData[field]}
+        onChangeText={v => handleInputChange(field, v)}
+        keyboardType={keyboardType}
+        placeholderTextColor="#9CA3AF"
+      />
+    </View>
+  );
+
+  const renderAutoCompleteDropdown = (field, label, options, maxLength = 1, isRequired = true) => (
+    <View style={S.field}>
+      <View style={S.labelRow}>
+        <Text style={S.label}>{label}{isRequired && <Text style={S.req}> *</Text>}</Text>
+        {maxLength > 1 && <Text style={S.maxTag}>max {maxLength}</Text>}
+      </View>
+
+      {maxLength > 1 && formData[field]?.length > 0 && (
+        <View style={S.chips}>
+          {formData[field].map((val, i) => {
+            const opt = options.find(o => o.value === val);
+            return (
+              <View key={i} style={S.chip}>
+                <Text style={S.chipText}>{opt ? opt.label : val}</Text>
+                <TouchableOpacity onPress={() => removeMultiSelectItem(field, val)} hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}>
+                  <Ionicons name="close" size={12} color="#4F46E5" />
+                </TouchableOpacity>
+              </View>
+            );
+          })}
         </View>
+      )}
 
-        <View style={styles.formContainer}>
-          {/* Job Preferences Section */}
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionIconContainer}>
-              <Ionicons name="briefcase" size={20} color={colors.primary} />
+      <TouchableOpacity
+        ref={r => { triggerRefs.current[field] = r; }}
+        style={[S.select, activeDropdown?.field === field && S.selectOpen]}
+        onPress={() => activeDropdown?.field === field ? closeFloatingDropdown() : openFloatingDropdown(field, options, maxLength > 1, maxLength, true)}
+      >
+        <Text style={[S.selectText, (!formData[field] || (Array.isArray(formData[field]) && !formData[field].length)) && S.placeholder]}>
+          {maxLength === 1
+            ? (formData[field] ? (options.find(o => o.value === formData[field])?.label || formData[field]) : `Select ${label}`)
+            : `Select ${label}`}
+        </Text>
+        <Ionicons name={activeDropdown?.field === field ? 'chevron-up' : 'chevron-down'} size={16} color="#6B7280" />
+      </TouchableOpacity>
+    </View>
+  );
+
+  return (
+    <View style={S.root}>
+      {!isModal && <Header />}
+      {renderFloatingDropdown()}
+      <ScrollView style={S.scroll} contentContainerStyle={S.scrollContent} showsVerticalScrollIndicator={Platform.OS === 'web'}>
+
+        {/* Hero - only shown when not in modal (modal has its own header) */}
+        {!isModal && (
+          <View style={S.hero}>
+            <TouchableOpacity style={S.backBtn} onPress={() => navigation.goBack()}>
+              <Ionicons name="arrow-back" size={18} color="#4F46E5" />
+            </TouchableOpacity>
+            <View style={S.heroCenter}>
+              <View style={S.heroIcon}>
+                <Ionicons name="notifications" size={22} color="#4F46E5" />
+              </View>
+              <Text style={S.heroTitle}>Create Job Alert</Text>
+              <Text style={S.heroSub}>Set up your preferences and get notified when matching jobs are posted</Text>
             </View>
-            <Text style={styles.sectionTitle}>Job Preferences</Text>
           </View>
-          <View style={styles.sectionCard}>
+        )}
 
-          {renderAutoCompleteDropdown('jobTitle', 'Job Title / Designation', jobTitleOptions, 1, true)}
-          {renderTextInput('expectedSalary', 'Expected Annual Salary', 'numeric')}
-          {renderDropdown('presentJobStatus', presentJobStatusOptions, 'Present Job Status')}
-          {renderDropdown('experienceLevel', experienceLevelOptions, 'Experience Level')}
-          {renderDropdown('totalExperience', totalExperienceOptions, 'Total Experience')}
-          {renderTextInput('workOfficeLocation', 'Work Office / City Location', 'default')}
-          </View>
+        <View style={S.body}>
 
-          {/* Industry & Department Section */}
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionIconContainer}>
-              <Ionicons name="business" size={20} color={colors.primary} />
+          {/* Section: Job Preferences */}
+          <View style={S.section}>
+            <View style={S.sectionHead}>
+              <View style={S.sectionDot} />
+              <Text style={S.sectionTitle}>Job Preferences</Text>
             </View>
-            <Text style={styles.sectionTitle}>Industry & Department</Text>
-          </View>
-          <View style={styles.sectionCard}>
-
-          {renderAutoCompleteDropdown('industries', 'Industry / Sectors', industriesOptions, 10, true)}
-          {renderAutoCompleteDropdown('subIndustries', 'Sub Industry / Sectors', subIndustriesOptions, 10, false)}
-          {renderAutoCompleteDropdown('departments', 'Department / Role Category', departmentsOptions, 10, true)}
-          {renderAutoCompleteDropdown('subDepartments', 'Sub-Departments', subDepartmentsOptions, 10, false)}
-          {renderAutoCompleteDropdown('jobRoles', 'Job Roles', jobRolesOptions, 10, true)}
-          {renderAutoCompleteDropdown('keySkills', 'Key Skills (Show 10-12 Suggestions)', keySkillsOptions, 10, true)}
-          </View>
-
-          {/* Contact Information Section */}
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionIconContainer}>
-              <Ionicons name="mail" size={20} color={colors.primary} />
+            <View style={S.card}>
+              {renderAutoCompleteDropdown('jobTitle', 'Job Title / Designation', jobTitleOptions, 1, true)}
+              {renderTextInput('expectedSalary', 'Expected Annual Salary', 'numeric')}
+              {renderDropdown('presentJobStatus', presentJobStatusOptions, 'Present Job Status')}
+              {renderDropdown('experienceLevel', experienceLevelOptions, 'Experience Level')}
+              {renderDropdown('totalExperience', totalExperienceOptions, 'Total Experience')}
+              {renderTextInput('workOfficeLocation', 'Work Location / City', 'default')}
             </View>
-            <Text style={styles.sectionTitle}>Contact Information</Text>
           </View>
-          <View style={styles.sectionCard}>
 
-          {renderTextInput('email', 'Email ID', 'email-address')}
-          {renderTextInput('mobile', 'Mobile Number', 'phone-pad')}
-          {renderDropdown('alertFrequency', alertFrequencyOptions, 'Receive Job Alerts')}
-
-          {/* Resume Upload */}
-          <View style={styles.fieldContainer}>
-            <View style={styles.labelContainer}>
-              <Ionicons name="document-attach-outline" size={16} color={colors.primary} style={styles.labelIcon} />
-              <Text style={styles.label}>Upload Resume (Optional)</Text>
+          {/* Section: Industry & Department */}
+          <View style={S.section}>
+            <View style={S.sectionHead}>
+              <View style={S.sectionDot} />
+              <Text style={S.sectionTitle}>Industry & Department</Text>
             </View>
-            <TouchableOpacity style={styles.uploadButton} onPress={pickDocument}>
-              <Ionicons name="cloud-upload-outline" size={28} color={colors.primary} />
-              <View style={styles.uploadButtonTextContainer}>
-                <Text style={styles.uploadButtonText}>
-                  {resumeFile ? resumeFile.name : 'Choose File'}
-                </Text>
+            <View style={S.card}>
+              {renderAutoCompleteDropdown('industries', 'Industry / Sectors', industriesOptions, 10, true)}
+              {renderAutoCompleteDropdown('subIndustries', 'Sub Industry', subIndustriesOptions, 10, false)}
+              {renderAutoCompleteDropdown('departments', 'Department', departmentsOptions, 10, true)}
+              {renderAutoCompleteDropdown('subDepartments', 'Sub-Departments', subDepartmentsOptions, 10, false)}
+              {renderAutoCompleteDropdown('jobRoles', 'Job Roles', jobRolesOptions, 10, true)}
+              {renderAutoCompleteDropdown('keySkills', 'Key Skills', keySkillsOptions, 10, true)}
+            </View>
+          </View>
+
+          {/* Section: Contact & Alert */}
+          <View style={S.section}>
+            <View style={S.sectionHead}>
+              <View style={S.sectionDot} />
+              <Text style={S.sectionTitle}>Contact & Alert Settings</Text>
+            </View>
+            <View style={S.card}>
+              {renderTextInput('email', 'Email Address', 'email-address')}
+              {renderTextInput('mobile', 'Mobile Number', 'phone-pad')}
+              {renderDropdown('alertFrequency', alertFrequencyOptions, 'Alert Frequency')}
+              {renderTextInput('alertName', 'Alert Name', 'default')}
+
+              {/* Resume Upload */}
+              <View style={S.field}>
+                <Text style={S.label}>Upload Resume <Text style={S.optional}>(Optional)</Text></Text>
+                <TouchableOpacity style={S.uploadBox} onPress={pickDocument}>
+                  <Ionicons name="cloud-upload-outline" size={22} color="#9CA3AF" />
+                  <View>
+                    <Text style={S.uploadText}>{resumeFile ? resumeFile.name : 'Click to upload resume'}</Text>
+                    <Text style={S.uploadSub}>PDF, DOC, DOCX supported</Text>
+                  </View>
+                </TouchableOpacity>
                 {resumeFile && (
-                  <Text style={styles.fileSizeText}>
-                    ({Math.round(resumeFile.size / 1024)} KB)
-                  </Text>
+                  <View style={S.fileRow}>
+                    <Ionicons name="checkmark-circle" size={14} color="#10B981" />
+                    <Text style={S.fileName}>{resumeFile.name} ({Math.round(resumeFile.size / 1024)} KB)</Text>
+                  </View>
                 )}
               </View>
-            </TouchableOpacity>
-            {resumeFile && (
-              <View style={styles.fileInfoContainer}>
-                <Ionicons name="checkmark-circle" size={16} color={colors.success} />
-                <Text style={styles.fileInfo}>
-                  {resumeFile.name}
-                </Text>
-              </View>
-            )}
+            </View>
           </View>
 
-          {renderTextInput('alertName', 'Job Alert Name', 'default')}
-          </View>
-
-          {/* Submit Button */}
+          {/* Submit */}
           <TouchableOpacity
-            style={[styles.submitButton, loading && styles.submitButtonDisabled]}
+            style={[S.submitBtn, loading && S.submitBtnDisabled]}
             onPress={handleSubmit}
             disabled={loading}
           >
-            {loading ? (
-              <ActivityIndicator color={colors.textWhite} />
-            ) : (
-              <>
-                <Ionicons name="notifications" size={20} color={colors.textWhite} />
-                <Text style={styles.submitButtonText}>Create Job Alert</Text>
-              </>
-            )}
+            {loading
+              ? <ActivityIndicator color="#fff" />
+              : <>
+                  <Ionicons name="notifications" size={17} color="#fff" />
+                  <Text style={S.submitText}>Create Job Alert</Text>
+                </>
+            }
           </TouchableOpacity>
+
         </View>
       </ScrollView>
     </View>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: spacing.xxl,
-  },
-  headerSection: {
-    backgroundColor: colors.cardBackground,
-    padding: spacing.xl,
+const S = StyleSheet.create({
+  root: { flex: 1, backgroundColor: '#F8FAFC' },
+  scroll: { flex: 1 },
+  scrollContent: { paddingBottom: 48 },
+
+  // Hero
+  hero: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 28,
     borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
-    ...shadows.sm,
+    borderBottomColor: '#F3F4F6',
   },
-  backButton: {
-    marginBottom: spacing.md,
-    width: 40,
-    height: 40,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.background,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...shadows.sm,
+  backBtn: {
+    width: 36, height: 36, borderRadius: 8,
+    backgroundColor: '#F5F3FF',
+    justifyContent: 'center', alignItems: 'center',
+    marginBottom: 20,
   },
-  titleContainer: {
-    alignItems: 'center',
+  heroCenter: { alignItems: 'center' },
+  heroIcon: {
+    width: 52, height: 52, borderRadius: 14,
+    backgroundColor: '#EEF2FF',
+    justifyContent: 'center', alignItems: 'center',
+    marginBottom: 14,
   },
-  iconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.primary + '15',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: spacing.md,
+  heroTitle: { fontSize: 22, fontWeight: '700', color: '#111827', marginBottom: 6 },
+  heroSub: { fontSize: 13, color: '#6B7280', textAlign: 'center', lineHeight: 20, maxWidth: 420 },
+
+  // Body
+  body: { maxWidth: 760, width: '100%', alignSelf: 'center', paddingHorizontal: 20, paddingTop: 24 },
+
+  // Section
+  section: { marginBottom: 20 },
+  sectionHead: {
+    flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12,
+    paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
   },
-  title: {
-    ...typography.h3,
-    fontWeight: '800',
-    color: colors.text,
-    marginBottom: spacing.xs,
-    textAlign: 'center',
-  },
-  subtitle: {
-    ...typography.body1,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 24,
-  },
-  formContainer: {
-    padding: spacing.lg,
-    maxWidth: 900,
-    width: '100%',
-    alignSelf: 'center',
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: spacing.xl,
-    marginBottom: spacing.md,
-    gap: spacing.sm,
-  },
-  sectionIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.primary + '15',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  sectionTitle: {
-    ...typography.h5,
-    fontWeight: '700',
-    color: colors.text,
-    fontSize: 20,
-  },
-  sectionCard: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.xl,
-    padding: spacing.lg,
-    marginBottom: spacing.lg,
-    ...shadows.md,
+  sectionDot: { width: 4, height: 20, borderRadius: 2, backgroundColor: '#4F46E5' },
+  sectionTitle: { fontSize: 14, fontWeight: '700', color: '#1E293B', letterSpacing: 0.3, textTransform: 'uppercase' },
+
+  // Card
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: colors.borderLight,
+    borderColor: '#E8EDF5',
+    padding: 20,
+    shadowColor: '#64748B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  fieldContainer: {
-    marginBottom: spacing.lg,
-    position: 'relative',
+
+  // Field
+  field: { marginBottom: 16, position: 'relative' },
+  fieldActive: { zIndex: 100 },
+  backdrop: {
+    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'transparent', zIndex: 99,
   },
-  fieldContainerActive: {
-    zIndex: 2000,
+  labelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
+  label: { fontSize: 12, fontWeight: '700', color: '#475569', marginBottom: 6, letterSpacing: 0.2, textTransform: 'uppercase' },
+  req: { color: '#EF4444' },
+  optional: { fontSize: 11, color: '#94A3B8', fontWeight: '400', textTransform: 'none' },
+  maxTag: {
+    fontSize: 11, color: '#6B7280', backgroundColor: '#F3F4F6',
+    paddingHorizontal: 7, paddingVertical: 2, borderRadius: 4,
   },
-  dropdownBackdrop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    zIndex: 999,
-  },
-  labelContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-    gap: spacing.xs,
-  },
-  labelIcon: {
-    marginRight: spacing.xs / 2,
-  },
-  label: {
-    ...typography.body1,
-    fontWeight: '600',
-    color: colors.text,
-    flex: 1,
-  },
-  required: {
-    color: colors.error,
-  },
-  maxItems: {
-    ...typography.body2,
-    color: colors.textSecondary,
-    fontWeight: '400',
-  },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.cardBackground,
-    borderWidth: 2,
-    borderColor: colors.primary,
-    borderRadius: borderRadius.md,
-    ...shadows.sm,
-  },
-  inputIcon: {
-    marginLeft: spacing.md,
-  },
-  textInput: {
-    ...typography.body1,
-    flex: 1,
-    padding: spacing.md,
-    color: colors.text,
+
+  // Text input
+  input: {
+    borderWidth: 1.5, borderColor: '#E2E8F0', borderRadius: 10,
+    paddingHorizontal: 14, paddingVertical: 11,
+    fontSize: 14, color: '#0F172A', backgroundColor: '#FAFBFF',
     outlineStyle: 'none',
-    fontSize: 16,
   },
-  dropdown: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.cardBackground,
-    borderWidth: 2,
-    borderColor: colors.primary,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    minHeight: 52,
-    ...shadows.sm,
+
+  // Select / dropdown trigger
+  select: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    borderWidth: 1.5, borderColor: '#E2E8F0', borderRadius: 10,
+    paddingHorizontal: 14, paddingVertical: 11,
+    backgroundColor: '#FAFBFF', minHeight: 44,
   },
-  dropdownActive: {
-    borderColor: colors.primary,
-    ...shadows.md,
-  },
-  dropdownIcon: {
-    marginRight: spacing.sm,
-  },
-  dropdownText: {
-    ...typography.body1,
-    color: colors.text,
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  placeholderText: {
-    color: colors.textLight,
-    fontWeight: '400',
-  },
-  dropdownMenu: {
-    position: 'absolute',
-    top: '100%',
-    left: 0,
-    right: 0,
-    backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.md,
-    marginTop: spacing.xs,
-    zIndex: 1000,
-    borderWidth: 2,
-    borderColor: colors.primary,
-    maxHeight: 350,
-    ...shadows.lg,
+  selectOpen: { borderColor: '#4F46E5', borderBottomLeftRadius: 0, borderBottomRightRadius: 0 },
+  selectText: { fontSize: 14, color: '#0F172A', flex: 1 },
+  placeholder: { color: '#94A3B8' },
+
+  // Dropdown menu
+  menu: {
+    position: 'absolute', top: '100%', left: 0, right: 0,
+    backgroundColor: '#fff',
+    borderWidth: 1.5, borderTopWidth: 0, borderColor: '#4F46E5',
+    borderBottomLeftRadius: 10, borderBottomRightRadius: 10,
+    maxHeight: 240, zIndex: 200,
+    shadowColor: '#4F46E5', shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12, shadowRadius: 16, elevation: 8,
     overflow: 'hidden',
   },
-  dropdownScroll: {
-    maxHeight: 350,
+  menuScroll: { maxHeight: 240 },
+  menuItem: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 14, paddingVertical: 11,
+    borderBottomWidth: 1, borderBottomColor: '#F8FAFC',
   },
-  dropdownOption: {
+  menuItemActive: { backgroundColor: '#EEF2FF' },
+  menuItemText: { fontSize: 14, color: '#374151', flex: 1 },
+  menuItemTextActive: { color: '#4F46E5', fontWeight: '600' },
+  checkDot: {
+    width: 20, height: 20, borderRadius: 10, backgroundColor: '#4F46E5',
+    justifyContent: 'center', alignItems: 'center',
+  },
+
+  // Chips
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 },
+  chip: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: '#EEF2FF', paddingHorizontal: 10, paddingVertical: 5,
+    borderRadius: 20, borderWidth: 1, borderColor: '#C7D2FE',
+  },
+  chipText: { fontSize: 12, color: '#4338CA', fontWeight: '600' },
+
+  // Upload
+  uploadBox: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    borderWidth: 1.5, borderColor: '#CBD5E1', borderStyle: 'dashed',
+    borderRadius: 10, padding: 18, backgroundColor: '#F8FAFC',
+  },
+  uploadText: { fontSize: 13, color: '#334155', fontWeight: '600' },
+  uploadSub: { fontSize: 11, color: '#94A3B8', marginTop: 2 },
+  fileRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
+  fileName: { fontSize: 12, color: '#10B981', flex: 1 },
+
+  // Submit
+  submitBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: '#4F46E5', borderRadius: 12,
+    paddingVertical: 15, paddingHorizontal: 32,
+    marginTop: 8, marginBottom: 32,
+    shadowColor: '#4F46E5', shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3, shadowRadius: 16, elevation: 6,
+  },
+  submitBtnDisabled: { opacity: 0.6 },
+  submitText: { fontSize: 15, fontWeight: '700', color: '#fff', letterSpacing: 0.3 },
+});
+
+// Floating dropdown panel styles
+const DD = StyleSheet.create({
+  overlay: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'transparent',
+  },
+  panel: {
+    position: 'absolute',
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#1E293B',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.14,
+    shadowRadius: 24,
+    elevation: 16,
+    overflow: 'hidden',
+    // fallback center for non-web
+    alignSelf: 'center',
+    width: '88%',
+    maxWidth: 520,
+    top: '20%',
+    maxHeight: 380,
+  },
+  panelHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
-    backgroundColor: colors.cardBackground,
-    minHeight: 56,
+    borderBottomColor: '#F1F5F9',
+    backgroundColor: '#FAFBFF',
   },
-  dropdownOptionSelected: {
-    backgroundColor: colors.primary,
-    borderLeftWidth: 4,
-    borderLeftColor: colors.primary,
-    borderBottomColor: colors.primary,
-  },
-  dropdownOptionText: {
-    ...typography.body1,
-    color: colors.text,
-    flex: 1,
-    fontSize: 16,
-    lineHeight: 24,
-    fontWeight: '500',
-  },
-  dropdownOptionTextSelected: {
-    color: colors.textWhite,
+  panelTitle: {
+    fontSize: 13,
     fontWeight: '700',
+    color: '#1E293B',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
   },
-  selectedItemsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  selectedItem: {
+  list: { maxHeight: 280 },
+  item: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.primary + '20',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.sm,
-    gap: spacing.xs,
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F8FAFC',
   },
-  selectedItemText: {
-    ...typography.body2,
-    color: colors.primary,
-    fontWeight: '500',
+  itemActive: { backgroundColor: '#EEF2FF' },
+  itemDisabled: { opacity: 0.4 },
+  itemText: { fontSize: 14, color: '#334155', flex: 1 },
+  itemTextActive: { color: '#4F46E5', fontWeight: '600' },
+  itemTextDisabled: { color: '#94A3B8' },
+  check: {
+    width: 20, height: 20, borderRadius: 10,
+    backgroundColor: '#4F46E5',
+    justifyContent: 'center', alignItems: 'center',
   },
-  uploadButton: {
-    flexDirection: 'row',
+  doneBtn: {
+    paddingVertical: 13,
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.md,
-    backgroundColor: colors.cardBackground,
-    borderWidth: 2,
-    borderColor: colors.primary,
-    borderStyle: 'dashed',
-    borderRadius: borderRadius.md,
-    padding: spacing.xl,
-    ...shadows.sm,
-    minHeight: 80,
+    backgroundColor: '#4F46E5',
   },
-  uploadButtonTextContainer: {
-    alignItems: 'center',
-    gap: spacing.xs / 2,
-  },
-  uploadButtonText: {
-    ...typography.body1,
-    color: colors.text,
-    fontWeight: '600',
-  },
-  fileSizeText: {
-    ...typography.body2,
-    color: colors.textSecondary,
-    fontSize: 12,
-  },
-  fileInfoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    marginTop: spacing.sm,
-    padding: spacing.sm,
-    backgroundColor: colors.success + '15',
-    borderRadius: borderRadius.sm,
-  },
-  fileInfo: {
-    ...typography.body2,
-    color: colors.text,
-    fontWeight: '500',
-    flex: 1,
-  },
-  submitButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.primary,
-    borderRadius: borderRadius.xl,
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.xl,
-    marginTop: spacing.xl,
-    marginBottom: spacing.xl,
-    ...shadows.lg,
-  },
-  submitButtonDisabled: {
-    backgroundColor: colors.textLight,
-  },
-  submitButtonText: {
-    ...typography.button,
-    color: colors.textWhite,
-    fontSize: 18,
+  doneBtnText: {
+    fontSize: 14,
     fontWeight: '700',
+    color: '#fff',
+    letterSpacing: 0.2,
   },
 });
 

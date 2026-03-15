@@ -162,11 +162,11 @@ const CompanyDetailsScreen = ({ route, navigation }) => {
 
   if (loading) {
     return (
-      <View style={styles.container}>
+      <View style={S.container}>
         <Header />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading company details...</Text>
+        <View style={S.loadingContainer}>
+          <ActivityIndicator size="large" color="#4F46E5" />
+          <Text style={S.loadingText}>Loading company details...</Text>
         </View>
       </View>
     );
@@ -174,16 +174,16 @@ const CompanyDetailsScreen = ({ route, navigation }) => {
 
   if (!company) {
     return (
-      <View style={styles.container}>
+      <View style={S.container}>
         <Header />
-        <View style={styles.errorContainer}>
-          <Ionicons name="business-outline" size={80} color={colors.textSecondary} />
-          <Text style={styles.errorText}>Company not found</Text>
+        <View style={S.errorContainer}>
+          <Ionicons name="business-outline" size={80} color="#94A3B8" />
+          <Text style={S.errorText}>Company not found</Text>
           <TouchableOpacity
-            style={styles.backButton}
+            style={S.backButton}
             onPress={() => navigation.goBack()}
           >
-            <Text style={styles.backButtonText}>Go Back</Text>
+            <Text style={S.backButtonText}>Go Back</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -195,417 +195,354 @@ const CompanyDetailsScreen = ({ route, navigation }) => {
   const socialLink = companyData.socialMediaLink;
 
   return (
-    <View style={styles.container}>
+    <View style={S.container}>
       <Header />
-      
       <View style={dynamicStyles.contentWrapper}>
         <ScrollView
-          style={styles.scrollView}
+          style={S.scrollView}
           contentContainerStyle={dynamicStyles.scrollContent}
           showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
-              colors={[colors.primary]}
-              tintColor={colors.primary}
-            />
-          }
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={['#4F46E5']} tintColor="#4F46E5" />}
         >
           <View style={dynamicStyles.mainColumn}>
-            {/* Header Section */}
-            <View style={[styles.headerCard, dynamicStyles.card]}>
-              <View style={styles.headerTop}>
-                <View style={styles.companyBadge}>
-                  <View style={[
-                    styles.avatarContainer,
-                    dynamicStyles.avatar,
-                    { backgroundColor: getAvatarColor(companyData.name) }
-                  ]}>
-                    <Text style={[styles.avatarText, dynamicStyles.avatarText]}>{getInitials(companyData.name)}</Text>
-                  </View>
-                  <View style={styles.companyInfo}>
-                    <Text style={[styles.companyName, dynamicStyles.companyName]}>{companyData.name}</Text>
-                    {companyData.companyType && (
-                      <View style={styles.typeBadge}>
-                        <Text style={styles.typeText}>{companyData.companyType}</Text>
-                      </View>
-                    )}
-                  </View>
+
+            {/* ── Hero Card ── */}
+            <View style={S.heroCard}>
+              <View style={S.heroTop}>
+                <View style={[S.avatar, { backgroundColor: getAvatarColor(companyData.name) }]}>
+                  <Text style={S.avatarText}>{getInitials(companyData.name)}</Text>
+                </View>
+                <View style={S.heroInfo}>
+                  <Text style={S.companyName}>{companyData.name}</Text>
+                  {companyData.companyType && (
+                    <View style={S.typePill}>
+                      <Text style={S.typePillText}>{companyData.companyType}</Text>
+                    </View>
+                  )}
                 </View>
               </View>
 
-              {/* Quick Info */}
-              <View style={[styles.quickInfo, dynamicStyles.quickInfo]}>
+              <View style={S.metaRow}>
                 {companyData.industry && (
-                  <View style={[styles.detailBadge, dynamicStyles.detailBadge]}>
-                    <View style={[styles.detailIconContainer, styles.industryIcon]}>
-                      <Ionicons name="briefcase" size={18} color="#ffffff" />
-                    </View>
-                    <Text style={[styles.detailText, dynamicStyles.detailText]}>
-                      {companyData.industry}
-                    </Text>
+                  <View style={[S.metaPill, S.metaBlue]}>
+                    <Ionicons name="briefcase-outline" size={13} color="#3B82F6" />
+                    <Text style={[S.metaText, { color: '#3B82F6' }]}>{companyData.industry}</Text>
                   </View>
                 )}
                 {companyData.size && (
-                  <View style={[styles.detailBadge, dynamicStyles.detailBadge]}>
-                    <View style={[styles.detailIconContainer, styles.sizeIcon]}>
-                      <Ionicons name="people" size={18} color="#ffffff" />
-                    </View>
-                    <Text style={[styles.detailText, dynamicStyles.detailText]}>
-                      {companyData.size}
-                    </Text>
+                  <View style={[S.metaPill, S.metaPurple]}>
+                    <Ionicons name="people-outline" size={13} color="#7C3AED" />
+                    <Text style={[S.metaText, { color: '#7C3AED' }]}>{companyData.size}</Text>
                   </View>
                 )}
                 {(companyData.establishedYear || company.profile?.company?.company?.foundedYear) && (
-                  <View style={[styles.detailBadge, dynamicStyles.detailBadge]}>
-                    <View style={[styles.detailIconContainer, styles.establishedIcon]}>
-                      <Ionicons name="calendar" size={18} color="#ffffff" />
-                    </View>
-                    <Text style={[styles.detailText, dynamicStyles.detailText]}>
-                      {companyData.establishedYear || company.profile?.company?.company?.foundedYear}
+                  <View style={[S.metaPill, S.metaGreen]}>
+                    <Ionicons name="calendar-outline" size={13} color="#059669" />
+                    <Text style={[S.metaText, { color: '#059669' }]}>Est. {companyData.establishedYear || company.profile?.company?.company?.foundedYear}</Text>
+                  </View>
+                )}
+                {(companyData.location?.city || companyData.location?.state) && (
+                  <View style={[S.metaPill, S.metaAmber]}>
+                    <Ionicons name="location-outline" size={13} color="#D97706" />
+                    <Text style={[S.metaText, { color: '#D97706' }]}>
+                      {companyData.location?.city || companyData.location?.state}
                     </Text>
                   </View>
                 )}
               </View>
             </View>
 
-            {/* Description */}
+            {/* ── About ── */}
             {companyData.description && (
-              <View style={[styles.sectionCard, dynamicStyles.card]}>
-                <View style={styles.sectionHeader}>
-                  <Ionicons name="information-circle" size={24} color={colors.primary} />
-                  <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>About Company</Text>
+              <View style={S.sectionCard}>
+                <View style={S.sectionHeader}>
+                  <View style={S.sectionBar} />
+                  <Text style={S.sectionTitle}>About Company</Text>
                 </View>
-                <Text style={[styles.sectionText, dynamicStyles.bodyText]}>{companyData.description}</Text>
+                <Text style={S.bodyText}>{companyData.description}</Text>
               </View>
             )}
 
-            {/* Location */}
+            {/* ── Location ── */}
             {(companyData.location?.city || companyData.location?.state) && (
-              <View style={[styles.sectionCard, dynamicStyles.card]}>
-                <View style={styles.sectionHeader}>
-                  <Ionicons name="location" size={24} color={colors.primary} />
-                  <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Location</Text>
+              <View style={S.sectionCard}>
+                <View style={S.sectionHeader}>
+                  <View style={S.sectionBar} />
+                  <Text style={S.sectionTitle}>Location</Text>
                 </View>
-            <View style={styles.locationDetails}>
-              {companyData.location?.locality && (
-                <View style={styles.locationRow}>
-                  <Ionicons name="home" size={18} color={colors.textSecondary} />
-                  <Text style={styles.locationText}>{companyData.location.locality}</Text>
+                <View style={S.locationGrid}>
+                  {companyData.location?.locality && (
+                    <View style={S.locationRow}>
+                      <Ionicons name="home-outline" size={16} color="#64748B" />
+                      <Text style={S.locationText}>{companyData.location.locality}</Text>
+                    </View>
+                  )}
+                  {(companyData.location?.city || companyData.location?.state) && (
+                    <View style={S.locationRow}>
+                      <Ionicons name="map-outline" size={16} color="#64748B" />
+                      <Text style={S.locationText}>
+                        {companyData.location.city}{companyData.location.city && companyData.location.state ? ', ' : ''}{companyData.location.state}
+                      </Text>
+                    </View>
+                  )}
+                  {companyData.location?.areaPincode && (
+                    <View style={S.locationRow}>
+                      <Ionicons name="navigate-outline" size={16} color="#64748B" />
+                      <Text style={S.locationText}>Pincode: {companyData.location.areaPincode}</Text>
+                    </View>
+                  )}
                 </View>
-              )}
-              {(companyData.location?.city || companyData.location?.state) && (
-                <View style={styles.locationRow}>
-                  <Ionicons name="map" size={18} color={colors.textSecondary} />
-                  <Text style={styles.locationText}>
-                    {companyData.location.city}{companyData.location.city && companyData.location.state ? ', ' : ''}{companyData.location.state}
-                  </Text>
-                </View>
-              )}
-              {companyData.location?.areaPincode && (
-                <View style={styles.locationRow}>
-                  <Ionicons name="navigate" size={18} color={colors.textSecondary} />
-                  <Text style={styles.locationText}>Pincode: {companyData.location.areaPincode}</Text>
-                </View>
-              )}
-            </View>
-          </View>
-        )}
+              </View>
+            )}
 
-            {/* Contact & Website */}
+            {/* ── Contact & Website ── */}
             {(company.phone || companyData.website || (socialProfile && socialLink)) && (
-              <View style={[styles.sectionCard, dynamicStyles.card]}>
-                <View style={styles.sectionHeader}>
-                  <Ionicons name="call" size={24} color={colors.primary} />
-                  <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Contact & Website</Text>
+              <View style={S.sectionCard}>
+                <View style={S.sectionHeader}>
+                  <View style={S.sectionBar} />
+                  <Text style={S.sectionTitle}>Contact & Website</Text>
                 </View>
-          <View style={[styles.contactRow, dynamicStyles.contactRow]}>
-            {company.phone && (
-              <TouchableOpacity style={[styles.contactItem, dynamicStyles.contactItem]}>
-                <Ionicons name="call-outline" size={20} color={colors.primary} />
-                <Text style={styles.contactText}>{company.phone}</Text>
-              </TouchableOpacity>
-            )}
-            {companyData.website && (
-              <TouchableOpacity 
-                style={[styles.contactItem, dynamicStyles.contactItem]}
-                onPress={() => handleSocialMediaClick(companyData.website)}
-              >
-                <Ionicons name="globe-outline" size={20} color={colors.primary} />
-                <Text style={styles.contactText}>Website</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-          {socialProfile && socialLink && (
-            <TouchableOpacity 
-              style={[styles.socialButton, dynamicStyles.socialButton]}
-              onPress={() => handleSocialMediaClick(socialLink)}
-            >
-              <Ionicons name="share-social" size={20} color={colors.primary} />
-              <Text style={styles.socialButtonText}>{socialProfile}</Text>
-            </TouchableOpacity>
+                <View style={S.contactRow}>
+                  {company.phone && (
+                    <TouchableOpacity style={S.contactItem}>
+                      <Ionicons name="call-outline" size={18} color="#4F46E5" />
+                      <Text style={S.contactText}>{company.phone}</Text>
+                    </TouchableOpacity>
+                  )}
+                  {companyData.website && (
+                    <TouchableOpacity style={S.contactItem} onPress={() => handleSocialMediaClick(companyData.website)}>
+                      <Ionicons name="globe-outline" size={18} color="#4F46E5" />
+                      <Text style={S.contactText}>Visit Website</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+                {socialProfile && socialLink && (
+                  <TouchableOpacity style={S.socialBtn} onPress={() => handleSocialMediaClick(socialLink)}>
+                    <Ionicons name="share-social-outline" size={18} color="#4F46E5" />
+                    <Text style={S.socialBtnText}>{socialProfile}</Text>
+                  </TouchableOpacity>
                 )}
               </View>
             )}
 
-            {/* Industries & Departments */}
+            {/* ── Industries ── */}
             {companyData.industrySubcategories && companyData.industrySubcategories.length > 0 && (
-              <View style={[styles.sectionCard, dynamicStyles.card]}>
-                <View style={styles.sectionHeader}>
-                  <Ionicons name="business" size={24} color={colors.primary} />
-                  <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Industries</Text>
+              <View style={S.sectionCard}>
+                <View style={S.sectionHeader}>
+                  <View style={S.sectionBar} />
+                  <Text style={S.sectionTitle}>Industries</Text>
                 </View>
-                <View style={styles.tagsContainer}>
-                  {companyData.industrySubcategories.map((item, index) => (
-                    <View key={index} style={[styles.tag, dynamicStyles.tag]}>
-                      <Text style={[styles.tagText, dynamicStyles.tagText]}>{item}</Text>
-                    </View>
+                <View style={S.tagsWrap}>
+                  {companyData.industrySubcategories.map((item, i) => (
+                    <View key={i} style={S.tag}><Text style={S.tagText}>{item}</Text></View>
                   ))}
                 </View>
               </View>
             )}
 
+            {/* ── Departments ── */}
             {companyData.departmentSubcategories && companyData.departmentSubcategories.length > 0 && (
-              <View style={[styles.sectionCard, dynamicStyles.card]}>
-                <View style={styles.sectionHeader}>
-                  <Ionicons name="layers" size={24} color={colors.primary} />
-                  <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Departments</Text>
+              <View style={S.sectionCard}>
+                <View style={S.sectionHeader}>
+                  <View style={S.sectionBar} />
+                  <Text style={S.sectionTitle}>Departments</Text>
                 </View>
-                <View style={styles.tagsContainer}>
-                  {companyData.departmentSubcategories.map((item, index) => (
-                    <View key={index} style={[styles.tag, dynamicStyles.tag]}>
-                      <Text style={[styles.tagText, dynamicStyles.tagText]}>{item}</Text>
-                    </View>
+                <View style={S.tagsWrap}>
+                  {companyData.departmentSubcategories.map((item, i) => (
+                    <View key={i} style={S.tag}><Text style={S.tagText}>{item}</Text></View>
                   ))}
                 </View>
               </View>
             )}
 
-            {/* Additional Info for Companies */}
+            {/* ── Company Information ── */}
             {company.profile?.company?.company && (
-              <View style={[styles.sectionCard, dynamicStyles.card]}>
-                <View style={styles.sectionHeader}>
-                  <Ionicons name="stats-chart" size={24} color={colors.primary} />
-                  <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Company Information</Text>
+              <View style={S.sectionCard}>
+                <View style={S.sectionHeader}>
+                  <View style={S.sectionBar} />
+                  <Text style={S.sectionTitle}>Company Information</Text>
                 </View>
                 {(company.profile.company.company.revenue || company.profile.company.company.employeeCount) && (
-                  <View style={[styles.infoGrid, dynamicStyles.infoGrid]}>
+                  <View style={S.infoGrid}>
                     {company.profile.company.company.revenue && (
-                      <View style={[styles.infoItem, dynamicStyles.infoItem]}>
-                        <Text style={styles.infoLabel}>Revenue</Text>
-                        <Text style={styles.infoValue}>{company.profile.company.company.revenue}</Text>
+                      <View style={S.infoItem}>
+                        <Text style={S.infoLabel}>Revenue</Text>
+                        <Text style={S.infoValue}>{company.profile.company.company.revenue}</Text>
                       </View>
                     )}
                     {company.profile.company.company.employeeCount && (
-                      <View style={[styles.infoItem, dynamicStyles.infoItem]}>
-                        <Text style={styles.infoLabel}>Employees</Text>
-                        <Text style={styles.infoValue}>{company.profile.company.company.employeeCount}</Text>
+                      <View style={S.infoItem}>
+                        <Text style={S.infoLabel}>Employees</Text>
+                        <Text style={S.infoValue}>{company.profile.company.company.employeeCount}</Text>
                       </View>
                     )}
                   </View>
                 )}
-                {company.profile.company.company.departments && company.profile.company.company.departments.length > 0 && (
-                  <View style={styles.section}>
-                    <Text style={styles.subsectionTitle}>Departments</Text>
-                    <View style={styles.tagsContainer}>
-                      {company.profile.company.company.departments.map((item, index) => (
-                        <View key={index} style={[styles.tag, dynamicStyles.tag]}>
-                          <Text style={[styles.tagText, dynamicStyles.tagText]}>{item}</Text>
-                        </View>
+                {company.profile.company.company.departments?.length > 0 && (
+                  <View style={S.subSection}>
+                    <Text style={S.subTitle}>Departments</Text>
+                    <View style={S.tagsWrap}>
+                      {company.profile.company.company.departments.map((item, i) => (
+                        <View key={i} style={S.tag}><Text style={S.tagText}>{item}</Text></View>
                       ))}
                     </View>
                   </View>
                 )}
-                {company.profile.company.company.benefits && company.profile.company.company.benefits.length > 0 && (
-                  <View style={styles.section}>
-                    <Text style={styles.subsectionTitle}>Benefits</Text>
-                    <View style={styles.tagsContainer}>
-                      {company.profile.company.company.benefits.map((item, index) => (
-                        <View key={index} style={[styles.tag, dynamicStyles.tag]}>
-                          <Text style={[styles.tagText, dynamicStyles.tagText]}>{item}</Text>
-                        </View>
+                {company.profile.company.company.benefits?.length > 0 && (
+                  <View style={S.subSection}>
+                    <Text style={S.subTitle}>Benefits</Text>
+                    <View style={S.tagsWrap}>
+                      {company.profile.company.company.benefits.map((item, i) => (
+                        <View key={i} style={S.tag}><Text style={S.tagText}>{item}</Text></View>
                       ))}
                     </View>
                   </View>
                 )}
                 {company.profile.company.company.culture && (
-                  <View style={styles.textSection}>
-                    <Text style={styles.subsectionTitle}>Company Culture</Text>
-                    <Text style={[styles.sectionText, dynamicStyles.bodyText]}>{company.profile.company.company.culture}</Text>
+                  <View style={S.subSection}>
+                    <Text style={S.subTitle}>Company Culture</Text>
+                    <Text style={S.bodyText}>{company.profile.company.company.culture}</Text>
                   </View>
                 )}
                 {company.profile.company.company.workEnvironment && (
-                  <View style={styles.textSection}>
-                    <Text style={styles.subsectionTitle}>Work Environment</Text>
-                    <Text style={[styles.sectionText, dynamicStyles.bodyText]}>{company.profile.company.company.workEnvironment}</Text>
+                  <View style={S.subSection}>
+                    <Text style={S.subTitle}>Work Environment</Text>
+                    <Text style={S.bodyText}>{company.profile.company.company.workEnvironment}</Text>
                   </View>
                 )}
               </View>
             )}
 
-            {/* Jobs Section */}
+            {/* ── Open Positions ── */}
             {jobs.length > 0 && (
-              <View style={[styles.sectionCard, dynamicStyles.card]}>
-                <View style={styles.sectionHeader}>
-                  <Ionicons name="briefcase" size={24} color={colors.primary} />
-                  <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>Open Positions ({jobs.length})</Text>
+              <View style={S.sectionCard}>
+                <View style={S.sectionHeader}>
+                  <View style={S.sectionBar} />
+                  <Text style={S.sectionTitle}>Open Positions</Text>
+                  <View style={S.countBadge}><Text style={S.countBadgeText}>{jobs.length}</Text></View>
                 </View>
-            {jobs.slice(0, 5).map((job, index) => (
-              <TouchableOpacity
-                key={index}
-                style={[styles.jobItem, dynamicStyles.jobItem]}
-                onPress={() => navigation.navigate('JobDetails', { jobId: job._id })}
-              >
-                <View style={styles.jobItemHeader}>
-                  <Text style={[styles.jobTitle, dynamicStyles.jobTitle]}>{job.title}</Text>
-                  <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
-                </View>
-                <View style={styles.jobMeta}>
-                  <View style={styles.jobMetaItem}>
-                    <Ionicons name="location" size={14} color={colors.textSecondary} />
-                    <Text style={styles.jobMetaText}>
-                      {job.location?.city}{job.location?.state ? `, ${job.location.state}` : ''}
-                    </Text>
-                  </View>
-                  {job.salaryMin && (
-                    <View style={styles.jobMetaItem}>
-                      <Ionicons name="cash" size={14} color={colors.textSecondary} />
-                      <Text style={styles.jobMetaText}>
-                        {api.formatIndianCurrency(job.salaryMin)}
-                        {job.salaryMax ? ` - ${api.formatIndianCurrency(job.salaryMax)}` : ' +'}
-                      </Text>
+                {jobs.slice(0, 5).map((job, i) => (
+                  <TouchableOpacity key={i} style={S.jobRow} onPress={() => navigation.navigate('JobDetails', { jobId: job._id })} activeOpacity={0.8}>
+                    <View style={S.jobIconWrap}>
+                      <Ionicons name="briefcase-outline" size={16} color="#4F46E5" />
                     </View>
-                  )}
-                </View>
-              </TouchableOpacity>
-            ))}
-            {jobs.length > 5 && (
-              <TouchableOpacity
-                style={styles.viewAllButton}
-                onPress={() => navigation.navigate('Jobs', { company: companyData.name })}
-              >
-                <Text style={styles.viewAllText}>View All Jobs ({jobs.length})</Text>
-              </TouchableOpacity>
-            )}
-          </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={S.jobTitle}>{job.title}</Text>
+                      <View style={S.jobMeta}>
+                        {(job.location?.city || job.location?.state) && (
+                          <View style={S.jobMetaItem}>
+                            <Ionicons name="location-outline" size={12} color="#64748B" />
+                            <Text style={S.jobMetaText}>{job.location?.city}{job.location?.state ? `, ${job.location.state}` : ''}</Text>
+                          </View>
+                        )}
+                        {job.salaryMin && (
+                          <View style={S.jobMetaItem}>
+                            <Ionicons name="cash-outline" size={12} color="#059669" />
+                            <Text style={[S.jobMetaText, { color: '#059669' }]}>
+                              {api.formatIndianCurrency(job.salaryMin)}{job.salaryMax ? ` - ${api.formatIndianCurrency(job.salaryMax)}` : '+'}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                    </View>
+                    <Ionicons name="chevron-forward" size={16} color="#94A3B8" />
+                  </TouchableOpacity>
+                ))}
+                {jobs.length > 5 && (
+                  <TouchableOpacity style={S.viewAllBtn} onPress={() => navigation.navigate('Jobs', { company: companyData.name })}>
+                    <Text style={S.viewAllText}>View All {jobs.length} Jobs</Text>
+                    <Ionicons name="arrow-forward" size={14} color="#4F46E5" />
+                  </TouchableOpacity>
+                )}
+              </View>
             )}
 
-            {/* Similar Companies - Mobile */}
+            {/* ── Similar Companies (mobile) ── */}
             {!isDesktop && similarCompanies.length > 0 && (
-              <View style={styles.mobileSimilarCompanies}>
-                <View style={styles.mobileSimilarHeader}>
-                  <Ionicons name="business" size={20} color={colors.primary} />
-                  <Text style={styles.mobileSimilarTitle}>Similar Companies</Text>
+              <View style={S.sectionCard}>
+                <View style={S.sectionHeader}>
+                  <View style={S.sectionBar} />
+                  <Text style={S.sectionTitle}>Similar Companies</Text>
                 </View>
-                <ScrollView 
-                  horizontal 
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.mobileSimilarScroll}
-                >
-                  {similarCompanies.map((similarCompany) => {
-                    const similarCompanyName = similarCompany.name || similarCompany.profile?.company?.name || 'Company';
-                    const similarCompanyIndustry = similarCompany.industry || similarCompany.profile?.company?.industry;
-                    const openPositions = similarCompany.openPositions || 0;
-                    
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  {similarCompanies.map((sc) => {
+                    const scName = sc.name || sc.profile?.company?.name || 'Company';
+                    const scIndustry = sc.industry || sc.profile?.company?.industry;
+                    const scPositions = sc.openPositions || 0;
                     return (
-                      <TouchableOpacity
-                        key={similarCompany._id}
-                        style={styles.mobileSimilarCard}
-                        onPress={() => handleSimilarCompanyClick(similarCompany._id)}
-                        activeOpacity={0.8}
-                      >
-                        <View style={[styles.mobileSimilarAvatar, { backgroundColor: getAvatarColor(similarCompanyName) }]}>
-                          <Text style={styles.mobileSimilarInitials}>{getInitials(similarCompanyName)}</Text>
+                      <TouchableOpacity key={sc._id} style={S.mobileSCCard} onPress={() => handleSimilarCompanyClick(sc._id)} activeOpacity={0.8}>
+                        <View style={[S.scAvatar, { backgroundColor: getAvatarColor(scName) }]}>
+                          <Text style={S.scAvatarText}>{getInitials(scName)}</Text>
                         </View>
-                        <Text style={styles.mobileSimilarName} numberOfLines={1}>{similarCompanyName}</Text>
-                        {similarCompanyIndustry && (
-                          <Text style={styles.mobileSimilarIndustry} numberOfLines={1}>{similarCompanyIndustry}</Text>
-                        )}
-                        {openPositions > 0 && (
-                          <Text style={styles.mobileSimilarPositions}>{openPositions} Open Positions</Text>
-                        )}
+                        <Text style={S.scName} numberOfLines={1}>{scName}</Text>
+                        {scIndustry && <Text style={S.scIndustry} numberOfLines={1}>{scIndustry}</Text>}
+                        {scPositions > 0 && <Text style={S.scPositions}>{scPositions} Positions</Text>}
+                        <View style={S.scFooter}>
+                          <Text style={S.scViewText}>View</Text>
+                          <Ionicons name="chevron-forward" size={12} color="#4F46E5" />
+                        </View>
                       </TouchableOpacity>
                     );
                   })}
                 </ScrollView>
               </View>
             )}
+
           </View>
         </ScrollView>
 
-        {/* Sidebar - Similar Companies */}
+        {/* ── Sidebar (desktop) ── */}
         {isDesktop && similarCompanies.length > 0 && (
           <View style={dynamicStyles.sidebar}>
-            <View style={styles.similarCompaniesContainer}>
-              <View style={styles.sidebarHeader}>
-                <Ionicons name="business" size={22} color={colors.primary} />
-                <Text style={styles.sidebarTitle}>Similar Companies</Text>
+            <View style={S.sectionCard}>
+              <View style={S.sectionHeader}>
+                <View style={S.sectionBar} />
+                <Text style={S.sectionTitle}>Similar Companies</Text>
               </View>
-              <ScrollView style={styles.similarCompaniesScroll} showsVerticalScrollIndicator={false}>
-                {similarCompanies.map((similarCompany) => {
-                  const similarCompanyName = similarCompany.name || similarCompany.profile?.company?.name || 'Company';
-                  const similarCompanyLocation = similarCompany.location || similarCompany.profile?.company?.location;
-                  const similarCompanyIndustry = similarCompany.industry || similarCompany.profile?.company?.industry;
-                  const similarCompanySize = similarCompany.size || similarCompany.profile?.company?.size;
-                  const openPositions = similarCompany.openPositions || 0;
-                  
-                  return (
-                    <TouchableOpacity
-                      key={similarCompany._id}
-                      style={styles.similarCompanyCard}
-                      onPress={() => handleSimilarCompanyClick(similarCompany._id)}
-                      activeOpacity={0.8}
-                    >
-                      <View style={styles.similarCompanyHeader}>
-                        <View style={[styles.similarCompanyIconContainer, { backgroundColor: getAvatarColor(similarCompanyName) }]}>
-                          <Text style={styles.similarCompanyInitials}>{getInitials(similarCompanyName)}</Text>
+              {similarCompanies.map((sc) => {
+                const scName = sc.name || sc.profile?.company?.name || 'Company';
+                const scLocation = sc.location || sc.profile?.company?.location;
+                const scIndustry = sc.industry || sc.profile?.company?.industry;
+                const scSize = sc.size || sc.profile?.company?.size;
+                const scPositions = sc.openPositions || 0;
+                return (
+                  <TouchableOpacity key={sc._id} style={S.scCard} onPress={() => handleSimilarCompanyClick(sc._id)} activeOpacity={0.8}>
+                    <View style={S.scRow}>
+                      <View style={[S.scAvatar, { backgroundColor: getAvatarColor(scName) }]}>
+                        <Text style={S.scAvatarText}>{getInitials(scName)}</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={S.scName} numberOfLines={2}>{scName}</Text>
+                        {scIndustry && <Text style={S.scIndustry} numberOfLines={1}>{scIndustry}</Text>}
+                      </View>
+                    </View>
+                    <View style={S.scMeta}>
+                      {scLocation && (
+                        <View style={S.scMetaRow}>
+                          <Ionicons name="location-outline" size={12} color="#64748B" />
+                          <Text style={S.scMetaText} numberOfLines={1}>{formatCompanyLocation(scLocation)}</Text>
                         </View>
-                        <View style={styles.similarCompanyHeaderText}>
-                          <Text style={styles.similarCompanyTitle} numberOfLines={2}>
-                            {similarCompanyName}
-                          </Text>
-                          {similarCompanyIndustry && (
-                            <Text style={styles.similarCompanyIndustry} numberOfLines={1}>
-                              {similarCompanyIndustry}
-                            </Text>
-                          )}
+                      )}
+                      {scSize && (
+                        <View style={S.scMetaRow}>
+                          <Ionicons name="people-outline" size={12} color="#64748B" />
+                          <Text style={S.scMetaText}>{scSize}</Text>
                         </View>
-                      </View>
-                      <View style={styles.similarCompanyDetails}>
-                        {similarCompanyLocation && (
-                          <View style={styles.similarCompanyDetail}>
-                            <Ionicons name="location" size={14} color={colors.textSecondary} />
-                            <Text style={styles.similarCompanyDetailText} numberOfLines={1}>
-                              {formatCompanyLocation(similarCompanyLocation)}
-                            </Text>
-                          </View>
-                        )}
-                        {similarCompanySize && (
-                          <View style={styles.similarCompanyDetail}>
-                            <Ionicons name="people" size={14} color={colors.textSecondary} />
-                            <Text style={styles.similarCompanyDetailText} numberOfLines={1}>
-                              {similarCompanySize}
-                            </Text>
-                          </View>
-                        )}
-                        {openPositions > 0 && (
-                          <View style={styles.similarCompanyDetail}>
-                            <Ionicons name="briefcase" size={14} color={colors.success || '#10B981'} />
-                            <Text style={styles.similarCompanyDetailText} numberOfLines={1}>
-                              {openPositions} Open Positions
-                            </Text>
-                          </View>
-                        )}
-                      </View>
-                      <View style={styles.similarCompanyFooter}>
-                        <Text style={styles.viewCompanyText}>View Company</Text>
-                        <Ionicons name="chevron-forward" size={16} color={colors.primary} />
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
+                      )}
+                      {scPositions > 0 && (
+                        <View style={S.scMetaRow}>
+                          <Ionicons name="briefcase-outline" size={12} color="#059669" />
+                          <Text style={[S.scMetaText, { color: '#059669' }]}>{scPositions} Open Positions</Text>
+                        </View>
+                      )}
+                    </View>
+                    <View style={S.scFooter}>
+                      <Text style={S.scViewText}>View Company</Text>
+                      <Ionicons name="chevron-forward" size={14} color="#4F46E5" />
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
         )}
@@ -614,620 +551,187 @@ const CompanyDetailsScreen = ({ route, navigation }) => {
   );
 };
 
-// Dynamic styles based on screen size
+// Dynamic layout styles
 const getDynamicStyles = ({ isXsPhone, isSmallPhone, isPhone, isMobile, isTablet, isDesktop, width }) => {
-  const horizontalPadding = isXsPhone ? spacing.md : isSmallPhone ? spacing.md : isPhone ? spacing.lg : isMobile ? spacing.lg : isTablet ? spacing.xl : spacing.xl * 1.1;
-  const cardPadding = isMobile ? spacing.lg : spacing.xl;
-  const cardRadius = isMobile ? borderRadius.lg : borderRadius.xl;
-  const gap = isMobile ? spacing.md : spacing.lg;
-  const avatarSize = isMobile ? 64 : 80;
-  const avatarRadius = isMobile ? borderRadius.lg : borderRadius.xl;
-  const companyNameSize = isMobile ? 26 : isTablet ? 30 : 34;
-  const sectionTitleSize = isMobile ? 18 : 20;
-  const bodyFontSize = isMobile ? 14 : 16;
-
+  const hPad = isMobile ? 12 : isTablet ? 20 : 24;
   return {
     contentWrapper: {
       flex: 1,
       flexDirection: isDesktop ? 'row' : 'column',
-      backgroundColor: colors.background,
-      paddingHorizontal: isDesktop ? 0 : horizontalPadding,
-      justifyContent: 'center',
+      backgroundColor: '#F1F5F9',
     },
     scrollContent: {
-      paddingHorizontal: isDesktop ? 0 : horizontalPadding,
-      paddingTop: isMobile ? spacing.lg : spacing.xl,
-      paddingBottom: spacing.xxl * 1.2,
-      gap,
-      alignItems: 'center',
+      padding: hPad,
+      paddingBottom: 40,
     },
     mainColumn: {
       width: '100%',
-      maxWidth: isDesktop ? 920 : '100%',
-      alignSelf: 'center',
-      gap,
+      maxWidth: isDesktop ? 860 : '100%',
+      alignSelf: isDesktop ? 'flex-start' : 'center',
     },
     sidebar: {
-      width: isDesktop ? 360 : '100%',
-      backgroundColor: colors.background,
+      width: isDesktop ? 340 : '100%',
+      backgroundColor: '#F1F5F9',
       borderLeftWidth: isDesktop ? 1 : 0,
-      borderLeftColor: colors.borderLight,
-      padding: isDesktop ? spacing.lg : spacing.md,
+      borderLeftColor: '#E2E8F0',
+      padding: 16,
       ...(isDesktop && {
         position: 'sticky',
-        top: spacing.xl,
+        top: 0,
         height: '100vh',
         maxHeight: '100vh',
         overflowY: 'auto',
       }),
     },
-    card: {
-      padding: cardPadding,
-      borderRadius: cardRadius,
-    },
-    avatar: {
-      width: avatarSize,
-      height: avatarSize,
-      borderRadius: avatarRadius,
-    },
-    avatarText: {
-      fontSize: isMobile ? 26 : 32,
-    },
-    companyName: {
-      fontSize: companyNameSize,
-      lineHeight: companyNameSize + 8,
-    },
-    sectionTitle: {
-      fontSize: sectionTitleSize,
-    },
-    bodyText: {
-      fontSize: bodyFontSize,
-      lineHeight: bodyFontSize + 10,
-    },
-    detailBadge: {
-      paddingHorizontal: isMobile ? spacing.sm : spacing.md,
-      paddingVertical: isMobile ? spacing.sm : spacing.sm,
-      borderRadius: borderRadius.md,
-    },
-    detailText: {
-      fontSize: isMobile ? 14 : 15,
-    },
-    quickInfo: {
-      gap,
-    },
-    contactRow: {
-      flexDirection: isMobile ? 'column' : 'row',
-    },
-    contactItem: {
-      padding: isMobile ? spacing.md : spacing.lg,
-      width: isMobile ? '100%' : 'auto',
-    },
-    socialButton: {
-      padding: isMobile ? spacing.md : spacing.lg,
-      borderRadius: borderRadius.lg,
-    },
-    infoGrid: {
-      flexDirection: isMobile ? 'column' : 'row',
-      gap,
-    },
-    infoItem: {
-      width: isMobile ? '100%' : '48%',
-    },
-    tag: {
-      paddingHorizontal: isMobile ? spacing.sm : spacing.md,
-      paddingVertical: isMobile ? spacing.sm : spacing.sm,
-    },
-    tagText: {
-      fontSize: isMobile ? 13 : 14,
-    },
-    jobItem: {
-      paddingVertical: spacing.md,
-    },
-    jobTitle: {
-      fontSize: isMobile ? 15 : 16,
-    },
   };
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
+const S = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#F1F5F9' },
+  scrollView: { flex: 1 },
+
+  // Loading / Error
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
+  loadingText: { marginTop: 12, color: '#64748B', fontSize: 15 },
+  errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
+  errorText: { fontSize: 20, fontWeight: '700', color: '#EF4444', marginTop: 16 },
+  backButton: { marginTop: 20, backgroundColor: '#4F46E5', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 },
+  backButtonText: { color: '#fff', fontSize: 15, fontWeight: '600' },
+
+  // Hero Card
+  heroCard: {
+    backgroundColor: '#fff', borderRadius: 14, padding: 20,
+    borderWidth: 1, borderColor: '#E2E8F0',
+    shadowColor: '#64748B', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06, shadowRadius: 8, elevation: 2, marginBottom: 14,
   },
-  scrollView: {
-    flex: 1,
+  heroTop: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 16 },
+  avatar: {
+    width: 64, height: 64, borderRadius: 14,
+    justifyContent: 'center', alignItems: 'center',
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing.xxl,
-    backgroundColor: colors.background,
+  avatarText: { fontSize: 24, fontWeight: '800', color: '#fff' },
+  heroInfo: { flex: 1, gap: 6 },
+  companyName: { fontSize: 24, fontWeight: '800', color: '#0F172A', lineHeight: 30 },
+  typePill: {
+    alignSelf: 'flex-start', backgroundColor: '#F1F5F9',
+    paddingHorizontal: 10, paddingVertical: 3,
+    borderRadius: 20, borderWidth: 1, borderColor: '#E2E8F0',
   },
-  loadingText: {
-    marginTop: spacing.md,
-    color: colors.textSecondary,
-    fontSize: 16,
+  typePillText: { fontSize: 12, fontWeight: '600', color: '#475569' },
+  metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  metaPill: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, borderWidth: 1,
   },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing.xxl,
-    backgroundColor: colors.background,
-  },
-  errorText: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: colors.error,
-    marginTop: spacing.lg,
-    textAlign: 'center',
-  },
-  backButton: {
-    marginTop: spacing.xl,
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.md,
-  },
-  backButtonText: {
-    color: colors.textWhite,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  // Header Card Styles
-  headerCard: {
-    width: '100%',
-    backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.xl,
-    padding: spacing.xl,
-    ...shadows.md,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    marginBottom: spacing.md,
-  },
-  headerTop: {
-    marginBottom: spacing.lg,
-  },
-  companyBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  avatarContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: borderRadius.xl,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...shadows.sm,
-  },
-  avatarText: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: colors.textWhite,
-  },
-  companyInfo: {
-    flex: 1,
-    gap: spacing.sm,
-  },
-  companyName: {
-    ...typography.h1,
-    color: colors.text,
-    fontSize: isWebPlatform ? 36 : 32,
-    lineHeight: 44,
-  },
-  typeBadge: {
-    backgroundColor: colors.background,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.full,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    alignSelf: 'flex-start',
-  },
-  typeText: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  // Detail Badges
-  quickInfo: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.md,
-    marginTop: spacing.md,
-  },
-  detailBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.background,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    ...shadows.xs,
-  },
-  detailIconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: borderRadius.md,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  industryIcon: {
-    backgroundColor: '#3B82F6',
-  },
-  sizeIcon: {
-    backgroundColor: '#8B5CF6',
-  },
-  establishedIcon: {
-    backgroundColor: '#10B981',
-  },
-  detailText: {
-    ...typography.body1,
-    color: colors.text,
-    fontWeight: '500',
-    fontSize: 15,
-  },
+  metaBlue: { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' },
+  metaPurple: { backgroundColor: '#F5F3FF', borderColor: '#DDD6FE' },
+  metaGreen: { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0' },
+  metaAmber: { backgroundColor: '#FFFBEB', borderColor: '#FDE68A' },
+  metaText: { fontSize: 12, fontWeight: '600' },
+
   // Section Cards
   sectionCard: {
-    width: '100%',
-    backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.xl,
-    padding: spacing.xl,
-    ...shadows.md,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    marginBottom: spacing.lg,
+    backgroundColor: '#fff', borderRadius: 14, padding: 20,
+    borderWidth: 1, borderColor: '#E2E8F0',
+    shadowColor: '#64748B', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05, shadowRadius: 6, elevation: 1, marginBottom: 14,
   },
   sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
-    paddingBottom: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    marginBottom: 14, paddingBottom: 12,
+    borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
   },
-  sectionTitle: {
-    ...typography.h4,
-    color: colors.text,
-    fontWeight: '700',
-    fontSize: 20,
+  sectionBar: { width: 4, height: 20, borderRadius: 2, backgroundColor: '#4F46E5' },
+  sectionTitle: { fontSize: 15, fontWeight: '700', color: '#0F172A', flex: 1 },
+  bodyText: { fontSize: 14, color: '#334155', lineHeight: 24 },
+
+  // Count badge
+  countBadge: {
+    backgroundColor: '#EEF2FF', paddingHorizontal: 8, paddingVertical: 2,
+    borderRadius: 10, borderWidth: 1, borderColor: '#C7D2FE',
   },
-  sectionText: {
-    ...typography.body1,
-    color: colors.text,
-    lineHeight: 28,
-    fontSize: 16,
-  },
-  section: {
-    marginBottom: spacing.lg,
-  },
-  subsectionTitle: {
-    ...typography.h5,
-    color: colors.text,
-    fontWeight: '700',
-    marginBottom: spacing.md,
-    fontSize: 18,
-  },
-  tagsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.md,
-  },
-  tag: {
-    backgroundColor: colors.primaryLight,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.full,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    ...shadows.xs,
-  },
-  tagText: {
-    ...typography.body2,
-    color: colors.primary,
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  locationDetails: {
-    gap: spacing.md,
-  },
-  locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  locationText: {
-    ...typography.body1,
-    color: colors.text,
-    fontSize: 15,
-  },
-  contactRow: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    marginBottom: spacing.md,
-  },
+  countBadgeText: { fontSize: 12, fontWeight: '700', color: '#4338CA' },
+
+  // Location
+  locationGrid: { gap: 10 },
+  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  locationText: { fontSize: 14, color: '#334155' },
+
+  // Contact
+  contactRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 10 },
   contactItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.background,
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
-    flex: 1,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: '#F8FAFC', paddingHorizontal: 14, paddingVertical: 10,
+    borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0', flex: 1,
   },
-  contactText: {
-    ...typography.body2,
-    color: colors.text,
-    fontWeight: '600',
-    fontSize: 14,
+  contactText: { fontSize: 14, fontWeight: '600', color: '#1E293B' },
+  socialBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: '#EEF2FF', paddingVertical: 10, borderRadius: 10,
+    borderWidth: 1, borderColor: '#C7D2FE',
   },
-  socialButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.primaryLight,
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.primary,
+  socialBtnText: { fontSize: 14, fontWeight: '600', color: '#4F46E5' },
+
+  // Tags
+  tagsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  tag: {
+    backgroundColor: '#EEF2FF', borderWidth: 1, borderColor: '#C7D2FE',
+    paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20,
   },
-  socialButtonText: {
-    ...typography.body2,
-    color: colors.primary,
-    fontWeight: '600',
-    fontSize: 15,
-  },
-  infoGrid: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    marginBottom: spacing.lg,
-  },
+  tagText: { fontSize: 13, fontWeight: '600', color: '#4338CA' },
+
+  // Info grid
+  infoGrid: { flexDirection: 'row', gap: 12, marginBottom: 16 },
   infoItem: {
-    flex: 1,
-    backgroundColor: colors.background,
-    padding: spacing.lg,
-    borderRadius: borderRadius.md,
+    flex: 1, backgroundColor: '#F8FAFC', padding: 14,
+    borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center',
+  },
+  infoLabel: { fontSize: 11, fontWeight: '700', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 4 },
+  infoValue: { fontSize: 16, fontWeight: '700', color: '#0F172A' },
+
+  // Sub sections
+  subSection: { marginTop: 16 },
+  subTitle: { fontSize: 13, fontWeight: '700', color: '#475569', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 10 },
+
+  // Jobs
+  jobRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F8FAFC',
+  },
+  jobIconWrap: {
+    width: 34, height: 34, borderRadius: 8,
+    backgroundColor: '#EEF2FF', justifyContent: 'center', alignItems: 'center', flexShrink: 0,
+  },
+  jobTitle: { fontSize: 14, fontWeight: '700', color: '#0F172A', marginBottom: 4 },
+  jobMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  jobMetaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  jobMetaText: { fontSize: 12, color: '#64748B' },
+  viewAllBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    paddingTop: 14, marginTop: 4, borderTopWidth: 1, borderTopColor: '#F1F5F9',
+  },
+  viewAllText: { fontSize: 14, fontWeight: '700', color: '#4F46E5' },
+
+  // Similar Company Card (sidebar)
+  scCard: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  scRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 8 },
+  scAvatar: { width: 38, height: 38, borderRadius: 10, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
+  scAvatarText: { fontSize: 14, fontWeight: '800', color: '#fff' },
+  scName: { fontSize: 14, fontWeight: '700', color: '#0F172A', lineHeight: 20, marginBottom: 2 },
+  scIndustry: { fontSize: 12, color: '#64748B', fontWeight: '500' },
+  scMeta: { gap: 4, marginBottom: 8 },
+  scMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  scMetaText: { fontSize: 12, color: '#64748B', flex: 1 },
+  scPositions: { fontSize: 12, fontWeight: '600', color: '#059669', marginTop: 4 },
+  scFooter: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  scViewText: { fontSize: 13, fontWeight: '700', color: '#4F46E5' },
+
+  // Mobile Similar Company Card
+  mobileSCCard: {
+    backgroundColor: '#F8FAFC', borderRadius: 12, padding: 14,
+    marginRight: 12, width: 160, borderWidth: 1, borderColor: '#E2E8F0',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    ...shadows.xs,
-  },
-  infoLabel: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginBottom: spacing.xs,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  infoValue: {
-    ...typography.h5,
-    color: colors.text,
-    fontWeight: '700',
-    fontSize: 18,
-  },
-  textSection: {
-    marginBottom: spacing.lg,
-  },
-  jobItem: {
-    padding: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
-    marginBottom: spacing.sm,
-  },
-  jobItemHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.xs,
-  },
-  jobTitle: {
-    ...typography.h6,
-    color: colors.text,
-    fontWeight: '700',
-    fontSize: 16,
-    flex: 1,
-  },
-  jobMeta: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    flexWrap: 'wrap',
-  },
-  jobMetaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  jobMetaText: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    fontSize: 13,
-  },
-  viewAllButton: {
-    padding: spacing.md,
-    alignItems: 'center',
-    marginTop: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderLight,
-    paddingTop: spacing.md,
-  },
-  viewAllText: {
-    ...typography.body2,
-    color: colors.primary,
-    fontWeight: '600',
-    fontSize: 15,
-  },
-  // Similar Companies Container
-  similarCompaniesContainer: {
-    flex: 1,
-  },
-  sidebarHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  sidebarTitle: {
-    ...typography.h4,
-    color: colors.text,
-    fontWeight: '700',
-    fontSize: 20,
-  },
-  similarCompaniesScroll: {
-    flex: 1,
-  },
-  // Similar Company Card
-  similarCompanyCard: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.xl,
-    padding: spacing.lg,
-    marginBottom: spacing.md,
-    ...shadows.md,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    ...(isWebPlatform && {
-      cursor: 'pointer',
-      transition: 'all 0.3s ease',
-    }),
-  },
-  similarCompanyHeader: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    marginBottom: spacing.md,
-  },
-  similarCompanyIconContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: borderRadius.xl,
-    justifyContent: 'center',
-    alignItems: 'center',
-    flexShrink: 0,
-    ...shadows.sm,
-  },
-  similarCompanyInitials: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.textWhite,
-  },
-  similarCompanyHeaderText: {
-    flex: 1,
-    gap: spacing.xs,
-  },
-  similarCompanyTitle: {
-    ...typography.h6,
-    color: colors.text,
-    fontWeight: '700',
-    fontSize: 16,
-    lineHeight: 22,
-  },
-  similarCompanyIndustry: {
-    ...typography.body2,
-    color: colors.textSecondary,
-    fontSize: 13,
-  },
-  similarCompanyDetails: {
-    gap: spacing.xs,
-    marginBottom: spacing.md,
-    paddingTop: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderLight,
-  },
-  similarCompanyDetail: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  similarCompanyDetailText: {
-    ...typography.caption,
-    color: colors.text,
-    fontSize: 13,
-    flex: 1,
-  },
-  similarCompanyFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: spacing.sm,
-    marginTop: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderLight,
-  },
-  viewCompanyText: {
-    ...typography.body2,
-    color: colors.primary,
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  // Mobile Similar Companies Styles
-  mobileSimilarCompanies: {
-    marginTop: spacing.lg,
-    paddingTop: spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderLight,
-  },
-  mobileSimilarHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  mobileSimilarTitle: {
-    ...typography.h5,
-    color: colors.text,
-    fontWeight: '700',
-  },
-  mobileSimilarScroll: {
-    gap: spacing.md,
-    paddingRight: spacing.md,
-  },
-  mobileSimilarCard: {
-    width: 150,
-    backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.lg,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    alignItems: 'center',
-    ...shadows.sm,
-  },
-  mobileSimilarAvatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  mobileSimilarInitials: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.textWhite,
-  },
-  mobileSimilarName: {
-    ...typography.body1,
-    fontWeight: '600',
-    color: colors.text,
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  mobileSimilarIndustry: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  mobileSimilarPositions: {
-    ...typography.caption,
-    color: colors.success || '#10B981',
-    fontWeight: '600',
   },
 });
 
