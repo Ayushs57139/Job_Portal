@@ -1,814 +1,512 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
-  View,
-  Text,
-  ScrollView,
-  TextInput,
-  StyleSheet,
-  ActivityIndicator,
-  RefreshControl,
-  TouchableOpacity,
-  Dimensions,
+  View, Text, ScrollView, TextInput, StyleSheet,
+  ActivityIndicator, RefreshControl, TouchableOpacity, Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, typography, spacing, borderRadius, shadows } from '../../styles/theme';
+import { shadows } from '../../styles/theme';
 import Header from '../../components/Header';
-import CompanyCard from '../../components/CompanyCard';
 import AdvertisementWidget from '../../components/AdvertisementWidget';
 import api from '../../config/api';
-import { useResponsive } from '../../utils/responsive';
+import { useNavigation } from '@react-navigation/native';
 
-// Safely get Platform - lazy evaluation
 const getPlatform = () => {
-  try {
-    const { Platform } = require('react-native');
-    if (Platform && typeof Platform.OS !== 'undefined') {
-      return Platform;
-    }
-  } catch (e) {}
+  try { const { Platform } = require('react-native'); if (Platform?.OS) return Platform; } catch (e) {}
   return { OS: 'android' };
 };
-
 const isWeb = getPlatform().OS === 'web';
 
-const CompaniesScreen = () => {
-  const responsive = useResponsive();
-  const { width } = responsive;
-  const isXsPhone = width <= 320;
-  const isSmallPhone = width > 320 && width <= 375;
-  const isPhone = width > 375 && width <= 414;
-  const isLargePhone = width > 414 && width <= 480;
-  const isMobile = width <= 480;
-  const isSmallTablet = width > 480 && width <= 600;
-  const isTablet = width > 600 && width <= 768;
-  const isLargeTablet = width > 768 && width <= 834;
-  const isTabletDevice = width > 480 && width <= 834;
-  const isSmallLaptop = width > 834 && width <= 1024;
-  const isLaptop = width > 1024 && width <= 1200;
-  const isDesktop = width > 1200 && width <= 1440;
-  const isLargeDesktop = width > 1440;
-  const isDesktopDevice = width > 834;
-  
-  const dynamicStyles = useMemo(() => getStyles(
-    isXsPhone, isSmallPhone, isPhone, isLargePhone, isMobile,
-    isSmallTablet, isTablet, isLargeTablet, isTabletDevice,
-    isSmallLaptop, isLaptop, isDesktop, isLargeDesktop, isDesktopDevice, width
-  ), [isXsPhone, isSmallPhone, isPhone, isLargePhone, isMobile, isSmallTablet, isTablet, isLargeTablet, isTabletDevice, isSmallLaptop, isLaptop, isDesktop, isLargeDesktop, isDesktopDevice, width]);
-  const [companies, setCompanies] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedIndustry, setSelectedIndustry] = useState('all');
-  const [industries, setIndustries] = useState([
-    { id: 'all', label: 'All Industries', icon: 'business-outline' }
-  ]);
-  const [showIndustryDropdown, setShowIndustryDropdown] = useState(false);
-  const [companyFilter, setCompanyFilter] = useState('all');
+// ─── Constants ────────────────────────────────────────────────────────────────
+const AVATAR_COLORS = ['#4361EE','#3A86FF','#06D6A0','#FFB703','#EF233C','#7B2FBE','#F72585','#4CC9F0'];
+const getInitials = (n) => { if (!n) return 'C'; const w = n.trim().split(' '); return w.length >= 2 ? (w[0][0]+w[1][0]).toUpperCase() : n.slice(0,2).toUpperCase(); };
+const getAvatarColor = (n) => AVATAR_COLORS[(n||'C').charCodeAt(0) % AVATAR_COLORS.length];
+const seedNum = (n, max, min = 0) => { const s = (n||'x').split('').reduce((a,c)=>a+c.charCodeAt(0),0); return min + (s % (max - min)); };
 
-  useEffect(() => {
-    loadCompanies();
-    loadIndustries();
-  }, []);
+const MNC_CATEGORIES = [
+  { id: 'all',        label: 'All Companies',  sub: 'Browse all',      color: '#4361EE' },
+  { id: 'mnc',        label: 'MNCs',           sub: '2.3K+ Companies', color: '#3A86FF' },
+  { id: 'startup',    label: 'Startups',       sub: '807 Companies',   color: '#EF233C' },
+  { id: 'it',         label: 'IT Services',    sub: '1.2K+ Companies', color: '#06D6A0' },
+  { id: 'healthcare', label: 'Healthcare',     sub: '709 Companies',   color: '#FFB703' },
+  { id: 'fintech',    label: 'FinTech',        sub: '252 Companies',   color: '#7B2FBE' },
+  { id: 'edtech',     label: 'EdTech',         sub: '171 Companies',   color: '#F72585' },
+  { id: 'ecommerce',  label: 'E-Commerce',     sub: '340 Companies',   color: '#4CC9F0' },
+];
 
-  const loadIndustries = async () => {
-    try {
-      const response = await api.request('/industries');
-      if (response.success && response.data) {
-        const formattedIndustries = [
-          { id: 'all', label: 'All Industries', icon: 'business-outline' },
-          ...response.data.map((industry) => ({
-            id: industry.name,
-            label: industry.name,
-            icon: 'business-outline'
-          }))
-        ];
-        setIndustries(formattedIndustries);
-      }
-    } catch (error) {
-      console.error('Error loading industries:', error);
-      // Keep default industries if fetch fails
-    }
-  };
+const COMPANY_TYPES = ['Corporate', 'Foreign MNC', 'Startup', 'Indian MNC', 'Consultancy'];
+const LOCATIONS     = ['Bengaluru', 'Delhi/NCR', 'Mumbai', 'Chennai', 'Hyderabad', 'Pune', 'Kolkata', 'Ahmedabad'];
+const EXPERIENCE_LEVELS = ['Experienced', 'Entry Level', 'Internship'];
+const BUSINESS_TYPES    = ['B2B', 'B2C', 'SaaS', 'D2C'];
+const JOB_DATE_OPTIONS  = ['< 7 Days', '< 15 Days', '< 30 Days'];
+const PAGE_SIZE = 10;
 
-  const loadCompanies = async (industryOverride = null) => {
-    try {
-      const filters = {};
-      if (searchQuery) filters.search = searchQuery;
-      
-      const industryToUse = industryOverride !== null ? industryOverride : selectedIndustry;
-      if (industryToUse && industryToUse !== 'all') {
-        filters.industry = industryToUse;
-      }
-      
-      // Set a higher limit to get more companies
-      filters.limit = 100;
-
-      const response = await api.getCompanies(filters);
-      // Handle different response structures
-      let companiesData = [];
-      if (response) {
-        if (Array.isArray(response.companies)) {
-          companiesData = response.companies;
-        } else if (Array.isArray(response.data)) {
-          companiesData = response.data;
-        } else if (Array.isArray(response)) {
-          companiesData = response;
-        } else if (response.companies && !Array.isArray(response.companies)) {
-          // If companies is a single object, wrap it in an array
-          companiesData = [response.companies];
-        }
-      }
-      
-      // Add rating for better display
-      const companiesWithData = companiesData.map((company) => ({
-        ...company,
-        rating: (3.5 + Math.random() * 1.5).toFixed(1),
-      }));
-      
-      setCompanies(companiesWithData);
-    } catch (error) {
-      console.error('Error loading companies:', error);
-      setCompanies([]);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
-  const totalOpenPositions = companies.reduce(
-    (sum, company) => sum + (company.openPositions || 0),
-    0
-  );
-
-  const averageRating =
-    companies.length > 0
-      ? (
-          companies.reduce((sum, company) => sum + parseFloat(company.rating || 0), 0) /
-          companies.length
-        ).toFixed(1)
-      : '4.5';
-
-  const getFilteredCompanies = () => {
-    if (companyFilter === 'topRated') {
-      return companies.filter((company) => parseFloat(company.rating || 0) >= 4.2);
-    }
-    if (companyFilter === 'activelyHiring') {
-      return companies.filter((company) => (company.openPositions || 0) > 0);
-    }
-    return companies;
-  };
-
-  const filteredCompanies = getFilteredCompanies();
-
-  const handleRefresh = () => {
-    setRefreshing(true);
-    loadCompanies();
-  };
-
-  const handleSearch = () => {
-    setLoading(true);
-    loadCompanies();
-  };
-
+// ─── Sidebar sub-components ───────────────────────────────────────────────────
+const CheckboxGroup = ({ title, items, selected, onToggle, searchable, counts }) => {
+  const [q, setQ] = useState('');
+  const [open, setOpen] = useState(false);
+  const filtered = searchable ? items.filter(i => i.toLowerCase().includes(q.toLowerCase())) : items;
+  const visible = open ? filtered : filtered.slice(0, 5);
   return (
-    <View style={dynamicStyles.container}>
-      <Header />
-      
-      <ScrollView
-        style={dynamicStyles.scrollView}
-        contentContainerStyle={dynamicStyles.scrollContent}
-        showsVerticalScrollIndicator={isWeb ? true : false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            colors={[colors.primary]}
-            tintColor={colors.primary}
-          />
-        }
-      >
-        {/* Hero Section */}
-        <View style={dynamicStyles.heroSection}>
-          <Text style={dynamicStyles.heroTitle}>Top Companies</Text>
-          <Text style={dynamicStyles.heroSubtitle}>
-            Discover opportunities from leading companies and organizations
-          </Text>
-          <View style={dynamicStyles.heroStatsRow}>
-            <View style={dynamicStyles.heroStatCard}>
-              <Text style={dynamicStyles.heroStatValue}>{companies.length}</Text>
-              <Text style={dynamicStyles.heroStatLabel}>Active partners</Text>
-            </View>
-            <View style={dynamicStyles.heroStatCard}>
-              <Text style={dynamicStyles.heroStatValue}>{totalOpenPositions}</Text>
-              <Text style={dynamicStyles.heroStatLabel}>Open roles</Text>
-            </View>
-            <View style={dynamicStyles.heroStatCard}>
-              <Text style={dynamicStyles.heroStatValue}>{averageRating}/5</Text>
-              <Text style={dynamicStyles.heroStatLabel}>Avg. rating</Text>
-            </View>
-          </View>
+    <View style={sf.group}>
+      <TouchableOpacity style={sf.groupHeader} onPress={() => setOpen(o => !o)}>
+        <Text style={sf.groupTitle}>{title}</Text>
+        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={14} color="#64748B" />
+      </TouchableOpacity>
+      {searchable && (
+        <View style={sf.searchRow}>
+          <Ionicons name="search-outline" size={13} color="#94A3B8" />
+          <TextInput style={sf.searchIn} placeholder={`Search ${title}`} placeholderTextColor="#94A3B8" value={q} onChangeText={setQ} />
         </View>
-
-        {/* Search Section */}
-        <View style={dynamicStyles.searchSection}>
-          <View style={dynamicStyles.searchRow}>
-            <View style={dynamicStyles.searchInputWrapper}>
-              <Ionicons name="search-outline" size={isMobile ? 18 : (isTabletDevice ? 20 : 22)} color={colors.textSecondary} />
-              <TextInput
-                style={dynamicStyles.searchInput}
-                placeholder="Search companies by name..."
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                onSubmitEditing={handleSearch}
-                placeholderTextColor={colors.textLight}
-              />
-            </View>
-
-            <View style={dynamicStyles.dropdownWrapper}>
-              <TouchableOpacity 
-                style={dynamicStyles.dropdown}
-                onPress={() => setShowIndustryDropdown(!showIndustryDropdown)}
-              >
-                <Text style={dynamicStyles.dropdownText}>
-                  {industries.find(ind => ind.id === selectedIndustry)?.label || 'All Industries'}
-                </Text>
-                <Ionicons 
-                  name={showIndustryDropdown ? "chevron-up" : "chevron-down"} 
-                  size={isMobile ? 18 : (isTabletDevice ? 20 : 22)} 
-                  color={colors.text} 
-                />
-              </TouchableOpacity>
-            </View>
-
-            <TouchableOpacity style={dynamicStyles.searchButton} onPress={handleSearch} activeOpacity={0.8}>
-              <Ionicons name="search" size={isMobile ? 18 : (isTabletDevice ? 20 : 22)} color={colors.textWhite} />
-              <Text style={dynamicStyles.searchButtonText}>Search</Text>
-            </TouchableOpacity>
+      )}
+      {visible.map(item => (
+        <TouchableOpacity key={item} style={sf.row} onPress={() => onToggle(item)}>
+          <View style={[sf.cb, selected.includes(item) && sf.cbOn]}>
+            {selected.includes(item) && <Ionicons name="checkmark" size={10} color="#fff" />}
           </View>
-
-          <View style={dynamicStyles.quickFilters}>
-            {[
-              { id: 'all', label: 'All companies' },
-              { id: 'topRated', label: 'Top rated' },
-              { id: 'activelyHiring', label: 'Actively hiring' },
-            ].map((filter) => {
-              const isActive = companyFilter === filter.id;
-              return (
-                <TouchableOpacity
-                  key={filter.id}
-                  style={[
-                    dynamicStyles.quickFilterChip,
-                    isActive && dynamicStyles.quickFilterChipActive,
-                  ]}
-                  onPress={() => setCompanyFilter(filter.id)}
-                >
-                  <Ionicons
-                    name={
-                      filter.id === 'topRated'
-                        ? 'star'
-                        : filter.id === 'activelyHiring'
-                        ? 'flash'
-                        : 'grid'
-                    }
-                    size={isMobile ? 12 : (isTabletDevice ? 14 : 16)}
-                    color={isActive ? colors.primary : colors.textSecondary}
-                  />
-                  <Text
-                    style={[
-                      dynamicStyles.quickFilterText,
-                      isActive && dynamicStyles.quickFilterTextActive,
-                    ]}
-                  >
-                    {filter.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
-          <View style={dynamicStyles.trendingTags}>
-            {['FinTech', 'Healthcare', 'Remote friendly', 'Design leaders'].map((tag) => (
-              <TouchableOpacity
-                key={tag}
-                style={dynamicStyles.trendingTag}
-                onPress={() => {
-                  setSearchQuery(tag);
-                  handleSearch();
-                }}
-              >
-                <Ionicons name="sparkles" size={isMobile ? 12 : (isTabletDevice ? 14 : 16)} color={colors.primary} />
-                <Text style={dynamicStyles.trendingTagText}>{tag}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {/* Loading or Results Message */}
-          {loading && (
-            <View style={dynamicStyles.loadingMessage}>
-              <Text style={dynamicStyles.loadingMessageText}>Loading companies...</Text>
-            </View>
-          )}
-        </View>
-
-        {/* Dropdown Menu - Positioned Outside */}
-        {showIndustryDropdown && (
-          <View style={dynamicStyles.dropdownMenuContainer}>
-            <TouchableOpacity 
-              style={dynamicStyles.dropdownOverlay}
-              activeOpacity={1}
-              onPress={() => setShowIndustryDropdown(false)}
-            />
-            <View style={dynamicStyles.dropdownMenuAbsolute}>
-              <ScrollView 
-                style={dynamicStyles.dropdownScroll}
-                showsVerticalScrollIndicator={true}
-                bounces={false}
-              >
-                {industries.map((industry) => (
-                  <TouchableOpacity
-                    key={industry.id}
-                    style={[
-                      dynamicStyles.dropdownItem,
-                      selectedIndustry === industry.id && dynamicStyles.dropdownItemSelected
-                    ]}
-                    onPress={() => {
-                      setSelectedIndustry(industry.id);
-                      setShowIndustryDropdown(false);
-                      setLoading(true);
-                      // Trigger search with new industry immediately
-                      loadCompanies(industry.id);
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons 
-                      name={industry.icon} 
-                      size={isMobile ? 16 : (isTabletDevice ? 18 : 20)} 
-                      color={selectedIndustry === industry.id ? colors.primary : colors.text} 
-                    />
-                    <Text 
-                      style={[
-                        dynamicStyles.dropdownItemText,
-                        selectedIndustry === industry.id && dynamicStyles.dropdownItemTextSelected
-                      ]}
-                    >
-                      {industry.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-          </View>
-        )}
-
-        {/* Advertisement - Top of companies section */}
-        <AdvertisementWidget 
-          position="content-top" 
-          page="companies"
-          containerStyle={dynamicStyles.adContainer}
-        />
-
-        {/* Companies Grid */}
-        {!loading && filteredCompanies.length > 0 ? (
-          <View style={dynamicStyles.companiesSection}>
-            <View style={dynamicStyles.companiesGrid}>
-              {filteredCompanies.map((company, index) => (
-                <View key={company._id} style={dynamicStyles.companyCardWrapper}>
-                  <CompanyCard company={company} />
-                </View>
-              ))}
-            </View>
-
-            {/* Ads injected between rows, outside the flex-wrap grid */}
-            {filteredCompanies.length > 6 && (
-              <AdvertisementWidget
-                position="content-middle"
-                page="companies"
-                containerStyle={dynamicStyles.adContainer}
-              />
-            )}
-            
-            {/* Advertisement - Bottom of companies section */}
-            {filteredCompanies.length > 3 && (
-              <AdvertisementWidget 
-                position="content-bottom" 
-                page="companies"
-                containerStyle={dynamicStyles.adContainer}
-              />
-            )}
-          </View>
-        ) : !loading ? (
-          <View style={dynamicStyles.emptyContainer}>
-            <View style={dynamicStyles.emptyIconContainer}>
-              <Ionicons name="business-outline" size={isMobile ? 64 : (isTabletDevice ? 72 : 80)} color={colors.primary} />
-            </View>
-            <Text style={dynamicStyles.emptyText}>No Companies Found</Text>
-            <Text style={dynamicStyles.emptySubtext}>
-              We couldn't find any companies matching your search.
-            </Text>
-            <Text style={dynamicStyles.emptySubtext}>Try adjusting your filters</Text>
-            <TouchableOpacity 
-              style={dynamicStyles.clearButton}
-              onPress={() => {
-                setSearchQuery('');
-                setSelectedIndustry('all');
-                handleSearch();
-              }}
-            >
-              <Ionicons name="refresh-outline" size={isMobile ? 18 : (isTabletDevice ? 20 : 22)} color={colors.textWhite} />
-              <Text style={dynamicStyles.clearButtonText}>Clear Filters</Text>
-            </TouchableOpacity>
-          </View>
-        ) : null}
-      </ScrollView>
+          <Text style={sf.rowLabel}>{item}</Text>
+          {counts && counts[item] ? <Text style={sf.count}>({counts[item]})</Text> : null}
+        </TouchableOpacity>
+      ))}
+      {filtered.length > 5 && (
+        <TouchableOpacity onPress={() => setOpen(o => !o)}>
+          <Text style={sf.more}>{open ? '− Less' : `+ ${filtered.length - 5} more`}</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 };
 
-const getStyles = (
-  isXsPhone, isSmallPhone, isPhone, isLargePhone, isMobile,
-  isSmallTablet, isTablet, isLargeTablet, isTabletDevice,
-  isSmallLaptop, isLaptop, isDesktop, isLargeDesktop, isDesktopDevice, width
-) => {
-  // Safely get Platform - lazy evaluation
-  const getPlatform = () => {
-    try {
-      const { Platform } = require('react-native');
-      if (Platform && typeof Platform.OS !== 'undefined') {
-        return Platform;
-      }
-    } catch (e) {}
-    return { OS: 'android' };
-  };
+const PillGroup = ({ title, items, selected, onToggle }) => (
+  <View style={sf.group}>
+    <Text style={sf.groupTitle}>{title}</Text>
+    <View style={sf.pills}>
+      {items.map(item => (
+        <TouchableOpacity key={item} style={[sf.pill, selected.includes(item) && sf.pillOn]} onPress={() => onToggle(item)}>
+          <Text style={[sf.pillTxt, selected.includes(item) && sf.pillTxtOn]}>{item}</Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  </View>
+);
 
-  const isWeb = getPlatform().OS === 'web';
-  const horizontalPadding = isXsPhone ? 8 : isSmallPhone ? 10 : isMobile ? 12 : isSmallTablet ? 16 : isTablet ? 20 : isLargeTablet ? 24 : isSmallLaptop ? 32 : isLaptop ? 40 : 48;
-  
-  // Calculate grid columns
-  const getGridColumns = () => {
-    if (isLargeDesktop || isDesktop) return 4; // desktop: 4 cards
-    if (isLaptop) return 3;
-    if (isSmallLaptop) return 2;
-    if (isTabletDevice) return 2;
-    return 1;
-  };
-  
-  const gridColumns = getGridColumns();
-  const containerWidth = isDesktopDevice
-    ? (isLargeDesktop ? 1600 : isDesktop ? 1400 : 1200)
-    : width;
-  const cardGap = isMobile ? spacing.md : isTabletDevice ? spacing.lg : spacing.xl;
-  // Use CSS calc so desktop reliably renders 4 cards without leftover space
-  const cardWidth = isDesktopDevice
-    ? `calc((100% - ${(gridColumns - 1) * cardGap}px) / ${gridColumns})`
-    : '100%';
-  
-  return StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-  },
-  heroSection: {
-    paddingVertical: isMobile ? spacing.xl : spacing.xxl,
-    paddingHorizontal: isMobile ? horizontalPadding : (isTabletDevice ? spacing.lg : spacing.xl),
-    alignItems: 'center',
-    backgroundColor: '#EEF2FF',
-    maxWidth: isDesktopDevice ? (isLargeDesktop ? 1600 : isDesktop ? 1400 : 1200) : '100%',
-    alignSelf: 'center',
-    width: '100%',
-    ...(isWeb && {
-      marginBottom: spacing.lg,
-    }),
-  },
-  heroTitle: {
-    fontSize: isMobile ? 26 : (isTabletDevice ? 32 : (isDesktopDevice ? 42 : 36)),
-    fontWeight: '700',
-    color: colors.text,
-    textAlign: 'center',
-    marginBottom: spacing.sm,
-    paddingHorizontal: isMobile ? spacing.md : 0,
-  },
-  heroSubtitle: {
-    fontSize: isMobile ? 15 : (isTabletDevice ? 16 : 18),
-    color: colors.textSecondary,
-    textAlign: 'center',
-    opacity: 0.95,
-    maxWidth: 700,
-    marginBottom: spacing.lg,
-    paddingHorizontal: isMobile ? spacing.md : spacing.lg,
-  },
-  heroStatsRow: {
-    flexDirection: isMobile ? 'column' : 'row',
-    gap: spacing.md,
-    width: '100%',
-    maxWidth: 900,
-    marginTop: spacing.sm,
-  },
-  heroStatCard: {
-    flex: 1,
-    backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.lg,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    ...shadows.sm,
-  },
-  heroStatValue: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  heroStatLabel: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    marginTop: spacing.xs / 2,
-  },
-  searchSection: {
-    backgroundColor: colors.cardBackground,
-    padding: isMobile ? spacing.md : (isTabletDevice ? spacing.lg : spacing.xl),
-    marginHorizontal: isMobile ? horizontalPadding : (isTabletDevice ? spacing.lg : spacing.xl),
-    marginTop: -spacing.xl,
-    borderRadius: borderRadius.xl,
-    ...shadows.card,
-    maxWidth: isDesktopDevice ? 1400 : '100%',
-    alignSelf: 'center',
-    width: '100%',
-  },
-  searchRow: {
-    flexDirection: isDesktopDevice ? 'row' : 'column',
-    gap: isMobile ? spacing.sm : spacing.md,
-    alignItems: isDesktopDevice ? 'center' : 'stretch',
-  },
-  searchInputWrapper: {
-    flex: isDesktopDevice ? 2 : 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.background,
-    borderRadius: borderRadius.md,
-    paddingHorizontal: isMobile ? spacing.md : spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    gap: spacing.sm,
-    minHeight: isMobile ? 44 : (isTabletDevice ? 48 : 50),
-  },
-  searchInput: {
-    flex: 1,
-    paddingVertical: isMobile ? spacing.sm : spacing.md,
-    fontSize: isMobile ? 14 : 15,
-    color: colors.text,
-  },
-  dropdownWrapper: {
-    flex: isDesktopDevice ? 1.2 : 1,
-    position: 'relative',
-    zIndex: 99999,
-    elevation: 15,
-    minWidth: isDesktopDevice ? 180 : '100%',
-  },
-  dropdown: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.background,
-    borderRadius: borderRadius.md,
-    paddingHorizontal: isMobile ? spacing.md : spacing.lg,
-    paddingVertical: isMobile ? spacing.sm : spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    minHeight: isMobile ? 44 : (isTabletDevice ? 48 : 50),
-  },
-  dropdownText: {
-    fontSize: isMobile ? 14 : 15,
-    color: colors.text,
-    flex: 1,
-    marginRight: spacing.xs,
-  },
-  quickFilters: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginTop: spacing.md,
-  },
-  quickFilterChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.background,
-  },
-  quickFilterChipActive: {
-    backgroundColor: '#EEF2FF',
-    borderColor: colors.primary,
-  },
-  quickFilterText: {
-    fontSize: isMobile ? 12 : (isTabletDevice ? 13 : 14),
-    color: colors.textSecondary,
-    fontWeight: '500',
-  },
-  quickFilterTextActive: {
-    color: colors.primary,
-    fontWeight: '600',
-  },
-  trendingTags: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginTop: spacing.md,
-  },
-  trendingTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs / 1.5,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.md,
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-  },
-  trendingTagText: {
-    fontSize: 12,
-    color: colors.text,
-    fontWeight: '500',
-  },
-  dropdownMenuContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 9999,
-  },
-  dropdownOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-  },
-  dropdownMenuAbsolute: {
-    position: 'absolute',
-    top: isDesktopDevice ? 240 : (isTabletDevice ? 220 : 200),
-    left: isMobile ? horizontalPadding : (isTabletDevice ? spacing.lg : spacing.xl),
-    right: isMobile ? horizontalPadding : (isTabletDevice ? spacing.lg : spacing.xl),
-    backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.lg,
-    maxHeight: isMobile ? 300 : (isTabletDevice ? 350 : 400),
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    ...shadows.lg,
-    elevation: 10,
-    ...(isWeb && {
-      boxShadow: '0 10px 25px rgba(0, 0, 0, 0.15)',
-    }),
-  },
-  dropdownScroll: {
-    maxHeight: isMobile ? 300 : (isTabletDevice ? 350 : 400),
-  },
-  dropdownItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
-    gap: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
-  },
-  dropdownItemSelected: {
-    backgroundColor: '#E0E7FF',
-  },
-  dropdownItemText: {
-    fontSize: 15,
-    color: colors.text,
-  },
-  dropdownItemTextSelected: {
-    color: colors.primary,
-    fontWeight: '600',
-  },
-  searchButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primary,
-    borderRadius: borderRadius.md,
-    paddingVertical: isMobile ? spacing.sm : spacing.md,
-    paddingHorizontal: isMobile ? spacing.md : (isTabletDevice ? spacing.lg : spacing.xl),
-    gap: spacing.sm,
-    flex: isDesktopDevice ? 0.8 : 1,
-    minWidth: isDesktopDevice ? 120 : '100%',
-    minHeight: isMobile ? 44 : (isTabletDevice ? 48 : 50),
-    ...shadows.sm,
-    ...(isWeb && {
-      cursor: 'pointer',
-      transition: 'all 0.2s ease',
-    }),
-  },
-  searchButtonText: {
-    fontSize: isMobile ? 14 : (isTabletDevice ? 15 : 16),
-    fontWeight: '600',
-    color: colors.textWhite,
-  },
-  loadingMessage: {
-    backgroundColor: '#E0E7FF',
-    borderRadius: borderRadius.md,
-    padding: isMobile ? spacing.sm : spacing.md,
-    marginTop: spacing.md,
-    alignItems: 'center',
-  },
-  loadingMessageText: {
-    fontSize: isMobile ? 14 : 15,
-    color: colors.primary,
-    fontWeight: '500',
-  },
-  companiesSection: {
-    padding: isMobile ? horizontalPadding : (isTabletDevice ? spacing.lg : spacing.xl),
-    maxWidth: isDesktopDevice ? (isLargeDesktop ? 1600 : isDesktop ? 1400 : 1200) : '100%',
-    alignSelf: 'center',
-    width: '100%',
-  },
-  companiesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: cardGap,
-    justifyContent: isDesktopDevice ? 'flex-start' : 'center',
-    alignItems: 'flex-start',
-  },
-  companyCardWrapper: {
-    width: cardWidth,
-    flexBasis: cardWidth,
-    alignSelf: 'stretch',
-    ...(isDesktopDevice && {
-      maxWidth: cardWidth,
-    }),
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: spacing.xxl * 2,
-    paddingHorizontal: spacing.lg,
-  },
-  emptyIconContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: colors.cardBackground,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-    ...shadows.md,
-  },
-  emptyText: {
-    fontSize: 24,
-    color: colors.text,
-    marginTop: spacing.md,
-    fontWeight: '700',
-  },
-  emptySubtext: {
-    fontSize: 15,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
-    textAlign: 'center',
-  },
-  clearButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.primary,
-    paddingVertical: isMobile ? spacing.md : spacing.lg,
-    paddingHorizontal: isMobile ? spacing.lg : spacing.xl,
-    borderRadius: borderRadius.lg,
-    marginTop: spacing.xl,
-    gap: spacing.sm,
-    ...shadows.sm,
-    minHeight: isMobile ? 44 : 48,
-    ...(isWeb && {
-      cursor: 'pointer',
-      transition: 'all 0.2s ease',
-    }),
-  },
-  clearButtonText: {
-    fontSize: isMobile ? 14 : 16,
-    color: colors.textWhite,
-    fontWeight: '600',
-  },
-  adContainer: {
-    paddingVertical: spacing.md,
-    marginVertical: spacing.md,
-    alignItems: 'center',
-    width: '100%',
-  },
-  });
+const SidebarFilters = ({ filters, industries, onChange, onClear }) => {
+  const tog = (key, val) => { const c = filters[key]||[]; onChange(key, c.includes(val) ? c.filter(x=>x!==val) : [...c,val]); };
+  return (
+    <ScrollView style={sf.wrap} showsVerticalScrollIndicator={false}>
+      <View style={sf.topRow}>
+        <Text style={sf.title}>All Filters</Text>
+        <TouchableOpacity onPress={onClear}><Text style={sf.clear}>Clear all</Text></TouchableOpacity>
+      </View>
+      <CheckboxGroup title="Company type" items={COMPANY_TYPES} selected={filters.companyTypes||[]} onToggle={v=>tog('companyTypes',v)} />
+      <CheckboxGroup title="Location" items={LOCATIONS} selected={filters.locations||[]} onToggle={v=>tog('locations',v)} searchable />
+      <CheckboxGroup title="Industry" items={industries.length ? industries : ['Technology','Finance','Healthcare','Education','Manufacturing']} selected={filters.industries||[]} onToggle={v=>tog('industries',v)} searchable />
+      <PillGroup title="Experience" items={EXPERIENCE_LEVELS} selected={filters.experience||[]} onToggle={v=>tog('experience',v)} />
+      <PillGroup title="Nature of business" items={BUSINESS_TYPES} selected={filters.businessTypes||[]} onToggle={v=>tog('businessTypes',v)} />
+      <PillGroup title="Job posting date" items={JOB_DATE_OPTIONS} selected={filters.jobDate||[]} onToggle={v=>tog('jobDate',v)} />
+    </ScrollView>
+  );
 };
 
-export default CompaniesScreen;
+// ─── Company Card ─────────────────────────────────────────────────────────────
+const CompanyCard = ({ company, onPress }) => {
+  const name    = company.name || 'Company';
+  const bg      = getAvatarColor(name);
+  const rating  = company.rating  || (3.0 + seedNum(name, 20) / 10).toFixed(1);
+  const reviews = company.reviews || seedNum(name, 500, 10);
 
+  const tags = [];
+  if (company.companyType)    tags.push(company.companyType);
+  if (company.industry)       tags.push(company.industry);
+  if (company.establishedYear) tags.push(`Founded: ${company.establishedYear}`);
+
+  return (
+    <TouchableOpacity style={cc.card} onPress={onPress} activeOpacity={0.85}>
+      {/* Logo */}
+      <View style={[cc.logo, { backgroundColor: bg }]}>
+        <Text style={cc.logoTxt}>{getInitials(name)}</Text>
+      </View>
+
+      {/* Body */}
+      <View style={cc.body}>
+        <View style={cc.nameRow}>
+          <Text style={cc.name} numberOfLines={1}>{name}</Text>
+          {company.isEmployerVerified && (
+            <Ionicons name="checkmark-circle" size={13} color="#10B981" style={{ marginLeft: 4 }} />
+          )}
+        </View>
+
+        {/* Rating row */}
+        <View style={cc.ratingRow}>
+          <View style={cc.ratingBadge}>
+            <Text style={cc.ratingNum}>{parseFloat(rating).toFixed(1)}</Text>
+            <Ionicons name="star" size={9} color="#fff" style={{ marginLeft: 2 }} />
+          </View>
+          <Text style={cc.reviewTxt}>{reviews} reviews</Text>
+        </View>
+
+        {/* Tag row */}
+        <View style={cc.tagRow}>
+          {tags.map((t, i) => (
+            <React.Fragment key={t}>
+              {i > 0 && <Text style={cc.sep}>·</Text>}
+              <Text style={cc.tag}>{t}</Text>
+            </React.Fragment>
+          ))}
+        </View>
+
+        {/* Open jobs */}
+        {company.openPositions > 0 && (
+          <View style={cc.jobsBadge}>
+            <Ionicons name="briefcase-outline" size={11} color="#4361EE" />
+            <Text style={cc.jobsTxt}>{company.openPositions} open jobs</Text>
+          </View>
+        )}
+      </View>
+
+      <Ionicons name="chevron-forward" size={15} color="#CBD5E0" style={{ alignSelf: 'center' }} />
+    </TouchableOpacity>
+  );
+};
+
+// ─── Main Screen ──────────────────────────────────────────────────────────────
+export default function CompaniesScreen() {
+  const navigation = useNavigation();
+  const [companies,    setCompanies]    = useState([]);
+  const [industries,   setIndustries]   = useState([]);
+  const [loading,      setLoading]      = useState(true);
+  const [refreshing,   setRefreshing]   = useState(false);
+  const [search,       setSearch]       = useState('');
+  const [searchInput,  setSearchInput]  = useState('');
+  const [page,         setPage]         = useState(1);
+  const [totalPages,   setTotalPages]   = useState(1);
+  const [total,        setTotal]        = useState(0);
+  const [activeCategory, setActiveCategory] = useState('all');
+  const [showModal,    setShowModal]    = useState(false);
+  const [filters, setFilters] = useState({ companyTypes:[], locations:[], industries:[], experience:[], businessTypes:[], jobDate:[] });
+
+  const fetchCompanies = useCallback(async (pg = 1, q = search, reset = false) => {
+    try {
+      if (pg === 1) setLoading(true);
+      const params = { page: pg, limit: PAGE_SIZE };
+      if (q) params.search = q;
+      if (filters.industries.length === 1) params.industry = filters.industries[0];
+      const res = await api.request('/company?' + new URLSearchParams(params).toString());
+      if (res.success) {
+        const list = res.companies || [];
+        setCompanies(prev => (pg === 1 || reset) ? list : [...prev, ...list]);
+        setTotalPages(res.pagination?.totalPages || 1);
+        setTotal(res.pagination?.total || list.length);
+        setPage(pg);
+      }
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); setRefreshing(false); }
+  }, [search, filters]);
+
+  useEffect(() => { fetchCompanies(1, search, true); }, [search, filters]);
+
+  useEffect(() => {
+    api.request('/industries').then(res => {
+      if (Array.isArray(res)) setIndustries(res.map(i => i.name || i));
+      else if (res?.industries) setIndustries(res.industries.map(i => i.name || i));
+    }).catch(() => {});
+  }, []);
+
+  const onRefresh = () => { setRefreshing(true); fetchCompanies(1, search, true); };
+  const handleSearch = () => setSearch(searchInput);
+
+  const handleCategory = (cat) => {
+    setActiveCategory(cat.id);
+    if (cat.id === 'all') { setFilters(f => ({ ...f, companyTypes: [], industries: [] })); return; }
+    const typeMap = { mnc: 'Foreign MNC', startup: 'Startup', it: 'Corporate', healthcare: 'Corporate', fintech: 'Corporate', edtech: 'Corporate', ecommerce: 'Corporate' };
+    const indMap  = { it: 'IT Services', healthcare: 'Healthcare', fintech: 'Finance', edtech: 'Education', ecommerce: 'E-Commerce' };
+    setFilters(f => ({ ...f, companyTypes: typeMap[cat.id] ? [typeMap[cat.id]] : [], industries: indMap[cat.id] ? [indMap[cat.id]] : [] }));
+  };
+
+  const filtered = useMemo(() => {
+    let list = companies;
+    if (filters.companyTypes.length) list = list.filter(c => filters.companyTypes.some(t => (c.companyType||'').toLowerCase().includes(t.toLowerCase())));
+    if (filters.locations.length)    list = list.filter(c => filters.locations.some(l => (c.location||'').toLowerCase().includes(l.toLowerCase())));
+    if (filters.industries.length > 1) list = list.filter(c => filters.industries.some(i => (c.industry||'').toLowerCase().includes(i.toLowerCase())));
+    return list;
+  }, [companies, filters]);
+
+  const filterCount = Object.values(filters).reduce((a, v) => a + v.length, 0);
+  const setFilter   = (key, val) => setFilters(f => ({ ...f, [key]: val }));
+  const clearFilters = () => { setFilters({ companyTypes:[], locations:[], industries:[], experience:[], businessTypes:[], jobDate:[] }); setActiveCategory('all'); };
+
+  return (
+    <View style={s.root}>
+      <Header />
+      <ScrollView style={s.scroll} showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
+
+        {/* ── Hero ── */}
+        <View style={s.hero}>
+          <Text style={s.heroEye}>EXPLORE COMPANIES</Text>
+          <Text style={s.heroTitle}>Top companies hiring now</Text>
+          <Text style={s.heroSub}>{total > 0 ? `${total.toLocaleString()} companies` : 'Thousands of companies'} across India</Text>
+          <View style={s.searchWrap}>
+            <View style={s.searchBar}>
+              <Ionicons name="search-outline" size={18} color="#94A3B8" style={{ marginRight: 8 }} />
+              <TextInput
+                style={s.searchIn}
+                placeholder="Search company name or industry..."
+                placeholderTextColor="#94A3B8"
+                value={searchInput}
+                onChangeText={setSearchInput}
+                onSubmitEditing={handleSearch}
+                returnKeyType="search"
+              />
+              {searchInput.length > 0 && (
+                <TouchableOpacity onPress={() => { setSearchInput(''); setSearch(''); }}>
+                  <Ionicons name="close-circle" size={17} color="#CBD5E0" />
+                </TouchableOpacity>
+              )}
+            </View>
+            <TouchableOpacity style={s.searchBtn} onPress={handleSearch}>
+              <Text style={s.searchBtnTxt}>Search</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* ── MNC Category Strip ── */}
+        <View style={s.catSection}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.catScroll}>
+            {MNC_CATEGORIES.map(cat => {
+              const active = activeCategory === cat.id;
+              return (
+                <TouchableOpacity
+                  key={cat.id}
+                  style={[s.catCard, active && { borderColor: cat.color, borderWidth: 2 }]}
+                  onPress={() => handleCategory(cat)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[s.catLabel, active && { color: cat.color }]}>{cat.label}</Text>
+                  <Text style={[s.catSub, active && { color: cat.color }]}>{cat.sub} →</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        <AdvertisementWidget position="header" page="companies" containerStyle={{ marginHorizontal: 16, marginTop: 4, marginBottom: 0 }} />
+
+        {/* ── Body: sidebar + grid ── */}
+        <View style={s.body}>
+
+          {/* Sidebar (web only) */}
+          {isWeb && (
+            <View style={s.sidebarCol}>
+              <SidebarFilters filters={filters} industries={industries} onChange={setFilter} onClear={clearFilters} />
+            </View>
+          )}
+
+          {/* Right column */}
+          <View style={s.rightCol}>
+
+            {/* List header */}
+            <View style={s.listHead}>
+              <Text style={s.showing}>Showing {filtered.length} companies</Text>
+              {!isWeb && (
+                <TouchableOpacity style={[s.filterBtn, filterCount > 0 && s.filterBtnActive]} onPress={() => setShowModal(true)}>
+                  <Ionicons name="options-outline" size={15} color={filterCount > 0 ? '#fff' : '#4361EE'} />
+                  <Text style={[s.filterBtnTxt, filterCount > 0 && { color: '#fff' }]}>
+                    Filters{filterCount > 0 ? ` (${filterCount})` : ''}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Cards */}
+            {loading ? (
+              <View style={s.loader}><ActivityIndicator size="large" color="#4361EE" /></View>
+            ) : filtered.length === 0 ? (
+              <View style={s.empty}>
+                <Ionicons name="business-outline" size={52} color="#E2E8F0" />
+                <Text style={s.emptyTxt}>No companies found</Text>
+                <Text style={s.emptySub}>Try adjusting your search or filters</Text>
+              </View>
+            ) : (
+              <View style={s.grid}>
+                {filtered.map((company, idx) => (
+                  <React.Fragment key={company._id || idx}>
+                    <View style={s.gridCell}>
+                      <CompanyCard
+                        company={company}
+                        onPress={() => navigation.navigate('CompanyDetails', { companyId: company._id, company })}
+                      />
+                    </View>
+                    {idx === 5 && (
+                      <View style={s.gridFull}>
+                        <AdvertisementWidget position="inline" page="companies" containerStyle={{ marginVertical: 6 }} />
+                      </View>
+                    )}
+                  </React.Fragment>
+                ))}
+              </View>
+            )}
+
+            {/* Pagination */}
+            {!loading && totalPages > 1 && (
+              <View style={s.pagination}>
+                <TouchableOpacity
+                  style={[s.pageBtn, page === 1 && s.pageBtnDisabled]}
+                  onPress={() => { if (page > 1) fetchCompanies(page - 1, search, true); }}
+                  disabled={page === 1}
+                >
+                  <Ionicons name="chevron-back" size={15} color={page === 1 ? '#CBD5E0' : '#4361EE'} />
+                  <Text style={[s.pageBtnTxt, page === 1 && { color: '#CBD5E0' }]}>Prev</Text>
+                </TouchableOpacity>
+
+                <View style={s.pageInfo}>
+                  <Text style={s.pageInfoTxt}>Page {page} of {totalPages}</Text>
+                </View>
+
+                <TouchableOpacity
+                  style={[s.pageBtn, page === totalPages && s.pageBtnDisabled]}
+                  onPress={() => { if (page < totalPages) fetchCompanies(page + 1, search, true); }}
+                  disabled={page === totalPages}
+                >
+                  <Text style={[s.pageBtnTxt, page === totalPages && { color: '#CBD5E0' }]}>Next</Text>
+                  <Ionicons name="chevron-forward" size={15} color={page === totalPages ? '#CBD5E0' : '#4361EE'} />
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </View>
+      </ScrollView>
+
+      {/* Mobile filter modal */}
+      <Modal visible={showModal} animationType="slide" transparent onRequestClose={() => setShowModal(false)}>
+        <View style={s.overlay}>
+          <View style={s.sheet}>
+            <View style={s.sheetHead}>
+              <Text style={s.sheetTitle}>All Filters</Text>
+              <TouchableOpacity onPress={() => setShowModal(false)}>
+                <Ionicons name="close" size={22} color="#1E293B" />
+              </TouchableOpacity>
+            </View>
+            <SidebarFilters filters={filters} industries={industries} onChange={setFilter} onClear={clearFilters} />
+            <TouchableOpacity style={s.applyBtn} onPress={() => setShowModal(false)}>
+              <Text style={s.applyTxt}>Apply Filters</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+}
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
+const s = StyleSheet.create({
+  root:   { flex: 1, backgroundColor: '#F1F5F9' },
+  scroll: { flex: 1 },
+
+  // Hero
+  hero:       { backgroundColor: '#fff', paddingHorizontal: 24, paddingTop: 32, paddingBottom: 36, borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
+  heroEye:    { fontSize: 11, fontWeight: '700', color: '#4361EE', letterSpacing: 1.5, marginBottom: 6 },
+  heroTitle:  { fontSize: isWeb ? 30 : 22, fontWeight: '800', color: '#0F172A', marginBottom: 4, letterSpacing: -0.5 },
+  heroSub:    { fontSize: 14, color: '#64748B', marginBottom: 20 },
+  searchWrap: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  searchBar:  { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', borderRadius: 10, borderWidth: 1.5, borderColor: '#E2E8F0', paddingHorizontal: 14, paddingVertical: 11 },
+  searchIn:   { flex: 1, fontSize: 14, color: '#1E293B', outlineStyle: 'none' },
+  searchBtn:  { backgroundColor: '#4361EE', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 10 },
+  searchBtnTxt: { color: '#fff', fontSize: 14, fontWeight: '700' },
+
+  // Category strip
+  catSection: { backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
+  catScroll:  { paddingHorizontal: 16, paddingVertical: 14, gap: 10 },
+  catCard:    { paddingHorizontal: 18, paddingVertical: 14, borderRadius: 12, borderWidth: 1.5, borderColor: '#E2E8F0', backgroundColor: '#fff', minWidth: 130, ...shadows.xs },
+  catLabel:   { fontSize: 14, fontWeight: '700', color: '#1E293B', marginBottom: 3 },
+  catSub:     { fontSize: 12, color: '#64748B', fontWeight: '500' },
+
+  // Body layout
+  body:       { flexDirection: isWeb ? 'row' : 'column', alignItems: 'flex-start', padding: isWeb ? 24 : 0, paddingTop: 20, gap: isWeb ? 24 : 0 },
+  sidebarCol: { width: 256, flexShrink: 0 },
+  rightCol:   { flex: 1, minWidth: 0, paddingHorizontal: isWeb ? 0 : 12 },
+
+  // List header
+  listHead:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 },
+  showing:    { fontSize: 14, color: '#64748B', fontWeight: '500' },
+  filterBtn:  { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, borderWidth: 1.5, borderColor: '#4361EE' },
+  filterBtnActive: { backgroundColor: '#4361EE' },
+  filterBtnTxt: { fontSize: 13, fontWeight: '600', color: '#4361EE' },
+
+  // Grid
+  grid:     { flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -5 },
+  gridCell: { width: '50%', paddingHorizontal: 5, marginBottom: 10 },
+  gridFull: { width: '100%' },
+
+  // States
+  loader: { paddingVertical: 80, alignItems: 'center' },
+  empty:  { alignItems: 'center', paddingVertical: 80 },
+  emptyTxt: { fontSize: 16, fontWeight: '600', color: '#475569', marginTop: 14 },
+  emptySub: { fontSize: 13, color: '#94A3B8', marginTop: 4 },
+
+  // Pagination
+  pagination:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, paddingVertical: 20, marginBottom: 10 },
+  pageBtn:      { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 18, paddingVertical: 10, borderRadius: 9, borderWidth: 1.5, borderColor: '#4361EE', backgroundColor: '#fff' },
+  pageBtnDisabled: { borderColor: '#E2E8F0', backgroundColor: '#F8FAFC' },
+  pageBtnTxt:   { fontSize: 14, fontWeight: '600', color: '#4361EE' },
+  pageInfo:     { paddingHorizontal: 16, paddingVertical: 10, backgroundColor: '#4361EE', borderRadius: 9 },
+  pageInfoTxt:  { fontSize: 13, fontWeight: '700', color: '#fff' },
+
+  // Modal
+  overlay:   { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  sheet:     { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '88%' },
+  sheetHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 18, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  sheetTitle: { fontSize: 17, fontWeight: '700', color: '#1E293B' },
+  applyBtn:  { margin: 16, backgroundColor: '#4361EE', paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
+  applyTxt:  { color: '#fff', fontSize: 15, fontWeight: '700' },
+});
+
+// Sidebar styles
+const sf = StyleSheet.create({
+  wrap:     { backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', overflow: 'hidden', ...shadows.xs },
+  topRow:   { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  title:    { fontSize: 14, fontWeight: '700', color: '#1E293B' },
+  clear:    { fontSize: 13, color: '#4361EE', fontWeight: '600' },
+  group:    { paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  groupHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
+  groupTitle: { fontSize: 13, fontWeight: '700', color: '#374151' },
+  searchRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', borderRadius: 7, paddingHorizontal: 8, paddingVertical: 6, marginBottom: 8, borderWidth: 1, borderColor: '#E2E8F0' },
+  searchIn:  { flex: 1, fontSize: 12, color: '#1E293B', marginLeft: 5, outlineStyle: 'none' },
+  row:       { flexDirection: 'row', alignItems: 'center', marginBottom: 9 },
+  cb:        { width: 16, height: 16, borderRadius: 4, borderWidth: 1.5, borderColor: '#CBD5E0', alignItems: 'center', justifyContent: 'center', marginRight: 9 },
+  cbOn:      { backgroundColor: '#4361EE', borderColor: '#4361EE' },
+  rowLabel:  { fontSize: 13, color: '#374151', flex: 1 },
+  count:     { fontSize: 12, color: '#94A3B8' },
+  more:      { fontSize: 12, color: '#4361EE', fontWeight: '600', marginTop: 2 },
+  pills:     { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginTop: 4 },
+  pill:      { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20, borderWidth: 1.5, borderColor: '#E2E8F0', backgroundColor: '#F8FAFC' },
+  pillOn:    { backgroundColor: '#EEF2FF', borderColor: '#4361EE' },
+  pillTxt:   { fontSize: 12, color: '#475569', fontWeight: '500' },
+  pillTxtOn: { color: '#4361EE', fontWeight: '700' },
+});
+
+// Card styles
+const cc = StyleSheet.create({
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 16,
+    flex: 1,
+    ...shadows.sm,
+  },
+  logo:    { width: 52, height: 52, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
+  logoTxt: { fontSize: 18, fontWeight: '800', color: '#fff', letterSpacing: 0.5 },
+  body:    { flex: 1 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
+  name:    { fontSize: 14, fontWeight: '700', color: '#0F172A', flex: 1, lineHeight: 20 },
+  ratingRow:   { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  ratingBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#16A34A', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 5, marginRight: 7 },
+  ratingNum:   { fontSize: 12, fontWeight: '700', color: '#fff' },
+  reviewTxt:   { fontSize: 12, color: '#64748B' },
+  tagRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 3, marginBottom: 8 },
+  tag:    { fontSize: 12, color: '#475569' },
+  sep:    { fontSize: 12, color: '#CBD5E0', marginHorizontal: 2 },
+  jobsBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
+  jobsTxt:   { fontSize: 12, color: '#4361EE', fontWeight: '600' },
+});

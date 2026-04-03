@@ -560,4 +560,56 @@ router.delete('/departments/:id', auth, async (req, res) => {
   }
 });
 
+// @route   GET /api/company/:id
+// @desc    Get single company/consultancy by ID (public)
+// @access  Public
+router.get('/:id', async (req, res) => {
+  try {
+    const company = await User.findOne({
+      _id: req.params.id,
+      $or: [
+        { userType: 'employer', employerType: { $in: ['company', 'consultancy'] } },
+        { userType: { $in: ['company', 'consultancy'] } }
+      ]
+    })
+    .select('profile.company company employerType userType firstName lastName companyName consultancyName isEmployerVerified verificationStatus createdAt phone email')
+    .lean();
+
+    if (!company) {
+      return res.status(404).json({ success: false, message: 'Company not found' });
+    }
+
+    const companyData = company.profile?.company || company.company || {};
+    const jobCount = await Job.countDocuments({ postedBy: company._id, status: 'active' });
+
+    const companyName = companyData.name || company.companyName || company.consultancyName || `${company.firstName} ${company.lastName}`;
+
+    let location = '';
+    if (companyData.location) {
+      if (typeof companyData.location === 'object') {
+        location = [companyData.location.city, companyData.location.state, companyData.location.country].filter(Boolean).join(', ') || companyData.location.locality || '';
+      } else {
+        location = companyData.location;
+      }
+    }
+
+    res.json({
+      _id: company._id,
+      name: companyName,
+      phone: company.phone,
+      email: company.email,
+      userType: company.userType,
+      employerType: company.employerType,
+      isEmployerVerified: company.isEmployerVerified,
+      verificationStatus: company.verificationStatus,
+      createdAt: company.createdAt,
+      openPositions: jobCount,
+      profile: { company: companyData },
+    });
+  } catch (error) {
+    console.error('Error fetching company by ID:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
 module.exports = router;
