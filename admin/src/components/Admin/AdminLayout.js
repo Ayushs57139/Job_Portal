@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, ScrollView, StyleSheet, Dimensions, Platform, Modal, TouchableOpacity, TouchableWithoutFeedback } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import AdminSidebar from './AdminSidebar';
 import AdminHeader from './AdminHeader';
 
@@ -37,6 +38,15 @@ const AdminLayout = ({ children, title, activeScreen, onNavigate, user, onLogout
 
   const closeSidebar = () => {
     setSidebarVisible(false);
+  };
+
+  const handleLogoutSafe = async () => {
+    try {
+      await AsyncStorage.multiRemove(['token', 'user', 'currentUser']);
+    } catch (e) {
+      console.warn('[AdminLayout] Logout clear error:', e.message);
+    }
+    if (onLogout) onLogout();
   };
 
   const handleNavigate = (screen) => {
@@ -101,7 +111,7 @@ const AdminLayout = ({ children, title, activeScreen, onNavigate, user, onLogout
           <AdminHeader
             title={title}
             user={user}
-            onLogout={onLogout}
+            onLogout={handleLogoutSafe}
             onMenuToggle={toggleSidebar}
           />
         </View>

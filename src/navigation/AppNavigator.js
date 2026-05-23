@@ -42,7 +42,7 @@ import AppliedJobsScreen from '../screens/Jobs/AppliedJobsScreen';
 import SavedJobsScreen from '../screens/Jobs/SavedJobsScreen';
 import JobAlertFormScreen from '../screens/Jobs/JobAlertFormScreen';
 import JobEventsScreen from '../screens/Jobs/JobEventsScreen';
-// import JobEventDetailScreen from '../screens/Jobs/JobEventDetailScreen';
+import JobEventDetailScreen from '../screens/Jobs/JobEventDetailScreen';
 
 // Dashboard Screens
 import UserDashboardScreen from '../screens/Dashboard/UserDashboardScreen';
@@ -55,6 +55,7 @@ import EmployerCandidateSearchScreen from '../screens/Dashboard/EmployerCandidat
 import EmployerEmployeesScreen from '../screens/Dashboard/EmployerEmployeesScreen';
 import EmployerSocialUpdatesScreen from '../screens/Dashboard/EmployerSocialUpdatesScreen';
 import EmployerCreateSocialPostScreen from '../screens/Dashboard/EmployerCreateSocialPostScreen';
+import AdminCompaniesScreen from '../screens/Dashboard/AdminCompaniesScreen';
 
 // Admin Screens
 import AdminDashboardScreen from '../screens/Admin/AdminDashboardScreen';
@@ -528,13 +529,11 @@ const AppNavigator = () => {
           component={JobEventsScreen}
           options={{ title: 'Job Events' }}
         />
-        {/* Temporarily disabled - JobEventDetail screen
         <Stack.Screen 
           name="JobEventDetail" 
           component={JobEventDetailScreen}
           options={{ title: 'Event Details' }}
         />
-        */}
         
         {/* Dashboard Screens */}
         <Stack.Screen 
@@ -551,6 +550,11 @@ const AppNavigator = () => {
           name="ConsultancyDashboard" 
           component={ConsultancyDashboardScreen}
           options={{ title: 'Consultancy Dashboard' }}
+        />
+        <Stack.Screen 
+          name="AdminCompanies" 
+          component={AdminCompaniesScreen}
+          options={{ title: 'Companies Management' }}
         />
         
         {/* Admin Screens */}

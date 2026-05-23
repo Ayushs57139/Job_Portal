@@ -53,8 +53,8 @@ const jobSchema = new mongoose.Schema({
   }],
   jobPostType: {
     type: String,
-    enum: ['Sales', 'MS Office', 'MS Word', 'Field Sales', 'Home Loan Sales', 'HL', 'LAP', 'Java', 'React', 'Angular'],
-    required: [true, 'Job post type is required']
+    trim: true,
+    default: 'General'
   },
   employmentType: {
     type: String,
@@ -170,7 +170,7 @@ const jobSchema = new mongoose.Schema({
   }],
   course: [{
     type: String,
-    enum: ['10th Pass', 'Electrican', 'Mechanical Engineering', 'BA', 'M.Tech', 'MBA', 'Other']
+    trim: true
   }],
   candidateIndustry: [{
     type: String,

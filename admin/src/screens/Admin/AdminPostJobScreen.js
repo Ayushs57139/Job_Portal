@@ -35,46 +35,72 @@ const AdminPostJobScreen = ({ navigation }) => {
       // Transform MultiStepJobPostForm data to server /api/jobs schema
       const firstOr = (arr) => Array.isArray(arr) && arr.length > 0 ? (arr[0].label || arr[0]) : '';
       const labels = (arr) => Array.isArray(arr) ? arr.map(v => v.label || v).filter(Boolean) : [];
+      const getVal = (field) => field?.value || field?.label || field || '';
+
+      // Enum mappers — server requires exact enum strings
+      const mapEmploymentType = (v) => {
+        const map = { permanent: 'Permanent', temporary: 'Temporary/Contract Job', internship: 'Internship', apprenticeship: 'Apprenticeship', naps: 'NAPS', freelance: 'Freelance', trainee: 'Trainee', fresher: 'Fresher' };
+        const k = (getVal(v)).toLowerCase().replace(/[\s/]+/g, '_').replace(/_+/g, '_');
+        return map[k] || getVal(v) || 'Permanent';
+      };
+      const mapJobType = (v) => {
+        const map = { full_time: 'Full Time', part_time: 'Part Time', any: 'Any', 'full time': 'Full Time', 'part time': 'Part Time' };
+        const k = (getVal(v)).toLowerCase().replace(/\s+/g, '_');
+        return map[k] || getVal(v) || 'Full Time';
+      };
+      const mapJobMode = (v) => {
+        const map = { work_from_home: 'Work From Home', work_from_office: 'Work From Office', work_from_field: 'Work From Field', hybrid: 'Hybrid', remote: 'Remote' };
+        const k = (getVal(v)).toLowerCase().replace(/\s+/g, '_');
+        return map[k] || getVal(v) || 'Work From Office';
+      };
+      const mapJobShift = (v) => {
+        const map = { day_shift: 'Day Shift', night_shift: 'Night Shift', rotational_shift: 'Rotational Shift', split_shift: 'Split Shift' };
+        const k = (getVal(v)).toLowerCase().replace(/\s+/g, '_');
+        return map[k] || getVal(v) || 'Day Shift';
+      };
+      const mapExpLevel = (v) => {
+        const map = { fresher: 'Fresher', experienced: 'Experienced', internship: 'Internship', apprenticeship: 'Apprenticeship', any: 'Any' };
+        return map[(getVal(v)).toLowerCase()] || getVal(v) || 'Fresher';
+      };
+      const mapExp = (v) => { const val = (getVal(v) || '').toString().trim(); return val || 'Fresher'; };
+      const mapJoining = (v) => {
+        const val = getVal(v);
+        const valid = ['Immediate Joining', '7 Days', '15 Days', '30 Days', '45 Days', '60 Days', '90 Days', 'Any'];
+        return valid.includes(val) ? val : 'Immediate Joining';
+      };
 
       const jobData = {
-        // Force active so it shows on main website immediately (server allows overriding)
         status: 'active',
-
-        // Basic job info
         title: formData.jobTitle?.label || formData.jobTitle || '',
         description: formData.jobDescription || '',
-
-        // Company info
         company: {
           name: formData.companyName || '',
           type: formData.companyType?.label || formData.companyType?.value || '',
           totalEmployees: formData.employeeCount?.label || formData.employeeCount?.value || '',
-          website: '',
+          website: formData.companyWebsite || '',
           industry: ''
         },
-
-        // Job details
-        employmentType: formData.employmentType?.label || formData.employmentType?.value || '',
-        jobType: formData.jobType?.label || formData.jobType?.value || '',
-        jobModeType: formData.jobMode?.label || formData.jobMode?.value || '',
-        jobShiftType: formData.jobShift?.label || formData.jobShift?.value || '',
+        employmentType: mapEmploymentType(formData.employmentType),
+        jobType: mapJobType(formData.jobType),
+        jobModeType: mapJobMode(formData.jobMode),
+        jobShiftType: mapJobShift(formData.jobShift),
         skills: labels(formData.keySkills),
         
         // Location
         location: {
-          state: formData.jobState?.label || formData.jobState?.value || '',
+          state: getVal(formData.jobState),
           city: firstOr(formData.jobCity),
           locality: formData.jobLocality || '',
-          distanceFromLocation: formData.distance?.label || formData.distance?.value || '',
+          distanceFromLocation: getVal(formData.distance),
           includeWillingToRelocate: !!formData.includeRelocate,
         },
 
         // Experience
-        experienceLevel: formData.experienceLevel?.label || formData.experienceLevel?.value || '',
-        experienceType: formData.experienceLevel?.label || formData.experienceLevel?.value || '',
+        experienceLevel: mapExpLevel(formData.experienceLevel),
+        experienceType: mapExpLevel(formData.experienceLevel),
         totalExperience: {
-          min: formData.experienceMin?.label || formData.experienceMin?.value || formData.experienceMin || 'Fresher',
-          max: formData.experienceMax?.label || formData.experienceMax?.value || formData.experienceMax || 'Fresher',
+          min: mapExp(formData.experienceMin),
+          max: mapExp(formData.experienceMax),
         },
 
         // Salary
@@ -103,8 +129,8 @@ const AdminPostJobScreen = ({ navigation }) => {
 
         // Additional details
         additionalBenefits: labels(formData.additionalBenefits),
-        gender: formData.gender?.label || formData.gender?.value || '',
-        maritalStatus: formData.maritalStatus?.label || formData.maritalStatus?.value || '',
+        gender: Array.isArray(formData.gender) ? labels(formData.gender) : (getVal(formData.gender) ? [getVal(formData.gender)] : []),
+        maritalStatus: Array.isArray(formData.maritalStatus) ? labels(formData.maritalStatus) : (getVal(formData.maritalStatus) ? [getVal(formData.maritalStatus)] : []),
         industry: labels(formData.industries),
         departmentCategory: labels(formData.departments)[0] || '',
         departmentSubcategory: labels(formData.subDepartments),
@@ -114,14 +140,14 @@ const AdminPostJobScreen = ({ navigation }) => {
         course: labels(formData.course),
         specialization: labels(formData.specialization),
         candidateAge: {
-          min: formData.ageMin?.label || formData.ageMin?.value || '',
-          max: formData.ageMax?.label || formData.ageMax?.value || '',
+          min: getVal(formData.ageMin),
+          max: getVal(formData.ageMax),
         },
         preferredLanguage: labels(formData.preferredLanguage),
-        joiningPeriod: formData.joiningPeriod?.label || formData.joiningPeriod?.value || formData.joiningPeriod || 'Immediate Joining',
+        joiningPeriod: mapJoining(formData.joiningPeriod),
 
-        diversityHiring: formData.diversityHiring?.label || formData.diversityHiring?.value || '',
-        disabilityStatus: formData.disabilityStatus?.label || formData.disabilityStatus?.value || '',
+        diversityHiring: Array.isArray(formData.diversityHiring) ? labels(formData.diversityHiring) : (getVal(formData.diversityHiring) ? [getVal(formData.diversityHiring)] : []),
+        disabilityStatus: Array.isArray(formData.disabilityStatus) ? labels(formData.disabilityStatus) : (getVal(formData.disabilityStatus) ? [getVal(formData.disabilityStatus)] : []),
         disabilities: labels(formData.disabilityTypes),
 
         // Walk-in

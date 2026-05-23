@@ -226,6 +226,19 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// @route   GET /api/jobs/count
+// @desc    Get total active jobs count
+// @access  Public
+router.get('/count', async (req, res) => {
+  try {
+    const total = await Job.countDocuments({ status: 'active' });
+    const all = await Job.countDocuments();
+    res.json({ success: true, total, all });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
 // @route   POST /api/jobs
 // @desc    Create new job
 // @access  Private (Employer)

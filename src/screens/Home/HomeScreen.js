@@ -76,104 +76,24 @@ const HomeScreen = ({ navigation }) => {
   const [selectedSkills, setSelectedSkills] = useState([]);
   const [companyFilter, setCompanyFilter] = useState('All industries');
   const [showJobAlertModal, setShowJobAlertModal] = useState(false);
+  const [locationOptions, setLocationOptions] = useState([]);
+  const [popularSearchTags, setPopularSearchTags] = useState([]);
+  const [heroStats, setHeroStats] = useState({ totalJobs: '5 lakh+', tagline: "India's #1 Free Job Portal" });
 
   const experienceOptions = [
-    'Fresher',
-    '1 Month',
-    '2 Months',
-    '3 Months',
-    '6 Months',
-    '9 Months',
-    '1 Year',
-    '1.5 Years',
-    '2 Years',
-    '2.5 Years',
-    '3 Years',
-    '3.5 Years',
-    '4 Years',
-    '4.5 Years',
-    '5 Years',
-    '5.5 Years',
-    '6 Years',
-    '6.5 Years',
-    '7 Years',
-    '7.5 Years',
-    '8 Years',
-    '8.5 Years',
-    '9 Years',
-    '9.5 Years',
-    '10 Years',
-    '10.5 Years',
-    '11 Years',
-    '11.5 Years',
-    '12 Years',
-    '12.5 Years',
-    '13 Years',
-    '13.5 Years',
-    '14 Years',
-    '14.5 Years',
-    '15 Years',
-    '15.5 Years',
-    '16 Years',
-    '16.5 Years',
-    '17 Years',
-    '17.5 Years',
-    '18 Years',
-    '18.5 Years',
-    '19 Years',
-    '19.5 Years',
-    '20 Years',
-    '20.5 Years',
-    '21 Years',
-    '21.5 Years',
-    '22 Years',
-    '22.5 Years',
-    '23 Years',
-    '23.5 Years',
-    '24 Years',
-    '24.5 Years',
-    '25 Years',
-    '25.5 Years',
-    '26 Years',
-    '26.5 Years',
-    '27 Years',
-    '27.5 Years',
-    '28 Years',
-    '28.5 Years',
-    '29 Years',
-    '29.5 Years',
-    '30 Years',
-    '30.5 Years',
-    '31 Years',
-    '31.5 Years',
-    '32 Years',
-    '32.5 Years',
-    '33 Years',
-    '33.5 Years',
-    '34 Years',
-    '34.5 Years',
-    '35 Years',
-    '35.5 Years',
-    '36 Years',
-    '36 Years Plus',
-  ];
-
-  const locationOptions = [
-    'Delhi, Delhi',
-    'Mumbai, Maharashtra',
-    'Bengaluru, Karnataka',
-    'Hyderabad, Telangana',
-    'Chennai, Tamil Nadu',
-    'Pune, Maharashtra',
-    'Kolkata, West Bengal',
-    'Ahmedabad, Gujarat',
-    'Jaipur, Rajasthan',
-    'Noida, Uttar Pradesh',
-    'Gurugram, Haryana',
-    'Chandigarh, Punjab',
-    'Indore, Madhya Pradesh',
-    'Lucknow, Uttar Pradesh',
-    'Surat, Gujarat',
+    'Fresher', '1 Month', '2 Months', '3 Months', '6 Months', '9 Months',
+    '1 Year', '1.5 Years', '2 Years', '2.5 Years', '3 Years', '3.5 Years',
+    '4 Years', '4.5 Years', '5 Years', '5.5 Years', '6 Years', '6.5 Years',
+    '7 Years', '7.5 Years', '8 Years', '8.5 Years', '9 Years', '9.5 Years',
+    '10 Years', '10.5 Years', '11 Years', '11.5 Years', '12 Years', '12.5 Years',
+    '13 Years', '13.5 Years', '14 Years', '14.5 Years', '15 Years', '15.5 Years',
+    '16 Years', '16.5 Years', '17 Years', '17.5 Years', '18 Years', '18.5 Years',
+    '19 Years', '19.5 Years', '20 Years', '20.5 Years', '21 Years', '21.5 Years',
+    '22 Years', '22.5 Years', '23 Years', '23.5 Years', '24 Years', '24.5 Years',
+    '25 Years', '25.5 Years', '26 Years', '26.5 Years', '27 Years', '27.5 Years',
+    '28 Years', '28.5 Years', '29 Years', '29.5 Years', '30 Years', '30.5 Years',
+    '31 Years', '31.5 Years', '32 Years', '32.5 Years', '33 Years', '33.5 Years',
+    '34 Years', '34.5 Years', '35 Years', '35.5 Years', '36 Years', '36 Years Plus',
   ];
 
   const searchOptions = useMemo(() => {
@@ -190,7 +110,33 @@ const HomeScreen = ({ navigation }) => {
 
   useEffect(() => {
     loadHomeData();
+    loadLocations();
+    loadPopularSearches();
   }, []);
+
+  const loadLocations = async () => {
+    try {
+      const res = await fetch(`${api.baseURL}/locations?limit=50`);
+      const data = await res.json();
+      if (data.success && data.data && data.data.length > 0) {
+        setLocationOptions(data.data.map(l => `${l.city}, ${l.state}`));
+      }
+    } catch (e) {
+      console.warn('Locations load error:', e.message);
+    }
+  };
+
+  const loadPopularSearches = async () => {
+    try {
+      const res = await fetch(`${api.baseURL}/popular-searches?limit=5`);
+      const data = await res.json();
+      if (data.success && data.popularSearches && data.popularSearches.length > 0) {
+        setPopularSearchTags(data.popularSearches.map(s => s.searchQuery));
+      }
+    } catch (e) {
+      console.warn('Popular searches load error:', e.message);
+    }
+  };
 
   // Load FAQs independently so they always show even if loadHomeData partially fails
   useEffect(() => {
@@ -217,6 +163,17 @@ const HomeScreen = ({ navigation }) => {
       setLatestJobs([]);
       setTopCompanies([]);
       setCareerBlogs([]);
+
+      // Load hero stats (total active jobs count)
+      try {
+        const statsRes = await fetch(`${api.baseURL}/jobs/count`);
+        const statsData = await statsRes.json();
+        if (statsData.success && statsData.total) {
+          const count = statsData.total;
+          const formatted = count >= 100000 ? `${(count / 100000).toFixed(1)} lakh+` : count >= 1000 ? `${(count / 1000).toFixed(0)}k+` : `${count}+`;
+          setHeroStats(prev => ({ ...prev, totalJobs: formatted }));
+        }
+      } catch (e) { /* non-critical */ }
       
       // Load latest jobs - fully dynamic from API
       const jobsResponse = await api.getJobs({ limit: 8, sort: '-createdAt' });
@@ -224,45 +181,6 @@ const HomeScreen = ({ navigation }) => {
       if (jobsResponse && jobsResponse.jobs) {
         jobs = jobsResponse.jobs;
       }
-      
-      // Add dummy jobs if needed to make it 8 total
-      if (jobs.length < 8) {
-        const dummyJobs = [
-          {
-            _id: 'dummy-job-1',
-            title: 'Product Manager',
-            company: { name: 'Tech Solutions Inc' },
-            location: {
-              city: 'Bangalore',
-              state: 'Karnataka',
-              locality: ''
-            },
-            salary: { min: 1500000, max: 2500000 },
-            totalExperience: { min: '3 Years', max: '5 Years' },
-            keySkills: ['Product Management', 'Agile', 'Scrum', 'Analytics'],
-            createdAt: new Date().toISOString(),
-          },
-          {
-            _id: 'dummy-job-2',
-            title: 'UI/UX Designer',
-            company: { name: 'Creative Studio' },
-            location: {
-              city: 'Pune',
-              state: 'Maharashtra',
-              locality: ''
-            },
-            salary: { min: 800000, max: 1500000 },
-            totalExperience: { min: '2 Years', max: '4 Years' },
-            keySkills: ['Figma', 'Adobe XD', 'Prototyping', 'User Research'],
-            createdAt: new Date().toISOString(),
-          },
-        ];
-        
-        // Add only the number of dummy jobs needed to reach 8
-        const neededDummyJobs = 8 - jobs.length;
-        jobs = [...jobs, ...dummyJobs.slice(0, neededDummyJobs)];
-      }
-      
       setLatestJobs(jobs);
 
       // Load top companies - fully dynamic from API
@@ -596,33 +514,27 @@ const HomeScreen = ({ navigation }) => {
 
         {/* Popular Searches */}
         <View style={dynamicStyles.popularSearches}>
-          <TouchableOpacity
-            style={dynamicStyles.popularTag}
-            onPress={() => {
-              setSelectedSkills([]);
-              setSearchQuery('business development, delhi');
-            }}
-          >
-            <Text style={dynamicStyles.popularTagText} numberOfLines={isPhone ? 1 : undefined} ellipsizeMode="tail">business development, delhi</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={dynamicStyles.popularTag}
-            onPress={() => {
-              setSelectedSkills([]);
-              setSearchQuery('software developer, noida');
-            }}
-          >
-            <Text style={dynamicStyles.popularTagText} numberOfLines={isPhone ? 1 : undefined} ellipsizeMode="tail">software developer, noida</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={dynamicStyles.popularTag}
-            onPress={() => {
-              setSelectedSkills([]);
-              setSearchQuery('web development, delhi');
-            }}
-          >
-            <Text style={dynamicStyles.popularTagText} numberOfLines={isPhone ? 1 : undefined} ellipsizeMode="tail">web development, delhi</Text>
-          </TouchableOpacity>
+          {popularSearchTags.length > 0 ? (
+            popularSearchTags.map((tag, idx) => (
+              <TouchableOpacity
+                key={idx}
+                style={dynamicStyles.popularTag}
+                onPress={() => { setSelectedSkills([]); setSearchQuery(tag); }}
+              >
+                <Text style={dynamicStyles.popularTagText} numberOfLines={isPhone ? 1 : undefined} ellipsizeMode="tail">{tag}</Text>
+              </TouchableOpacity>
+            ))
+          ) : (
+            ['software developer', 'business development', 'web development'].map((tag, idx) => (
+              <TouchableOpacity
+                key={idx}
+                style={dynamicStyles.popularTag}
+                onPress={() => { setSelectedSkills([]); setSearchQuery(tag); }}
+              >
+                <Text style={dynamicStyles.popularTagText} numberOfLines={isPhone ? 1 : undefined} ellipsizeMode="tail">{tag}</Text>
+              </TouchableOpacity>
+            ))
+          )}
         </View>
 
         {/* Job Alert Button */}
@@ -708,12 +620,8 @@ const HomeScreen = ({ navigation }) => {
           <Text style={dynamicStyles.companyStatLabel}>Featured partners</Text>
         </View>
         <View style={dynamicStyles.companyStatCard}>
-          <Text style={dynamicStyles.companyStatValue}>500+</Text>
+          <Text style={dynamicStyles.companyStatValue}>{heroStats.totalJobs}</Text>
           <Text style={dynamicStyles.companyStatLabel}>Live openings</Text>
-        </View>
-        <View style={dynamicStyles.companyStatCard}>
-          <Text style={dynamicStyles.companyStatValue}>4.7/5</Text>
-          <Text style={dynamicStyles.companyStatLabel}>Avg. rating</Text>
         </View>
       </View>
 

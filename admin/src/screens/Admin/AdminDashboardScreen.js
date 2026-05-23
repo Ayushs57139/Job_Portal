@@ -354,8 +354,12 @@ const AdminDashboardScreen = ({ navigation, route }) => {
     }
   };
 
-  const handleLogout = () => {
-    // Clear admin token and navigate to login
+  const handleLogout = async () => {
+    try {
+      await AsyncStorage.multiRemove(['token', 'user', 'currentUser']);
+    } catch (e) {
+      console.warn('Logout clear error:', e);
+    }
     navigation.replace('AdminLogin');
   };
 
